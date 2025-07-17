@@ -1,6 +1,6 @@
 import { FaSearch, FaCamera } from 'react-icons/fa'
 import Navbar from '@/Components/Navbar'
-import Footer from '@/Components/footer'
+import Footer from '@/Components/Footer'
 import Carousel_ProductData from '@/Components/Carousel_ProductData'
 
 export default function HomePage () {
