@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UserController;
-use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -26,6 +25,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-Route::get('/relovemarket',  [UserController::class, 'homepage'])->name('homepage');
+Route::get('/relove-market', [UserController::class, 'homepage'])->name('homepage');
+Route::get("/about-us", [UserController::class, 'aboutus'])->name("about-us");
+Route::get("/shopping", [UserController::class, 'shopping'])->name("shopping");
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

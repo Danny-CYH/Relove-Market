@@ -14,4 +14,14 @@ class UserController extends Controller
             'description' => 'Welcome to the homepage of our application.',
         ]);
     }
+
+    public function aboutus()
+    {
+        return Inertia::render('BuyersPage/AboutUs');
+    }
+
+    public function shopping()
+    {
+        return Inertia::render("BuyersPage/ShopPage");
+    }
 }
