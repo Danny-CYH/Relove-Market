@@ -28,5 +28,6 @@ Route::middleware('auth')->group(function () {
 Route::get('/relove-market', [UserController::class, 'homepage'])->name('homepage');
 Route::get("/about-us", [UserController::class, 'aboutus'])->name("about-us");
 Route::get("/shopping", [UserController::class, 'shopping'])->name("shopping");
+Route::get("/item-details",[UserController::class,"itemDetails"])->name('item-details');
 
 require __DIR__ . '/auth.php';

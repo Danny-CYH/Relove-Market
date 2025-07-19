@@ -1,22 +1,20 @@
-import {
-    FaHeart,
-    FaShoppingCart,
-    FaUser,
-    FaBars,
-    FaTimes,
-} from "react-icons/fa";
+import { FaBars, FaTimes } from "react-icons/fa";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "@inertiajs/react";
+import { usePage, Link } from "@inertiajs/react";
 
 function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const { auth } = usePage().props;
 
     const sidebarVariants = {
         hidden: { x: "-100%" },
         visible: { x: 0 },
         exit: { x: "-100%" },
     };
+
+    const toggleUserMenu = () => setShowUserMenu(!showUserMenu);
 
     return (
         <>
@@ -30,7 +28,7 @@ function Navbar() {
 
                 <div className="hidden md:flex flex-1 justify-center space-x-8">
                     <Link
-                        href="/relove-market"
+                        href={route("homepage")}
                         preserveScroll
                         preserveState
                         className="text-black hover:text-gray-500 cursor-pointer"
@@ -38,7 +36,7 @@ function Navbar() {
                         Home
                     </Link>
                     <Link
-                        href="/about-us"
+                        href={route("about-us")}
                         preserveScroll
                         preserveState
                         className="text-black hover:text-gray-500 cursor-pointer"
@@ -46,33 +44,61 @@ function Navbar() {
                         About
                     </Link>
                     <Link
-                        href="/shopping"
+                        href={route("shopping")}
                         preserveScroll
                         preserveState
                         className="text-black hover:text-gray-500 cursor-pointer"
                     >
                         Shop
                     </Link>
-
-                    <Link className="text-black hover:text-gray-500 cursor-pointer">
-                        Sign Up
-                    </Link>
                 </div>
 
                 <div className="hidden md:flex flex-none items-center space-x-4">
-                    <div className="relative">
-                        <FaHeart className="text-xl text-red-500" />
-                        <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1.5">
-                            4
-                        </span>
-                    </div>
-                    <div className="relative">
-                        <FaShoppingCart className="text-xl text-gray-800" />
-                        <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full px-1.5">
-                            2
-                        </span>
-                    </div>
-                    <FaUser className="text-xl text-gray-500" />
+                    {/* Auth Section */}
+                    {!auth?.user ? (
+                        <Link
+                            href={route("register")}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+                        >
+                            Get Started
+                        </Link>
+                    ) : (
+                        <div className="relative">
+                            <div className="avatar avatar-online">
+                                <div
+                                    className={`w-10 rounded-full cursor-pointer
+                    ${
+                        showUserMenu
+                            ? "ring-primary ring-2 ring-offset-2"
+                            : "hover:ring-primary hover:ring-2 hover:ring-offset-2"
+                    }`}
+                                >
+                                    <img
+                                        src="../image/shania_yan.png"
+                                        onClick={toggleUserMenu}
+                                    />
+                                </div>
+                            </div>
+                            {showUserMenu && (
+                                <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow z-50">
+                                    <Link
+                                        href={route("profile.edit")}
+                                        className="block px-4 py-2 hover:bg-gray-100 text-black"
+                                    >
+                                        Profile
+                                    </Link>
+                                    <Link
+                                        href={route("logout")}
+                                        method="post"
+                                        as="button"
+                                        className="block px-4 py-2 w-full text-left hover:bg-gray-100 text-black"
+                                    >
+                                        Logout
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Hamburger Icon */}
@@ -121,21 +147,21 @@ function Navbar() {
 
                             <nav className="flex flex-col p-6 space-y-4 text-gray-700 font-medium">
                                 <Link
-                                    href="/relove-market"
+                                    href={route("homepage")}
                                     onClick={() => setIsOpen(false)}
                                     className="hover:text-blue-500 transition duration-200"
                                 >
                                     🏠 Home
                                 </Link>
                                 <Link
-                                    href="/about-us"
+                                    href={route("about-us")}
                                     onClick={() => setIsOpen(false)}
                                     className="hover:text-blue-500 transition duration-200"
                                 >
                                     📄 About
                                 </Link>
                                 <Link
-                                    href="/shopping"
+                                    href={route("shopping")}
                                     onClick={() => setIsOpen(false)}
                                     className="hover:text-blue-500 transition duration-200"
                                 >

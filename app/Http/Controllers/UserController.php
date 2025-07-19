@@ -24,4 +24,8 @@ class UserController extends Controller
     {
         return Inertia::render("BuyersPage/ShopPage");
     }
+
+    public function itemDetails(){
+        return Inertia::render("BuyersPage/ItemDetails");
+    }
 }

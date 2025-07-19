@@ -31,62 +31,23 @@ export default function ShopPage() {
             {/* Filter product list button */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-32 mt-20 mb-5">
                 {/* Filter Sidebar (1 column out of 4) */}
-                <div className="md:col-span-1 border border-black p-5">
-                    <h2 className="text-xl font-semibold mb-4 text-black">
-                        Filter Products
-                    </h2>
 
-                    {/* Price Range */}
-                    <div className="mb-6">
-                        <h3 className="font-medium mb-2 text-black">
-                            Price Range
-                        </h3>
-                        <div className="flex space-x-2">
-                            <input
-                                type="range"
-                                min={0}
-                                max="100"
-                                value="40"
-                                className="range bg-black"
-                            />
-                        </div>
+                <div class="md:col-span-1 relative flex flex-col bg-white shadow-sm border border-slate-200 rounded-lg w-70">
+                    <div class="mx-3 mb-0 border-b border-slate-200 pt-3 pb-2 px-1">
+                        <span class="text-sm text-slate-600 font-medium">
+                            Filter Options
+                        </span>
                     </div>
 
-                    {/* Categories */}
-                    <div className="mb-6">
-                        <h3 className="font-medium mb-2 text-black">
-                            Categories
-                        </h3>
-                        <div className="space-y-1">
+                    <div class="p-4">
+                        <h3 className="text-black mb-2">Category</h3>
+                        <label className="label cursor-pointer text-black">
                             <input
                                 type="checkbox"
-                                className="checkbox checkbox-success"
+                                className="appearance-none w-5 h-5 border border-indigo-600 checked:bg-indigo-600 rounded-sm"
                             />
-                            <label for="test" className="mx-2">
-                                Testing
-                            </label>
-                        </div>
-                    </div>
-
-                    {/* Brands */}
-                    <div className="mb-6">
-                        <h3 className="font-medium mb-2 text-black">Brands</h3>
-                        <div className="space-y-1">
-                            <input
-                                type="checkbox"
-                                className="checkbox checkbox-primary"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Buttons */}
-                    <div className="flex justify-between items-center mt-6">
-                        <button className="bg-gray-200 text-gray-800 px-4 py-1 rounded hover:bg-gray-300">
-                            Reset
-                        </button>
-                        <button className="bg-black text-white px-4 py-1 rounded hover:bg-gray-800">
-                            Apply
-                        </button>
+                            <span className="label-text mr-2">Remember me</span>
+                        </label>
                     </div>
                 </div>
 
@@ -120,6 +81,12 @@ export default function ShopPage() {
                                     <div className="badge badge-outline">
                                         Products
                                     </div>
+                                </div>
+                                <div className="flex flex-row justify-between mt-3">
+                                    <h3 className="text-success text-lg">
+                                        RM 75.00
+                                    </h3>
+                                    <h5 className="text-dark">Location</h5>
                                 </div>
                             </div>
                         </div>
@@ -158,40 +125,6 @@ export default function ShopPage() {
                     </div>
                 </div>
             </div>
-
-            {/* List products */}
-            <div className="px-40">
-                {/* <h2 className="text-black font-bold mt-10">For You!</h2>
-                <div className="flex flex-row mt-5 mb-5">
-                    <div className="card bg-base-100 w-96 shadow-sm">
-                        <figure>
-                            <img
-                                src="https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"
-                                alt="Shoes"
-                            />
-                        </figure>
-                        <div className="card-body">
-                            <h2 className="card-title">
-                                Card Title
-                                <div className="badge badge-secondary">NEW</div>
-                            </h2>
-                            <p>
-                                A card component has a figure, a body part, and
-                                inside body there are title and actions parts
-                            </p>
-                            <div className="card-actions justify-start">
-                                <div className="badge badge-outline">
-                                    Fashion
-                                </div>
-                                <div className="badge badge-outline">
-                                    Products
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div> */}
-            </div>
-
             <Footer />
         </div>
     );
