@@ -48,8 +48,8 @@ const Footer = () => {
                         <br />
                         Kedah, Malaysia.
                     </p>
-                    <p className="mt-2">chengyangho14@gmail.com</p>
-                    <p className="mt-2">+60189724865</p>
+                    <p className="mt-2">relovemarket006@gmail.com</p>
+                    <p className="mt-2">+60126547653</p>
                 </div>
 
                 {/* Account */}

@@ -3,28 +3,208 @@ import Navbar from "@/Components/Navbar";
 
 import TextInput from "@/Components/TextInput";
 
-import { Link, useForm } from "@inertiajs/react";
+import { Link, useForm, usePage } from "@inertiajs/react";
+import { useEffect, useState } from "react";
 
 export default function Register() {
-    const { data, setData, post, reset } = useForm({
+    const { flash } = usePage().props;
+    const [showEmailVerificationModal, setShowEmailVerificationModal] =
+        useState();
+    const [showSuccessToast, setShowSuccessToast] = useState(
+        !!flash?.successMessage
+    );
+    const [showErrorToast, setShowErrorToast] = useState(!!flash?.errorMessage);
+
+    const {
+        data: registerData,
+        setData: setRegisterData,
+        post: postRegister,
+        processing: processingRegister,
+        reset,
+    } = useForm({
         name: "",
         email: "",
         password: "",
         password_confirmation: "",
     });
 
-    const submit = (e) => {
+    const {
+        data: verifyData,
+        setData: setVerifyData,
+        post: postResendEmail,
+        processing: processingResendEmail,
+    } = useForm({
+        email: "",
+    });
+
+    useEffect(() => {
+        if (flash?.successMessage) {
+            setShowSuccessToast(true);
+            const timer = setTimeout(() => setShowSuccessToast(false), 5000);
+            return () => clearTimeout(timer);
+        }
+
+        if (flash?.errorMessage) {
+            setShowErrorToast(true);
+            const timer = setTimeout(() => setShowErrorToast(false), 5000);
+            return () => clearTimeout(timer);
+        }
+
+        if (showEmailVerificationModal) {
+            setVerifyData("email", registerData.email);
+        }
+    }, [
+        flash?.successMessage,
+        flash?.errorMessage,
+        showEmailVerificationModal,
+    ]);
+
+    const register_submit = (e) => {
         e.preventDefault();
 
-        post(route("register"), {
-            onFinish: () => reset("password", "password_confirmation"),
+        postRegister(route("register"), {
+            onSuccess: () => {
+                if (flash?.errorMessage != null) {
+                    reset("name", "email", "password", "password_confirmation");
+
+                    setShowEmailVerificationModal(true);
+                }
+            },
+        });
+    };
+
+    const resend_emailVerification = (e) => {
+        e.preventDefault();
+
+        postResendEmail(route("custom.verification.send"), {
+            onSuccess: () => {
+                setShowEmailVerificationModal(false);
+                setShowSuccessToast(true);
+                setTimeout(() => setShowSuccessToast(false), 5000);
+            },
         });
     };
 
     return (
         <div className="h-96 bg-white">
+            {/* Toast for displaying success message */}
+            {showSuccessToast && (
+                <div className="toast toast-center md:toast-end">
+                    <div className="alert alert-success">
+                        <span className="text-green-800 font-bold">
+                            {flash.successMessage}
+                        </span>
+                    </div>
+                </div>
+            )}
+            {/* end of toast */}
+
+            {/* toast for displaying error message */}
+            {showErrorToast && (
+                <div className="toast toast-center md:toast-end">
+                    <div className="alert alert-error">
+                        <span className="text-white font-bold">
+                            {flash.errorMessage}
+                        </span>
+                    </div>
+                </div>
+            )}
+            {/* end of toast */}
+
+            {/* Toast for showing success resend reset link */}
+            {/* {showSuccessToast && (
+                <div className="toast toast-center md:toast-end">
+                    <div className="alert alert-success">
+                        <span className="text-white font-bold">
+                            We have resend the verification email to you.
+                        </span>
+                    </div>
+                </div>
+            )} */}
+            {/* end of toast */}
+
+            {/* Modal for sending email verification */}
+            <dialog
+                className={`modal modal-bottom sm:modal-middle ${
+                    showEmailVerificationModal ? "modal-open" : ""
+                }`}
+            >
+                <div className="modal-box bg-white relative">
+                    <button
+                        className="btn btn-sm btn-circle btn-ghost text-black absolute right-2 top-5 md:top-2 hover:bg-transparent hover:text-black active:bg-transparent"
+                        onClick={() => setShowEmailVerificationModal(false)}
+                    >
+                        ✕
+                    </button>
+                    <h3 className="font-bold text-lg text-black">
+                        Verify Your Email
+                    </h3>
+                    <p className="py-4 text-black">
+                        Thanks for signing up! Before getting started, could you
+                        verify your email address by clicking on the link we
+                        just emailed to you? If you didn't receive the email, we
+                        will gladly send you another.
+                    </p>
+                    <form onSubmit={resend_emailVerification}>
+                        <TextInput
+                            type="email"
+                            name="email"
+                            autoComplete="off"
+                            placeholder="Your Email Address"
+                            value={verifyData.email}
+                            className="mt-1 hidden w-full"
+                            isFocused={true}
+                            onChange={(e) =>
+                                setVerifyData("email", e.target.value)
+                            }
+                        />
+
+                        <div className="flex flex-row justify-end">
+                            <button
+                                className={`btn flex items-center gap-2 transition-all duration-200
+        ${
+            processingResendEmail
+                ? "text-black cursor-not-allowed"
+                : "btn-primary"
+        }
+    `}
+                                disabled={processingResendEmail}
+                            >
+                                {processingResendEmail && (
+                                    <svg
+                                        className="animate-spin h-4 w-4 text-black"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                        ></circle>
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8v8H4z"
+                                        ></path>
+                                    </svg>
+                                )}
+                                {processingResendEmail
+                                    ? "Sending..."
+                                    : "Resend Verification Email"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </dialog>
+            {/* end of modal */}
+
+            {/* start of register page */}
             <Navbar />
-            <div className="flex items-center justify-center mt-10 mb-10">
+            <div className="flex items-center justify-center mt-10 mb-10 mx-3 md:mx-0">
                 <div className="grid grid-cols-1 md:grid-cols-2 w-full max-w-6xl border">
                     {/* Left Image Section */}
                     <div className="hidden md:block">
@@ -43,18 +223,21 @@ export default function Register() {
                                 Relove Market
                             </h2>
 
-                            <form onSubmit={submit} className="space-y-4">
+                            <form
+                                onSubmit={register_submit}
+                                className="space-y-4"
+                            >
                                 <TextInput
                                     id="name"
                                     name="name"
                                     type="text"
                                     autoComplete="off"
-                                    value={data.name}
+                                    value={registerData.name}
                                     placeholder="Full Name"
                                     className="w-full border rounded px-4 py-2 md:mb-0"
                                     isFocused={true}
                                     onChange={(e) =>
-                                        setData("name", e.target.value)
+                                        setRegisterData("name", e.target.value)
                                     }
                                 />
 
@@ -63,11 +246,11 @@ export default function Register() {
                                     name="email"
                                     type="email"
                                     autoComplete="off"
-                                    value={data.email}
+                                    value={registerData.email}
                                     placeholder="Email"
                                     className="w-full border rounded px-4 py-2"
                                     onChange={(e) =>
-                                        setData("email", e.target.value)
+                                        setRegisterData("email", e.target.value)
                                     }
                                 />
 
@@ -76,11 +259,14 @@ export default function Register() {
                                     name="password"
                                     type="password"
                                     autoComplete="off"
-                                    value={data.password}
+                                    value={registerData.password}
                                     placeholder="Password"
                                     className="w-full border rounded px-4 py-2"
                                     onChange={(e) =>
-                                        setData("password", e.target.value)
+                                        setRegisterData(
+                                            "password",
+                                            e.target.value
+                                        )
                                     }
                                 />
 
@@ -89,11 +275,11 @@ export default function Register() {
                                     name="password_confirmation"
                                     type="password"
                                     autoComplete="new-password"
-                                    value={data.password_confirmation}
+                                    value={registerData.password_confirmation}
                                     placeholder="Password Confirmation"
                                     className="mt-1 block w-full"
                                     onChange={(e) =>
-                                        setData(
+                                        setRegisterData(
                                             "password_confirmation",
                                             e.target.value
                                         )
@@ -101,8 +287,37 @@ export default function Register() {
                                     required
                                 />
 
-                                <button className="w-full bg-purple-600 text-white py-2 rounded-full hover:bg-purple-700">
-                                    Sign Up
+                                <button
+                                    className={`flex items-center gap-2 w-full justify-center bg-purple-600 text-white py-2 rounded-full hover:bg-purple-700 transition-all duration-200
+        ${processingRegister ? "text-black cursor-not-allowed" : "btn-primary"}
+    `}
+                                    disabled={processingRegister}
+                                >
+                                    {processingRegister && (
+                                        <svg
+                                            className="animate-spin h-4 w-4 text-white"
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <circle
+                                                className="opacity-25"
+                                                cx="12"
+                                                cy="12"
+                                                r="10"
+                                                stroke="currentColor"
+                                                strokeWidth="4"
+                                            ></circle>
+                                            <path
+                                                className="opacity-75"
+                                                fill="currentColor"
+                                                d="M4 12a8 8 0 018-8v8H4z"
+                                            ></path>
+                                        </svg>
+                                    )}
+                                    {processingRegister
+                                        ? "Signing Up..."
+                                        : "Sign Up"}
                                 </button>
                             </form>
 

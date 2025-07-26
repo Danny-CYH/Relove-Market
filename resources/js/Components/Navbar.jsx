@@ -1,4 +1,10 @@
-import { FaBars, FaTimes } from "react-icons/fa";
+import {
+    FaBars,
+    FaTimes,
+    FaHeartbeat,
+    FaUserCircle,
+    FaDoorOpen,
+} from "react-icons/fa";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePage, Link } from "@inertiajs/react";
@@ -6,15 +12,15 @@ import { usePage, Link } from "@inertiajs/react";
 function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
+
     const { auth } = usePage().props;
+    const { url } = usePage(); // Gets the current URL path
 
     const sidebarVariants = {
         hidden: { x: "-100%" },
         visible: { x: 0 },
         exit: { x: "-100%" },
     };
-
-    const toggleUserMenu = () => setShowUserMenu(!showUserMenu);
 
     return (
         <>
@@ -31,7 +37,11 @@ function Navbar() {
                         href={route("homepage")}
                         preserveScroll
                         preserveState
-                        className="text-black hover:text-gray-500 cursor-pointer"
+                        className={`cursor-pointer ${
+                            url === "/relove-market"
+                                ? "text-blue-600 font-bold"
+                                : "text-black hover:text-blue-600"
+                        }`}
                     >
                         Home
                     </Link>
@@ -39,7 +49,11 @@ function Navbar() {
                         href={route("about-us")}
                         preserveScroll
                         preserveState
-                        className="text-black hover:text-gray-500 cursor-pointer"
+                        className={`cursor-pointer ${
+                            url.startsWith("/about-us")
+                                ? "text-blue-600 font-bold"
+                                : "text-black hover:text-blue-600"
+                        }`}
                     >
                         About
                     </Link>
@@ -47,7 +61,11 @@ function Navbar() {
                         href={route("shopping")}
                         preserveScroll
                         preserveState
-                        className="text-black hover:text-gray-500 cursor-pointer"
+                        className={`cursor-pointer ${
+                            url.startsWith("/shopping")
+                                ? "text-blue-600 font-bold"
+                                : "text-black hover:text-blue-600"
+                        }`}
                     >
                         Shop
                     </Link>
@@ -65,38 +83,72 @@ function Navbar() {
                     ) : (
                         <div className="relative">
                             <div className="avatar avatar-online">
+                                {/* Avatar Button */}
                                 <div
-                                    className={`w-10 rounded-full cursor-pointer
-                    ${
-                        showUserMenu
-                            ? "ring-primary ring-2 ring-offset-2"
-                            : "hover:ring-primary hover:ring-2 hover:ring-offset-2"
-                    }`}
+                                    onClick={() =>
+                                        setShowUserMenu(!showUserMenu)
+                                    }
+                                    className={`w-10 rounded-full cursor-pointer transition duration-150 ease-in-out
+      ${
+          showUserMenu
+              ? "ring-2 ring-primary ring-offset-2"
+              : "hover:ring-2 hover:ring-primary hover:ring-offset-2"
+      }
+    `}
                                 >
                                     <img
                                         src="../image/shania_yan.png"
-                                        onClick={toggleUserMenu}
+                                        alt="User Avatar"
+                                        className="w-full h-full rounded-full"
                                     />
                                 </div>
+
+                                {/* Dropdown Menu */}
+                                {showUserMenu && (
+                                    <div className="absolute right-0 z-20 mt-12 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-700">
+                                        <div className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                                            <div className="font-medium">
+                                                {auth.user.name}
+                                            </div>
+                                            <div className="truncate text-sm text-gray-500 dark:text-gray-300">
+                                                {auth.user.email}
+                                            </div>
+                                        </div>
+                                        <div className="py-1 text-sm text-gray-700 dark:text-gray-200">
+                                            <Link
+                                                href={route("profile.edit")}
+                                                className="block px-4 py-2 hover:text-blue-300 text-white"
+                                            >
+                                                <div className="flex items-center space-x-2">
+                                                    <FaUserCircle className="text-lg" />
+                                                    <span>Profile</span>
+                                                </div>
+                                            </Link>
+                                            <Link
+                                                href={route("profile.edit")}
+                                                className="block px-4 py-2 hover:text-blue-300 text-white"
+                                            >
+                                                <div className="flex items-center space-x-2">
+                                                    <FaHeartbeat className="text-lg" />
+                                                    <span>Favourite</span>
+                                                </div>
+                                            </Link>
+                                        </div>
+                                        <div className="py-1 border-t border-gray-200 dark:border-gray-600">
+                                            <Link
+                                                href={route("logout")}
+                                                method="POST"
+                                                className="block px-4 py-2 text-sm text-red-200 hover:bg-red-10 hover:font-bold hover:text-red-400"
+                                            >
+                                                <div className="flex items-center space-x-2">
+                                                    <FaDoorOpen className="text-lg" />
+                                                    <span>Sign out</span>
+                                                </div>
+                                            </Link>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            {showUserMenu && (
-                                <div className="absolute right-0 mt-2 w-40 bg-white border rounded shadow z-50">
-                                    <Link
-                                        href={route("profile.edit")}
-                                        className="block px-4 py-2 hover:bg-gray-100 text-black"
-                                    >
-                                        Profile
-                                    </Link>
-                                    <Link
-                                        href={route("logout")}
-                                        method="post"
-                                        as="button"
-                                        className="block px-4 py-2 w-full text-left hover:bg-gray-100 text-black"
-                                    >
-                                        Logout
-                                    </Link>
-                                </div>
-                            )}
                         </div>
                     )}
                 </div>
