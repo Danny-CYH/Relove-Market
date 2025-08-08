@@ -9,7 +9,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePage, Link } from "@inertiajs/react";
 
-function Navbar() {
+export function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
 
@@ -96,11 +96,13 @@ function Navbar() {
       }
     `}
                                 >
-                                    <img
-                                        src="../image/shania_yan.png"
-                                        alt="User Avatar"
-                                        className="w-full h-full rounded-full"
-                                    />
+                                    <picture>
+                                        <img
+                                            src="../image/shania_yan.png"
+                                            alt="User Avatar"
+                                            className="w-full h-full rounded-full"
+                                        />
+                                    </picture>
                                 </div>
 
                                 {/* Dropdown Menu */}
@@ -125,7 +127,7 @@ function Navbar() {
                                                 </div>
                                             </Link>
                                             <Link
-                                                href={route("profile.edit")}
+                                                href={route("wishlist")}
                                                 className="block px-4 py-2 hover:text-blue-300 text-white"
                                             >
                                                 <div className="flex items-center space-x-2">
@@ -237,5 +239,3 @@ function Navbar() {
         </>
     );
 }
-
-export default Navbar;

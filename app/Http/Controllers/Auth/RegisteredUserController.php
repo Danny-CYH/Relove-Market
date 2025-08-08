@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\User;
 
 use Illuminate\Auth\Events\Registered;
@@ -34,6 +35,14 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         try {
+            $latestUser = User::orderBy('user_id', 'desc')->first();
+
+            $number = ($latestUser && preg_match('/USR-(\d+)/', $latestUser->user_id, $matches))
+                ? (int) $matches[1] + 1
+                : 1;
+
+            $newUserId = 'USR-' . str_pad($number, 5, '0', STR_PAD_LEFT);
+
             $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
@@ -41,18 +50,20 @@ class RegisteredUserController extends Controller
             ]);
 
             $user = User::create([
+                'user_id' => $newUserId,
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
+                'role_id' => Role::where('role_name', 'Buyer')->value('role_id'),
             ]);
 
             event(new Registered($user));
 
-            return back()->with("successMessage", "Register Sucessfully...");
+            return back();
         } catch (ValidationException $e) {
             return back()->with("errorMessage", $e->getMessage());
         } catch (\Throwable $e) {
-            return back()->with('errorMessage', 'Registration failed. Please try again.');
+            return back()->with('errorMessage', $e->getMessage());
         }
     }
 

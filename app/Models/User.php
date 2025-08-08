@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -17,10 +18,20 @@ class User extends Authenticatable implements MustVerifyEmail
      *
      * @var list<string>
      */
+
+    protected $primaryKey = "user_id";
+    public $incrementing = false;
+    protected $keyType = 'string';
+    
     protected $fillable = [
+        'user_id',
         'name',
         'email',
         'password',
+        'phone',
+        'profile_image',
+        'role_id',
+        'seller_id',
     ];
 
     /**
@@ -44,5 +55,10 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function role(): HasMany
+    {
+        return $this->hasMany(Role::class);
     }
 }

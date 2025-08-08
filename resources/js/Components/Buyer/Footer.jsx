@@ -9,7 +9,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPaperPlane } from "@fortawesome/free-solid-svg-icons";
 
-const Footer = () => {
+export function Footer() {
     const iOSUrl =
         "https://itunes.apple.com/us/app/all-of-the-lights/id959389722?mt=8";
     const APKUrl = "https://play.google.com/store/apps/details?id=host";
@@ -120,6 +120,4 @@ const Footer = () => {
             </div>
         </footer>
     );
-};
-
-export default Footer;
+}

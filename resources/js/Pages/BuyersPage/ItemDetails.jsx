@@ -1,7 +1,8 @@
-import Footer from "@/Components/Footer";
-import Navbar from "@/Components/Navbar";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTruck } from "@fortawesome/free-solid-svg-icons";
+
+import { Footer } from "@/Components/Buyer/Footer";
+import { Navbar } from "@/Components/Buyer/Navbar";
 
 export default function ItemDetails() {
     return (

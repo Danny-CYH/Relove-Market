@@ -1,5 +1,5 @@
-import Footer from "@/Components/Footer";
-import Navbar from "@/Components/Navbar";
+import { Footer } from "@/Components/Buyer/Footer";
+import { Navbar } from "@/Components/Buyer/Navbar";
 
 import TextInput from "@/Components/TextInput";
 

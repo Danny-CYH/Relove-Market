@@ -1,7 +1,10 @@
 import React, { useRef } from 'react'
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa'
+
 import Carousel from 'react-multi-carousel'
+
 import 'react-multi-carousel/lib/styles.css'
+
 import { ProductCard } from './ProductCard'
 
 function Carousel_ProductData ({ productData }) {
@@ -35,10 +38,10 @@ function Carousel_ProductData ({ productData }) {
     }
     return (
         <>
-            <div className='w-full mt-7 px-4 py-4 relative'>
+            <div className='w-full mt-10 px-4 py-4 relative'>
                 <div className='flex items-center justify-between'>
-                    <h2 className='absolute -top-2 left-4 md:left-20 text-xl font-semibold text-green-900'>
-                        Featured
+                    <h2 className='absolute -top-2 left-4 md:left-16 text-2xl font-semibold text-green-900'>
+                        Flash Sale
                     </h2>
                     <div className='absolute -top-4 right-2 md:right-16 flex gap-2 p-2 z-10'>
                         <button

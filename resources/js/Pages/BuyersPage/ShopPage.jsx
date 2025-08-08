@@ -1,130 +1,128 @@
-import { useState } from "react";
-import Footer from "@/Components/Footer";
-import Navbar from "@/Components/Navbar";
+import { Footer } from "@/Components/Buyer/Footer";
+import { Navbar } from "@/Components/Buyer/Navbar";
 
 export default function ShopPage() {
     return (
-        <div className="h-96 flex flex-col bg-white">
+        <div className="min-h-screen flex flex-col bg-white text-gray-800">
             <Navbar />
-            <main className="flex-grow">
-                <div
-                    className="relative h-72 md:h-banner bg-cover bg-center w-full"
-                    style={{
-                        backgroundImage: `url('../image/shopping_banner.jpg')`,
-                    }}
-                >
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-black bg-opacity-40"></div>
 
-                    {/* Content */}
-                    <div className="relative z-10 flex flex-col items-center justify-center min-h-60 md:h-banner text-white px-4 text-center">
-                        <h2 className="text-xl sm:text-2xl md:text-3xl font-light mb-2">
-                            Shop Relove Market
-                        </h2>
-                        <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-6">
-                            Find What You Love, Love What You Find
-                        </h1>
-                    </div>
-                </div>
-            </main>
-
-            {/* Filter product list button */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 px-32 mt-20 mb-5">
-                {/* Filter Sidebar (1 column out of 4) */}
-
-                <div class="md:col-span-1 relative flex flex-col bg-white shadow-sm border border-slate-200 rounded-lg w-70">
-                    <div class="mx-3 mb-0 border-b border-slate-200 pt-3 pb-2 px-1">
-                        <span class="text-sm text-slate-600 font-medium">
-                            Filter Options
-                        </span>
-                    </div>
-
-                    <div class="p-4">
-                        <h3 className="text-black mb-2">Category</h3>
-                        <label className="label cursor-pointer text-black">
-                            <input
-                                type="checkbox"
-                                className="appearance-none w-5 h-5 border border-indigo-600 checked:bg-indigo-600 rounded-sm"
-                            />
-                            <span className="label-text mr-2">Remember me</span>
-                        </label>
-                    </div>
-                </div>
-
-                {/* Product Area (3 columns out of 4) */}
-                <div className="md:col-span-3 mx-10">
-                    <h2 className="text-black font-bold mb-5">For You!</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div className="card bg-base-100 shadow-sm">
-                            <figure>
-                                <img
-                                    src="https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"
-                                    alt="Shoes"
-                                />
-                            </figure>
-                            <div className="card-body">
-                                <h2 className="card-title">
-                                    Card Title
-                                    <div className="badge badge-secondary">
-                                        NEW
-                                    </div>
-                                </h2>
-                                <p>
-                                    A card component has a figure, a body part,
-                                    and inside body there are title and actions
-                                    parts
-                                </p>
-                                <div className="card-actions justify-start">
-                                    <div className="badge badge-outline">
-                                        Fashion
-                                    </div>
-                                    <div className="badge badge-outline">
-                                        Products
-                                    </div>
-                                </div>
-                                <div className="flex flex-row justify-between mt-3">
-                                    <h3 className="text-success text-lg">
-                                        RM 75.00
-                                    </h3>
-                                    <h5 className="text-dark">Location</h5>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="card bg-base-100 shadow-sm">
-                            <figure>
-                                <img
-                                    src="https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"
-                                    alt="Shoes"
-                                />
-                            </figure>
-                            <div className="card-body">
-                                <h2 className="card-title">
-                                    Card Title
-                                    <div className="badge badge-secondary">
-                                        NEW
-                                    </div>
-                                </h2>
-                                <p>
-                                    A card component has a figure, a body part,
-                                    and inside body there are title and actions
-                                    parts
-                                </p>
-                                <div className="card-actions justify-start">
-                                    <div className="badge badge-outline">
-                                        Fashion
-                                    </div>
-                                    <div className="badge badge-outline">
-                                        Products
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Repeat cards... */}
-                    </div>
+            {/* Banner Section */}
+            <div
+                className="relative h-72 md:h-[23rem] bg-cover bg-center"
+                style={{
+                    backgroundImage: `url('../image/shopping_banner.jpg')`,
+                }}
+            >
+                <div className="absolute inset-0 bg-black bg-opacity-50" />
+                <div className="relative z-10 flex flex-col items-center justify-center min-h-60 md:h-[23rem] text-white px-4 text-center">
+                    <h2 className="text-2xl md:text-4xl font-light">
+                        Shop Relove Market
+                    </h2>
+                    <h1 className="text-3xl md:text-5xl font-bold mt-2">
+                        Find What You Love, Love What You Find
+                    </h1>
                 </div>
             </div>
+
+            {/* Main Content */}
+            <main className="flex flex-col lg:flex-row gap-6 p-6 md:px-20 mt-10 flex-grow">
+                {/* Filter Sidebar */}
+                <aside className="lg:w-1/4 bg-white border rounded-lg shadow-md p-4">
+                    <h3 className="text-2xl font-semibold mb-4">
+                        Filter Products
+                    </h3>
+
+                    <div className="mb-6">
+                        <h4 className="text-md font-medium mb-2">Category</h4>
+                        <label className="flex items-center gap-2 text-sm mb-1">
+                            <input
+                                type="checkbox"
+                                className="accent-indigo-600"
+                            />
+                            Fashion
+                        </label>
+                        <label className="flex items-center gap-2 text-sm mb-1">
+                            <input
+                                type="checkbox"
+                                className="accent-indigo-600"
+                            />
+                            Electronics
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                className="accent-indigo-600"
+                            />
+                            Home & Living
+                        </label>
+                    </div>
+
+                    <div>
+                        <h4 className="text-sm font-medium mb-2">
+                            Price Range
+                        </h4>
+                        <div className="flex gap-2">
+                            <input
+                                type="number"
+                                placeholder="Min"
+                                className="w-full border rounded px-2 py-1 text-sm"
+                            />
+                            <input
+                                type="number"
+                                placeholder="Max"
+                                className="w-full border rounded px-2 py-1 text-sm"
+                            />
+                        </div>
+                    </div>
+                </aside>
+
+                {/* Product Grid */}
+                <section className="lg:w-3/4">
+                    <h2 className="text-xl font-bold mb-4">
+                        Recommended For You
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[1, 2, 3, 4, 5, 6].map((item) => (
+                            <div
+                                key={item}
+                                className="bg-white border rounded-lg shadow hover:shadow-lg transition-shadow duration-200"
+                            >
+                                <img
+                                    src="https://img.daisyui.com/images/stock/photo-1606107557195-0e29a4b5b4aa.webp"
+                                    alt="Item"
+                                    className="w-full h-48 object-cover rounded-t-lg"
+                                />
+                                <div className="p-4">
+                                    <h3 className="font-semibold text-lg mb-1">
+                                        Vintage Jacket
+                                    </h3>
+                                    <p className="text-sm text-gray-600">
+                                        High-quality preloved jacket, gently
+                                        worn.
+                                    </p>
+                                    <div className="mt-3 flex justify-between items-center">
+                                        <span className="text-indigo-600 font-bold text-lg">
+                                            RM 75.00
+                                        </span>
+                                        <span className="text-sm text-gray-500">
+                                            📍 KL, Malaysia
+                                        </span>
+                                    </div>
+                                    <div className="mt-2 flex gap-2 flex-wrap">
+                                        <span className="badge badge-outline text-xs">
+                                            Fashion
+                                        </span>
+                                        <span className="badge badge-outline text-xs">
+                                            Used
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            </main>
+
             <Footer />
         </div>
     );
