@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class SellerRegistration extends Model
 {
-    protected $primaryKey = "registration_id";
+    protected $primaryKey = 'registration_id';
+    public $incrementing = false; // ✅ Not an auto-incrementing key
+    protected $keyType = 'string'; // ✅ Important: it's a string key
     protected $table = "seller_registrations";
 
     protected $fillable = [

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\SellerRegistered;
 use App\Models\Business;
 
 use App\Models\SellerRegistration;
@@ -30,6 +31,11 @@ class UserController extends Controller
     public function shopping()
     {
         return Inertia::render("BuyersPage/ShopPage");
+    }
+
+    public function becomeSeller()
+    {
+        return Inertia::render("BuyersPage/BecomeSeller");
     }
 
     public function itemDetails()
@@ -66,19 +72,29 @@ class UserController extends Controller
         }
 
         // ✅ Generate next registration ID
-        $lastSeller = SellerRegistration::orderBy('registration_id', 'desc')->first();
+        $lastSeller = SellerRegistration::orderByRaw("CAST(SUBSTRING(registration_id FROM 7) AS INTEGER) DESC")->first();
         $lastId = $lastSeller ? (int) Str::after($lastSeller->registration_id, 'SELLER') : 0;
         $nextId = $lastId + 1;
         $registrationId = 'SELLER' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
 
+
+        // ✅ Store license file under folder named by user_id
         if ($request->hasFile('storeLicense')) {
             $file = $request->file('storeLicense');
-            $filename = time() . '_' . $file->getClientOriginalName(); // optional: add unique prefix
-            $path = $file->storeAs('store_licenses', $filename, 'public'); // stored in storage/app/public/store_licenses
+
+            // Example: store_licenses/{user_id}/license.pdf
+            $filename = 'license_' . $request->storeName . '.' . $file->getClientOriginalExtension();
+
+            // Path will be: storage/app/public/store_licenses/{user_id}/license_timestamp.pdf
+            $path = $file->storeAs(
+                "store_licenses/{$registrationId}",
+                $filename,
+                'public'
+            );
         }
 
 
-        SellerRegistration::create([
+        $seller = SellerRegistration::create([
             'registration_id' => $registrationId,
             'name' => $request->name,
             'email' => $request->email,
@@ -93,6 +109,14 @@ class UserController extends Controller
             'status' => "Pending",
         ]);
 
+        // Broadcast the event
+        event(
+            new SellerRegistered(
+                SellerRegistration::with('business')->first()
+            )
+        );
+
+        // return back();
         return redirect('/relove-market')->with("successMessage", "Registration sucess...Please wait for the approvement");
     }
 

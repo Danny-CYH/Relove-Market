@@ -22,6 +22,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+        
+        if (env('APP_ENV') === 'local') {
+            curl_setopt_array(curl_init(), [
+                CURLOPT_CAINFO => base_path('cacert.pem'),
+            ]);
+        }
+
         Inertia::share([
             'auth' => fn() => [
                 'user' => Auth::user(),

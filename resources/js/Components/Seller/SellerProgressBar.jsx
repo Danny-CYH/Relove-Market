@@ -1,6 +1,6 @@
 const steps = ["Account Info", "Store Info", "Review & Submit"];
 
-const SellerProgressBar = ({ currentStep }) => {
+export function SellerProgressBar({ currentStep }) {
     return (
         <div className="w-full px-4 py-6">
             <div className="relative flex justify-between items-center">
@@ -80,6 +80,4 @@ const SellerProgressBar = ({ currentStep }) => {
             </div>
         </div>
     );
-};
-
-export default SellerProgressBar;
+}

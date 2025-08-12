@@ -1,5 +1,8 @@
 import { usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
+import axios from "axios";
+import echo from "../../echo.js";
+
 import {
     BarChart,
     Bar,
@@ -10,28 +13,15 @@ import {
     CartesianGrid,
 } from "recharts";
 
-import { FaSearch } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
-
 import { Sidebar } from "@/Components/Admin/Sidebar";
 
 export default function AdminDashboard() {
+    const { list_sellerRegistration } = usePage().props;
+
     const [metrics, setMetrics] = useState(null);
-    const [filter, setFilter] = useState("");
-    const [showSearch, setShowSearch] = useState(false);
 
     const { props } = usePage();
-
-    const filteredSellers = props.list_sellerRegistration?.filter((seller) => {
-        return (
-            seller.name.toLowerCase().includes(filter.toLowerCase()) ||
-            seller.email.toLowerCase().includes(filter.toLowerCase()) ||
-            seller.store_name.toLowerCase().includes(filter.toLowerCase()) ||
-            seller.business?.business_type
-                .toLowerCase()
-                .includes(filter.toLowerCase())
-        );
-    });
+    const { flash } = usePage().props;
 
     useEffect(() => {
         setMetrics({
@@ -42,7 +32,24 @@ export default function AdminDashboard() {
         });
     }, [props.list_sellerRegistration]);
 
-    // const approveRequest = 
+    const handleAction = async (registrationId, action) => {
+        try {
+            console.log(registrationId);
+
+            const response = await axios.post(
+                `/admin/pending-seller/${registrationId}/action`,
+                {
+                    action: action,
+                }
+            );
+
+            console.log(response);
+            // Optionally refresh or remove the seller from list here
+        } catch (error) {
+            console.error(error);
+            alert("Something went wrong");
+        }
+    };
 
     const chartData = [
         { name: "Jan", revenue: 1200 },
@@ -124,38 +131,9 @@ export default function AdminDashboard() {
                         <h2 className="text-black text-lg font-semibold mb-4">
                             Pending Seller Approvals
                         </h2>
-
-                        <div className="mb-4 flex items-center gap-2">
-                            <button
-                                onClick={() => setShowSearch(!showSearch)}
-                                className="px-2 rounded-full hover:bg-gray-200"
-                                aria-label="Toggle Search"
-                            >
-                                <FaSearch className="text-black w-5 h-5" />
-                            </button>
-
-                            <AnimatePresence>
-                                {showSearch && (
-                                    <motion.input
-                                        key="search-input"
-                                        initial={{ width: 0, opacity: 0 }}
-                                        animate={{ width: "250px", opacity: 1 }}
-                                        exit={{ width: 0, opacity: 0 }}
-                                        transition={{ duration: 0.3 }}
-                                        type="text"
-                                        placeholder="Filter by name, email, store or type..."
-                                        className="px-4 py-2 border rounded text-black overflow-hidden"
-                                        value={filter}
-                                        onChange={(e) =>
-                                            setFilter(e.target.value)
-                                        }
-                                    />
-                                )}
-                            </AnimatePresence>
-                        </div>
                     </div>
 
-                    {filteredSellers && filteredSellers.length > 0 ? (
+                    {props.list_sellerRegistration.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="min-w-full bg-white shadow-md rounded-lg">
                                 <thead className="bg-gray-200 text-black text-sm">
@@ -184,49 +162,61 @@ export default function AdminDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredSellers.length > 0 ? (
-                                        filteredSellers.map((seller) => (
-                                            <tr
-                                                key={seller.registration_id}
-                                                className="hover:bg-gray-50 border-b text-black text-sm"
-                                            >
-                                                <td className="px-4 py-2">
-                                                    {seller.name}
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    {seller.email}
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    {seller.phone_number}
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    {seller.store_name}
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    {seller.business
-                                                        ?.business_type ??
-                                                        "N/A"}
-                                                </td>
-                                                <td className="text-red-600 font-bold px-4 py-2">
-                                                    {seller.status}
-                                                </td>
-                                                <td className="px-4 py-2 text-center">
-                                                    <button
-                                                        onClick={() =>
-                                                            approveRequest(
-                                                                seller.registration_id
-                                                            )
-                                                        }
-                                                        className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 mr-2"
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                    <button className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600">
-                                                        Reject
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
+                                    {props.list_sellerRegistration.length >
+                                    0 ? (
+                                        props.list_sellerRegistration.map(
+                                            (seller) => (
+                                                <tr
+                                                    key={seller.registration_id}
+                                                    className="hover:bg-gray-50 border-b text-black text-sm"
+                                                >
+                                                    <td className="px-4 py-2">
+                                                        {seller.name}
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        {seller.email}
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        {seller.phone_number}
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        {seller.store_name}
+                                                    </td>
+                                                    <td className="px-4 py-2">
+                                                        {seller.business
+                                                            ?.business_type ??
+                                                            "N/A"}
+                                                    </td>
+                                                    <td className="text-red-600 font-bold px-4 py-2">
+                                                        {seller.status}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-center">
+                                                        <button
+                                                            onClick={() =>
+                                                                handleAction(
+                                                                    seller.registration_id,
+                                                                    "approved"
+                                                                )
+                                                            }
+                                                            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 mr-2"
+                                                        >
+                                                            Approve
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                handleAction(
+                                                                    seller.registration_id,
+                                                                    "rejected"
+                                                                )
+                                                            }
+                                                            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                                                        >
+                                                            Reject
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        )
                                     ) : (
                                         <tr>
                                             <td

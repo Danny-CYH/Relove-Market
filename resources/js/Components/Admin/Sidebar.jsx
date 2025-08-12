@@ -20,12 +20,16 @@ export function Sidebar() {
                         </Link>
                     </li>
                     <li>
-                        <a
-                            href="#"
-                            className="text-black block p-2 rounded hover:bg-indigo-100"
+                        <Link
+                            href={route("list-transaction")}
+                            className={`cursor-pointer ${
+                                url === "/list-transaction"
+                                    ? "text-white bg-indigo-300 block p-2 rounded"
+                                    : "text-black block p-2 rounded hover:bg-indigo-100"
+                            }`}
                         >
                             Transactions
-                        </a>
+                        </Link>
                     </li>
                     <li>
                         <Link
@@ -40,19 +44,23 @@ export function Sidebar() {
                         </Link>
                     </li>
                     <li>
-                        <a
-                            href="#"
-                            className="text-black block p-2 rounded hover:bg-indigo-100"
+                        <Link
+                            href={route("subscription-management")}
+                            className={`cursor-pointer ${
+                                url === "/subscription-management"
+                                    ? "text-white bg-indigo-300 block p-2 rounded"
+                                    : "text-black block p-2 rounded hover:bg-indigo-100"
+                            }`}
                         >
-                            Users
-                        </a>
+                            Subscription Management
+                        </Link>
                     </li>
                     <li>
                         <a
                             href="#"
                             className="text-black block p-2 rounded hover:bg-indigo-100"
                         >
-                            Settings
+                            User Management
                         </a>
                     </li>
                 </ul>

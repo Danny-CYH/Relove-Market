@@ -5,7 +5,7 @@ import { usePage, useForm } from "@inertiajs/react";
 import TextInput from "../TextInput";
 import InputLabel from "../InputLabel";
 
-const SellerRegistrationForm = ({ step, setStep }) => {
+export function SellerRegisterForm({ step, setStep }) {
     const fieldStepMap = {
         // Step 1
         name: 1,
@@ -465,6 +465,4 @@ const SellerRegistrationForm = ({ step, setStep }) => {
             </form>
         </div>
     );
-};
-
-export default SellerRegistrationForm;
+}
