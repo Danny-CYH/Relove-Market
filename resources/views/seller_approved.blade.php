@@ -22,9 +22,9 @@
             </p>
 
             <div class="mt-6 text-center">
-                <a href="{{ route('seller-subscriptions') }}"
+                <a href="{{ route('homepage') }}"
                     class="inline-block bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow">
-                    Go to Dashboard
+                    Go to Relove Market
                 </a>
             </div>
 

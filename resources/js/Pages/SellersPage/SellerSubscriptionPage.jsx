@@ -1,123 +1,148 @@
-import { Footer } from "@/Components/Buyer/Footer";
 import React, { useState } from "react";
+import { SellerSidebar } from "@/Components/Seller/SellerSidebar";
 
-export default function SellerSubscriptionPage() {
-    const [selectedPlan, setSelectedPlan] = useState(null);
-
-    const plans = [
+export default function SubscriptionPage() {
+    const [plans, setPlans] = useState([
         {
             id: 1,
-            name: "Basic Seller",
-            price: 19,
-            duration: "per month",
-            features: [
-                "List up to 10 products",
-                "Basic seller analytics",
-                "Email support",
-            ],
+            name: "Free",
+            price: 0,
+            features: ["Up to 10 products", "Basic analytics", "Email support"],
+            current: false,
         },
         {
             id: 2,
             name: "Pro Seller",
-            price: 49,
-            duration: "per month",
+            price: 29,
             features: [
-                "Unlimited product listings",
+                "Unlimited products",
                 "Advanced analytics",
                 "Priority support",
-                "Featured store badge",
             ],
+            current: true,
         },
         {
             id: 3,
-            name: "Enterprise Seller",
+            name: "Enterprise",
             price: 99,
-            duration: "per month",
             features: [
-                "Unlimited listings & analytics",
+                "Unlimited products",
+                "Custom integrations",
                 "Dedicated account manager",
-                "Custom promotions",
-                "24/7 VIP support",
             ],
+            current: false,
         },
-    ];
+    ]);
 
-    const handleSubscribe = (plan) => {
-        setSelectedPlan(plan);
-        // You can redirect to payment gateway here
-        alert(`Redirecting to payment for: ${plan.name}`);
+    const [billingHistory] = useState([
+        { date: "2025-07-15", plan: "Pro Seller", amount: 29, status: "Paid" },
+        { date: "2025-06-15", plan: "Pro Seller", amount: 29, status: "Paid" },
+        { date: "2025-05-15", plan: "Pro Seller", amount: 29, status: "Paid" },
+    ]);
+
+    const handleChangePlan = (planId) => {
+        setPlans((prev) =>
+            prev.map((plan) => ({
+                ...plan,
+                current: plan.id === planId,
+            }))
+        );
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4">
-            {/* Header */}
-            <div className="text-center max-w-2xl">
-                <h1 className="text-3xl font-bold text-gray-900">
-                    Choose Your Seller Subscription
-                </h1>
-                <p className="mt-3 text-gray-600">
-                    Start selling with the plan that fits your business. Upgrade
-                    anytime.
-                </p>
-            </div>
+        <div className="min-h-screen bg-gray-50 flex">
+            {/* Sidebar */}
+            <SellerSidebar shopName="Gemilang Berjaya" />
 
-            {/* Pricing Plans */}
-            <div className="mt-10 grid gap-8 md:grid-cols-3 max-w-6xl">
-                {plans.map((plan) => (
-                    <div
-                        key={plan.id}
-                        className={`rounded-2xl shadow-lg p-6 border transition hover:scale-105 hover:shadow-xl bg-white ${
-                            selectedPlan?.id === plan.id
-                                ? "border-blue-500"
-                                : "border-gray-200"
-                        }`}
-                    >
-                        <h2 className="text-xl font-semibold text-gray-900">
-                            {plan.name}
-                        </h2>
-                        <p className="mt-4 text-3xl font-bold text-gray-900">
-                            ${plan.price}{" "}
-                            <span className="text-base font-medium text-gray-500">
-                                {plan.duration}
-                            </span>
-                        </p>
-                        <ul className="mt-6 space-y-3">
-                            {plan.features.map((feature, idx) => (
-                                <li
-                                    key={idx}
-                                    className="flex items-center text-gray-600"
-                                >
-                                    <svg
-                                        className="w-5 h-5 text-green-500 mr-2"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    {feature}
-                                </li>
-                            ))}
-                        </ul>
-                        <button
-                            onClick={() => handleSubscribe(plan)}
-                            className="mt-8 w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition"
+            {/* Main Content */}
+            <main className="flex-1 p-6">
+                <div className="mb-6">
+                    <h1 className="text-2xl font-bold text-gray-900">
+                        Subscription
+                    </h1>
+                    <p className="text-gray-500 text-sm">
+                        Manage your current plan, upgrade, or view your billing
+                        history.
+                    </p>
+                </div>
+
+                {/* Plan Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    {plans.map((plan) => (
+                        <div
+                            key={plan.id}
+                            className={`p-6 rounded-lg shadow ${
+                                plan.current
+                                    ? "border-2 border-indigo-600 bg-white"
+                                    : "bg-white"
+                            }`}
                         >
-                            {selectedPlan?.id === plan.id
-                                ? "Selected"
-                                : "Subscribe"}
-                        </button>
-                    </div>
-                ))}
-            </div>
+                            <h2 className="text-xl font-semibold mb-2">
+                                {plan.name}
+                            </h2>
+                            <p className="text-gray-600 mb-4">
+                                ${plan.price} / month
+                            </p>
+                            <ul className="mb-4 text-gray-700 space-y-1 text-sm">
+                                {plan.features.map((f, idx) => (
+                                    <li key={idx}>• {f}</li>
+                                ))}
+                            </ul>
+                            <button
+                                onClick={() => handleChangePlan(plan.id)}
+                                className={`w-full py-2 rounded font-semibold transition ${
+                                    plan.current
+                                        ? "bg-indigo-600 text-white cursor-not-allowed"
+                                        : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                                }`}
+                                disabled={plan.current}
+                            >
+                                {plan.current ? "Current Plan" : "Choose Plan"}
+                            </button>
+                        </div>
+                    ))}
+                </div>
 
-            {/* Footer Info */}
-            <Footer />
+                {/* Billing History */}
+                <div className="bg-white rounded-lg shadow p-6">
+                    <h2 className="text-lg font-semibold mb-4">
+                        Billing History
+                    </h2>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full text-left text-sm">
+                            <thead className="bg-gray-100 text-gray-600">
+                                <tr>
+                                    <th className="p-3">Date</th>
+                                    <th className="p-3">Plan</th>
+                                    <th className="p-3">Amount</th>
+                                    <th className="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {billingHistory.map((bill, idx) => (
+                                    <tr
+                                        key={idx}
+                                        className="border-t hover:bg-gray-50 transition"
+                                    >
+                                        <td className="p-3">{bill.date}</td>
+                                        <td className="p-3">{bill.plan}</td>
+                                        <td className="p-3">${bill.amount}</td>
+                                        <td
+                                            className={`p-3 font-semibold ${
+                                                bill.status === "Paid"
+                                                    ? "text-green-600"
+                                                    : "text-red-600"
+                                            }`}
+                                        >
+                                            {bill.status}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }

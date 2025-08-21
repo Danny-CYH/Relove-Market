@@ -9,17 +9,22 @@ class Subscription extends Model
 {
     use HasFactory;
 
+    protected $table = "subscriptions";
+
+    protected $primaryKey = "subscription_id";
+
+    protected $keyType = "string";
+
     protected $fillable = [
-        'tenant_id',
-        'plan_name',
+        'subscription_id',
+        'subscription_name',
         'price',
-        'start_date',
-        'end_date',
-        'status'
+        'duration',
+        "description",
     ];
 
-    public function tenant()
+    public function seller()
     {
-        return $this->belongsTo(Tenant::class);
+        return $this->belongsTo(Seller::class);
     }
 }

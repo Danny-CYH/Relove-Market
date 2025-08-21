@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { usePage } from "@inertiajs/react";
 import axios from "axios";
+import { FaBell } from "react-icons/fa";
 
 import { Sidebar } from "@/Components/Admin/Sidebar";
 
@@ -44,15 +45,15 @@ export default function PendingSellerTable() {
             setModalType("loading");
             setIsModalOpen(true);
 
-            console.log(registrationId);
-
             const response = await axios.post(
                 `/admin/pending-seller/${registrationId}/action`,
                 { action, reason }
             );
 
             // Show success
-            setModalMessage(response.data.successMessage || "Action successful!");
+            setModalMessage(
+                response.data.successMessage || "Action successful!"
+            );
             setModalType("success");
 
             // Close only after success delay
@@ -73,7 +74,6 @@ export default function PendingSellerTable() {
     useEffect(() => {
         fetchSellers();
 
-        // Listen to Laravel Echo for real-time updates
         window.Echo.channel("pending-seller-list").listen(
             ".SellerRegistered",
             async () => {
@@ -261,9 +261,11 @@ export default function PendingSellerTable() {
                             </button>
                             <button
                                 onClick={() => {
-                                    // Call your API to approve seller here
-                                    console.log("Approving:", selectedSeller);
                                     setApproveSeller_modal(false);
+                                    handleAction(
+                                        selectedSeller.registration_id,
+                                        "Approved"
+                                    );
                                 }}
                                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
                             >
@@ -340,7 +342,7 @@ export default function PendingSellerTable() {
 
             {/* Sidebar */}
             <aside className="w-64 bg-white shadow hidden md:block">
-                <div className="p-6 font-bold text-lg text-indigo-700">
+                <div className="flex flex-row p-6 font-bold text-lg text-indigo-700">
                     Admin Panel
                 </div>
                 <Sidebar />

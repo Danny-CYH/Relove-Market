@@ -21,6 +21,7 @@ return new class extends Migration {
             $table->string('profile_image')->nullable();
             $table->string('role_id');
             $table->string('seller_id')->nullable(true);
+            $table->string('status');
             $table->timestamps();
         });
 

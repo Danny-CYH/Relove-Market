@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Events\SellerRegistered;
 use App\Models\Business;
 
+use App\Models\Category;
+use App\Models\Product;
 use App\Models\SellerRegistration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -17,10 +19,13 @@ class UserController extends Controller
 {
     public function homepage()
     {
-        return Inertia::render('BuyersPage/HomePage', [
-            'title' => 'Homepage',
-            'description' => 'Welcome to the homepage of our application.',
-        ]);
+        return Inertia::render(
+            'BuyersPage/HomePage',
+            [
+                'title' => 'Homepage',
+                'description' => 'Welcome to the homepage of our application.',
+            ]
+        );
     }
 
     public function aboutus()
@@ -30,7 +35,16 @@ class UserController extends Controller
 
     public function shopping()
     {
-        return Inertia::render("BuyersPage/ShopPage");
+        $list_shoppingItem = Product::with(['productImage', 'category'])->paginate(8);
+        $list_categoryItem = Category::all();
+
+        return Inertia::render(
+            "BuyersPage/ShopPage",
+            [
+                'list_shoppingItem' => $list_shoppingItem,
+                'list_categoryItem' => $list_categoryItem,
+            ]
+        );
     }
 
     public function becomeSeller()
@@ -38,16 +52,38 @@ class UserController extends Controller
         return Inertia::render("BuyersPage/BecomeSeller");
     }
 
-    public function itemDetails()
+    public function itemDetails($product_id)
     {
-        return Inertia::render("BuyersPage/ItemDetails");
+        $product_info = Product::with('productImage')->where('product_id', $product_id)->get();
+
+        return Inertia::render(
+            "BuyersPage/ItemDetails",
+            [
+                'product_info' => $product_info,
+            ]
+        );
+    }
+
+    public function buyerDashboard()
+    {
+        return Inertia::render('BuyersPage/BuyerDashboard');
+    }
+
+    public function buyerChat()
+    {
+        return Inertia::render('BuyersPage/BuyerChatPage');
     }
 
     public function sellerRegistration()
     {
         $list_business = Business::all();
 
-        return Inertia::render("BuyersPage/SellerRegistration", ['list_business' => $list_business]);
+        return Inertia::render(
+            "BuyersPage/SellerRegistration",
+            [
+                'list_business' => $list_business
+            ]
+        );
     }
 
     public function sellerRegistrationProcess(Request $request)
@@ -94,7 +130,7 @@ class UserController extends Controller
         }
 
 
-        $seller = SellerRegistration::create([
+        SellerRegistration::create([
             'registration_id' => $registrationId,
             'name' => $request->name,
             'email' => $request->email,
@@ -109,14 +145,13 @@ class UserController extends Controller
             'status' => "Pending",
         ]);
 
-        // Broadcast the event
+        // Broadcast the registration on admin dashboard
         event(
             new SellerRegistered(
                 SellerRegistration::with('business')->first()
             )
         );
 
-        // return back();
         return redirect('/relove-market')->with("successMessage", "Registration sucess...Please wait for the approvement");
     }
 

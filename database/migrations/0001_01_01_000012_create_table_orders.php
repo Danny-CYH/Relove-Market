@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->string("order_id")->primary();
             $table->string('buyer_id');
             $table->string('seller_id');
-            $table->string('item_id');
+            $table->string('product_id');
             $table->integer('quantity')->default(1);
             $table->decimal('total_price', 10, 2);
             $table->enum('status', ['pending', 'paid', 'shipped', 'done'])->default('pending');
@@ -22,7 +22,7 @@ return new class extends Migration {
 
             $table->foreign('buyer_id')->references('user_id')->on('users')->onDelete('cascade');
             $table->foreign('seller_id')->references('seller_id')->on('sellers')->onDelete('cascade');
-            $table->foreign('item_id')->references('item_id')->on('items')->onDelete('cascade');
+            $table->foreign('product_id')->references('product_id')->on('products')->onDelete('cascade');
         });
     }
 

@@ -17,12 +17,12 @@ return new class extends Migration {
             $table->string("seller_phone");
             $table->string('store_id');
             $table->string('business_id');
-            $table->string('subscriptions_id');
+            $table->string('subscription_id')->nullable();
             $table->timestamps();
 
-            $table->foreign("store_id")->references('store_id')->on('seller_store')->onDelete('cascade');
+            $table->foreign("store_id")->references('store_id')->on('seller_stores')->onDelete('cascade');
             $table->foreign('business_id')->references('business_id')->on('business')->onDelete('cascade');
-            $table->foreign('subscriptions_id')->references('subscriptions_id')->on('subscriptions')->onDelete('cascade');
+            $table->foreign('subscription_id')->references('subscription_id')->on('subscriptions')->onDelete('cascade');
         });
     }
 

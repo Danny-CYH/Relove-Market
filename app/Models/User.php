@@ -22,7 +22,7 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $primaryKey = "user_id";
     public $incrementing = false;
     protected $keyType = 'string';
-    
+
     protected $fillable = [
         'user_id',
         'name',
@@ -32,6 +32,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'profile_image',
         'role_id',
         'seller_id',
+        'status',
     ];
 
     /**
@@ -57,8 +58,8 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
-    public function role(): HasMany
+    public function role()
     {
-        return $this->hasMany(Role::class);
+        return $this->belongsTo(Role::class, 'role_id');
     }
 }

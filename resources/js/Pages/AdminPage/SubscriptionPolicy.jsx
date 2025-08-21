@@ -34,28 +34,28 @@ export default function SubscriptionPolicy() {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 p-6">
-                <div className="p-4 bg-white rounded-xl shadow-md">
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-800">
-                                Subscription Policy
-                            </h1>
-                            <p className="text-gray-600 mt-1">
-                                Our subscription policy outlines the terms,
-                                conditions, and guidelines for using our plans.
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => setIsModalOpen(true)}
-                            className="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition"
-                        >
-                            <FaEdit className="mr-2" /> Edit Policy
-                        </button>
+            <main className="flex-1 p-6 space-y-6">
+                {/* Header */}
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800">
+                            Subscription Policy
+                        </h1>
+                        <p className="text-gray-600 mt-1">
+                            Outlines the terms, conditions, and guidelines for
+                            using our subscription plans.
+                        </p>
                     </div>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition"
+                    >
+                        <FaEdit className="mr-2" /> Edit Policy
+                    </button>
+                </div>
 
-                    {/* Policy Content */}
+                {/* Policy Content */}
+                <div className="p-6 bg-white rounded-xl shadow-md">
                     <div
                         className="prose prose-indigo max-w-none text-gray-700"
                         dangerouslySetInnerHTML={{ __html: policyContent }}
@@ -66,30 +66,35 @@ export default function SubscriptionPolicy() {
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-lg shadow-lg w-full max-w-4xl">
+                    <div className="bg-white rounded-xl shadow-lg w-full max-w-5xl overflow-hidden">
+                        {/* Modal Header */}
                         <div className="flex justify-between items-center p-4 border-b">
                             <h2 className="text-lg font-semibold text-gray-800">
                                 Edit Subscription Policy
                             </h2>
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="text-gray-500 hover:text-gray-800"
+                                className="text-gray-500 hover:text-gray-800 text-xl"
                             >
                                 ✕
                             </button>
                         </div>
+
+                        {/* Editor */}
                         <div className="p-4">
                             <ReactQuill
                                 theme="snow"
                                 value={policyContent}
                                 onChange={setPolicyContent}
-                                className="h-60 mb-4"
+                                className="h-64 mb-4"
                             />
                         </div>
-                        <div className="flex justify-end p-4 border-t">
+
+                        {/* Footer */}
+                        <div className="flex justify-end gap-3 p-4 border-t bg-gray-50">
                             <button
                                 onClick={() => setIsModalOpen(false)}
-                                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg mr-2"
+                                className="px-4 py-2 bg-gray-300 hover:bg-gray-400 rounded-lg"
                             >
                                 Cancel
                             </button>

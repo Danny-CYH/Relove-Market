@@ -4,6 +4,7 @@ import {
     FaHeartbeat,
     FaUserCircle,
     FaDoorOpen,
+    FaStore,
 } from "react-icons/fa";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,7 +15,6 @@ export function Navbar() {
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     const { auth } = usePage().props;
-    const { url } = usePage(); // Gets the current URL path
 
     const sidebarVariants = {
         hidden: { x: "-100%" },
@@ -32,13 +32,11 @@ export function Navbar() {
                     </a>
                 </div>
 
-                <div className="hidden md:flex flex-1 justify-center space-x-8">
+                <div className="hidden md:flex flex-1 items-center justify-center space-x-8">
                     <Link
                         href={route("homepage")}
-                        preserveScroll
-                        preserveState
                         className={`cursor-pointer ${
-                            url === "/relove-market"
+                            route().current("homepage")
                                 ? "text-blue-600 font-bold"
                                 : "text-black hover:text-blue-600"
                         }`}
@@ -47,10 +45,8 @@ export function Navbar() {
                     </Link>
                     <Link
                         href={route("about-us")}
-                        preserveScroll
-                        preserveState
                         className={`cursor-pointer ${
-                            url.startsWith("/about-us")
+                            route().current("about-us")
                                 ? "text-blue-600 font-bold"
                                 : "text-black hover:text-blue-600"
                         }`}
@@ -62,7 +58,7 @@ export function Navbar() {
                         preserveScroll
                         preserveState
                         className={`cursor-pointer ${
-                            url.startsWith("/shopping")
+                            route().current("shopping")
                                 ? "text-blue-600 font-bold"
                                 : "text-black hover:text-blue-600"
                         }`}
@@ -99,7 +95,7 @@ export function Navbar() {
                                     <picture>
                                         <img
                                             src="../image/shania_yan.png"
-                                            alt="User Avatar"
+                                            alt="User Image"
                                             className="w-full h-full rounded-full"
                                         />
                                     </picture>
@@ -108,34 +104,74 @@ export function Navbar() {
                                 {/* Dropdown Menu */}
                                 {showUserMenu && (
                                     <div className="absolute right-0 z-20 mt-12 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-700">
+                                        {/* User Info */}
                                         <div className="px-4 py-3 text-sm text-gray-900 dark:text-white">
                                             <div className="font-medium">
                                                 {auth.user.name}
                                             </div>
-                                            <div className="truncate text-sm text-gray-500 dark:text-gray-300">
-                                                {auth.user.email}
-                                            </div>
                                         </div>
+
+                                        {/* Conditional Menu */}
                                         <div className="py-1 text-sm text-gray-700 dark:text-gray-200">
-                                            <Link
-                                                href={route("profile.edit")}
-                                                className="block px-4 py-2 hover:text-blue-300 text-white"
-                                            >
-                                                <div className="flex items-center space-x-2">
-                                                    <FaUserCircle className="text-lg" />
-                                                    <span>Profile</span>
-                                                </div>
-                                            </Link>
-                                            <Link
-                                                href={route("wishlist")}
-                                                className="block px-4 py-2 hover:text-blue-300 text-white"
-                                            >
-                                                <div className="flex items-center space-x-2">
-                                                    <FaHeartbeat className="text-lg" />
-                                                    <span>Favourite</span>
-                                                </div>
-                                            </Link>
+                                            {auth.user.role_id ===
+                                            "ReLo-S0001" ? (
+                                                <>
+                                                    {/* Seller Menu */}
+                                                    <Link
+                                                        href={route(
+                                                            "seller-dashboard"
+                                                        )}
+                                                        className="block px-4 py-2 hover:text-blue-300 text-white"
+                                                    >
+                                                        <div className="flex items-center space-x-2">
+                                                            <FaStore className="text-lg" />
+                                                            <span>
+                                                                Seller Dashboard
+                                                            </span>
+                                                        </div>
+                                                    </Link>
+                                                    <Link
+                                                        href={route("wishlist")}
+                                                        className="block px-4 py-2 hover:text-blue-300 text-white"
+                                                    >
+                                                        <div className="flex items-center space-x-2">
+                                                            <FaHeartbeat className="text-lg" />
+                                                            <span>
+                                                                Favourite
+                                                            </span>
+                                                        </div>
+                                                    </Link>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {/* Buyer Menu */}
+                                                    <Link
+                                                        href={route(
+                                                            "profile.edit"
+                                                        )}
+                                                        className="block px-4 py-2 hover:text-blue-300 text-white"
+                                                    >
+                                                        <div className="flex items-center space-x-2">
+                                                            <FaUserCircle className="text-lg" />
+                                                            <span>Profile</span>
+                                                        </div>
+                                                    </Link>
+                                                    <Link
+                                                        href={route("wishlist")}
+                                                        className="block px-4 py-2 hover:text-blue-300 text-white"
+                                                    >
+                                                        <div className="flex items-center space-x-2">
+                                                            <FaHeartbeat className="text-lg" />
+                                                            <span>
+                                                                Favourite
+                                                            </span>
+                                                        </div>
+                                                    </Link>
+                                                </>
+                                            )}
                                         </div>
+
+                                        {/* Logout */}
                                         <div className="py-1 border-t border-gray-200 dark:border-gray-600">
                                             <Link
                                                 href={route("logout")}
@@ -222,6 +258,7 @@ export function Navbar() {
                                     🛒 Shop
                                 </Link>
                                 <Link
+                                    href={route("register")}
                                     onClick={() => setIsOpen(false)}
                                     className="hover:text-blue-500 transition duration-200"
                                 >

@@ -40,8 +40,10 @@ Route::get('/relove-market', [UserController::class, 'homepage'])->name('homepag
 Route::get("/about-us", [UserController::class, 'aboutus'])->name("about-us");
 Route::get("/shopping", [UserController::class, 'shopping'])->name("shopping");
 Route::get('/become-seller', [UserController::class, 'becomeSeller'])->name('become-seller');
-Route::get("/item-details", [UserController::class, "itemDetails"])->name('item-details');
+Route::get("/item-details/{productId}", [UserController::class, "itemDetails"])->name('item-details');
 Route::get('/wishlist', [UserController::class, 'wishlist'])->name('wishlist');
+Route::get('/buyer-dashboard', [UserController::class, 'buyerDashboard'])->name('buyer-dashboard');
+Route::get('/buyer-chat', [UserController::class, 'buyerChat'])->name('buyer-chat');
 Route::get("/seller-registration", [UserController::class, "sellerRegistration"])->name('seller-registration');
 Route::get('/seller-shop', [UserController::class, 'sellerShop'])->name('seller-shop');
 Route::get('/checkout', [UserController::class, 'checkout'])->name('checkout');
@@ -51,7 +53,14 @@ Route::post('/create-checkout-session', [PaymentController::class, 'createChecko
 
 // Sellers actions
 Route::get('/seller-dashboard', [SellerController::class, 'sellerDashboard'])->name('seller-dashboard');
-Route::get('/seller-subscriptions', [SellerController::class, 'sellerSubscription'])->name("seller-subscriptions");
+Route::get("/seller-manage-product", [SellerController::class, "sellerProductPage"])->name("seller-manage-product");
+Route::get("/seller-manage-order", [SellerController::class, "sellerOrderPage"])->name("seller-manage-order");
+Route::get("/seller-manage-earning", [SellerController::class, "sellerEarningPage"])->name("seller-manage-earning");
+Route::get("/seller-manage-promotion", [SellerController::class, "sellerPromotionPage"])->name("seller-manage-promotion");
+Route::get('/seller-manage-subscription', [SellerController::class, 'sellerSubscriptionPage'])->name("seller-manage-subscription");
+Route::get("/seller-help-support", [SellerController::class, "sellerHelpSupportPage"])->name("seller-help-support");
+
+Route::post('/seller-manage-product/add-product', [SellerController::class, 'sellerAddProduct'])->name('add-product');
 
 // Admin section
 Route::get('/admin-dashboard', [AdminController::class, 'adminDashboard'])->name('admin-dashboard');

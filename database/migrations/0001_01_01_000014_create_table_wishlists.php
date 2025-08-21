@@ -13,11 +13,11 @@ return new class extends Migration {
         Schema::create('wishlists', function (Blueprint $table) {
             $table->id();
             $table->string('user_id');
-            $table->string('item_id');
+            $table->string('product_id');
             $table->timestamps();
 
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
-            $table->foreign('item_id')->references('item_id')->on('items')->onDelete('cascade');
+            $table->foreign('product_id')->references('product_id')->on('products')->onDelete('cascade');
         });
     }
 

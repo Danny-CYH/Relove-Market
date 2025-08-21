@@ -10,13 +10,10 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('item_images', function (Blueprint $table) {
-            $table->id();
-            $table->string('item_id');
-            $table->string('image_path');
+        Schema::create('subscriptions_features', function (Blueprint $table) {
+            $table->string("features_id")->autoIncrement()->primary();
+            $table->string("subscriptions_id");
             $table->timestamps();
-
-            $table->foreign('item_id')->references('item_id')->on('items')->onDelete('cascade');
         });
     }
 
@@ -25,6 +22,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('item_images');
+        Schema::dropIfExists('subscriptions_features');
     }
 };

@@ -1,21 +1,21 @@
-import { Sidebar } from "@/Components/Admin/Sidebar";
-import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faPlus,
     faEdit,
     faTrash,
-    faDollarSign,
     faCrown,
     faTimes,
 } from "@fortawesome/free-solid-svg-icons";
 
+import React, { useState } from "react";
+import { usePage } from "@inertiajs/react";
+
+import { Sidebar } from "@/Components/Admin/Sidebar";
+
 export default function SubscriptionManagement() {
-    const [subscriptions, setSubscriptions] = useState([
-        { id: 1, name: "Basic Plan", price: 9.99, duration: "1 Month" },
-        { id: 2, name: "Pro Plan", price: 29.99, duration: "3 Months" },
-        { id: 3, name: "Premium Plan", price: 99.99, duration: "1 Year" },
-    ]);
+    const { props } = usePage();
+
+    const list_subscription = props.list_subscription;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentSub, setCurrentSub] = useState(null);
@@ -169,22 +169,19 @@ export default function SubscriptionManagement() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {subscriptions.map((sub) => (
+                                {list_subscription.map((sub) => (
                                     <tr
-                                        key={sub.id}
+                                        key={sub.subscriptions_id}
                                         className="hover:bg-gray-50"
                                     >
                                         <td className="px-4 py-3 border-b">
-                                            {sub.name}
+                                            {sub.subscription_name}
                                         </td>
                                         <td className="px-4 py-3 border-b">
-                                            {sub.duration}
+                                            {sub.duration} days
                                         </td>
                                         <td className="px-4 py-3 border-b text-green-600 font-bold flex items-center gap-1">
-                                            <FontAwesomeIcon
-                                                icon={faDollarSign}
-                                            />
-                                            {sub.price.toFixed(2)}
+                                            RM {parseFloat(sub.price)}
                                         </td>
                                         <td className="px-4 py-3 border-b text-center">
                                             <div className="flex justify-center gap-3">

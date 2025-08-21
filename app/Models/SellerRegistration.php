@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class SellerRegistration extends Model
 {
     protected $primaryKey = 'registration_id';
-    public $incrementing = false; // ✅ Not an auto-incrementing key
-    protected $keyType = 'string'; // ✅ Important: it's a string key
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     protected $table = "seller_registrations";
 
     protected $fillable = [
@@ -26,7 +29,6 @@ class SellerRegistration extends Model
         "status",
     ];
 
-    // In SellerRegistration model
     public function business()
     {
         return $this->belongsTo(Business::class, 'business_id', 'business_id');

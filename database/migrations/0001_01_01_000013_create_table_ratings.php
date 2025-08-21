@@ -13,13 +13,13 @@ return new class extends Migration {
         Schema::create('ratings', function (Blueprint $table) {
             $table->id();
             $table->string('user_id');
-            $table->string('item_id');
+            $table->string('product_id');
             $table->tinyInteger('rating'); // 1-5
             $table->text('comment')->nullable();
             $table->timestamps();
 
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade'); // who gave rating
-            $table->foreign('item_id')->references('item_id')->on('items')->onDelete('cascade');
+            $table->foreign('product_id')->references('product_id')->on('products')->onDelete('cascade');
         });
     }
 

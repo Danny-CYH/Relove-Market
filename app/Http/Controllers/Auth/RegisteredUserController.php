@@ -11,7 +11,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 use Inertia\Inertia;
@@ -55,6 +54,7 @@ class RegisteredUserController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'role_id' => Role::where('role_name', 'Buyer')->value('role_id'),
+                'status' => "Active"
             ]);
 
             event(new Registered($user));
@@ -82,9 +82,9 @@ class RegisteredUserController extends Controller
         // Check if it's an Inertia request
         if ($request->header('X-Inertia')) {
             // Return Inertia-compatible response (usually just update flash message)
-            return back()->with('message', 'Verification email resent.');
+            return back()->with('successMessage', 'Verification email resent.');
         }
 
-        return back()->with('message', 'Verification email resent.');
+        return back()->with('successMessage', 'Verification email resent.');
     }
 }
