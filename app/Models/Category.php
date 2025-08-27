@@ -18,9 +18,4 @@ class Category extends Model
     protected $keyType = 'string';
 
     protected $fillable = ['category_id', 'category_name'];
-
-    public function items()
-    {
-        return $this->belongsTo(Product::class, "category_id");
-    }
 }

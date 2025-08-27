@@ -1,9 +1,9 @@
 import { Footer } from "@/Components/Buyer/Footer";
-import { SellerRegisterForm } from "@/Components/Seller/SellerRegisterForm";
-import { SellerProgressBar } from "@/Components/Seller/SellerProgressBar";
+import { SellerRegisterForm } from "@/Components/Buyer/SellerRegisterForm";
+import { SellerProgressBar } from "@/Components/Buyer/SellerProgressBar";
 import { useState } from "react";
 import { Link } from "@inertiajs/react";
-import { FaCheckCircle, FaRegCircle } from "react-icons/fa";
+import { FaRegCircle } from "react-icons/fa";
 
 export default function SellerRegistration({ list_business }) {
     const [step, setStep] = useState(1);

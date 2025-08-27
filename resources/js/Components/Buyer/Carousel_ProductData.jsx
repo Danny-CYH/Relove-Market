@@ -7,7 +7,7 @@ import "react-multi-carousel/lib/styles.css";
 
 import { ProductCard } from "./ProductCard";
 
-function Carousel_ProductData({ productData }) {
+export function Carousel_ProductData({ productData }) {
     const responsive = {
         superLargeDesktop: {
             breakpoint: { max: 4000, min: 1024 },
@@ -77,5 +77,3 @@ function Carousel_ProductData({ productData }) {
         </>
     );
 }
-
-export default Carousel_ProductData;

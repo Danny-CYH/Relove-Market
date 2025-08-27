@@ -1,7 +1,7 @@
 import { Footer } from "@/Components/Buyer/Footer";
 import { Navbar } from "@/Components/Buyer/Navbar";
 
-import { Search, ChevronLeft, ChevronRight, Timer } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { useState, useEffect } from "react";
 

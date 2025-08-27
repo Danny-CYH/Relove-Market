@@ -12,7 +12,7 @@ class Product extends Model
 
     protected $table = "products";
 
-    protected $primary_key = "product_id";
+    protected $primaryKey = "product_id";
 
     public $incrementing = false;
 
@@ -32,12 +32,17 @@ class Product extends Model
 
     public function category()
     {
-        return $this->hasOne(Category::class, 'category_id', 'category_id');
+        return $this->belongsTo(Category::class, 'category_id', 'category_id');
     }
 
     public function productImage()
     {
         return $this->hasMany(ProductImage::class, 'product_id', 'product_id');
+    }
+
+    public function productVideo()
+    {
+        return $this->hasMany(ProductVideo::class, 'product_id', 'product_id');
     }
 
     public function orders()

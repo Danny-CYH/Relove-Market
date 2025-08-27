@@ -153,14 +153,18 @@ class AdminController extends Controller
                 );
 
             Mail::to($seller->email)->send(new SellerApprovedMail($seller));
+
+            return response()->json([
+                'successMessage' => "Seller has been approved successfully.",
+            ]);
         } else {
             $reason = $request->reason;
 
             Mail::to($seller->email)->send(new SellerRejectedMail($seller, $reason));
-        }
 
-        return response()->json([
-            'successMessage' => "Seller has been {$request->action} successfully.",
-        ]);
+            return response()->json([
+                'successMessage' => "Seller has been rejected successfully.",
+            ]);
+        }
     }
 }

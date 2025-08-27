@@ -1,243 +1,307 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
     Star,
-    MessageCircle,
     ShoppingCart,
+    MessageCircle,
     Heart,
-    ThumbsUp,
+    TicketPercent,
+    Zap,
     ShieldCheck,
+    Truck,
+    RefreshCcw,
+    Store,
 } from "lucide-react";
+
+import { usePage } from "@inertiajs/react";
 import { Navbar } from "@/Components/Buyer/Navbar";
 import { Footer } from "@/Components/Buyer/Footer";
-import { usePage } from "@inertiajs/react";
 
 export default function ItemDetails() {
-    const relatedProducts = [
-        {
-            id: 1,
-            name: "Wireless Earbuds",
-            price: 120,
-            img: "/images/item1.jpg",
-        },
-        { id: 2, name: "Smart Watch", price: 250, img: "/images/item2.jpg" },
-        {
-            id: 3,
-            name: "Bluetooth Speaker",
-            price: 99,
-            img: "/images/item3.jpg",
-        },
-    ];
-
     const { props } = usePage();
-    console.log(props.product_info);
-
     const product_info = props.product_info[0];
+
+    const [activeTab, setActiveTab] = useState("description");
+    const [timeLeft, setTimeLeft] = useState(7200); // 2 hours in seconds
+    const [activeImage, setActiveImage] = useState(
+        `/storage/${product_info.product_image[0].image_path}`
+    );
+
+    // Countdown timer
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const formatTime = (secs) => {
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = secs % 60;
+        return `${h}h ${m}m ${s}s`;
+    };
+
+    const vouchers = [
+        { id: 1, code: "SAVE10", desc: "RM 10 OFF - Min Spend RM50" },
+        { id: 2, code: "FREESHIP", desc: "Free Shipping Voucher" },
+        { id: 3, code: "FLASH20", desc: "20% OFF Flash Sale" },
+    ];
 
     return (
         <div>
             <Navbar />
-            <div className="bg-gray-50 min-h-screen py-12">
-                <div className="container mx-auto px-4 lg:px-12 space-y-12">
-                    {/* Product Hero Section */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 bg-white rounded-3xl shadow-xl overflow-hidden">
-                        {/* Left - Gallery */}
-                        <div className="p-6">
-                            <img
-                                src={`/storage/${product_info.product_image[0].image_path}`}
-                                alt="Product"
-                                className="rounded-2xl w-full h-[420px] object-cover shadow-md"
-                            />
-                            <div className="flex gap-3 mt-4">
-                                {[1, 2, 3, 4].map((i) => (
-                                    <img
-                                        key={i}
-                                        src={`/images/thumb${i}.jpg`}
-                                        alt={`Thumbnail ${i}`}
-                                        className="w-20 h-20 object-cover rounded-xl border border-gray-200 hover:border-indigo-500 cursor-pointer transition"
-                                    />
-                                ))}
+
+            <div className="bg-gray-50 min-h-screen py-10 px-4 lg:px-12">
+                <div className="max-w-8xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    {/* LEFT: Product Details */}
+                    <div className="lg:col-span-3 bg-white rounded-3xl shadow-xl p-6 lg:p-10 space-y-10">
+                        {/* Product Top Section */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                            {/* Left: Gallery */}
+                            <div>
+                                <img
+                                    src={activeImage}
+                                    alt="Product"
+                                    className="rounded-2xl w-full h-96 object-contain shadow-md bg-gray-50"
+                                />
+                                <div className="flex gap-3 mt-4 overflow-x-auto">
+                                    {product_info.product_image.map(
+                                        (img, i) => (
+                                            <img
+                                                key={i}
+                                                src={`/storage/${img.image_path}`}
+                                                alt="Thumb"
+                                                onClick={() =>
+                                                    setActiveImage(
+                                                        `/storage/${img.image_path}`
+                                                    )
+                                                }
+                                                className={`w-20 h-20 object-cover rounded-xl cursor-pointer border ${
+                                                    activeImage.includes(
+                                                        img.image_path
+                                                    )
+                                                        ? "border-indigo-500"
+                                                        : "border-gray-200"
+                                                }`}
+                                            />
+                                        )
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right: Product Info */}
+                            <div className="flex flex-col justify-between">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-900">
+                                        {product_info.product_name}
+                                    </h1>
+
+                                    {/* Ratings */}
+                                    <div className="flex items-center mt-2">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star
+                                                key={i}
+                                                className="w-5 h-5 text-yellow-400 fill-yellow-400"
+                                            />
+                                        ))}
+                                        <span className="ml-2 text-gray-600 text-sm">
+                                            (562 Reviews)
+                                        </span>
+                                    </div>
+
+                                    {/* Price + Flash Sale */}
+                                    <div className="mt-5">
+                                        <p className="text-3xl font-extrabold text-indigo-600">
+                                            RM {product_info.product_price}
+                                        </p>
+                                        <p className="text-sm line-through text-gray-400">
+                                            RM 950
+                                        </p>
+                                        {timeLeft > 0 && (
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <Zap className="w-4 h-4 text-red-500" />
+                                                <span className="text-sm text-red-500 font-semibold">
+                                                    Flash Sale ends in{" "}
+                                                    {formatTime(timeLeft)}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Vouchers */}
+                                    <div className="mt-6">
+                                        <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2 mb-2">
+                                            <TicketPercent className="w-4 h-4 text-indigo-500" />
+                                            Claimable Vouchers
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {vouchers.map((v) => (
+                                                <button
+                                                    key={v.id}
+                                                    className="bg-indigo-50 border border-indigo-200 text-indigo-600 text-xs px-3 py-1 rounded-full hover:bg-indigo-100 transition"
+                                                    onClick={() =>
+                                                        alert(
+                                                            `Voucher ${v.code} claimed!`
+                                                        )
+                                                    }
+                                                >
+                                                    {v.desc}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* CTA */}
+                                <div className="flex gap-4 mt-6">
+                                    <button className="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-700 transition">
+                                        <ShoppingCart size={20} /> Add to Cart
+                                    </button>
+                                    <button className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition">
+                                        <MessageCircle size={20} /> Chat Seller
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Right - Info */}
-                        <div className="flex flex-col justify-between p-8">
-                            <div>
-                                <h1 className="text-3xl font-bold text-gray-900">
-                                    {product_info.product_name}
-                                </h1>
-                                <div className="flex items-center mt-3">
-                                    {[...Array(5)].map((_, i) => (
-                                        <Star
-                                            key={i}
-                                            className="w-5 h-5 text-yellow-400 fill-yellow-400"
-                                        />
-                                    ))}
-                                    <span className="ml-2 text-gray-600 text-sm">
-                                        124 reviews
-                                    </span>
-                                </div>
-                                <p className="text-2xl font-extrabold text-indigo-600 mt-5">
-                                    RM {product_info.product_price}
-                                </p>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    Stock: {product_info.product_quantity}{" "}
-                                    available
-                                </p>
-                                <p className="text-gray-600 mt-5 leading-relaxed">
-                                    Experience superior sound quality with these
-                                    wireless earbuds, featuring active noise
-                                    cancellation and 30-hour battery life.
-                                </p>
-
-                                {/* Tags */}
-                                <div className="mt-5 flex gap-2 flex-wrap">
-                                    <span className="bg-indigo-50 text-indigo-600 text-xs px-3 py-1 rounded-full">
-                                        🎧 Electronics
-                                    </span>
-                                    <span className="bg-green-50 text-green-600 text-xs px-3 py-1 rounded-full">
-                                        ✅ Used - Like New
-                                    </span>
-                                </div>
-
-                                {/* Likes */}
-                                <div className="flex items-center gap-2 mt-5 text-sm text-gray-600">
-                                    <ThumbsUp className="w-4 h-4 text-blue-500" />
-                                    52 people liked this item
-                                </div>
-
-                                <div className="flex items-center gap-5 mt-8">
-                                    <img
-                                        src="/images/seller-avatar.jpg"
-                                        alt="Seller"
-                                        className="w-16 h-16 rounded-full object-cover border-2 border-indigo-200"
-                                    />
-                                    <div>
-                                        <h3 className="font-semibold text-lg text-gray-800">
-                                            John’s Tech Store
-                                        </h3>
-                                        <p className="text-gray-500 text-sm flex items-center gap-2">
-                                            🌟 Trusted Seller • 4.8/5
-                                        </p>
-                                    </div>
-                                </div>
+                        {/* Tabs Section */}
+                        <div className="bg-gray-50 rounded-2xl p-6 shadow-inner">
+                            <div className="flex gap-6 border-b pb-2">
+                                {[
+                                    "description",
+                                    "additional",
+                                    "vendor",
+                                    "reviews",
+                                ].map((tab) => (
+                                    <button
+                                        key={tab}
+                                        onClick={() => setActiveTab(tab)}
+                                        className={`capitalize font-medium ${
+                                            activeTab === tab
+                                                ? "text-indigo-600 border-b-2 border-indigo-600"
+                                                : "text-gray-500"
+                                        } pb-2`}
+                                    >
+                                        {tab}
+                                    </button>
+                                ))}
                             </div>
 
-                            {/* CTA Buttons */}
-                            <div className="flex gap-4 mt-8">
-                                <button className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow hover:from-indigo-700 hover:to-purple-700 transition">
-                                    <ShoppingCart size={20} /> Add to Cart
-                                </button>
-                                <button className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-gray-200 transition">
-                                    <MessageCircle size={20} /> Chat with Seller
-                                </button>
+                            <div className="mt-4 text-gray-600">
+                                {activeTab === "description" && (
+                                    <div>
+                                        <p>
+                                            {product_info.product_description}
+                                        </p>
+                                        <h3 className="font-semibold mt-6">
+                                            Packaging & Delivery
+                                        </h3>
+                                        <p className="text-sm mt-2">
+                                            Your product will be packed securely
+                                            and shipped within 2–3 working days.
+                                        </p>
+
+                                        <h3 className="font-semibold mt-6">
+                                            Suggested Use
+                                        </h3>
+                                        <p className="text-sm mt-2">
+                                            Refrigeration not necessary. Stir
+                                            before serving.
+                                        </p>
+
+                                        <h3 className="font-semibold mt-6 text-red-500">
+                                            Warning
+                                        </h3>
+                                        <p className="text-sm mt-2">
+                                            Oil separation occurs naturally. May
+                                            contain pieces of shell.
+                                        </p>
+                                    </div>
+                                )}
+                                {activeTab === "additional" && (
+                                    <p>
+                                        Additional product information goes
+                                        here...
+                                    </p>
+                                )}
+                                {activeTab === "vendor" && (
+                                    <div className="space-y-3">
+                                        <p>
+                                            <strong>Seller:</strong>{" "}
+                                            {product_info.seller_name}
+                                        </p>
+                                        <p>
+                                            <strong>Location:</strong> Kuala
+                                            Lumpur, Malaysia
+                                        </p>
+                                        <div className="flex gap-4 mt-3 text-sm text-gray-700">
+                                            <span className="flex items-center gap-1">
+                                                <ShieldCheck
+                                                    size={16}
+                                                    className="text-green-500"
+                                                />{" "}
+                                                100% Authentic
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <Truck
+                                                    size={16}
+                                                    className="text-indigo-500"
+                                                />{" "}
+                                                Fast Delivery
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <RefreshCcw
+                                                    size={16}
+                                                    className="text-orange-500"
+                                                />{" "}
+                                                Free Returns
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <Store
+                                                    size={16}
+                                                    className="text-purple-500"
+                                                />{" "}
+                                                Official Store
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                                {activeTab === "reviews" && (
+                                    <p>User reviews and ratings...</p>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    {/* Details, Reviews & Related */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Product Details & Reviews */}
-                        <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-md space-y-8">
-                            <section>
-                                <h2 className="text-xl font-semibold text-gray-800 mb-3">
-                                    Product Details
-                                </h2>
-                                <p className="text-gray-600 leading-relaxed">
-                                    Built with high-quality materials, these
-                                    earbuds ensure comfort and durability. They
-                                    are compatible with all major devices,
-                                    feature Bluetooth 5.2, and include a 1-year
-                                    warranty.
-                                </p>
-                                <div className="flex items-center gap-2 mt-4 text-green-600 text-sm font-medium">
-                                    <ShieldCheck className="w-4 h-4" /> Buyer
-                                    Protection Guarantee
+                    {/* RIGHT: Related Products */}
+                    <div className="lg:col-span-1 bg-white rounded-2xl shadow-lg p-5">
+                        <h2 className="text-lg font-semibold mb-3">
+                            Related Products
+                        </h2>
+                        <div className="space-y-4">
+                            {[1, 2, 3].map((id) => (
+                                <div
+                                    key={id}
+                                    className="bg-gray-50 p-3 rounded-xl shadow-sm hover:shadow-md transition cursor-pointer"
+                                >
+                                    <img
+                                        src="/images/item1.jpg"
+                                        alt="Related"
+                                        className="w-full h-24 object-cover rounded-lg"
+                                    />
+                                    <p className="mt-2 font-medium text-gray-800">
+                                        Item {id}
+                                    </p>
+                                    <p className="text-indigo-600 font-bold">
+                                        RM {id * 100}
+                                    </p>
                                 </div>
-                            </section>
-
-                            {/* Reviews */}
-                            <section>
-                                <h2 className="text-xl font-semibold text-gray-800 mb-3">
-                                    Buyer Reviews
-                                </h2>
-                                <div className="space-y-6">
-                                    <div className="border-b pb-4">
-                                        <p className="font-semibold text-gray-700">
-                                            John Doe
-                                        </p>
-                                        <div className="flex items-center mt-1">
-                                            {[...Array(4)].map((_, i) => (
-                                                <Star
-                                                    key={i}
-                                                    className="w-4 h-4 text-yellow-400 fill-yellow-400"
-                                                />
-                                            ))}
-                                            <Star className="w-4 h-4 text-gray-300" />
-                                        </div>
-                                        <p className="text-gray-600 mt-2">
-                                            Great sound and battery life,
-                                            totally worth it!
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {/* Review Form */}
-                                <div className="mt-6">
-                                    <h3 className="text-lg font-semibold text-gray-800">
-                                        Leave a Review
-                                    </h3>
-                                    <textarea
-                                        className="w-full border border-gray-300 rounded-xl p-3 mt-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                        placeholder="Share your experience..."
-                                    ></textarea>
-                                    <button className="bg-indigo-600 text-white px-6 py-2 rounded-xl mt-3 hover:bg-indigo-700 transition">
-                                        Submit Review
-                                    </button>
-                                </div>
-                            </section>
+                            ))}
                         </div>
-
-                        {/* Related Products */}
-                        <aside>
-                            <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                                Related Products
-                            </h2>
-                            <div className="grid gap-5">
-                                {relatedProducts.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="bg-white p-4 rounded-xl shadow hover:shadow-lg transition cursor-pointer"
-                                    >
-                                        <img
-                                            src={item.img}
-                                            alt={item.name}
-                                            className="w-full h-36 object-cover rounded-lg"
-                                        />
-                                        <p className="mt-3 font-medium text-gray-800 line-clamp-1">
-                                            {item.name}
-                                        </p>
-                                        <p className="text-indigo-600 font-bold">
-                                            RM {item.price}
-                                        </p>
-                                    </div>
-                                ))}
-                            </div>
-                        </aside>
                     </div>
                 </div>
             </div>
-
             <Footer />
-
-            {/* Sticky Mobile Bar */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4 flex justify-between lg:hidden">
-                <button className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 w-1/2 mr-2">
-                    <ShoppingCart size={20} /> Add to Cart
-                </button>
-                <button className="bg-gray-100 text-gray-700 px-6 py-3 rounded-xl flex items-center gap-2 w-1/2">
-                    <MessageCircle size={20} /> Chat
-                </button>
-            </div>
         </div>
     );
 }

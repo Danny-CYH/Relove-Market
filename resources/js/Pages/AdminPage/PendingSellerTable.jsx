@@ -2,9 +2,12 @@ import React, { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { usePage } from "@inertiajs/react";
 import axios from "axios";
-import { FaBell } from "react-icons/fa";
 
 import { Sidebar } from "@/Components/Admin/Sidebar";
+import { LoadingProgress } from "@/Components/Admin/LoadingProgress";
+import { SellerDetails_Modal } from "@/Components/Admin/SellerDetails_Modal";
+import { ApproveSeller_Modal } from "@/Components/Admin/ApproveSeller_Modal";
+import { RejectSeller_Modal } from "@/Components/Admin/RejectSeller_Modal";
 
 export default function PendingSellerTable() {
     const { props } = usePage();
@@ -26,9 +29,12 @@ export default function PendingSellerTable() {
 
     const [modalMessage, setModalMessage] = useState("");
     const [modalType, setModalType] = useState(""); // "success" or "error"
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState(false);
 
-    // Fetch sellers from server
+    // Filtering logic
+    const sellersData = realTimeSellers.data || [];
+
+    // Fetch all pending sellers from server
     const fetchSellers = async () => {
         try {
             const res = await axios.get("/admin/dashboard/list");
@@ -38,35 +44,43 @@ export default function PendingSellerTable() {
         }
     };
 
+    // Code for processing the action to the pending seller
     const handleAction = async (registrationId, action, reason = "") => {
         try {
-            // Show loading state
+            // Show loading modal
             setModalMessage("Processing your request...");
             setModalType("loading");
-            setIsModalOpen(true);
+            setLoadingProgress(true);
 
             const response = await axios.post(
                 `/admin/pending-seller/${registrationId}/action`,
                 { action, reason }
             );
 
-            // Show success
-            setModalMessage(
-                response.data.successMessage || "Action successful!"
-            );
+            if (action === "Approved") {
+                setModalMessage(
+                    response.data.successMessage || "Action successful!"
+                );
+            } else {
+                setModalMessage(
+                    response.data.successMessage || "Action successful!"
+                );
+            }
+
             setModalType("success");
 
-            // Close only after success delay
             setTimeout(() => {
-                setIsModalOpen(false);
+                setLoadingProgress(false);
                 fetchSellers();
             }, 2000);
         } catch (error) {
-            console.error(error);
-
-            // Show error (no auto-close)
-            setModalMessage("Something went wrong.");
+            setModalMessage("Something went wrong: " + error.message);
             setModalType("error");
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+                fetchSellers();
+            }, 5000);
         }
     };
 
@@ -87,9 +101,7 @@ export default function PendingSellerTable() {
         };
     }, []);
 
-    // Filtering logic
-    const sellersData = realTimeSellers.data || [];
-
+    // Filter the seller data based on specific criteria
     const filtered = sellersData.filter((seller) => {
         const keywordMatch =
             filter.trim() === "" ||
@@ -119,225 +131,58 @@ export default function PendingSellerTable() {
 
     return (
         <div className="flex min-h-screen bg-gray-100">
-            {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg w-96 text-center">
-                        {modalType === "loading" && (
-                            <div className="flex flex-col items-center space-y-4">
-                                <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
-                                <p className="text-gray-700">{modalMessage}</p>
-                            </div>
-                        )}
-                        {modalType === "success" && (
-                            <p className="text-green-600 font-semibold">
-                                {modalMessage}
-                            </p>
-                        )}
-                        {modalType === "error" && (
-                            <p className="text-red-600 font-semibold">
-                                {modalMessage}
-                            </p>
-                        )}
-                    </div>
-                </div>
-            )}
-
             {/* Modal for view the request details */}
             {sellerDetails_modal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-2xl shadow-xl relative">
-                        {/* Close Button */}
-                        <button
-                            onClick={() => setSellerDetails_modal(false)}
-                            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-                        >
-                            ✕
-                        </button>
-
-                        {/* Header */}
-                        <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
-                            Seller Details
-                        </h2>
-
-                        {/* Seller Info */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-gray-700">
-                            <p>
-                                <strong>Name:</strong> {selectedSeller?.name}
-                            </p>
-                            <p>
-                                <strong>Email:</strong> {selectedSeller?.email}
-                            </p>
-                            <p>
-                                <strong>Phone:</strong>{" "}
-                                {selectedSeller?.phone_number}
-                            </p>
-                            <p>
-                                <strong>Store Name:</strong>{" "}
-                                {selectedSeller?.store_name}
-                            </p>
-                            <p>
-                                <strong>Registration ID:</strong>{" "}
-                                {selectedSeller?.registration_id}
-                            </p>
-                        </div>
-
-                        {/* Store License PDF Preview */}
-                        {selectedSeller?.store_license && (
-                            <div className="mt-6">
-                                <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                                    Store License
-                                </h3>
-                                <div className="flex items-center justify-between p-4 bg-gray-100 rounded-lg border">
-                                    <div className="flex items-center gap-3">
-                                        <span className="bg-orange-500 text-white text-sm px-3 py-1 rounded">
-                                            PDF
-                                        </span>
-                                        <span className="text-gray-800">
-                                            {selectedSeller.store_license}
-                                        </span>
-                                    </div>
-                                    <a
-                                        href={`${
-                                            import.meta.env.VITE_APP_URL
-                                        }/storage/${
-                                            selectedSeller.store_license
-                                        }`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
-                                    >
-                                        View
-                                    </a>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Actions */}
-                        <div className="mt-6 flex justify-between gap-3 border-t pt-4">
-                            <button
-                                onClick={() => {
-                                    setSellerDetails_modal(false);
-                                    setRejectSeller_modal(true);
-                                }}
-                                className="bg-red-500 hover:bg-red-600 px-4 py-2 rounded"
-                            >
-                                Reject
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setSellerDetails_modal(false);
-                                    setApproveSeller_modal(true);
-                                }}
-                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-                            >
-                                Approve
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <SellerDetails_Modal
+                    selectedSeller={selectedSeller}
+                    onApprove={() => setApproveSeller_modal(true)}
+                    onReject={() => setRejectSeller_modal(true)}
+                    onClose={() => setSellerDetails_modal(false)}
+                />
             )}
 
-            {/* modal for approve request */}
+            {/* Modal for approve the seller */}
             {approveSeller_modal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h2 className="text-xl text-black font-bold mb-4">
-                            Approve Seller
-                        </h2>
-                        <p className="text-black">
-                            Are you sure you want to approve{" "}
-                            <span className="font-semibold">
-                                {selectedSeller?.name}
-                            </span>
-                            ?
-                        </p>
-                        <div className="mt-6 flex justify-end gap-2">
-                            <button
-                                onClick={() => setApproveSeller_modal(false)}
-                                className="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setApproveSeller_modal(false);
-                                    handleAction(
-                                        selectedSeller.registration_id,
-                                        "Approved"
-                                    );
-                                }}
-                                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-                            >
-                                Approve
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <ApproveSeller_Modal
+                    selectedSeller={selectedSeller}
+                    onApprove={() => {
+                        setApproveSeller_modal(false);
+                        handleAction(
+                            selectedSeller.registration_id,
+                            "Approved"
+                        );
+                    }}
+                    onClose={() => {
+                        setApproveSeller_modal(false);
+                    }}
+                />
             )}
 
-            {/* modal for reject request */}
+            {/* Modal for rejecting the seller */}
             {rejectSeller_modal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-xl">
-                        <h2 className="text-xl text-black font-bold mb-4">
-                            Reject Seller
-                        </h2>
-                        <p className="text-black">
-                            Are you sure you want to reject{" "}
-                            <span className="font-semibold">
-                                {selectedSeller?.name}
-                            </span>
-                            ?
-                        </p>
+                <RejectSeller_Modal
+                    selectedSeller={selectedSeller}
+                    onReject={(reason) =>
+                        handleAction(
+                            selectedSeller.registration_id,
+                            "Rejected",
+                            reason
+                        )
+                    }
+                    rejectionReason={rejectionReason}
+                    setRejectionReason={setRejectionReason}
+                    onClose={() => {
+                        setRejectSeller_modal(false);
+                    }}
+                />
+            )}
 
-                        {/* Reason for rejection */}
-                        <div className="mt-4">
-                            <label
-                                htmlFor="rejectionReason"
-                                className="block text-sm font-medium text-gray-700 mb-2"
-                            >
-                                Reason for Rejection (optional)
-                            </label>
-                            <textarea
-                                id="rejectionReason"
-                                name="reason"
-                                rows="5"
-                                value={rejectionReason}
-                                onChange={(e) =>
-                                    setRejectionReason(e.target.value)
-                                }
-                                placeholder="Enter reason if rejecting..."
-                                className="w-full textarea textarea-lg bg-white text-black border-solid border-2 border-black rounded-md p-2"
-                            />
-                        </div>
-
-                        <div className="mt-6 flex justify-end gap-2">
-                            <button
-                                onClick={() => setRejectSeller_modal(false)}
-                                className="text-black bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-
-                                    setRejectSeller_modal(false);
-                                    handleAction(
-                                        selectedSeller.registration_id,
-                                        "Rejected",
-                                        rejectionReason
-                                    );
-                                }}
-                                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded"
-                            >
-                                Reject
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            {/* Loading Progress Modal */}
+            {loadingProgress && (
+                <LoadingProgress
+                    modalMessage={modalMessage}
+                    modalType={modalType}
+                />
             )}
 
             {/* Sidebar */}

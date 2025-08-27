@@ -15,7 +15,7 @@ import {
 
 import { Link } from "@inertiajs/react";
 
-export function SellerSidebar({ shopName = "My Store" }) {
+export function SellerSidebar({ shopName }) {
     const [profileOpen, setProfileOpen] = useState(false);
 
     return (

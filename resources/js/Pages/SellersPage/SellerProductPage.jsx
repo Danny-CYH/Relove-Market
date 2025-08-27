@@ -1,134 +1,253 @@
-import React, { useState } from "react";
-import { Plus, Edit, Trash, Search } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Plus, Edit, Trash, Search, Eye } from "lucide-react";
 
 import { SellerSidebar } from "@/Components/Seller/SellerSidebar";
-import { SellerProductForm } from "@/Components/Seller/SellerProductForm";
+import { SellerAddProduct_Modal } from "@/Components/Seller/SellerAddProduct_Modal";
+import { SellerDeleteProduct_Modal } from "@/Components/Seller/SellerDeleteProduct_Modal";
+import { SellerEditProduct_Modal } from "@/Components/Seller/SellerEditProduct_Modal";
+import { SellerViewProduct_Modal } from "@/Components/Seller/SellerViewProduct_Modal";
 
-import { usePage } from "@inertiajs/react";
+import { LoadingProgress } from "@/Components/Admin/LoadingProgress";
 
-export default function SellerProductPage() {
-    const [isOpen, setIsOpen] = useState(false);
+import axios from "axios";
+
+export default function SellerProductPage({
+    seller_storeInfo,
+    list_categories,
+    list_products,
+}) {
+    const [realTimeProducts, setRealTimeProducts] = useState(list_products);
+
+    const [filteredProducts, setFilteredProducts] = useState([]);
+
+    const [isViewOpen, setIsViewOpen] = useState(false);
+    const [isAddOpen, setIsAddOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+
+    // Loading Progress
+    const [loadingProgress, setLoadingProgress] = useState(false);
+    const [modalMessage, setModalMessage] = useState("");
+    const [modalType, setModalType] = useState("");
+
+    const [productToView, setProductToView] = useState(null);
+    const [productToEdit, setProductToEdit] = useState(null);
     const [productToDelete, setProductToDelete] = useState(null);
 
     const [searchTerm, setSearchTerm] = useState("");
 
-    const [productName, setProductName] = useState("");
-    const [description, setDescription] = useState("");
-    const [price, setPrice] = useState("");
-    const [quantity, setQuantity] = useState("");
-    const [status, setStatus] = useState("active");
-    const [condition, setCondition] = useState("new");
+    const productData = realTimeProducts || [];
 
-    const { props } = usePage();
-
-    const handleEdit = (product) => {
-        setIsEditOpen(true);
-        setProductName(product.name);
-        setDescription(product.description || "");
-        setPrice(product.price);
-        setQuantity(product.stock);
-        setStatus(product.status.toLowerCase());
-        setCondition(product.condition || "new");
-        // setImages(product.images || []);
-    };
-
-    const handleDelete = (product) => {
-        setProductToDelete(product);
-        setIsDeleteOpen(true);
-    };
-
-    const confirmDelete = () => {
-        console.log("Deleting product:", productToDelete);
-        setIsDeleteOpen(false);
-        setProductToDelete(null);
-    };
-
-    const handleAddProduct = async (formData) => {
+    // Code for getting all the list products
+    const get_ListProducts = async () => {
         try {
-            await axios.post(route("add-product"), formData, {
-                headers: {
-                    "Content-Type": "multipart/form-data",
-                },
+            const res = await axios.get(route("get-product"), {
+                headers: { "Content-Type": "multipart/form-data" },
             });
-            console.log("✅ Product saved successfully!");
+
+            setRealTimeProducts(res.data.list_products);
         } catch (error) {
-            console.error("❌ Error saving product:", error);
+            console.log(error);
         }
     };
 
-    const products = [
-        {
-            id: 1,
-            name: "Wireless Earbuds",
-            price: 199,
-            stock: 50,
-            status: "Active",
-        },
-        { id: 2, name: "Laptop Stand", price: 99, stock: 15, status: "Active" },
-        {
-            id: 3,
-            name: "Smart Watch",
-            price: 299,
-            stock: 0,
-            status: "Out of Stock",
-        },
-    ];
+    // Code for viewing the product
+    const view_product = async (e, product) => {
+        e.preventDefault();
 
-    const filteredProducts = products.filter((p) =>
-        p.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+        try {
+            await axios.get(route("view-product"), product, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    // Code for adding the new product
+    const add_Product = async (e, formData) => {
+        e.preventDefault();
+
+        try {
+            setModalMessage("Processing your request...");
+            setModalType("loading");
+            setLoadingProgress(true);
+
+            const response = await axios.post(route("add-product"), formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+
+            setModalMessage(response.data.successMessage);
+            setModalType("success");
+
+            get_ListProducts();
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+            }, 3000);
+        } catch (error) {
+            setModalMessage(
+                "Error saving product: " + error.response?.data || error
+            );
+            setModalType("error");
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+            }, 5000);
+        }
+    };
+
+    // Code for updating the product
+    const edit_Product = async (e, formData) => {
+        e.preventDefault();
+
+        try {
+            setModalMessage("Processing your request...");
+            setModalType("loading");
+            setLoadingProgress(true);
+
+            const response = await axios.post(route("edit-product"), formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+
+            setModalMessage(response.data.successMessage);
+            setModalType("success");
+
+            get_ListProducts();
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+            }, 3000);
+        } catch (error) {
+            setLoadingProgress(true);
+
+            if (error.response) {
+                setModalMessage(
+                    error.response.data.errorMessage || "Something went wrong"
+                );
+            } else {
+                setModalMessage("Network error. Please try again.");
+            }
+
+            setModalType("error");
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+            }, 5000);
+        }
+    };
+
+    const delete_product = async (e, product) => {
+        e.preventDefault();
+
+        try {
+            setModalMessage("Processing your request...");
+            setModalType("loading");
+            setLoadingProgress(true);
+
+            const response = await axios.post(
+                route("delete-product"),
+                { product_id: product },
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                }
+            );
+
+            setModalMessage(response.data.successMessage);
+            setModalType("success");
+
+            get_ListProducts();
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+            }, 3000);
+        } catch (error) {
+            setModalMessage(response.data.errorMessage);
+            setModalType("error");
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+            }, 5000);
+        }
+    };
+
+    // Real time update the filter function on the product based on user input
+    useEffect(() => {
+        if (productData && productData.length > 0) {
+            const product_data = productData.filter(
+                (p) => p.product_status === "active"
+            );
+
+            // apply search on active products
+            const searched = product_data.filter((p) =>
+                p.product_name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            setFilteredProducts(searched);
+        } else {
+            setFilteredProducts([]);
+        }
+    }, [realTimeProducts, searchTerm]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
-            {isOpen && (
-                <SellerProductForm
-                    title="Add New Product"
-                    // onSubmit={handleAddProduct}
-                    onClose={() => setIsOpen(false)}
-                    list_categories={props.list_categories}
-                />
-            )}
-            {isEditOpen && (
-                <SellerProductForm
-                    title="Edit Product"
-                    onSubmit={route("add-product")}
-                    onClose={() => setIsEditOpen(false)}
-                    list_categories={props.list_categories}
+            {/* Modal for view the product */}
+            {isViewOpen && (
+                <SellerViewProduct_Modal
+                    onView={(e, product) => {
+                        view_product(e, product);
+                    }}
+                    product={productToView}
+                    onClose={() => setIsViewOpen(false)}
                 />
             )}
 
+            {/* Modal for add new product */}
+            {isAddOpen && (
+                <SellerAddProduct_Modal
+                    onAdd={(e, formData) => {
+                        add_Product(e, formData);
+                    }}
+                    list_categories={list_categories}
+                    onClose={() => setIsAddOpen(false)}
+                />
+            )}
+
+            {/* Modal for edit the product */}
+            {isEditOpen && (
+                <SellerEditProduct_Modal
+                    onEdit={(e, formData) => {
+                        edit_Product(e, formData);
+                    }}
+                    onClose={() => setIsEditOpen(false)}
+                    product={productToEdit}
+                    list_categories={list_categories}
+                />
+            )}
+
+            {/* Modal for delete the product */}
             {isDeleteOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm">
-                        <h3 className="text-lg text-black font-bold mb-4">
-                            Delete Product
-                        </h3>
-                        <p className="text-gray-600 mb-6">
-                            Are you sure you want to delete{" "}
-                            <strong>{productToDelete?.name}</strong>?
-                        </p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                onClick={() => setIsDeleteOpen(false)}
-                                className="px-4 py-2 text-gray-600"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={confirmDelete}
-                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                            >
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <SellerDeleteProduct_Modal
+                    product={productToDelete}
+                    onDelete={(e, product) => {
+                        delete_product(e, product);
+                    }}
+                    onClose={() => setIsDeleteOpen(false)}
+                />
+            )}
+
+            {/* Loading Progress */}
+            {loadingProgress && (
+                <LoadingProgress
+                    modalType={modalType}
+                    modalMessage={modalMessage}
+                />
             )}
 
             {/* Sidebar */}
-            <SellerSidebar shopName="Gemilang Berjaya" />
+            <SellerSidebar
+                shopName={seller_storeInfo[0].seller_store[0].store_name}
+            />
 
             {/* Main content */}
             <main className="flex-1 p-6">
@@ -143,7 +262,7 @@ export default function SellerProductPage() {
                         </p>
                     </div>
                     <button
-                        onClick={() => setIsOpen(true)}
+                        onClick={() => setIsAddOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                     >
                         <Plus size={18} />
@@ -175,53 +294,82 @@ export default function SellerProductPage() {
                                 <th className="px-6 py-3">Price (RM)</th>
                                 <th className="px-6 py-3">Stock</th>
                                 <th className="px-6 py-3">Status</th>
+                                <th className="px-6 py-3">Category</th>
                                 <th className="px-6 py-3">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredProducts.map((product) => (
-                                <tr
-                                    key={product.id}
-                                    className="border-b hover:bg-gray-50"
-                                >
-                                    <td className="px-6 py-4 font-medium">
-                                        {product.name}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        RM {product.price}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {product.stock}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span
-                                            className={`px-3 py-1 text-xs rounded-full ${
-                                                product.status === "Active"
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-red-100 text-red-700"
-                                            }`}
-                                        >
-                                            {product.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 flex flex-row gap-2">
-                                        <button
-                                            onClick={() => handleEdit(product)}
-                                            className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleDelete(product)
-                                            }
-                                            className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200"
-                                        >
-                                            <Trash size={16} />
-                                        </button>
+                            {filteredProducts.length === 0 ? (
+                                <tr>
+                                    <td
+                                        colSpan="5"
+                                        className="text-center py-6 text-gray-500"
+                                    >
+                                        No products found.
                                     </td>
                                 </tr>
-                            ))}
+                            ) : (
+                                filteredProducts.map((product) => (
+                                    <tr
+                                        key={product.product_id}
+                                        className="border-b hover:bg-gray-50"
+                                    >
+                                        <td className="px-6 py-4 font-medium">
+                                            {product.product_name}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            RM {product.product_price}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {product.product_quantity}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span
+                                                className={`px-3 py-1 text-xs rounded-full ${
+                                                    product.product_status ===
+                                                    "active"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : "bg-red-100 text-red-700"
+                                                }`}
+                                            >
+                                                {product.product_status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {product.category.category_name}
+                                        </td>
+                                        <td className="px-6 py-4 flex flex-row gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setProductToEdit(product);
+                                                    setIsEditOpen(true);
+                                                }}
+                                                className="p-2 bg-green-100 text-green-600 rounded hover:bg-green-200"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setProductToView(product);
+                                                    setIsViewOpen(true);
+                                                }}
+                                                className="p-2 bg-blue-100 text-blue-600 rounded hover:bg-blue-200"
+                                            >
+                                                <Eye size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setProductToDelete(product);
+                                                    setIsDeleteOpen(true);
+                                                }}
+                                                className="p-2 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                                            >
+                                                <Trash size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -230,7 +378,7 @@ export default function SellerProductPage() {
                 <div className="md:hidden space-y-4">
                     {filteredProducts.map((product) => (
                         <div
-                            key={product.id}
+                            key={product.product_id}
                             className="bg-white p-4 rounded-lg shadow flex flex-col gap-2"
                         >
                             <div className="flex justify-between items-center">
@@ -239,7 +387,7 @@ export default function SellerProductPage() {
                                 </h2>
                                 <span
                                     className={`px-2 py-1 text-xs rounded-full ${
-                                        product.status === "Active"
+                                        product.status === "active"
                                             ? "bg-green-100 text-green-700"
                                             : "bg-red-100 text-red-700"
                                     }`}
@@ -259,6 +407,9 @@ export default function SellerProductPage() {
                                 </button>
                                 <button className="flex-1 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center gap-1">
                                     <Trash size={14} /> Delete
+                                </button>
+                                <button className="flex-1 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200 flex items-center justify-center gap-1">
+                                    <Eye size={14} /> View
                                 </button>
                             </div>
                         </div>

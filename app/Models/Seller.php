@@ -25,6 +25,6 @@ class Seller extends Model
 
     public function sellerStore()
     {
-        return $this->hasMany(SellerStore::class);
+        return $this->hasMany(SellerStore::class, 'store_id', 'store_id');
     }
 }
