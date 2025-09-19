@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
-use App\Models\Seller;
 use App\Models\User;
+
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -37,27 +38,37 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
-        //load the role table
-        $user->load('role');
+        // ✅ If email not verified
+        if (!$user->hasVerifiedEmail()) {
+            if ($user->last_login_at) {
+                Auth::logout();
+                return back()->with("errorMessage", "You must verify your email address before logging in.");
+            }
+        }
 
+        // 📝 Update last login timestamp (to track if user already logged in once)
+        $user->update(['last_login_at' => now()]);
+
+        // load the role table
+        $user->load('role');
         $role_name = $user->role->role_name;
 
-        // Redirect based on role
+        // // Redirect based on role
         if ($role_name === 'Seller') {
-            $user = User::where('email', $request->email)->first();
-            $seller_id = $user->seller_id;
-
-            // Store seller_id in session (so you can use it later)
-            session(['seller_id' => $seller_id]);
+            session(['user_id' => $user->user_id]);
+            session(['seller_id' => $user->seller_id]);
 
             return redirect()->intended(route('seller-dashboard'));
+
         } elseif ($role_name === 'Buyer') {
+            session(['user_id' => $user->user_id]);
+
             return redirect()->intended(route('homepage'));
+            
         } elseif ($role_name === 'Admin') {
             return redirect()->intended(route('admin-dashboard'));
         }
 
-        // Default fallback
         return redirect()->intended(route('homepage'));
     }
 
@@ -66,7 +77,7 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::guard('web')->logout();
+        Auth::logout();
 
         $request->session()->invalidate();
 

@@ -13,7 +13,7 @@
             <h1 class="text-2xl font-bold">❌ Application Update</h1>
         </div>
         <div class="p-6">
-            <h2 class="text-xl font-semibold text-gray-800">Hi {{ $seller->name }},</h2>
+            <h2 class="text-xl font-semibold text-gray-800">Hi {{ $sellerRegistered->name }},</h2>
             <p class="mt-4 text-gray-600">
                 We regret to inform you that your seller application has been
                 <span class="font-bold text-red-600">rejected</span>.

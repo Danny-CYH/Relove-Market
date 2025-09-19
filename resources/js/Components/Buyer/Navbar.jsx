@@ -1,20 +1,37 @@
 import {
     FaBars,
     FaTimes,
-    FaHeartbeat,
+    FaHeart,
     FaUserCircle,
-    FaDoorOpen,
+    FaSignOutAlt,
     FaStore,
+    FaSearch,
+    FaShoppingBag,
+    FaLeaf,
 } from "react-icons/fa";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePage, Link } from "@inertiajs/react";
 
 export function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
+    const [scrolled, setScrolled] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const { auth } = usePage().props;
+
+    // Handle scroll effect for navbar
+    useEffect(() => {
+        const handleScroll = () => {
+            const isScrolled = window.scrollY > 10;
+            setScrolled(isScrolled);
+        };
+
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    });
 
     const sidebarVariants = {
         hidden: { x: "-100%" },
@@ -22,187 +39,287 @@ export function Navbar() {
         exit: { x: "-100%" },
     };
 
+    const searchVariants = {
+        hidden: { opacity: 0, width: 0 },
+        visible: { opacity: 1, width: "100%" },
+    };
+
+    const handleSearch = (e) => {
+        e.preventDefault();
+        // Implement search functionality
+        console.log("Searching for:", searchQuery);
+        setSearchOpen(false);
+        setSearchQuery("");
+    };
+
     return (
         <>
             {/* Navbar */}
-            <div className="navbar bg-white shadow-sm justify-between px-6 flex items-center md:h-16">
-                <div className="flex-none">
-                    <a className="text-xl text-black font-bold">
-                        Relove Market
-                    </a>
-                </div>
-
-                <div className="hidden md:flex flex-1 items-center justify-center space-x-8">
+            <nav
+                className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+                    scrolled
+                        ? "bg-white shadow-md py-2"
+                        : "bg-white/95 backdrop-blur-sm py-3"
+                }`}
+            >
+                <div className="container mx-auto px-4 flex items-center justify-between">
+                    {/* Logo */}
                     <Link
                         href={route("homepage")}
-                        className={`cursor-pointer ${
-                            route().current("homepage")
-                                ? "text-blue-600 font-bold"
-                                : "text-black hover:text-blue-600"
-                        }`}
+                        className="flex items-center space-x-2"
                     >
-                        Home
+                        <div className="bg-green-600 text-white p-2 rounded-lg">
+                            <FaLeaf className="text-xl" />
+                        </div>
+                        <span className="text-xl font-bold text-gray-900">
+                            Relove{" "}
+                            <span className="text-green-600">Market</span>
+                        </span>
                     </Link>
-                    <Link
-                        href={route("about-us")}
-                        className={`cursor-pointer ${
-                            route().current("about-us")
-                                ? "text-blue-600 font-bold"
-                                : "text-black hover:text-blue-600"
-                        }`}
-                    >
-                        About
-                    </Link>
-                    <Link
-                        href={route("shopping")}
-                        preserveScroll
-                        preserveState
-                        className={`cursor-pointer ${
-                            route().current("shopping")
-                                ? "text-blue-600 font-bold"
-                                : "text-black hover:text-blue-600"
-                        }`}
-                    >
-                        Shop
-                    </Link>
-                </div>
 
-                <div className="hidden md:flex flex-none items-center space-x-4">
-                    {/* Auth Section */}
-                    {!auth?.user ? (
+                    {/* Desktop Navigation */}
+                    <div className="hidden lg:flex items-center space-x-1">
                         <Link
-                            href={route("register")}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+                            href={route("homepage")}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                                route().current("homepage")
+                                    ? "text-green-600 bg-green-50"
+                                    : "text-gray-700 hover:text-green-600 hover:bg-gray-50"
+                            }`}
                         >
-                            Get Started
+                            Home
                         </Link>
-                    ) : (
-                        <div className="relative">
-                            <div className="avatar avatar-online">
-                                {/* Avatar Button */}
-                                <div
+                        <Link
+                            href={route("about-us")}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                                route().current("about-us")
+                                    ? "text-green-600 bg-green-50"
+                                    : "text-gray-700 hover:text-green-600 hover:bg-gray-50"
+                            }`}
+                        >
+                            About
+                        </Link>
+                        <Link
+                            href={route("shopping")}
+                            preserveScroll
+                            preserveState
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                                route().current("shopping")
+                                    ? "text-green-600 bg-green-50"
+                                    : "text-gray-700 hover:text-green-600 hover:bg-gray-50"
+                            }`}
+                        >
+                            Shop
+                        </Link>
+                        <Link
+                            href={route("seller-benefit")}
+                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                                route().current("seller-benefit")
+                                    ? "text-green-600 bg-green-50"
+                                    : "text-gray-700 hover:text-green-600 hover:bg-gray-50"
+                            }`}
+                        >
+                            Seller Benefit
+                        </Link>
+                    </div>
+
+                    {/* Right side actions */}
+                    <div className="flex items-center space-x-4">
+                        {/* Auth Section */}
+                        {!auth?.user ? (
+                            <div className="hidden md:flex items-center space-x-3">
+                                <Link
+                                    href={route("login")}
+                                    className="px-4 py-2 text-gray-700 font-medium hover:text-green-600 transition-colors"
+                                >
+                                    Sign In
+                                </Link>
+                                <Link
+                                    href={route("register")}
+                                    className="bg-green-600 text-white px-5 py-2 rounded-full font-medium hover:bg-green-700 transition-colors shadow-sm hover:shadow-md"
+                                >
+                                    Get Started
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="relative hidden md:block">
+                                {/* User Avatar */}
+                                <button
                                     onClick={() =>
                                         setShowUserMenu(!showUserMenu)
                                     }
-                                    className={`w-10 rounded-full cursor-pointer transition duration-150 ease-in-out
-      ${
-          showUserMenu
-              ? "ring-2 ring-primary ring-offset-2"
-              : "hover:ring-2 hover:ring-primary hover:ring-offset-2"
-      }
-    `}
+                                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-200 ${
+                                        showUserMenu
+                                            ? "border-green-600 ring-2 ring-green-100"
+                                            : "border-gray-200 hover:border-green-300"
+                                    }`}
+                                    aria-label="User menu"
                                 >
-                                    <picture>
-                                        <img
-                                            src="../image/shania_yan.png"
-                                            alt="User Image"
-                                            className="w-full h-full rounded-full"
-                                        />
-                                    </picture>
-                                </div>
+                                    <img
+                                        src="../image/shania_yan.png"
+                                        alt={auth.user.name}
+                                        className="w-8 h-8 rounded-full object-cover"
+                                    />
+                                </button>
 
-                                {/* Dropdown Menu */}
-                                {showUserMenu && (
-                                    <div className="absolute right-0 z-20 mt-12 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-700">
-                                        {/* User Info */}
-                                        <div className="px-4 py-3 text-sm text-gray-900 dark:text-white">
-                                            <div className="font-medium">
-                                                {auth.user.name}
+                                {/* User Dropdown Menu */}
+                                <AnimatePresence>
+                                    {showUserMenu && (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 10 }}
+                                            transition={{ duration: 0.2 }}
+                                            className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50"
+                                            onMouseLeave={() =>
+                                                setShowUserMenu(false)
+                                            }
+                                        >
+                                            {/* User Info */}
+                                            <div className="px-4 py-3 border-b border-gray-100">
+                                                <p className="text-sm font-medium text-gray-900">
+                                                    {auth.user.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {auth.user.email}
+                                                </p>
                                             </div>
-                                        </div>
 
-                                        {/* Conditional Menu */}
-                                        <div className="py-1 text-sm text-gray-700 dark:text-gray-200">
-                                            {auth.user.role_id ===
-                                            "ReLo-S0001" ? (
-                                                <>
-                                                    {/* Seller Menu */}
-                                                    <Link
-                                                        href={route(
-                                                            "seller-dashboard"
-                                                        )}
-                                                        className="block px-4 py-2 hover:text-blue-300 text-white"
-                                                    >
-                                                        <div className="flex items-center space-x-2">
-                                                            <FaStore className="text-lg" />
-                                                            <span>
-                                                                Seller Dashboard
-                                                            </span>
-                                                        </div>
-                                                    </Link>
-                                                    <Link
-                                                        href={route("wishlist")}
-                                                        className="block px-4 py-2 hover:text-blue-300 text-white"
-                                                    >
-                                                        <div className="flex items-center space-x-2">
-                                                            <FaHeartbeat className="text-lg" />
-                                                            <span>
-                                                                Favourite
-                                                            </span>
-                                                        </div>
-                                                    </Link>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {/* Buyer Menu */}
-                                                    <Link
-                                                        href={route(
-                                                            "profile.edit"
-                                                        )}
-                                                        className="block px-4 py-2 hover:text-blue-300 text-white"
-                                                    >
-                                                        <div className="flex items-center space-x-2">
-                                                            <FaUserCircle className="text-lg" />
-                                                            <span>Profile</span>
-                                                        </div>
-                                                    </Link>
-                                                    <Link
-                                                        href={route("wishlist")}
-                                                        className="block px-4 py-2 hover:text-blue-300 text-white"
-                                                    >
-                                                        <div className="flex items-center space-x-2">
-                                                            <FaHeartbeat className="text-lg" />
-                                                            <span>
-                                                                Favourite
-                                                            </span>
-                                                        </div>
-                                                    </Link>
-                                                </>
-                                            )}
-                                        </div>
+                                            {/* Menu Items */}
+                                            <div className="py-1">
+                                                {auth.user.role_id ===
+                                                "ReLo-S0001" ? (
+                                                    <>
+                                                        <Link
+                                                            href={route(
+                                                                "seller-dashboard"
+                                                            )}
+                                                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
+                                                            onClick={() =>
+                                                                setShowUserMenu(
+                                                                    false
+                                                                )
+                                                            }
+                                                        >
+                                                            <FaStore className="mr-3 text-gray-400" />
+                                                            Seller Dashboard
+                                                        </Link>
+                                                        <Link
+                                                            href={route(
+                                                                "wishlist"
+                                                            )}
+                                                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
+                                                            onClick={() =>
+                                                                setShowUserMenu(
+                                                                    false
+                                                                )
+                                                            }
+                                                        >
+                                                            <FaHeart className="mr-3 text-gray-400" />
+                                                            Favorites
+                                                        </Link>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Link
+                                                            href={route(
+                                                                "profile"
+                                                            )}
+                                                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
+                                                            onClick={() =>
+                                                                setShowUserMenu(
+                                                                    false
+                                                                )
+                                                            }
+                                                        >
+                                                            <FaUserCircle className="mr-3 text-gray-400" />
+                                                            Profile
+                                                        </Link>
+                                                        <Link
+                                                            href={route(
+                                                                "wishlist"
+                                                            )}
+                                                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
+                                                            onClick={() =>
+                                                                setShowUserMenu(
+                                                                    false
+                                                                )
+                                                            }
+                                                        >
+                                                            <FaHeart className="mr-3 text-gray-400" />
+                                                            Favorites
+                                                        </Link>
+                                                    </>
+                                                )}
+                                            </div>
 
-                                        {/* Logout */}
-                                        <div className="py-1 border-t border-gray-200 dark:border-gray-600">
-                                            <Link
-                                                href={route("logout")}
-                                                method="POST"
-                                                className="block px-4 py-2 text-sm text-red-200 hover:bg-red-10 hover:font-bold hover:text-red-400"
-                                            >
-                                                <div className="flex items-center space-x-2">
-                                                    <FaDoorOpen className="text-lg" />
-                                                    <span>Sign out</span>
-                                                </div>
-                                            </Link>
-                                        </div>
-                                    </div>
-                                )}
+                                            {/* Logout */}
+                                            <div className="border-t border-gray-100 py-1">
+                                                <Link
+                                                    href={route("logout")}
+                                                    method="POST"
+                                                    className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                                    onClick={() =>
+                                                        setShowUserMenu(false)
+                                                    }
+                                                >
+                                                    <FaSignOutAlt className="mr-3" />
+                                                    Sign out
+                                                </Link>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {/* Mobile menu button */}
+                        <button
+                            onClick={() => setIsOpen(true)}
+                            className="lg:hidden p-2 text-gray-600 hover:text-green-600 transition-colors"
+                            aria-label="Open menu"
+                        >
+                            <FaBars className="text-xl" />
+                        </button>
+                    </div>
                 </div>
 
-                {/* Hamburger Icon */}
-                {!isOpen && (
-                    <button
-                        onClick={() => setIsOpen(true)}
-                        className="md:hidden text-xl text-gray-800 z-50"
-                    >
-                        <FaBars />
-                    </button>
-                )}
-            </div>
+                {/* Mobile Search - appears when searchOpen is true on mobile */}
+                <AnimatePresence>
+                    {searchOpen && (
+                        <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="lg:hidden bg-white border-t border-gray-200 px-4 py-3"
+                        >
+                            <form
+                                onSubmit={handleSearch}
+                                className="flex items-center"
+                            >
+                                <input
+                                    type="text"
+                                    placeholder="Search for items..."
+                                    value={searchQuery}
+                                    onChange={(e) =>
+                                        setSearchQuery(e.target.value)
+                                    }
+                                    className="flex-1 py-2 px-4 border border-gray-300 rounded-l-lg outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    autoFocus
+                                />
+                                <button
+                                    type="submit"
+                                    className="bg-green-600 text-white py-2 px-4 rounded-r-lg hover:bg-green-700 transition-colors"
+                                >
+                                    <FaSearch />
+                                </button>
+                            </form>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </nav>
 
-            {/* Sidebar and Overlay with AnimatePresence */}
+            {/* Mobile Sidebar */}
             <AnimatePresence>
                 {isOpen && (
                     <>
@@ -212,67 +329,163 @@ export function Navbar() {
                             animate={{ opacity: 0.5 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.3 }}
-                            className="fixed inset-0 bg-black z-40"
+                            className="fixed inset-0 bg-black z-40 lg:hidden"
                             onClick={() => setIsOpen(false)}
                         />
 
                         {/* Sidebar */}
                         <motion.div
-                            className="fixed top-0 left-0 w-64 min-h-full bg-white z-50 shadow-lg flex flex-col"
+                            className="fixed top-0 left-0 w-80 max-w-full min-h-full bg-white z-50 shadow-xl flex flex-col lg:hidden"
                             initial="hidden"
                             animate="visible"
                             exit="exit"
                             variants={sidebarVariants}
                             transition={{ type: "tween", duration: 0.3 }}
                         >
-                            <div className="flex items-center justify-between bg-gradient-to-r from-blue-500 to-cyan-400 text-white text-lg font-bold p-4">
-                                Relove Market
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                                <Link
+                                    href={route("homepage")}
+                                    className="flex items-center space-x-2"
+                                    onClick={() => setIsOpen(false)}
+                                >
+                                    <div className="bg-green-600 text-white p-2 rounded-lg">
+                                        <FaLeaf className="text-xl" />
+                                    </div>
+                                    <span className="text-xl font-bold text-gray-900">
+                                        Relove{" "}
+                                        <span className="text-green-600">
+                                            Market
+                                        </span>
+                                    </span>
+                                </Link>
                                 <button
                                     onClick={() => setIsOpen(false)}
-                                    className="text-white text-xl"
+                                    className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                                    aria-label="Close menu"
                                 >
-                                    <FaTimes />
+                                    <FaTimes className="text-xl" />
                                 </button>
                             </div>
 
-                            <nav className="flex flex-col p-6 space-y-4 text-gray-700 font-medium">
+                            {/* User section if logged in */}
+                            {auth?.user && (
+                                <div className="px-6 py-4 border-b border-gray-100">
+                                    <div className="flex items-center space-x-3">
+                                        <img
+                                            src="../image/shania_yan.png"
+                                            alt={auth.user.name}
+                                            className="w-12 h-12 rounded-full object-cover border-2 border-green-200"
+                                        />
+                                        <div>
+                                            <p className="font-medium text-gray-900">
+                                                {auth.user.name}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                {auth.user.email}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Navigation */}
+                            <nav className="flex-1 p-6 space-y-2">
                                 <Link
                                     href={route("homepage")}
                                     onClick={() => setIsOpen(false)}
-                                    className="hover:text-blue-500 transition duration-200"
+                                    className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+                                        route().current("homepage")
+                                            ? "bg-green-50 text-green-600"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                    }`}
                                 >
-                                    🏠 Home
+                                    <span className="w-6 text-center">🏠</span>
+                                    <span>Home</span>
                                 </Link>
                                 <Link
                                     href={route("about-us")}
                                     onClick={() => setIsOpen(false)}
-                                    className="hover:text-blue-500 transition duration-200"
+                                    className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+                                        route().current("about-us")
+                                            ? "bg-green-50 text-green-600"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                    }`}
                                 >
-                                    📄 About
+                                    <span className="w-6 text-center">📄</span>
+                                    <span>About</span>
                                 </Link>
                                 <Link
                                     href={route("shopping")}
                                     onClick={() => setIsOpen(false)}
-                                    className="hover:text-blue-500 transition duration-200"
+                                    className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+                                        route().current("shopping")
+                                            ? "bg-green-50 text-green-600"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                    }`}
                                 >
-                                    🛒 Shop
+                                    <span className="w-6 text-center">🛒</span>
+                                    <span>Shop</span>
                                 </Link>
                                 <Link
-                                    href={route("register")}
+                                    href={route("seller-dashboard")}
                                     onClick={() => setIsOpen(false)}
-                                    className="hover:text-blue-500 transition duration-200"
+                                    className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+                                        route().current("seller-dashboard")
+                                            ? "bg-green-50 text-green-600"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                    }`}
                                 >
-                                    ✍️ Sign Up
+                                    <span className="w-6 text-center">💼</span>
+                                    <span>Sell</span>
+                                </Link>
+                                <Link
+                                    href={route("wishlist")}
+                                    onClick={() => setIsOpen(false)}
+                                    className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+                                        route().current("wishlist")
+                                            ? "bg-green-50 text-green-600"
+                                            : "text-gray-700 hover:bg-gray-50"
+                                    }`}
+                                >
+                                    <span className="w-6 text-center">❤️</span>
+                                    <span>Favorites</span>
                                 </Link>
                             </nav>
 
-                            <div className="mt-auto p-4 text-sm text-gray-400">
-                                © 2025 Relove Market
+                            {/* Auth buttons if not logged in */}
+                            {!auth?.user && (
+                                <div className="p-6 border-t border-gray-100 space-y-3">
+                                    <Link
+                                        href={route("login")}
+                                        onClick={() => setIsOpen(false)}
+                                        className="block w-full text-center px-4 py-3 text-gray-700 font-medium border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+                                    >
+                                        Sign In
+                                    </Link>
+                                    <Link
+                                        href={route("register")}
+                                        onClick={() => setIsOpen(false)}
+                                        className="block w-full text-center px-4 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors"
+                                    >
+                                        Get Started
+                                    </Link>
+                                </div>
+                            )}
+
+                            {/* Footer */}
+                            <div className="p-6 border-t border-gray-100">
+                                <p className="text-sm text-gray-500 text-center">
+                                    © {new Date().getFullYear()} Relove Market
+                                </p>
                             </div>
                         </motion.div>
                     </>
                 )}
             </AnimatePresence>
+
+            {/* Add padding to content to account for fixed navbar */}
+            <div className="h-16 lg:h-20"></div>
         </>
     );
 }

@@ -17,16 +17,12 @@ class AdminMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         if (!Auth::check()) {
-            // If not logged in, redirect to login
             return redirect()->route('login');
         }
 
         $user = Auth::user();
-        $user_role = $user->load("role");
 
-        // Check if the user's role matches
-        if ($user_role->role->role_name !== "Admin") {
-            // If not authorized, redirect or abort
+        if ($user->role_id !== "ReLo-A0001") {
             abort(403, 'Unauthorized access.');
         }
 

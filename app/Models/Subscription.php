@@ -17,7 +17,7 @@ class Subscription extends Model
 
     protected $fillable = [
         'subscription_id',
-        'subscription_name',
+        'name',
         'price',
         'duration',
         "description",
@@ -25,6 +25,11 @@ class Subscription extends Model
 
     public function seller()
     {
-        return $this->belongsTo(Seller::class);
+        return $this->belongsTo(Seller::class, "subscription_id", "subscription_id");
+    }
+
+    public function subscriptionFeatures()
+    {
+        return $this->belongsTo(SubscriptionFeatures::class, "subscription_id", "subscription_id");
     }
 }

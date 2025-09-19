@@ -14,14 +14,14 @@ class SellerRejectedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $seller, $reason;
+    public $sellerRegistered, $reason;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(SellerRegistration $seller, $reason)
+    public function __construct(SellerRegistration $sellerRegistered, $reason)
     {
-        $this->seller = $seller;
+        $this->sellerRegistered = $sellerRegistered;
         $this->reason = $reason;
     }
 
@@ -49,7 +49,7 @@ class SellerRejectedMail extends Mailable
         return new Content(
             view: 'seller_rejected',
             with: [
-                'data' => $this->seller,
+                'data' => $this->sellerRegistered,
                 'reason' => $this->reason,
             ]
         );

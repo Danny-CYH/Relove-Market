@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
 
+use Exception;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,7 +60,7 @@ class RegisteredUserController extends Controller
 
             event(new Registered($user));
 
-            return back();
+            return redirect(route("register"))->with('showVerificationModal', true);
         } catch (ValidationException $e) {
             return back()->with("errorMessage", $e->getMessage());
         } catch (\Throwable $e) {
@@ -69,22 +70,25 @@ class RegisteredUserController extends Controller
 
     public function resendVerification(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email|exists:users,email',
-        ]);
+        try {
+            $request->validate([
+                'user_email' => 'required|email|exists:users,email',
+            ]);
 
-        $user = User::where('email', $request->email)->first();
+            $user = User::where('email', $request->user_email)->first();
 
-        if ($user && !$user->hasVerifiedEmail()) {
-            event(new Registered($user));
-        }
+            if ($user && !$user->hasVerifiedEmail()) {
+                event(new Registered($user));
+            }
 
-        // Check if it's an Inertia request
-        if ($request->header('X-Inertia')) {
-            // Return Inertia-compatible response (usually just update flash message)
+            // Check if it's an Inertia request
+            if ($request->header('X-Inertia')) {
+                return back()->with('successMessage', 'Verification email resent.');
+            }
+
             return back()->with('successMessage', 'Verification email resent.');
+        } catch (Exception $e) {
+            return back()->with('errorMessage', $e->getMessage());
         }
-
-        return back()->with('successMessage', 'Verification email resent.');
     }
 }

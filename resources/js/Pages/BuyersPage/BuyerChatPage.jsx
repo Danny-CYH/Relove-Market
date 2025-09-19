@@ -1,203 +1,382 @@
-import { useState } from "react";
-import { FaPaperPlane, FaPaperclip, FaHome } from "react-icons/fa";
-import { usePage, Link } from "@inertiajs/react";
+import React, { useState, useEffect, useRef } from "react";
+import {
+    FiMessageSquare,
+    FiSearch,
+    FiPaperclip,
+    FiSend,
+    FiImage,
+    FiMic,
+    FiMoreVertical,
+    FiArrowLeft,
+    FiCheckCircle,
+    FiCheck,
+    FiUser,
+    FiShoppingBag,
+} from "react-icons/fi";
 
-export default function ChatPage() {
-    const { url } = usePage();
+const BuyerChatPage = () => {
     const [messages, setMessages] = useState([
         {
             id: 1,
-            sender: "seller",
-            text: "Hello! How can I help you today?",
-            time: "10:00 AM",
+            text: "Hi, is this item still available?",
+            sender: "buyer",
+            timestamp: new Date(Date.now() - 3600000),
+            read: true,
         },
         {
             id: 2,
-            sender: "buyer",
-            text: "Hi! I’m interested in the item you listed.",
-            time: "10:02 AM",
+            text: "Yes, it's available! Are you interested?",
+            sender: "seller",
+            timestamp: new Date(Date.now() - 3500000),
+            read: true,
         },
         {
             id: 3,
+            text: "Could you send me more pictures of the item?",
+            sender: "buyer",
+            timestamp: new Date(Date.now() - 3400000),
+            read: true,
+        },
+        {
+            id: 4,
+            text: "Sure, here are some additional photos:",
             sender: "seller",
-            text: "Great! Do you want more details or pictures?",
-            time: "10:03 AM",
+            timestamp: new Date(Date.now() - 3300000),
+            read: true,
+            hasMedia: true,
+        },
+        {
+            id: 5,
+            text: "Thanks! What's your best price?",
+            sender: "buyer",
+            timestamp: new Date(Date.now() - 3200000),
+            read: true,
+        },
+        {
+            id: 6,
+            text: "I can do 10% off if you can pick it up today.",
+            sender: "seller",
+            timestamp: new Date(Date.now() - 3100000),
+            read: true,
         },
     ]);
-    const [input, setInput] = useState("");
 
-    const sendMessage = () => {
-        if (!input.trim()) return;
-        setMessages([
-            ...messages,
-            { id: Date.now(), sender: "buyer", text: input, time: "Now" },
-        ]);
-        setInput("");
+    const [newMessage, setNewMessage] = useState("");
+    const [conversations, setConversations] = useState([
+        {
+            id: 1,
+            name: "Sarah Johnson",
+            lastMessage: "I can do 10% off if you can pick it up today.",
+            timestamp: new Date(Date.now() - 3100000),
+            unread: 0,
+            item: {
+                name: "Vintage Leather Jacket",
+                price: "$45",
+                image: "https://images.unsplash.com/photo-1551028719-00167b16eac5?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80",
+            },
+        },
+        {
+            id: 2,
+            name: "Michael Chen",
+            lastMessage: "When are you available to meet?",
+            timestamp: new Date(Date.now() - 86400000),
+            unread: 2,
+            item: {
+                name: "Canon DSLR Camera",
+                price: "$220",
+                image: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80",
+            },
+        },
+        {
+            id: 3,
+            name: "Emma Wilson",
+            lastMessage: "I can offer $35 for the shoes",
+            timestamp: new Date(Date.now() - 172800000),
+            unread: 0,
+            item: {
+                name: "Running Shoes - Size 9",
+                price: "$40",
+                image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80",
+            },
+        },
+    ]);
+
+    const [activeConversation, setActiveConversation] = useState(
+        conversations[0]
+    );
+    const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+    const [showConversationList, setShowConversationList] = useState(true);
+    const messagesEndRef = useRef(null);
+
+    // Handle window resize
+    useEffect(() => {
+        const handleResize = () => {
+            const mobile = window.innerWidth < 768;
+            setIsMobileView(mobile);
+            if (!mobile) {
+                setShowConversationList(true);
+            }
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    // Scroll to bottom of messages
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages, activeConversation]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    const sellers = [
-        {
-            name: "Seller 1",
-            online: true,
-            lastMessage: "Sure! Here are the pictures...",
-            time: "10:05 AM",
-        },
-        {
-            name: "Seller 2",
-            online: false,
-            lastMessage: "I will check and update you.",
-            time: "Yesterday",
-        },
-        {
-            name: "Seller 3",
-            online: true,
-            lastMessage: "Item is available.",
-            time: "08:30 AM",
-        },
-    ];
+    const handleSendMessage = () => {
+        if (newMessage.trim() === "") return;
+
+        const newMsg = {
+            id: messages.length + 1,
+            text: newMessage,
+            sender: "buyer",
+            timestamp: new Date(),
+            read: false,
+        };
+
+        setMessages([...messages, newMsg]);
+        setNewMessage("");
+
+        // Simulate seller reply after a delay
+        setTimeout(() => {
+            const reply = {
+                id: messages.length + 2,
+                text: "Thanks for your message! I'll get back to you shortly.",
+                sender: "seller",
+                timestamp: new Date(),
+                read: true,
+            };
+            setMessages((prev) => [...prev, reply]);
+        }, 2000);
+    };
+
+    const handleSelectConversation = (conversation) => {
+        setActiveConversation(conversation);
+        if (isMobileView) {
+            setShowConversationList(false);
+        }
+    };
+
+    const handleBackToConversations = () => {
+        setShowConversationList(true);
+    };
+
+    const formatTime = (date) => {
+        return new Date(date).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
-            {/* Sidebar for chat threads */}
-            <aside className="w-80 bg-white shadow hidden md:flex flex-col justify-between">
-                <div>
-                    <div className="p-6 font-bold text-lg text-indigo-700 border-b flex items-center justify-between">
-                        <span>Chats</span>
-                        <Link
-                            href={route("homepage")}
-                            className="text-gray-500 hover:text-indigo-600"
-                        >
-                            <FaHome size={20} />
-                        </Link>
-                    </div>
-
-                    <div className="px-4 py-2">
+        <div className="flex h-screen bg-gray-100">
+            {/* Conversation List */}
+            <div
+                className={`${
+                    showConversationList ? "flex" : "hidden"
+                } md:flex flex-col w-full md:w-1/3 lg:w-1/4 bg-white border-r border-gray-200`}
+            >
+                <div className="p-4 border-b border-gray-200">
+                    <h1 className="text-xl font-bold text-gray-800">
+                        Messages
+                    </h1>
+                    <div className="relative mt-4">
+                        <FiSearch className="absolute left-3 top-3 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="Search sellers..."
-                            className="w-full p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
+                            placeholder="Search conversations..."
+                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
-                        <ul className="space-y-2">
-                            {sellers.map((seller, i) => (
-                                <li
-                                    key={i}
-                                    className="flex items-center justify-between p-2 rounded hover:bg-indigo-50 cursor-pointer"
-                                >
-                                    <div className="flex items-center space-x-3">
-                                        <div className="relative">
-                                            <div className="w-10 h-10 bg-indigo-200 rounded-full flex items-center justify-center text-white font-bold">
-                                                {seller.name.split(" ")[1]}
-                                            </div>
-                                            {seller.online && (
-                                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-gray-700 font-semibold">
-                                                {seller.name}
-                                            </span>
-                                            <span className="text-gray-400 text-sm truncate max-w-xs">
-                                                {seller.lastMessage}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <span className="text-gray-400 text-xs">
-                                        {seller.time}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
                     </div>
                 </div>
 
-                {/* Buyer account at the bottom */}
-                <div className="border-t p-4 flex items-center space-x-3 hover:bg-gray-100 cursor-pointer">
-                    <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
-                        B
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="font-semibold text-gray-700">
-                            [Buyer Name]
-                        </span>
-                        <span className="text-gray-400 text-sm">
-                            View Profile
-                        </span>
-                    </div>
-                </div>
-            </aside>
-
-            {/* Main chat area */}
-            <main className="flex-1 flex flex-col p-6 space-y-4">
-                {/* Chat header with seller info */}
-                <div className="flex items-center justify-between bg-white p-4 rounded-lg shadow">
-                    <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
-                        <div>
-                            <h2 className="text-lg font-semibold text-gray-800">
-                                Seller 1
-                            </h2>
-                            <p className="text-sm text-gray-500">Online</p>
-                        </div>
-                    </div>
-                    <div className="text-gray-500">Chat Room</div>
-                </div>
-
-                {/* Chat messages */}
-                <div className="flex-1 overflow-y-auto bg-white p-6 rounded-lg shadow space-y-4">
-                    {messages.map((msg) => (
+                <div className="overflow-y-auto flex-1">
+                    {conversations.map((conversation) => (
                         <div
-                            key={msg.id}
-                            className={`flex ${
-                                msg.sender === "buyer"
-                                    ? "justify-end"
-                                    : "justify-start"
+                            key={conversation.id}
+                            className={`flex items-center p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
+                                activeConversation.id === conversation.id
+                                    ? "bg-blue-50"
+                                    : ""
                             }`}
+                            onClick={() =>
+                                handleSelectConversation(conversation)
+                            }
                         >
-                            <div
-                                className={`flex flex-col ${
-                                    msg.sender === "buyer"
-                                        ? "items-end"
-                                        : "items-start"
-                                }`}
-                            >
-                                <div
-                                    className={`px-4 py-2 rounded-lg max-w-xs break-words ${
-                                        msg.sender === "buyer"
-                                            ? "bg-indigo-600 text-white rounded-br-none"
-                                            : "bg-gray-200 text-gray-800 rounded-bl-none"
-                                    }`}
-                                >
-                                    {msg.text}
+                            <div className="relative">
+                                <img
+                                    src={conversation.item.image}
+                                    alt={conversation.item.name}
+                                    className="w-14 h-14 rounded-lg object-cover"
+                                />
+                                <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                    <FiUser className="text-white text-xs" />
                                 </div>
-                                <span className="text-xs text-gray-400 mt-1">
-                                    {msg.time}
-                                </span>
+                            </div>
+
+                            <div className="ml-3 flex-1 min-w-0">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="font-semibold text-gray-800 truncate">
+                                        {conversation.name}
+                                    </h3>
+                                    <span className="text-xs text-gray-500">
+                                        {formatTime(conversation.timestamp)}
+                                    </span>
+                                </div>
+                                <p className="text-sm text-gray-600 truncate">
+                                    {conversation.lastMessage}
+                                </p>
+                                <div className="flex justify-between items-center mt-1">
+                                    <span className="text-sm font-medium text-gray-800">
+                                        {conversation.item.name} •{" "}
+                                        {conversation.item.price}
+                                    </span>
+                                    {conversation.unread > 0 && (
+                                        <span className="bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                            {conversation.unread}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     ))}
                 </div>
+            </div>
 
-                {/* Input area */}
-                <div className="flex items-center space-x-2 bg-white p-4 rounded-lg shadow">
-                    <button className="p-2 rounded hover:bg-gray-100 transition">
-                        <FaPaperclip className="text-gray-500" />
-                    </button>
-                    <input
-                        type="text"
-                        className="flex-1 p-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Type your message..."
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                    />
-                    <button
-                        onClick={sendMessage}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-500 transition flex items-center space-x-2"
-                    >
-                        <FaPaperPlane /> <span>Send</span>
-                    </button>
+            {/* Chat Area */}
+            <div
+                className={`${
+                    !showConversationList ? "flex" : "hidden"
+                } md:flex flex-col w-full md:w-2/3 lg:w-3/4`}
+            >
+                {/* Chat Header */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+                    {isMobileView && (
+                        <button
+                            onClick={handleBackToConversations}
+                            className="mr-2"
+                        >
+                            <FiArrowLeft className="text-gray-600" />
+                        </button>
+                    )}
+
+                    <div className="flex items-center">
+                        <img
+                            src={activeConversation.item.image}
+                            alt={activeConversation.item.name}
+                            className="w-10 h-10 rounded-lg object-cover"
+                        />
+                        <div className="ml-3">
+                            <h2 className="font-semibold text-gray-800">
+                                {activeConversation.name}
+                            </h2>
+                            <p className="text-sm text-gray-600">
+                                {activeConversation.item.name} •{" "}
+                                {activeConversation.item.price}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center">
+                        <button className="p-2 text-gray-500 hover:text-gray-700">
+                            <FiMoreVertical />
+                        </button>
+                    </div>
                 </div>
-            </main>
+
+                {/* Messages Area */}
+                <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                    <div className="max-w-3xl mx-auto">
+                        {messages.map((message) => (
+                            <div
+                                key={message.id}
+                                className={`flex mb-4 ${
+                                    message.sender === "buyer"
+                                        ? "justify-end"
+                                        : "justify-start"
+                                }`}
+                            >
+                                <div
+                                    className={`max-w-xs md:max-w-md lg:max-w-lg rounded-lg p-3 ${
+                                        message.sender === "buyer"
+                                            ? "bg-blue-500 text-white"
+                                            : "bg-white border border-gray-200"
+                                    }`}
+                                >
+                                    <p>{message.text}</p>
+                                    <div
+                                        className={`flex items-center mt-1 text-xs ${
+                                            message.sender === "buyer"
+                                                ? "text-blue-200"
+                                                : "text-gray-500"
+                                        }`}
+                                    >
+                                        <span>
+                                            {formatTime(message.timestamp)}
+                                        </span>
+                                        {message.sender === "buyer" && (
+                                            <span className="ml-1">
+                                                {message.read ? (
+                                                    <FiCheckCircle className="inline" />
+                                                ) : (
+                                                    <FiCheck className="inline" />
+                                                )}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        <div ref={messagesEndRef} />
+                    </div>
+                </div>
+
+                {/* Message Input */}
+                <div className="p-4 bg-white border-t border-gray-200">
+                    <div className="flex items-center">
+                        <button className="p-2 text-gray-500 hover:text-gray-700 mr-1">
+                            <FiPaperclip />
+                        </button>
+                        <button className="p-2 text-gray-500 hover:text-gray-700 mr-1">
+                            <FiImage />
+                        </button>
+
+                        <input
+                            type="text"
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            onKeyPress={(e) =>
+                                e.key === "Enter" && handleSendMessage()
+                            }
+                            placeholder="Type your message..."
+                            className="flex-1 border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+
+                        {newMessage ? (
+                            <button
+                                onClick={handleSendMessage}
+                                className="ml-2 p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                            >
+                                <FiSend />
+                            </button>
+                        ) : (
+                            <button className="ml-2 p-2 text-gray-500 hover:text-gray-700">
+                                <FiMic />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
     );
-}
+};
+
+export default BuyerChatPage;

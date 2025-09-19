@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -33,6 +32,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'role_id',
         'seller_id',
         'status',
+        'last_login_at',
     ];
 
     /**
@@ -60,6 +60,6 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function role()
     {
-        return $this->belongsTo(Role::class, 'role_id');
+        return $this->belongsTo(Role::class, 'role_id', 'role_id');
     }
 }

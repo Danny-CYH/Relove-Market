@@ -18,12 +18,13 @@ return new class extends Migration {
             $table->string('product_condition');
             $table->integer('product_quantity')->default(1);
             $table->string('product_status');
+            $table->string('product_brand');
+            $table->string('product_material');
+            $table->string('product_manufacturer');
+            $table->decimal('product_weight');
             $table->string('seller_id');
             $table->string('category_id');
             $table->timestamps();
-
-            $table->foreign('seller_id')->references('seller_id')->on('sellers')->onDelete('cascade');
-            $table->foreign('category_id')->references('category_id')->on('categories')->onDelete('cascade');
         });
     }
 

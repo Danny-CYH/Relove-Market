@@ -21,10 +21,11 @@ class Seller extends Model
         "store_id",
         "business_id",
         "subscription_id",
+        "is_verified",
     ];
 
     public function sellerStore()
     {
-        return $this->hasMany(SellerStore::class, 'store_id', 'store_id');
+        return $this->belongsTo(SellerStore::class, 'store_id', 'store_id');
     }
 }

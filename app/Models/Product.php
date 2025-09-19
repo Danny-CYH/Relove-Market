@@ -23,26 +23,30 @@ class Product extends Model
         "product_name",
         'product_description',
         'product_price',
-        'product_condition',
         'product_quantity',
         'product_status',
+        'product_condition',
+        'product_brand',
+        'product_material',
+        'product_manufacturer',
+        'product_weight',
         'seller_id',
         'category_id',
     ];
 
+    public function seller()
+    {
+        return $this->belongsTo(Seller::class, "seller_id", "seller_id");
+    }
+
     public function category()
     {
-        return $this->belongsTo(Category::class, 'category_id', 'category_id');
+        return $this->HasOne(Category::class, "category_id", "category_id");
     }
 
-    public function productImage()
+    public function promotions()
     {
-        return $this->hasMany(ProductImage::class, 'product_id', 'product_id');
-    }
-
-    public function productVideo()
-    {
-        return $this->hasMany(ProductVideo::class, 'product_id', 'product_id');
+        return $this->hasMany(Promotions::class, 'promotion_id', 'promotion_id');
     }
 
     public function orders()
@@ -58,5 +62,40 @@ class Product extends Model
     public function wishlists()
     {
         return $this->hasMany(Wishlist::class);
+    }
+
+    public function productFeature()
+    {
+        return $this->hasMany(ProductFeature::class, "product_id", 'product_id');
+    }
+
+    public function productOption()
+    {
+        return $this->hasMany(ProductOption::class, "product_id", "product_id");
+    }
+
+    public function productIncludeItem()
+    {
+        return $this->hasMany(ProductIncludeItem::class, 'product_id', 'product_id');
+    }
+
+    public function productImage()
+    {
+        return $this->hasMany(ProductImage::class, 'product_id', 'product_id');
+    }
+
+    public function productVideo()
+    {
+        return $this->hasMany(ProductVideo::class, 'product_id', 'product_id');
+    }
+
+    public function productPromotion()
+    {
+        return $this->belongsTo(ProductPromotion::class, "product_id", "product_id");
+    }
+
+    public function productEmbeddings()
+    {
+        return $this->hasMany(ProductEmbeddings::class, "product_id", "product_id");
     }
 }

@@ -13,11 +13,13 @@ class SellerRegistered implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $seller;
+    public $sellerRegistered;
+    public $action;
 
-    public function __construct(SellerRegistration $seller)
+    public function __construct(SellerRegistration $sellerRegistered, string $action)
     {
-        $this->seller = $seller->load('business');
+        $this->sellerRegistered = $sellerRegistered->load('business');
+        $this->action = $action;
     }
 
     // broadcast to one or more channels (array is fine)
@@ -35,7 +37,8 @@ class SellerRegistered implements ShouldBroadcastNow
     public function broadcastWith()
     {
         return [
-            'seller' => $this->seller
+            'action' => $this->action,
+            'seller' => $this->sellerRegistered->toArray(),
         ];
     }
 }

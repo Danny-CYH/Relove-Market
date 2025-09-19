@@ -1,0 +1,138 @@
+{
+    "states": [
+        "Johor",
+        "Kedah",
+        "Kelantan",
+        "Kuala Lumpur",
+        "Labuan",
+        "Melaka",
+        "Negeri Sembilan",
+        "Pahang",
+        "Penang",
+        "Perak",
+        "Perlis",
+        "Putrajaya",
+        "Sabah",
+        "Sarawak",
+        "Selangor",
+        "Terengganu"
+    ],
+    "citiesByState": {
+        "Johor": [
+            "Johor Bahru",
+            "Batu Pahat",
+            "Muar",
+            "Segamat",
+            "Kluang",
+            "Kota Tinggi",
+            "Pontian",
+            "Mersing"
+        ],
+        "Kedah": [
+            "Alor Setar",
+            "Sungai Petani",
+            "Kulim",
+            "Langkawi",
+            "Jitra",
+            "Kuala Kedah",
+            "Pokok Sena"
+        ],
+        "Kelantan": [
+            "Kota Bharu",
+            "Pasir Mas",
+            "Tanah Merah",
+            "Tumpat",
+            "Pasir Puteh",
+            "Bachok",
+            "Kuala Krai"
+        ],
+        "Kuala Lumpur": [
+            "Kuala Lumpur"
+        ],
+        "Labuan": [
+            "Victoria"
+        ],
+        "Melaka": [
+            "Melaka City",
+            "Alor Gajah",
+            "Jasin"
+        ],
+        "Negeri Sembilan": [
+            "Seremban",
+            "Port Dickson",
+            "Nilai",
+            "Tampin",
+            "Kuala Pilah",
+            "Jelebu"
+        ],
+        "Pahang": [
+            "Kuantan",
+            "Temerloh",
+            "Bentong",
+            "Raub",
+            "Jerantut",
+            "Pekan",
+            "Rompin",
+            "Cameron Highlands"
+        ],
+        "Penang": [
+            "George Town",
+            "Butterworth",
+            "Bayan Lepas",
+            "Bukit Mertajam",
+            "Nibong Tebal"
+        ],
+        "Perak": [
+            "Ipoh",
+            "Taiping",
+            "Teluk Intan",
+            "Sitiawan",
+            "Kampar",
+            "Tapah",
+            "Batu Gajah",
+            "Lumut"
+        ],
+        "Perlis": [
+            "Kangar",
+            "Arau"
+        ],
+        "Putrajaya": [
+            "Putrajaya"
+        ],
+        "Sabah": [
+            "Kota Kinabalu",
+            "Sandakan",
+            "Tawau",
+            "Lahad Datu",
+            "Keningau",
+            "Kudat"
+        ],
+        "Sarawak": [
+            "Kuching",
+            "Miri",
+            "Sibu",
+            "Bintulu",
+            "Sri Aman",
+            "Limbang",
+            "Sarikei"
+        ],
+        "Selangor": [
+            "Shah Alam",
+            "Petaling Jaya",
+            "Subang Jaya",
+            "Klang",
+            "Kajang",
+            "Ampang",
+            "Selayang",
+            "Rawang"
+        ],
+        "Terengganu": [
+            "Kuala Terengganu",
+            "Kemaman",
+            "Dungun",
+            "Besut",
+            "Marang",
+            "Hulu Terengganu"
+        ]
+    }
+}

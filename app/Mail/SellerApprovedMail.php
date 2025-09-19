@@ -14,14 +14,15 @@ class SellerApprovedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $seller;
+    public $sellerRegistered;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(SellerRegistration $seller)
+    public function __construct(SellerRegistration $sellerRegistered)
     {
-        $this->seller = $seller;
+        $this->sellerRegistered = $sellerRegistered;
+
     }
 
     public function build()
@@ -48,7 +49,7 @@ class SellerApprovedMail extends Mailable
         return new Content(
             view: 'seller_approved',
             with: [
-                'data' => $this->seller,
+                'data' => $this->sellerRegistered,
             ]
         );
     }

@@ -1,801 +1,892 @@
-import { usePage } from "@inertiajs/react";
-import { useState, useEffect, useMemo } from "react";
-import axios from "axios";
-import echo from "../../echo.js"; // optional real-time
-import { format } from "date-fns";
-
-import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    Tooltip,
-    ResponsiveContainer,
-    CartesianGrid,
-} from "recharts";
-
+import { useState, useEffect } from "react";
 import { Sidebar } from "@/Components/Admin/Sidebar";
+import { Link } from "@inertiajs/react";
 
-/* ----------------------- Small UI helpers ----------------------- */
-function StatCard({ label, value, sub, accent = "indigo" }) {
-    const accentMap = {
-        indigo: "text-indigo-600 bg-indigo-50",
-        emerald: "text-emerald-600 bg-emerald-50",
-        sky: "text-sky-600 bg-sky-50",
-        amber: "text-amber-600 bg-amber-50",
-    };
-    return (
-        <div className="bg-white p-4 rounded-xl shadow-md border">
-            <div className="text-sm text-gray-500">{label}</div>
-            <div
-                className={`mt-1 text-2xl font-extrabold ${
-                    accentMap[accent] || ""
-                } inline-block px-2 py-1 rounded-lg`}
-            >
-                {value}
-            </div>
-            {sub ? (
-                <div className="text-xs text-gray-500 mt-2">{sub}</div>
-            ) : null}
-        </div>
-    );
-}
-
-function Badge({ children, color = "yellow" }) {
-    const map = {
-        yellow: "bg-yellow-100 text-yellow-800",
-        green: "bg-green-100 text-green-800",
-        red: "bg-red-100 text-red-800",
-        gray: "bg-gray-100 text-gray-800",
-        blue: "bg-blue-100 text-blue-800",
-    };
-    return (
-        <span
-            className={`text-xs font-semibold px-2.5 py-0.5 rounded ${
-                map[color] || map.gray
-            }`}
-        >
-            {children}
-        </span>
-    );
-}
-
-function Modal({ title, onClose, children, maxW = "max-w-2xl" }) {
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div
-                className={`bg-white rounded-xl shadow-xl w-full ${maxW} border`}
-            >
-                <div className="flex items-center justify-between border-b px-5 py-3">
-                    <h3 className="text-lg font-semibold text-gray-800">
-                        {title}
-                    </h3>
-                    <button
-                        onClick={onClose}
-                        className="h-8 w-8 rounded-full hover:bg-gray-100 grid place-items-center text-gray-600"
-                    >
-                        ✕
-                    </button>
-                </div>
-                <div className="p-5">{children}</div>
-            </div>
-        </div>
-    );
-}
-
-function Toast({ show, type = "success", message, onClose }) {
-    if (!show) return null;
-    const typeMap = {
-        success: "bg-emerald-50 text-emerald-700 border-emerald-300",
-        error: "bg-red-50 text-red-700 border-red-300",
-        info: "bg-sky-50 text-sky-700 border-sky-300",
-    };
-    return (
-        <div className="fixed bottom-6 right-6 z-50">
-            <div
-                className={`rounded-lg border shadow px-4 py-3 ${typeMap[type]}`}
-            >
-                <div className="flex items-start gap-3">
-                    <div className="text-xl">
-                        {type === "success"
-                            ? "✅"
-                            : type === "error"
-                            ? "❌"
-                            : "ℹ️"}
-                    </div>
-                    <div className="text-sm">{message}</div>
-                    <button
-                        onClick={onClose}
-                        className="ml-2 text-gray-500 hover:text-gray-700"
-                    >
-                        Close
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-/* ----------------------- Main Component ----------------------- */
 export default function AdminDashboard() {
-    const { props } = usePage();
-    const { list_sellerRegistration = [] } = props;
-    const flash = props.flash || {};
+    const [timeFrame, setTimeFrame] = useState("monthly");
+    const [loading, setLoading] = useState(true);
 
-    const [metrics, setMetrics] = useState(null);
+    const [notifications, setNotifications] = useState([]);
+    const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
 
-    // seller list (we keep local copy so we can update immediately after approve/reject)
-    const [sellers, setSellers] = useState(list_sellerRegistration || []);
-    const [search, setSearch] = useState("");
-
-    // modals
-    const [viewSeller, setViewSeller] = useState(null);
-    const [approveSeller, setApproveSeller] = useState(null);
-    const [rejectSeller, setRejectSeller] = useState(null);
-    const [rejectReason, setRejectReason] = useState("");
-
-    // UX state
-    const [submitting, setSubmitting] = useState(false);
-    const [toast, setToast] = useState({
-        show: false,
-        type: "success",
-        message: "",
-    });
-
-    // Revenue chart (demo data; replace with your API if needed)
-    const chartData = useMemo(
-        () => [
-            { name: "Jan", revenue: 1200 },
-            { name: "Feb", revenue: 2100 },
-            { name: "Mar", revenue: 800 },
-            { name: "Apr", revenue: 1600 },
-            { name: "May", revenue: 2400 },
-            { name: "Jun", revenue: 3000 },
-        ],
-        []
-    );
-
-    // Recent activity (demo content)
-    const [recent, setRecent] = useState([
-        {
-            id: 1,
-            type: "payment",
-            text: "RM 129.00 subscription payment received",
-            at: "2025-08-12 10:24",
-        },
-        {
-            id: 2,
-            type: "seller",
-            text: "New seller application from Nur Aisyah",
-            at: "2025-08-12 09:10",
-        },
-        {
-            id: 3,
-            type: "order",
-            text: "Order #INV-1042 refunded (RM 45.00)",
-            at: "2025-08-11 17:28",
-        },
-    ]);
-
-    // metrics (demo: compute from props)
+    // Simulate data loading
     useEffect(() => {
-        setMetrics({
-            totalUsers: 2450,
-            totalTransactions: 892,
-            pendingSellers: (props.list_sellerRegistration || []).length,
-            revenue: 15780.25,
-        });
-    }, [props.list_sellerRegistration]);
+        if (Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
 
-    // keep sellers in sync with props
-    useEffect(() => {
-        setSellers(list_sellerRegistration || []);
-    }, [list_sellerRegistration]);
+        const savedNotifications = localStorage.getItem("notifications");
+        const savedUnreadCount = localStorage.getItem("unreadCount");
 
-    // Laravel Echo (optional) – refresh seller list in real-time when someone registers
+        if (savedNotifications) {
+            setNotifications(JSON.parse(savedNotifications));
+        }
+
+        if (savedUnreadCount) {
+            setUnreadCount(parseInt(savedUnreadCount));
+        }
+
+        const timer = setTimeout(() => {
+            setLoading(false);
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, []);
+
+    // Save notifications and unread count to localStorage when they change
     useEffect(() => {
-        if (!window?.Echo) return;
+        localStorage.setItem("notifications", JSON.stringify(notifications));
+        localStorage.setItem("unreadCount", unreadCount.toString());
+    }, [notifications, unreadCount]);
+
+    useEffect(() => {
+        if (!window.Echo) return;
+
         const channel = window.Echo.channel("pending-seller-list");
-        channel.listen(".SellerRegistered", async () => {
-            try {
-                const res = await axios.get("/admin/dashboard/list"); // your existing endpoint
-                setSellers(res.data?.data || res.data || []);
-            } catch (e) {
-                console.error("Failed to refresh sellers:", e);
+
+        channel.listen(".SellerRegistered", (e) => {
+            console.log("📢 New seller registered:", e);
+
+            const newNotification = {
+                id: Date.now(),
+                seller: e.seller,
+                read: false,
+                timestamp: new Date().toISOString(),
+            };
+
+            setNotifications((prev) => [newNotification, ...prev]);
+            setUnreadCount((prev) => prev + 1);
+
+            // Trigger browser notification
+            if (Notification.permission === "granted") {
+                new Notification("New Seller Registered", {
+                    body: `${e.seller.business_name} just registered!`,
+                    icon: "../image/shania_yan.png", // <-- your custom icon
+                });
             }
         });
+
         return () => {
-            try {
-                window.Echo.leaveChannel("pending-seller-list");
-            } catch {}
+            window.Echo.leaveChannel("pending-seller-list");
         };
     }, []);
 
-    // show flash success as toast (if redirected back with Inertia flashes)
-    useEffect(() => {
-        if (flash?.successMessage) {
-            setToast({
-                show: true,
-                type: "success",
-                message: flash.successMessage,
-            });
-        }
-        if (flash?.errorMessage) {
-            setToast({
-                show: true,
-                type: "error",
-                message: flash.errorMessage,
-            });
-        }
-    }, [flash]);
-
-    const filteredSellers = useMemo(() => {
-        if (!search.trim()) return sellers;
-        const q = search.toLowerCase();
-        return sellers.filter((s) =>
-            [s.name, s.email, s.store_name, s?.business?.business_type]
-                .filter(Boolean)
-                .some((f) => String(f).toLowerCase().includes(q))
+    const markAsRead = (id) => {
+        setNotifications((prev) =>
+            prev.map((notification) =>
+                notification.id === id
+                    ? { ...notification, read: true }
+                    : notification
+            )
         );
-    }, [sellers, search]);
-
-    const handleAction = async (registrationId, action, reason = "") => {
-        setSubmitting(true);
-        try {
-            const res = await axios.post(
-                `/admin/pending-seller/${registrationId}/action`,
-                {
-                    action,
-                    reason,
-                }
-            );
-
-            // optimistic update: remove from pending
-            setSellers((prev) =>
-                prev.filter((s) => s.registration_id !== registrationId)
-            );
-
-            setToast({
-                show: true,
-                type: "success",
-                message:
-                    res?.data?.successMessage ||
-                    "Action completed successfully.",
-            });
-
-            // close ONLY the modal we used
-            setApproveSeller(null);
-            setRejectSeller(null);
-            setRejectReason("");
-            setViewSeller(null);
-        } catch (error) {
-            console.error(error);
-            setToast({
-                show: true,
-                type: "error",
-                message:
-                    error?.response?.data?.message || "Something went wrong.",
-            });
-            // keep modal open so admin can retry
-        } finally {
-            setSubmitting(false);
-        }
+        setUnreadCount((prev) => Math.max(0, prev - 1));
     };
 
+    const markAllAsRead = () => {
+        setNotifications((prev) =>
+            prev.map((notification) => ({ ...notification, read: true }))
+        );
+        setUnreadCount(0);
+    };
+
+    const clearAllNotifications = () => {
+        setNotifications([]);
+        setUnreadCount(0);
+    };
+
+    const formatTime = (timestamp) => {
+        const now = new Date();
+        const notificationTime = new Date(timestamp);
+        const diffInMinutes = Math.floor(
+            (now - notificationTime) / (1000 * 60)
+        );
+
+        if (diffInMinutes < 1) return "Just now";
+        if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
+
+        const diffInHours = Math.floor(diffInMinutes / 60);
+        if (diffInHours < 24)
+            return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`;
+
+        const diffInDays = Math.floor(diffInHours / 24);
+        return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
+    };
+
+    // Sample data - in a real app, this would come from your backend
+    const dashboardData = {
+        overview: {
+            totalRevenue: 12486.72,
+            totalOrders: 248,
+            totalCustomers: 1842,
+            conversionRate: 4.2,
+        },
+        revenueData: {
+            monthly: [
+                12500, 11000, 9800, 11500, 10500, 12000, 11800, 12400, 13200,
+                12800, 13500, 14200,
+            ],
+            weekly: [1200, 1800, 1500, 2200, 1900, 2100, 2400],
+            daily: [120, 180, 150, 220, 190, 210, 240],
+        },
+        recentActivities: [
+            {
+                id: 1,
+                user: "John Doe",
+                action: "placed an order",
+                target: "Order #3245",
+                time: "2 mins ago",
+            },
+            {
+                id: 2,
+                user: "Sarah Wilson",
+                action: "registered as seller",
+                target: "Fashion Store",
+                time: "15 mins ago",
+            },
+            {
+                id: 3,
+                user: "Michael Brown",
+                action: "cancelled subscription",
+                target: "Pro Plan",
+                time: "32 mins ago",
+            },
+            {
+                id: 4,
+                user: "Emma Johnson",
+                action: "subscribed to",
+                target: "Enterprise Plan",
+                time: "1 hour ago",
+            },
+            {
+                id: 5,
+                user: "Robert Davis",
+                action: "requested refund for",
+                target: "Order #3128",
+                time: "2 hours ago",
+            },
+        ],
+        statistics: {
+            sales: {
+                current: 12486.72,
+                previous: 11245.36,
+                trend: "up",
+            },
+            visitors: {
+                current: 5842,
+                previous: 5248,
+                trend: "up",
+            },
+            orders: {
+                current: 248,
+                previous: 228,
+                trend: "up",
+            },
+            conversion: {
+                current: 4.2,
+                previous: 3.8,
+                trend: "up",
+            },
+        },
+        topSellers: [
+            { id: 1, name: "Electronics Hub", sales: 5842, growth: 12.4 },
+            { id: 2, name: "Fashion Store", sales: 4521, growth: 8.2 },
+            { id: 3, name: "Home Decor", sales: 3215, growth: 5.7 },
+            { id: 4, name: "Book World", sales: 2845, growth: 15.2 },
+            { id: 5, name: "Sports Gear", sales: 2458, growth: -2.1 },
+        ],
+    };
+
+    // Calculate percentage change
+    const calculateChange = (current, previous) => {
+        if (previous === 0) return 100;
+        return (((current - previous) / previous) * 100).toFixed(1);
+    };
+
+    // Stats Cards Component
+    const StatCard = ({ title, value, previous, trend, icon, color }) => (
+        <div className="bg-white p-6 rounded-xl shadow-md">
+            <div className="flex items-center">
+                <div className={`rounded-full ${color} p-3 mr-4`}>{icon}</div>
+                <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-600">{title}</p>
+                    <div className="flex items-baseline">
+                        <p className="text-2xl font-bold text-gray-800">
+                            {typeof value === "number"
+                                ? value.toLocaleString()
+                                : value}
+                        </p>
+                        {previous !== undefined && (
+                            <span
+                                className={`ml-2 text-sm font-medium ${
+                                    trend === "up"
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                }`}
+                            >
+                                {trend === "up" ? "↑" : "↓"}{" "}
+                                {calculateChange(value, previous)}%
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    // Mini Chart Component (simplified)
+    const MiniChart = ({ data, color }) => (
+        <div className="h-[40px] w-full flex items-end">
+            {data.map((value, index) => {
+                const height = Math.max(
+                    10,
+                    (value / Math.max(...data)) * 100 * 0.4
+                );
+                return (
+                    <div
+                        key={index}
+                        className="flex-1 mx-0.5"
+                        style={{
+                            height: `${height}%`,
+                            backgroundColor: color,
+                            opacity: 0.7,
+                        }}
+                    />
+                );
+            })}
+        </div>
+    );
+
     return (
-        <div className="flex min-h-screen bg-gray-100">
-            {/* Sidebar */}
-            <aside className="w-64 bg-white shadow hidden md:block">
-                <div className="p-6 font-bold text-lg text-indigo-700">
-                    Admin Panel
-                </div>
-                <Sidebar />
-            </aside>
+        <div className="flex min-h-screen bg-gray-50">
+            <Sidebar pendingCount={3} />
 
-            {/* Main */}
-            <main className="flex-1 p-6 space-y-6">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-semibold text-gray-800">
-                        Admin Dashboard
-                    </h1>
-                    <div className="flex gap-2">
-                        <a
-                            href="/admin/transactions"
-                            className="px-3 py-2 text-sm bg-white border rounded-lg shadow hover:bg-gray-50"
+            {/* Main Content */}
+            <main className="flex-1 p-4 lg:p-6">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-800">
+                            Dashboard Overview
+                        </h1>
+                        <p className="text-gray-600">
+                            Welcome back, Admin! Here's what's happening with
+                            your store today.
+                        </p>
+                    </div>
+                    <div className="flex items-center space-x-2 mt-4 md:mt-0">
+                        <select
+                            value={timeFrame}
+                            onChange={(e) => setTimeFrame(e.target.value)}
+                            className="w-full text-black border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         >
-                            View Transactions
-                        </a>
-                        <a
-                            href="/admin/subscriptions"
-                            className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg shadow hover:bg-indigo-700"
-                        >
-                            Manage Subscriptions
-                        </a>
-                    </div>
-                </div>
+                            <option value="daily">Today</option>
+                            <option value="weekly">This Week</option>
+                            <option value="monthly">This Month</option>
+                        </select>
 
-                {/* KPI Cards */}
-                {metrics && (
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <StatCard
-                            label="Total Users"
-                            value={metrics.totalUsers}
-                            accent="sky"
-                        />
-                        <StatCard
-                            label="Transactions"
-                            value={metrics.totalTransactions}
-                            accent="emerald"
-                        />
-                        <StatCard
-                            label="Pending Sellers"
-                            value={metrics.pendingSellers}
-                            accent="amber"
-                        />
-                        <StatCard
-                            label="Revenue (RM)"
-                            value={`RM ${metrics.revenue.toFixed(2)}`}
-                            accent="indigo"
-                        />
-                    </div>
-                )}
-
-                {/* Revenue Chart + Recent Activity */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <div className="bg-white shadow p-6 rounded-xl border lg:col-span-2">
-                        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                            Monthly Revenue Overview
-                        </h2>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={chartData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar
-                                    dataKey="revenue"
-                                    fill="#4F46E5"
-                                    radius={[6, 6, 0, 0]}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    <div className="bg-white shadow p-6 rounded-xl border">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                            Recent Activity
-                        </h3>
-                        <div className="space-y-4">
-                            {recent.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="flex items-start gap-3"
+                        {/* Notification Button */}
+                        <div className="relative">
+                            <button
+                                className="p-2 bg-white border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                onClick={() =>
+                                    setIsNotificationOpen((prev) => !prev)
+                                }
+                            >
+                                <svg
+                                    className="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                    xmlns="http://www.w3.org/2000/svg"
                                 >
-                                    <div className="text-xl">
-                                        {item.type === "payment"
-                                            ? "💳"
-                                            : item.type === "seller"
-                                            ? "🧑‍💼"
-                                            : "🧾"}
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C8.67 6.165 8 7.388 8 8.75V14.158c0 .538-.214 1.055-.595 1.437L6 17h5m4 0v1a3 3 0 11-6 0v-1m6 0H9"
+                                    />
+                                </svg>
+
+                                {/* Notification Badge */}
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                                        {unreadCount > 9 ? "9+" : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Notification Dropdown */}
+                            {isNotificationOpen && (
+                                <div className="absolute right-0 mt-2 w-80 bg-white shadow-lg rounded-md border border-gray-200 z-50">
+                                    <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+                                        <h3 className="font-semibold text-gray-800">
+                                            Notifications
+                                        </h3>
+                                        <div className="flex space-x-2">
+                                            {unreadCount > 0 && (
+                                                <button
+                                                    onClick={markAllAsRead}
+                                                    className="text-xs text-indigo-600 hover:text-indigo-800"
+                                                >
+                                                    Mark all as read
+                                                </button>
+                                            )}
+                                            {notifications.length > 0 && (
+                                                <button
+                                                    onClick={
+                                                        clearAllNotifications
+                                                    }
+                                                    className="text-xs text-red-600 hover:text-red-800"
+                                                >
+                                                    Clear all
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="text-sm">
-                                        <div className="text-gray-800">
-                                            {item.text}
+
+                                    <div className="max-h-96 overflow-y-auto">
+                                        {notifications.length === 0 ? (
+                                            <div className="p-4 text-center text-gray-500">
+                                                No notifications
+                                            </div>
+                                        ) : (
+                                            <ul>
+                                                {notifications.map(
+                                                    (notification) => (
+                                                        <li
+                                                            key={
+                                                                notification.id
+                                                            }
+                                                            className={`border-b border-gray-100 last:border-b-0 ${
+                                                                notification.read
+                                                                    ? "bg-gray-50"
+                                                                    : "bg-white"
+                                                            }`}
+                                                            onClick={() =>
+                                                                markAsRead(
+                                                                    notification.id
+                                                                )
+                                                            }
+                                                        >
+                                                            <div className="p-3 hover:bg-gray-100 cursor-pointer">
+                                                                <div className="flex items-start">
+                                                                    <div className="flex-shrink-0 h-10 w-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                                                        <svg
+                                                                            className="w-5 h-5 text-green-600"
+                                                                            fill="none"
+                                                                            stroke="currentColor"
+                                                                            viewBox="0 0 24 24"
+                                                                            xmlns="http://www.w3.org/2000/svg"
+                                                                        >
+                                                                            <path
+                                                                                strokeLinecap="round"
+                                                                                strokeLinejoin="round"
+                                                                                strokeWidth={
+                                                                                    2
+                                                                                }
+                                                                                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
+                                                                            />
+                                                                        </svg>
+                                                                    </div>
+                                                                    <div className="flex-1">
+                                                                        <p className="text-sm font-medium text-gray-900">
+                                                                            New
+                                                                            Seller
+                                                                            Registration
+                                                                        </p>
+                                                                        <p className="text-sm text-gray-600">
+                                                                            {
+                                                                                notification
+                                                                                    .seller
+                                                                                    .business_name
+                                                                            }{" "}
+                                                                            registered
+                                                                            as a
+                                                                            seller
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-400 mt-1">
+                                                                            {formatTime(
+                                                                                notification.timestamp
+                                                                            )}
+                                                                        </p>
+                                                                    </div>
+                                                                    {!notification.read && (
+                                                                        <div className="flex-shrink-0 ml-2">
+                                                                            <span className="h-2 w-2 bg-indigo-500 rounded-full block"></span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </li>
+                                                    )
+                                                )}
+                                            </ul>
+                                        )}
+                                    </div>
+
+                                    {notifications.length > 0 && (
+                                        <div className="p-2 border-t border-gray-200 text-center">
+                                            <Link
+                                                href={route(
+                                                    "pending-seller-list"
+                                                )}
+                                                className="text-sm text-indigo-600 hover:text-indigo-800"
+                                                onClick={() =>
+                                                    setIsNotificationOpen(false)
+                                                }
+                                            >
+                                                View all seller requests
+                                            </Link>
                                         </div>
-                                        <div className="text-gray-500 text-xs">
-                                            {item.at}
-                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {loading ? (
+                    // Loading skeleton
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {[1, 2, 3, 4].map((i) => (
+                                <div
+                                    key={i}
+                                    className="bg-white p-6 rounded-xl shadow-md"
+                                >
+                                    <div className="animate-pulse">
+                                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+                                        <div className="h-6 bg-gray-200 rounded w-1/2"></div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="mt-4">
-                            <a
-                                href="/admin/logs"
-                                className="text-indigo-600 text-sm hover:underline"
-                            >
-                                View all logs
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Pending Sellers */}
-                <div className="bg-white rounded-xl shadow p-6 border">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                        <h2 className="text-lg font-semibold text-gray-800">
-                            Pending Seller Approvals
-                        </h2>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="text"
-                                placeholder="Search by name/email/store/type..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="border rounded-lg px-3 py-2 text-sm w-full md:w-72"
-                            />
-                            <button
-                                onClick={async () => {
-                                    // manual refresh from your existing endpoint
-                                    try {
-                                        const res = await axios.get(
-                                            "/admin/dashboard/list"
-                                        );
-                                        setSellers(
-                                            res.data?.data || res.data || []
-                                        );
-                                    } catch (e) {
-                                        setToast({
-                                            show: true,
-                                            type: "error",
-                                            message: "Failed to refresh list.",
-                                        });
-                                    }
-                                }}
-                                className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg border"
-                            >
-                                Refresh
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full text-sm">
-                            <thead>
-                                <tr className="text-left text-gray-500 border-b">
-                                    <th className="p-3">Name</th>
-                                    <th className="p-3">Email</th>
-                                    <th className="p-3">Phone</th>
-                                    <th className="p-3">Store</th>
-                                    <th className="p-3">Business Type</th>
-                                    <th className="p-3">Applied At</th>
-                                    <th className="p-3">Status</th>
-                                    <th className="p-3 text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredSellers.length ? (
-                                    filteredSellers.map((seller) => (
-                                        <tr
-                                            key={seller.registration_id}
-                                            className="border-b hover:bg-gray-50"
-                                        >
-                                            <td className="p-3 text-gray-800">
-                                                {seller.name}
-                                            </td>
-                                            <td className="p-3">
-                                                {seller.email}
-                                            </td>
-                                            <td className="p-3">
-                                                {seller.phone_number || "-"}
-                                            </td>
-                                            <td className="p-3">
-                                                {seller.store_name}
-                                            </td>
-                                            <td className="p-3">
-                                                {seller?.business
-                                                    ?.business_type || "N/A"}
-                                            </td>
-                                            <td className="p-3">
-                                                {seller.created_at
-                                                    ? format(
-                                                          new Date(
-                                                              seller.created_at
-                                                          ),
-                                                          "dd MMM yyyy, hh:mm a"
-                                                      )
-                                                    : "N/A"}
-                                            </td>
-                                            <td className="p-3">
-                                                <Badge color="yellow">
-                                                    {seller.status}
-                                                </Badge>
-                                            </td>
-                                            <td className="p-3">
-                                                <div className="flex items-center justify-center gap-2">
-                                                    <button
-                                                        onClick={() =>
-                                                            setViewSeller(
-                                                                seller
-                                                            )
-                                                        }
-                                                        className="px-3 py-1.5 rounded-lg border bg-white hover:bg-gray-100"
-                                                    >
-                                                        View
-                                                    </button>
-                                                    <button
-                                                        onClick={() =>
-                                                            setApproveSeller(
-                                                                seller
-                                                            )
-                                                        }
-                                                        className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-                                                    >
-                                                        Approve
-                                                    </button>
-                                                    <button
-                                                        onClick={() =>
-                                                            setRejectSeller(
-                                                                seller
-                                                            )
-                                                        }
-                                                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700"
-                                                    >
-                                                        Reject
-                                                    </button>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
+                                <div className="animate-pulse">
+                                    <div className="h-6 bg-gray-200 rounded w-1/4 mb-6"></div>
+                                    <div className="h-64 bg-gray-200 rounded"></div>
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-md">
+                                <div className="animate-pulse">
+                                    <div className="h-6 bg-gray-200 rounded w-1/3 mb-6"></div>
+                                    <div className="space-y-4">
+                                        {[1, 2, 3, 4, 5].map((i) => (
+                                            <div
+                                                key={i}
+                                                className="flex items-center"
+                                            >
+                                                <div className="h-10 w-10 bg-gray-200 rounded-full mr-3"></div>
+                                                <div className="flex-1">
+                                                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                                                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td
-                                            className="p-6 text-center text-gray-500"
-                                            colSpan={8}
-                                        >
-                                            No pending registrations found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-
-                {/* View Seller Modal */}
-                {viewSeller && (
-                    <Modal
-                        title="Seller Application Details"
-                        onClose={() => setViewSeller(null)}
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                    Applicant
-                                </h4>
-                                <div className="space-y-1 text-sm">
-                                    <div>
-                                        <span className="text-gray-500">
-                                            Name:
-                                        </span>{" "}
-                                        <span className="text-gray-800">
-                                            {viewSeller.name}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">
-                                            Email:
-                                        </span>{" "}
-                                        <span className="text-gray-800">
-                                            {viewSeller.email}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">
-                                            Phone:
-                                        </span>{" "}
-                                        <span className="text-gray-800">
-                                            {viewSeller.phone_number || "-"}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">
-                                            Registration ID:
-                                        </span>{" "}
-                                        <span className="text-gray-800">
-                                            {viewSeller.registration_id}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                    Store
-                                </h4>
-                                <div className="space-y-1 text-sm">
-                                    <div>
-                                        <span className="text-gray-500">
-                                            Name:
-                                        </span>{" "}
-                                        <span className="text-gray-800">
-                                            {viewSeller.store_name}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">
-                                            Business Type:
-                                        </span>{" "}
-                                        <span className="text-gray-800">
-                                            {viewSeller?.business
-                                                ?.business_type || "N/A"}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <span className="text-gray-500">
-                                            Applied At:
-                                        </span>{" "}
-                                        <span className="text-gray-800">
-                                            {viewSeller.created_at
-                                                ? format(
-                                                      new Date(
-                                                          viewSeller.created_at
-                                                      ),
-                                                      "dd MMM yyyy, hh:mm a"
-                                                  )
-                                                : "N/A"}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* PDF / License */}
-                        {viewSeller?.store_license && (
-                            <div className="mt-5">
-                                <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                    Store License
-                                </h4>
-                                <div className="flex items-center justify-between p-3 rounded border bg-gray-50">
-                                    <div className="flex items-center gap-3">
-                                        <span className="bg-orange-500 text-white text-[10px] px-2 py-0.5 rounded">
-                                            PDF
-                                        </span>
-                                        <span className="text-gray-700 text-sm break-all">
-                                            {viewSeller.store_license}
-                                        </span>
-                                    </div>
-                                    <a
-                                        href={`${
-                                            import.meta.env.VITE_APP_URL
-                                        }/storage/${viewSeller.store_license}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                ) : (
+                    <>
+                        {/* Stats Overview */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <StatCard
+                                title="Total Revenue"
+                                value={dashboardData.statistics.sales.current}
+                                previous={
+                                    dashboardData.statistics.sales.previous
+                                }
+                                trend={dashboardData.statistics.sales.trend}
+                                color="bg-green-100"
+                                icon={
+                                    <svg
+                                        className="w-6 h-6 text-green-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
                                     >
-                                        View
-                                    </a>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="mt-6 flex justify-end gap-2">
-                            <button
-                                onClick={() => setViewSeller(null)}
-                                className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-100"
-                            >
-                                Close
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setApproveSeller(viewSeller);
-                                    setViewSeller(null);
-                                }}
-                                className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-                            >
-                                Approve
-                            </button>
-                            <button
-                                onClick={() => {
-                                    setRejectSeller(viewSeller);
-                                    setViewSeller(null);
-                                }}
-                                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
-                            >
-                                Reject
-                            </button>
-                        </div>
-                    </Modal>
-                )}
-
-                {/* Approve Modal */}
-                {approveSeller && (
-                    <Modal
-                        title="Approve Seller"
-                        onClose={() =>
-                            submitting ? null : setApproveSeller(null)
-                        }
-                        maxW="max-w-md"
-                    >
-                        <p className="text-sm text-gray-700">
-                            Are you sure you want to approve{" "}
-                            <span className="font-semibold">
-                                {approveSeller.name}
-                            </span>
-                            ?
-                        </p>
-                        <div className="mt-5 flex justify-end gap-2">
-                            <button
-                                onClick={() => setApproveSeller(null)}
-                                className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-100"
-                                disabled={submitting}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() =>
-                                    handleAction(
-                                        approveSeller.registration_id,
-                                        "Approved"
-                                    )
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
                                 }
-                                className="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-                                disabled={submitting}
-                            >
-                                {submitting ? "Approving..." : "Approve"}
-                            </button>
-                        </div>
-                    </Modal>
-                )}
+                            />
 
-                {/* Reject Modal */}
-                {rejectSeller && (
-                    <Modal
-                        title="Reject Seller"
-                        onClose={() =>
-                            submitting ? null : setRejectSeller(null)
-                        }
-                        maxW="max-w-lg"
-                    >
-                        <p className="text-sm text-gray-700">
-                            Are you sure you want to reject{" "}
-                            <span className="font-semibold">
-                                {rejectSeller.name}
-                            </span>
-                            ?
-                        </p>
-
-                        <div className="mt-4">
-                            <label
-                                htmlFor="rejectionReason"
-                                className="block text-sm text-gray-700 mb-2"
-                            >
-                                Reason for rejection (optional)
-                            </label>
-                            <textarea
-                                id="rejectionReason"
-                                rows={5}
-                                value={rejectReason}
-                                onChange={(e) =>
-                                    setRejectReason(e.target.value)
+                            <StatCard
+                                title="Total Orders"
+                                value={dashboardData.statistics.orders.current}
+                                previous={
+                                    dashboardData.statistics.orders.previous
                                 }
-                                placeholder="Enter a helpful, actionable reason for the seller…"
-                                className="w-full border rounded-lg p-3 text-sm"
+                                trend={dashboardData.statistics.orders.trend}
+                                color="bg-blue-100"
+                                icon={
+                                    <svg
+                                        className="w-6 h-6 text-blue-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                                        />
+                                    </svg>
+                                }
+                            />
+
+                            <StatCard
+                                title="Total Customers"
+                                value={
+                                    dashboardData.statistics.visitors.current
+                                }
+                                previous={
+                                    dashboardData.statistics.visitors.previous
+                                }
+                                trend={dashboardData.statistics.visitors.trend}
+                                color="bg-purple-100"
+                                icon={
+                                    <svg
+                                        className="w-6 h-6 text-purple-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                                        />
+                                    </svg>
+                                }
+                            />
+
+                            <StatCard
+                                title="Conversion Rate"
+                                value={`${dashboardData.statistics.conversion.current}%`}
+                                previous={
+                                    dashboardData.statistics.conversion.previous
+                                }
+                                trend={
+                                    dashboardData.statistics.conversion.trend
+                                }
+                                color="bg-yellow-100"
+                                icon={
+                                    <svg
+                                        className="w-6 h-6 text-yellow-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                        />
+                                    </svg>
+                                }
                             />
                         </div>
 
-                        <div className="mt-5 flex justify-end gap-2">
-                            <button
-                                onClick={() => setRejectSeller(null)}
-                                className="px-4 py-2 rounded-lg border bg-white hover:bg-gray-100"
-                                disabled={submitting}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() =>
-                                    handleAction(
-                                        rejectSeller.registration_id,
-                                        "Rejected",
-                                        rejectReason
-                                    )
-                                }
-                                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
-                                disabled={submitting}
-                            >
-                                {submitting ? "Rejecting..." : "Reject"}
-                            </button>
+                        {/* Main Dashboard Content */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            {/* Revenue Chart */}
+                            <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-md">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-lg font-semibold text-gray-800">
+                                        Revenue Overview
+                                    </h2>
+                                    <div className="flex items-center space-x-2">
+                                        <span className="text-sm text-gray-600">
+                                            This month
+                                        </span>
+                                        <div className="w-3 h-3 bg-indigo-500 rounded-full"></div>
+                                    </div>
+                                </div>
+                                <div className="h-64">
+                                    {/* In a real app, you would use a charting library like Chart.js or Recharts */}
+                                    <div className="h-full flex flex-col justify-between">
+                                        <div className="flex-1 relative">
+                                            <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                                                <div className="text-center">
+                                                    <svg
+                                                        className="w-16 h-16 mx-auto mb-2"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                                                        />
+                                                    </svg>
+                                                    <p>
+                                                        Revenue chart would be
+                                                        displayed here
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="h-8">
+                                            <MiniChart
+                                                data={
+                                                    dashboardData.revenueData[
+                                                        timeFrame
+                                                    ]
+                                                }
+                                                color="#4f46e5"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Recent Activities */}
+                            <div className="bg-white p-6 rounded-xl shadow-md">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-lg font-semibold text-gray-800">
+                                        Recent Activities
+                                    </h2>
+                                    <Link
+                                        href="#"
+                                        className="text-sm text-indigo-600 hover:text-indigo-800"
+                                    >
+                                        View All
+                                    </Link>
+                                </div>
+                                <div className="space-y-4">
+                                    {dashboardData.recentActivities.map(
+                                        (activity) => (
+                                            <div
+                                                key={activity.id}
+                                                className="flex"
+                                            >
+                                                <div className="flex-shrink-0 mr-3">
+                                                    <div className="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
+                                                        <svg
+                                                            className="w-5 h-5 text-indigo-600"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M13 10V3L4 14h7v7l9-11h-7z"
+                                                            />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <p className="text-sm text-gray-800">
+                                                        <span className="font-medium">
+                                                            {activity.user}
+                                                        </span>{" "}
+                                                        {activity.action}{" "}
+                                                        <span className="font-medium">
+                                                            {activity.target}
+                                                        </span>
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {activity.time}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    </Modal>
+
+                        {/* Bottom Section */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Top Sellers */}
+                            <div className="bg-white p-6 rounded-xl shadow-md">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-lg font-semibold text-gray-800">
+                                        Top Sellers
+                                    </h2>
+                                    <Link
+                                        href="#"
+                                        className="text-sm text-indigo-600 hover:text-indigo-800"
+                                    >
+                                        View All
+                                    </Link>
+                                </div>
+                                <div className="space-y-4">
+                                    {dashboardData.topSellers.map((seller) => (
+                                        <div
+                                            key={seller.id}
+                                            className="flex items-center justify-between"
+                                        >
+                                            <div className="flex items-center">
+                                                <div className="h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center mr-3">
+                                                    <span className="text-sm font-medium text-gray-700">
+                                                        {seller.name
+                                                            .split(" ")
+                                                            .map(
+                                                                (word) =>
+                                                                    word[0]
+                                                            )
+                                                            .join("")}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-800">
+                                                        {seller.name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        $
+                                                        {seller.sales.toLocaleString()}{" "}
+                                                        in sales
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <span
+                                                className={`text-sm font-medium ${
+                                                    seller.growth >= 0
+                                                        ? "text-green-600"
+                                                        : "text-red-600"
+                                                }`}
+                                            >
+                                                {seller.growth >= 0 ? "+" : ""}
+                                                {seller.growth}%
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Quick Actions */}
+                            <div className="bg-white p-6 rounded-xl shadow-md">
+                                <h2 className="text-lg font-semibold text-gray-800 mb-6">
+                                    Quick Actions
+                                </h2>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Link
+                                        href={route("pending-seller-list")}
+                                        className="p-4 bg-indigo-50 rounded-lg text-center hover:bg-indigo-100 transition-colors"
+                                    >
+                                        <div className="bg-indigo-100 p-2 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2">
+                                            <svg
+                                                className="w-5 h-5 text-indigo-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-800">
+                                            Seller Requests
+                                        </span>
+                                    </Link>
+
+                                    <Link
+                                        href={route("list-transaction")}
+                                        className="p-4 bg-green-50 rounded-lg text-center hover:bg-green-100 transition-colors"
+                                    >
+                                        <div className="bg-green-100 p-2 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2">
+                                            <svg
+                                                className="w-5 h-5 text-green-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-800">
+                                            Transactions
+                                        </span>
+                                    </Link>
+
+                                    <Link
+                                        href={route("subscription-management")}
+                                        className="p-4 bg-purple-50 rounded-lg text-center hover:bg-purple-100 transition-colors"
+                                    >
+                                        <div className="bg-purple-100 p-2 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2">
+                                            <svg
+                                                className="w-5 h-5 text-purple-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-800">
+                                            Subscriptions
+                                        </span>
+                                    </Link>
+
+                                    <Link
+                                        href="#"
+                                        className="p-4 bg-yellow-50 rounded-lg text-center hover:bg-yellow-100 transition-colors"
+                                    >
+                                        <div className="bg-yellow-100 p-2 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-2">
+                                            <svg
+                                                className="w-5 h-5 text-yellow-600"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
+                                                />
+                                            </svg>
+                                        </div>
+                                        <span className="text-sm font-medium text-gray-800">
+                                            Users
+                                        </span>
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                    </>
                 )}
             </main>
-
-            {/* Toast */}
-            <Toast
-                show={toast.show}
-                type={toast.type}
-                message={toast.message}
-                onClose={() => setToast((t) => ({ ...t, show: false }))}
-            />
         </div>
     );
 }

@@ -15,14 +15,14 @@ return new class extends Migration {
             $table->string("seller_name");
             $table->string("seller_email")->unique();
             $table->string("seller_phone");
+            $table->text('account_number')->nullable();
             $table->string('store_id');
             $table->string('business_id');
             $table->string('subscription_id')->nullable();
+            $table->boolean("is_verified");
             $table->timestamps();
 
             $table->foreign("store_id")->references('store_id')->on('seller_stores')->onDelete('cascade');
-            $table->foreign('business_id')->references('business_id')->on('business')->onDelete('cascade');
-            $table->foreign('subscription_id')->references('subscription_id')->on('subscriptions')->onDelete('cascade');
         });
     }
 

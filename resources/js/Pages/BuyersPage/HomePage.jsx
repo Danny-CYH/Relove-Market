@@ -4,7 +4,28 @@ import {
     FaRecycle,
     FaStore,
     FaShoppingBag,
+    FaHeart,
+    FaShoppingCart,
+    FaArrowRight,
+    FaLeaf,
+    FaShieldAlt,
+    FaTags,
+    FaStar,
+    FaExclamationTriangle,
 } from "react-icons/fa";
+
+import {
+    Shirt,
+    Laptop,
+    Home,
+    Baby,
+    Book,
+    Dumbbell,
+    Heart,
+    ToyBrick,
+    Car,
+    Boxes,
+} from "lucide-react";
 
 import { Navbar } from "@/Components/Buyer/Navbar";
 import { Footer } from "@/Components/Buyer/footer";
@@ -14,84 +35,112 @@ import { SellerRegisterSuccess } from "@/Components/Buyer/SellerRegisterSuccess"
 import { useState, useEffect } from "react";
 import { Link, usePage } from "@inertiajs/react";
 
-export default function HomePage() {
+export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const items = [
         {
             id: 1,
             name: "Vintage T-shirt",
             category: "Fashion",
             price: "RM20",
-            image: "/image/items/fashion1.jpg",
+            originalPrice: "RM45",
+            image: "image/apple_watch.jpg",
+            rating: 4.5,
+            reviews: 24,
+            isNew: true,
         },
         {
             id: 2,
             name: "Bluetooth Speaker",
             category: "Electronics",
             price: "RM80",
-            image: "/image/items/electronics1.jpg",
+            originalPrice: "RM120",
+            image: "image/apple_watch.jpg",
+            rating: 4.2,
+            reviews: 18,
         },
         {
             id: 3,
             name: "Secondhand Chair",
             category: "Home Decor",
             price: "RM50",
-            image: "/image/items/home1.jpg",
+            originalPrice: "RM85",
+            image: "image/apple_watch.jpg",
+            rating: 4.7,
+            reviews: 31,
         },
         {
             id: 4,
             name: "Novel Book",
             category: "Books",
             price: "RM10",
-            image: "/image/items/book1.jpg",
+            originalPrice: "RM15",
+            image: "image/apple_watch.jpg",
+            rating: 4.8,
+            reviews: 42,
+            isNew: true,
         },
         {
             id: 5,
             name: "Denim Jacket",
             category: "Fashion",
             price: "RM35",
-            image: "/image/items/fashion2.jpg",
+            originalPrice: "RM70",
+            image: "image/apple_watch.jpg",
+            rating: 4.3,
+            reviews: 15,
         },
         {
             id: 6,
             name: "Old Camera",
             category: "Electronics",
             price: "RM150",
-            image: "/image/items/electronics2.jpg",
+            originalPrice: "RM220",
+            image: "image/apple_watch.jpg",
+            rating: 4.9,
+            reviews: 27,
         },
         {
             id: 7,
             name: "Wall Painting",
             category: "Home Decor",
             price: "RM45",
-            image: "/image/items/home2.jpg",
+            originalPrice: "RM65",
+            image: "image/apple_watch.jpg",
+            rating: 4.1,
+            reviews: 9,
         },
         {
             id: 8,
             name: "Textbook",
             category: "Books",
             price: "RM25",
-            image: "/image/items/book2.jpg",
-        },
-        {
-            id: 9,
-            name: "Sneakers",
-            category: "Fashion",
-            price: "RM60",
-            image: "/image/items/fashion3.jpg",
-        },
-        {
-            id: 10,
-            name: "Table Lamp",
-            category: "Home Decor",
-            price: "RM30",
-            image: "/image/items/home3.jpg",
+            originalPrice: "RM40",
+            image: "image/apple_watch.jpg",
+            rating: 4.6,
+            reviews: 33,
         },
     ];
 
-    const categories = ["All", "Fashion", "Electronics", "Home Decor", "Books"];
+    const categoryIcons = {
+        "Fashion & Accessories": <Shirt className="w-6 h-6 text-green-600" />,
+        "Electronics & Gadgets": <Laptop className="w-6 h-6 text-blue-600" />,
+        "Home & Living": <Home className="w-6 h-6 text-yellow-600" />,
+        "Baby & Kids": <Baby className="w-6 h-6 text-pink-600" />,
+        "Books & Stationery": <Book className="w-6 h-6 text-purple-600" />,
+        "Sports & Outdoors": <Dumbbell className="w-6 h-6 text-red-600" />,
+        "Beauty & Personal Care": <Heart className="w-6 h-6 text-pink-500" />,
+        "Collectibles & Hobbies": (
+            <ToyBrick className="w-6 h-6 text-orange-600" />
+        ),
+        Vehicles: <Car className="w-6 h-6 text-gray-600" />,
+        Others: <Boxes className="w-6 h-6 text-gray-400" />,
+    };
 
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [isOpen, setIsOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [showSearchResults, setShowSearchResults] = useState(false);
 
     const { flash } = usePage().props;
 
@@ -108,8 +157,31 @@ export default function HomePage() {
         }
     }, [flash.successMessage]);
 
+    // Handle search functionality
+    const handleSearch = (query) => {
+        setSearchQuery(query);
+        if (query.length > 1) {
+            // Filter items based on search query
+            const results = list_shoppingItem.filter(
+                (product) =>
+                    product.product_name
+                        .toLowerCase()
+                        .includes(query.toLowerCase()) ||
+                    product.category.toLowerCase().includes(query.toLowerCase())
+            );
+            setSearchResults(results);
+            setShowSearchResults(true);
+        } else {
+            setShowSearchResults(false);
+        }
+    };
+
+    // Check if there are flash sale products
+    const hasFlashSaleProducts =
+        list_shoppingItem && list_shoppingItem.length > 0;
+
     return (
-        <div className="flex flex-col min-h-screen bg-white">
+        <div className="flex flex-col min-h-screen bg-gray-50">
             <Navbar />
 
             {/* Modal for displaying the success register message for users */}
@@ -117,129 +189,408 @@ export default function HomePage() {
 
             <main className="flex-grow">
                 {/* Hero Section */}
-                <div
-                    className="relative h-72 md:h-banner bg-cover bg-center w-full"
-                    style={{ backgroundImage: `url('../image/home_page.jpg')` }}
-                >
-                    <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+                <section className="relative bg-gradient-to-r from-green-50 to-blue-50 py-16 md:py-24 px-4">
+                    <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
+                        <div className="space-y-6">
+                            <div className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 rounded-full bg-green-100 text-green-800 text-sm font-medium">
+                                <FaLeaf className="mr-2" /> Sustainable Shopping
+                                Platform
+                            </div>
+                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                                Give Items a{" "}
+                                <span className="text-green-600">
+                                    Second Life
+                                </span>
+                                , Shop Relove!
+                            </h1>
+                            <p className="text-lg text-gray-600 max-w-lg">
+                                Discover unique pre-loved items while reducing
+                                waste and saving money. Join our community of
+                                eco-conscious shoppers today.
+                            </p>
 
-                    <div className="relative z-10 flex flex-col items-center justify-center min-h-60 md:h-banner text-white px-4 text-center">
-                        <h2 className="text-xl sm:text-2xl md:text-3xl font-light mb-2">
-                            Give Items a Second Life,
-                        </h2>
-                        <h1 className="text-2xl sm:text-4xl md:text-5xl font-bold mb-6">
-                            Shop Relove!
-                        </h1>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <div className="relative flex-grow max-w-xl">
+                                    <input
+                                        type="text"
+                                        placeholder="Search for any item..."
+                                        className="text-black w-full px-6 py-4 rounded-full border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
+                                        value={searchQuery}
+                                        onChange={(e) =>
+                                            handleSearch(e.target.value)
+                                        }
+                                        onFocus={() =>
+                                            searchQuery.length > 1 &&
+                                            setShowSearchResults(true)
+                                        }
+                                        onBlur={() =>
+                                            setTimeout(
+                                                () =>
+                                                    setShowSearchResults(false),
+                                                200
+                                            )
+                                        }
+                                    />
+                                    <button className="absolute right-3 top-3 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
+                                        <FaSearch className="text-lg" />
+                                    </button>
 
-                        <div className="flex items-center bg-white rounded-full shadow-md w-full max-w-sm sm:max-w-md md:max-w-lg px-4 py-2 mx-auto">
-                            <input
-                                type="text"
-                                placeholder="Search for any item"
-                                className="flex-grow outline-none text-gray-700 placeholder-gray-500 border-none focus:ring-0 text-sm sm:text-base"
-                            />
-                            <button className="text-white bg-blue-500 hover:bg-blue-600 rounded-full p-2 ml-2">
-                                <FaSearch />
-                            </button>
-                            <button className="text-white bg-gray-500 hover:bg-gray-600 rounded-full p-2 ml-2">
-                                <FaCamera />
-                            </button>
+                                    {/* Search Results Dropdown */}
+                                    {showSearchResults && (
+                                        <div className="absolute z-50 w-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto">
+                                            {searchResults.length > 0 ? (
+                                                <div className="py-2">
+                                                    {searchResults.map(
+                                                        (item) => (
+                                                            <Link
+                                                                key={item.id}
+                                                                href="#"
+                                                                className="flex items-center px-4 py-3 hover:bg-gray-100 transition-colors"
+                                                            >
+                                                                <img
+                                                                    src={
+                                                                        item.image
+                                                                    }
+                                                                    alt={
+                                                                        item.name
+                                                                    }
+                                                                    className="w-10 h-10 rounded-full object-cover mr-3"
+                                                                />
+                                                                <div>
+                                                                    <p className="font-medium text-gray-900">
+                                                                        {
+                                                                            item.name
+                                                                        }
+                                                                    </p>
+                                                                    <p className="text-sm text-gray-500">
+                                                                        {
+                                                                            item.category
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                                <span className="ml-auto font-bold text-green-600">
+                                                                    {item.price}
+                                                                </span>
+                                                            </Link>
+                                                        )
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <div className="px-4 py-3 text-gray-500">
+                                                    No results found for "
+                                                    {searchQuery}"
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <button className="px-6 py-4 bg-gray-800 text-white rounded-full flex items-center justify-center gap-2 hover:bg-gray-900 transition-colors">
+                                    <FaCamera /> Camera Search
+                                </button>
+                            </div>
+
+                            <div className="flex flex-wrap gap-4 pt-4">
+                                <span className="text-gray-500 text-sm">
+                                    Popular Searches:
+                                </span>
+                                <a
+                                    href="#"
+                                    className="text-sm text-gray-700 hover:text-green-600"
+                                >
+                                    Vintage jeans
+                                </a>
+                                <a
+                                    href="#"
+                                    className="text-sm text-gray-700 hover:text-green-600"
+                                >
+                                    Books
+                                </a>
+                                <a
+                                    href="#"
+                                    className="text-sm text-gray-700 hover:text-green-600"
+                                >
+                                    Electronics
+                                </a>
+                                <a
+                                    href="#"
+                                    className="text-sm text-gray-700 hover:text-green-600"
+                                >
+                                    Home decor
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="relative">
+                            <div className="bg-white rounded-2xl shadow-xl p-2 transform rotate-2">
+                                <img
+                                    src="/image/home_page.jpg"
+                                    alt="Sustainable shopping"
+                                    className="rounded-xl w-full h-64 object-cover transform -rotate-2"
+                                />
+                            </div>
+                            <div className="absolute -bottom-12 -left-2 md:-bottom-6 md:-left-6 bg-white rounded-xl shadow-lg p-4 w-60 md:w-60">
+                                <div className="flex items-center">
+                                    <div className="flex-shrink-0">
+                                        <img
+                                            src="/image/shania_yan.png"
+                                            alt="User"
+                                            className="h-10 w-10 rounded-full"
+                                        />
+                                    </div>
+                                    <div className="ml-3">
+                                        <p className="text-sm font-medium text-gray-900">
+                                            Sarah M.
+                                        </p>
+                                        <div className="flex items-center">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                <FaStar
+                                                    key={star}
+                                                    className="w-3 h-3 text-yellow-400 fill-current"
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="mt-2 text-xs text-gray-500">
+                                    "Found amazing vintage pieces here!"
+                                </p>
+                            </div>
+                            <div className="absolute -top-10 -right-2 md:-top-6 md:-right-6 bg-green-600 text-white rounded-xl shadow-lg p-4 w-48">
+                                <div className="flex items-center">
+                                    <FaRecycle className="text-xl mr-2" />
+                                    <span className="font-bold">1.2K+</span>
+                                </div>
+                                <p className="mt-1 text-xs">
+                                    Items saved from landfill this month
+                                </p>
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                {/* Product Carousel */}
-                <section className="px-4">
-                    <Carousel_ProductData />
                 </section>
 
+                {/* Categories Section */}
                 <section className="py-12 bg-white px-4">
-                    <h2 className="text-2xl text-black font-bold text-center mb-6">
-                        Recommended for You
-                    </h2>
-
-                    <div className="flex flex-wrap justify-center gap-3 mb-8">
-                        {categories.map((category) => (
-                            <button
-                                key={category}
-                                onClick={() => setSelectedCategory(category)}
-                                className={`px-4 py-2 rounded-full border ${
-                                    selectedCategory === category
-                                        ? "bg-blue-600 text-white border-blue-600"
-                                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-                                }`}
+                    <div className="max-w-7xl mx-auto">
+                        <div className="flex flex-col md:flex-row md:justify-between items-center mb-8">
+                            <h2 className="text-2xl font-bold text-gray-900 text-center">
+                                Various Category Waiting For You To Discover
+                            </h2>
+                            <Link
+                                href={route("shopping")}
+                                className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium mt-3 md:mt-0"
                             >
-                                {category}
-                            </button>
-                        ))}
+                                View all categories{" "}
+                                <FaArrowRight className="ml-1 text-xs" />
+                            </Link>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                            {list_categoryItem.map((category) => (
+                                <button
+                                    key={category.category_id}
+                                    onClick={() =>
+                                        setSelectedCategory(
+                                            category.category_name
+                                        )
+                                    }
+                                    className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all ${
+                                        selectedCategory ===
+                                        category.category_name
+                                            ? "border-green-500 bg-green-50 shadow-md"
+                                            : "border-gray-200 hover:border-green-300 hover:shadow-sm"
+                                    }`}
+                                >
+                                    <span className="mb-2">
+                                        {categoryIcons[
+                                            category.category_name
+                                        ] || (
+                                            <Boxes className="w-6 h-6 text-gray-400" />
+                                        )}
+                                    </span>
+                                    <span className="text-sm font-medium text-gray-700">
+                                        {category.category_name}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
+                </section>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 max-w-6xl mx-auto">
-                        {displayItems.map((item) => (
-                            <div
-                                key={item.id}
-                                className="bg-white shadow rounded-lg overflow-hidden"
-                            >
-                                <img
-                                    src={item.image}
-                                    alt={item.name}
-                                    className="w-full h-40 object-cover"
-                                />
-                                <div className="p-4">
-                                    <h3 className="text-lg text-black font-semibold mb-1">
-                                        {item.name}
-                                    </h3>
-                                    <p className="text-gray-500 text-sm mb-1">
-                                        {item.category}
-                                    </p>
-                                    <p className="text-blue-600 font-bold">
-                                        {item.price}
-                                    </p>
+                {/* Product Carousel */}
+                <section className="py-12 bg-gray-50 px-4">
+                    <div className="max-w-7xl mx-auto">
+                        {hasFlashSaleProducts ? (
+                            <Carousel_ProductData
+                                productData={list_shoppingItem}
+                            />
+                        ) : (
+                            <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100">
+                                <div className="flex justify-center mb-4">
+                                    <FaExclamationTriangle className="text-4xl text-yellow-500" />
                                 </div>
+                                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                    No Flash Sale Products Available
+                                </h3>
+                                <p className="text-gray-600 mb-4">
+                                    There are currently no products on flash
+                                    sale. Check back later for amazing deals!
+                                </p>
+                                <Link
+                                    href={route("shopping")}
+                                    className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
+                                >
+                                    Browse All Products
+                                    <FaArrowRight className="ml-2 text-sm" />
+                                </Link>
                             </div>
-                        ))}
+                        )}
+                    </div>
+                </section>
+
+                {/* Featured Products */}
+                <section className="py-12 bg-white px-4">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="flex flex-col md:flex-row md:justify-between items-center mb-8">
+                            <h2 className="text-2xl font-bold text-gray-900 text-center">
+                                Recommended for You
+                            </h2>
+                            <a
+                                href="#"
+                                className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium mt-3 md:mt-0"
+                            >
+                                View all{" "}
+                                <FaArrowRight className="ml-1 text-xs" />
+                            </a>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {displayItems.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                                >
+                                    <div className="relative">
+                                        <img
+                                            src={item.image}
+                                            alt={item.name}
+                                            className="w-full h-56 object-cover"
+                                        />
+                                        {item.isNew && (
+                                            <span className="absolute top-3 left-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
+                                                New
+                                            </span>
+                                        )}
+                                        <button className="absolute top-3 right-3 bg-white p-2 rounded-full shadow-md hover:bg-gray-100">
+                                            <FaHeart className="text-gray-400 hover:text-red-500" />
+                                        </button>
+                                        <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+                                            {item.category}
+                                        </div>
+                                    </div>
+                                    <div className="p-4">
+                                        <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                                            {item.name}
+                                        </h3>
+
+                                        <div className="flex items-center mb-2">
+                                            <div className="flex items-center">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                    <FaStar
+                                                        key={star}
+                                                        className={`w-3 h-3 ${
+                                                            star <=
+                                                            Math.floor(
+                                                                item.rating
+                                                            )
+                                                                ? "text-yellow-400 fill-current"
+                                                                : "text-gray-300"
+                                                        }`}
+                                                    />
+                                                ))}
+                                            </div>
+                                            <span className="text-xs text-gray-500 ml-1">
+                                                ({item.reviews})
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center justify-between mt-3">
+                                            <div>
+                                                <span className="font-bold text-gray-900">
+                                                    {item.price}
+                                                </span>
+                                                <span className="text-xs text-gray-500 line-through ml-2">
+                                                    {item.originalPrice}
+                                                </span>
+                                            </div>
+                                            <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
+                                                <FaShoppingCart className="text-sm" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </section>
 
                 {/* BENEFITS */}
-                <section className="py-16 bg-white px-4">
-                    <div className="max-w-6xl mx-auto">
-                        <h2 className="text-3xl text-black font-bold text-center mb-12">
-                            Why Choose Relove Market?
-                        </h2>
-                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                <section className="py-16 bg-gray-50 px-4">
+                    <div className="max-w-7xl mx-auto">
+                        <div className="text-center max-w-3xl mx-auto mb-12">
+                            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+                                Why Choose Relove Market?
+                            </h2>
+                            <p className="text-gray-600">
+                                We're revolutionizing the way people think about
+                                secondhand shopping with a focus on
+                                sustainability and community.
+                            </p>
+                        </div>
+                        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                             {[
                                 {
-                                    icon: <FaRecycle />,
+                                    icon: <FaRecycle className="text-3xl" />,
                                     title: "Eco-Friendly",
-                                    text: "Reduce waste and extend product life.",
+                                    text: "Reduce waste and extend product life by giving items a second home.",
+                                    color: "text-green-600",
                                 },
                                 {
-                                    icon: <FaStore />,
+                                    icon: <FaShieldAlt className="text-3xl" />,
                                     title: "Trusted Sellers",
-                                    text: "Buy from verified sellers across categories.",
+                                    text: "All sellers are verified to ensure safe and reliable transactions.",
+                                    color: "text-blue-600",
                                 },
                                 {
-                                    icon: <FaShoppingBag />,
+                                    icon: <FaTags className="text-3xl" />,
                                     title: "Affordable Finds",
-                                    text: "Discover unique items at fair prices.",
+                                    text: "Discover unique items at fair prices without breaking the bank.",
+                                    color: "text-purple-600",
                                 },
                                 {
-                                    icon: <FaCamera />,
+                                    icon: <FaCamera className="text-3xl" />,
                                     title: "Smart Listing",
-                                    text: "List items easily using image recognition.",
+                                    text: "List items in seconds using our AI-powered image recognition.",
+                                    color: "text-orange-600",
                                 },
                             ].map((feature, idx) => (
                                 <div
                                     key={idx}
-                                    className="bg-gray-50 p-6 rounded-lg shadow-md text-center"
+                                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
                                 >
-                                    <div className="text-3xl flex flex-row justify-center text-blue-600 mb-4">
+                                    <div
+                                        className={`flex justify-center items-center w-14 h-14 rounded-xl bg-opacity-10 ${
+                                            feature.color
+                                        } ${feature.color.replace(
+                                            "text",
+                                            "bg"
+                                        )} mb-4`}
+                                    >
                                         {feature.icon}
                                     </div>
-                                    <h4 className="font-semibold text-lg text-black mb-2">
+                                    <h4 className="font-semibold text-lg text-gray-900 mb-2">
                                         {feature.title}
                                     </h4>
-                                    <p className="text-gray-600">
+                                    <p className="text-gray-600 text-sm">
                                         {feature.text}
                                     </p>
                                 </div>
@@ -249,67 +600,178 @@ export default function HomePage() {
                 </section>
 
                 {/* CTA */}
-                <section
-                    className="relative py-16 text-white text-center px-4 overflow-hidden"
-                    style={{
-                        backgroundImage: `url('../image/seller_bg.jpg')`,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                    }}
-                >
-                    {/* Dark + Blur Overlay */}
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+                <section className="relative py-20 text-white text-center px-4 overflow-hidden">
+                    <div
+                        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                        style={{
+                            backgroundImage: `url('../image/seller_bg.jpg')`,
+                        }}
+                    >
+                        <div className="absolute inset-0 bg-gradient-to-r from-green-900/90 to-blue-900/90 backdrop-blur-sm"></div>
+                    </div>
 
-                    {/* Content */}
-                    <div className="relative z-10 max-w-xl mx-auto">
+                    <div className="relative z-10 max-w-3xl mx-auto">
                         <h2 className="text-3xl md:text-4xl font-bold mb-4">
-                            Ready to Sell?
+                            Ready to Sell Your Preloved Items?
                         </h2>
-                        <p className="text-lg md:text-xl mb-6">
-                            Join the sustainable movement and turn your items
-                            into earnings.
+                        <p className="text-lg md:text-xl mb-8 opacity-90">
+                            Join thousands of sellers turning their pre-loved
+                            items into earnings while promoting sustainable
+                            consumption.
                         </p>
-                        <Link
-                            href={route("seller-registration")}
-                            className="bg-white text-blue-600 px-6 py-3 rounded-full font-semibold hover:bg-gray-100 transition"
-                        >
-                            Become a Seller
-                        </Link>
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                            <Link
+                                href={route("seller-registration")}
+                                className="bg-white text-green-700 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition shadow-md hover:shadow-lg"
+                            >
+                                Become a Seller Today
+                            </Link>
+                            <Link
+                                href={route("seller-benefit")}
+                                className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-green-700 transition"
+                            >
+                                How It Works
+                            </Link>
+                        </div>
+                        <div className="mt-10 grid grid-cols-3 gap-8 max-w-xl mx-auto">
+                            <div>
+                                <div className="text-3xl font-bold">10K+</div>
+                                <div className="text-sm opacity-80">
+                                    Active Sellers
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-3xl font-bold">50K+</div>
+                                <div className="text-sm opacity-80">
+                                    Listed Items
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-3xl font-bold">98%</div>
+                                <div className="text-sm opacity-80">
+                                    Satisfied Users
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
                 {/* How it Works */}
-                <section className="py-12 px-6 bg-white">
-                    <h2 className="text-2xl text-black font-bold text-center mb-8">
-                        Our Service
-                    </h2>
-                    <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-                        <div className="text-center">
-                            <FaRecycle className="text-4xl text-green-600 mb-4 mx-auto" />
-                            <h4 className="font-semibold text-black text-lg mb-2">
-                                Relove Old Items
-                            </h4>
-                            <p className="text-gray-600">
-                                Upload pre-loved products for resale.
-                            </p>
+                <section className="py-16 bg-white px-4">
+                    <div className="max-w-7xl mx-auto">
+                        <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
+                            How It Works
+                        </h2>
+                        <p className="text-gray-600 text-center max-w-2xl mx-auto mb-12">
+                            Selling and buying pre-loved items has never been
+                            easier with our simple process
+                        </p>
+
+                        <div className="grid md:grid-cols-3 gap-8">
+                            <div className="text-center p-6 bg-gray-50 rounded-xl hover:shadow-md transition-shadow">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
+                                    <span className="text-xl font-bold">1</span>
+                                </div>
+                                <FaRecycle className="text-4xl text-green-600 mb-4 mx-auto" />
+                                <h4 className="font-semibold text-gray-900 text-lg mb-2">
+                                    List Your Items
+                                </h4>
+                                <p className="text-gray-600">
+                                    Snap photos of your pre-loved items and
+                                    create listings in minutes.
+                                </p>
+                            </div>
+                            <div className="text-center p-6 bg-gray-50 rounded-xl hover:shadow-md transition-shadow">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-4">
+                                    <span className="text-xl font-bold">2</span>
+                                </div>
+                                <FaStore className="text-4xl text-blue-600 mb-4 mx-auto" />
+                                <h4 className="font-semibold text-gray-900 text-lg mb-2">
+                                    Manage Your Store
+                                </h4>
+                                <p className="text-gray-600">
+                                    Track sales, communicate with buyers, and
+                                    manage your inventory.
+                                </p>
+                            </div>
+                            <div className="text-center p-6 bg-gray-50 rounded-xl hover:shadow-md transition-shadow">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 text-purple-600 mb-4">
+                                    <span className="text-xl font-bold">3</span>
+                                </div>
+                                <FaShoppingBag className="text-4xl text-purple-600 mb-4 mx-auto" />
+                                <h4 className="font-semibold text-gray-900 text-lg mb-2">
+                                    Earn & Shop
+                                </h4>
+                                <p className="text-gray-600">
+                                    Get paid securely and use your earnings to
+                                    shop for other great finds.
+                                </p>
+                            </div>
                         </div>
-                        <div className="text-center">
-                            <FaStore className="text-4xl text-blue-600 mb-4 mx-auto" />
-                            <h4 className="font-semibold text-black text-lg mb-2">
-                                Open Your Store
-                            </h4>
-                            <p className="text-gray-600">
-                                Become a seller and build your community.
-                            </p>
-                        </div>
-                        <div className="text-center">
-                            <FaShoppingBag className="text-4xl text-purple-600 mb-4 mx-auto" />
-                            <h4 className="font-semibold text-black text-lg mb-2">
-                                Start Shopping
-                            </h4>
-                            <p className="text-gray-600">
-                                Discover unique items at affordable prices.
-                            </p>
+                    </div>
+                </section>
+
+                {/* Testimonials */}
+                <section className="py-16 bg-gray-50 px-4">
+                    <div className="max-w-7xl mx-auto">
+                        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
+                            What Our Community Says
+                        </h2>
+                        <div className="grid md:grid-cols-3 gap-8">
+                            {[
+                                {
+                                    name: "Emma R.",
+                                    role: "Seller & Buyer",
+                                    text: "I've made over RM2,000 selling clothes I no longer wear. The process is so simple and the community is wonderful!",
+                                    avatar: "/image/shania_yan.png",
+                                },
+                                {
+                                    name: "Alex T.",
+                                    role: "Electronics Seller",
+                                    text: "As a tech enthusiast, I love finding old gadgets new homes. This platform makes it easy to connect with buyers.",
+                                    avatar: "/image/shania_yan.png",
+                                },
+                                {
+                                    name: "Sarah L.",
+                                    role: "Home Decor Buyer",
+                                    text: "I've furnished my entire apartment with unique finds from Relove. Sustainable, affordable, and stylish!",
+                                    avatar: "/image/shania_yan.png",
+                                },
+                            ].map((testimonial, idx) => (
+                                <div
+                                    key={idx}
+                                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+                                >
+                                    <div className="flex items-center mb-4">
+                                        <div className="flex-shrink-0">
+                                            <img
+                                                src={testimonial.avatar}
+                                                alt={testimonial.name}
+                                                className="h-12 w-12 rounded-full"
+                                            />
+                                        </div>
+                                        <div className="ml-4">
+                                            <h4 className="font-semibold text-gray-900">
+                                                {testimonial.name}
+                                            </h4>
+                                            <p className="text-sm text-gray-500">
+                                                {testimonial.role}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-600">
+                                        "{testimonial.text}"
+                                    </p>
+                                    <div className="flex items-center mt-4">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                            <FaStar
+                                                key={star}
+                                                className="w-4 h-4 text-yellow-400 fill-current"
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </section>

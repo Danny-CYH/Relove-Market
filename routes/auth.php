@@ -50,6 +50,9 @@ Route::middleware('auth')->group(function () {
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
         ->name('password.confirm');
 
+    Route::post('/resend-verification', [RegisteredUserController::class, 'resendVerification'])
+        ->name('custom.verification.send');
+
     // Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
 
     Route::put('password', [PasswordController::class, 'update'])->name('password.update');

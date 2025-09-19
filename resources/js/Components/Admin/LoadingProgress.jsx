@@ -9,12 +9,14 @@ export function LoadingProgress({ modalType, modalMessage }) {
                     </div>
                 )}
                 {modalType === "success" && (
-                    <p className="text-green-600 font-semibold">
+                    <p className="text-green-600 font-semibold whitespace-pre-wrap break-words">
                         {modalMessage}
                     </p>
                 )}
                 {modalType === "error" && (
-                    <p className="text-red-600 font-semibold">{modalMessage}</p>
+                    <p className="text-red-600 font-semibold whitespace-pre-wrap break-words">
+                        {modalMessage}
+                    </p>
                 )}
             </div>
         </div>

@@ -23,6 +23,11 @@ class VerifyEmailController extends Controller
             event(new Verified($request->user()));
         }
 
+        \Log::info('Verifying user', [
+            'auth_user' => $request->user(),
+            'email' => $request->user()?->email,
+        ]);
+
         return redirect()->intended(route('homepage', absolute: false));
     }
 }

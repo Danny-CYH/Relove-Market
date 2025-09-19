@@ -1,79 +1,173 @@
-import React, { useRef } from "react";
-import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
-
+import React, { useRef, useState, useEffect } from "react";
+import { FaArrowLeft, FaArrowRight, FaFire, FaClock } from "react-icons/fa";
 import Carousel from "react-multi-carousel";
-
+import { ProductCard } from "./ProductCard";
+import { Link } from "@inertiajs/react";
 import "react-multi-carousel/lib/styles.css";
 
-import { ProductCard } from "./ProductCard";
-
 export function Carousel_ProductData({ productData }) {
+    // Fallback if productData is empty
+    const products = productData && productData.length > 0 ? productData : [];
+
+    // State to track if we have enough items for arrows to work
+    const [showArrows, setShowArrows] = useState(true);
+
     const responsive = {
         superLargeDesktop: {
-            breakpoint: { max: 4000, min: 1024 },
+            breakpoint: { max: 4000, min: 1280 },
             items: 4,
+            partialVisibilityGutter: 40,
         },
         desktop: {
-            breakpoint: { max: 1024, min: 768 },
+            breakpoint: { max: 1280, min: 1024 },
             items: 3,
+            partialVisibilityGutter: 30,
         },
         tablet: {
-            breakpoint: { max: 768, min: 464 },
-            items: 1,
+            breakpoint: { max: 1024, min: 640 },
+            items: 2,
+            partialVisibilityGutter: 20,
         },
         mobile: {
-            breakpoint: { max: 464, min: 0 },
+            breakpoint: { max: 640, min: 0 },
             items: 1,
+            partialVisibilityGutter: 10,
         },
     };
 
     const carouselRef = useRef();
 
     const goToPrevious = () => {
-        carouselRef.current?.previous();
+        if (carouselRef.current && products.length > 1) {
+            carouselRef.current.previous();
+        }
     };
 
     const goToNext = () => {
-        carouselRef.current?.next();
+        if (carouselRef.current && products.length > 1) {
+            carouselRef.current.next();
+        }
     };
+
+    // Check if we have enough products to show arrows
+    useEffect(() => {
+        if (products.length <= 1) {
+            setShowArrows(false);
+        } else {
+            setShowArrows(true);
+        }
+    }, [products.length]);
+
     return (
-        <>
-            <div className="w-full mt-10 px-4 py-4 relative">
-                <div className="flex items-center justify-between">
-                    <h2 className="absolute -top-2 left-4 md:left-16 text-2xl font-semibold text-green-900">
-                        Flash Sale
-                    </h2>
-                    <div className="absolute -top-4 right-2 md:right-16 flex gap-2 p-2 z-10">
-                        <button
-                            onClick={goToPrevious}
-                            className="bg-slate-700 text-white p-2 px-4 hover:bg-gray-400"
-                        >
-                            <FaArrowLeft />
-                        </button>
-                        <button
-                            onClick={goToNext}
-                            className="bg-slate-700 text-white p-2 px-4 hover:bg-gray-400"
-                        >
-                            <FaArrowRight />
-                        </button>
+        <section className="py-4 px-4">
+            <div className="max-w-7xl mx-auto relative">
+                {/* Header with countdown timer */}
+                <div className="flex flex-col md:flex-row justify-between items-center mb-8">
+                    <div className="flex items-center">
+                        <div className="bg-red-600 text-white p-2 rounded-lg mr-4">
+                            <FaFire className="text-2xl" />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+                                Flash Sale
+                            </h2>
+                            <p className="text-red-600 font-medium">
+                                Ending in:
+                            </p>
+                        </div>
                     </div>
+
+                    <div className="flex items-center mt-4 md:mt-0 bg-white px-4 py-2 rounded-lg shadow-sm">
+                        <FaClock className="text-red-600 mr-2" />
+                        <span className="text-xl font-mono font-bold text-red-600">
+                            02:45:18
+                        </span>
+                    </div>
+
+                    {showArrows && (
+                        <div className="hidden md:flex items-center mt-4 md:mt-0">
+                            <button
+                                onClick={goToPrevious}
+                                className="bg-white text-gray-700 p-3 rounded-full shadow-md hover:bg-gray-50 mr-2 transition-all hover:shadow-lg"
+                                aria-label="Previous products"
+                            >
+                                <FaArrowLeft />
+                            </button>
+                            <button
+                                onClick={goToNext}
+                                className="bg-white text-gray-700 p-3 rounded-full shadow-md hover:bg-gray-50 transition-all hover:shadow-lg"
+                                aria-label="Next products"
+                            >
+                                <FaArrowRight />
+                            </button>
+                        </div>
+                    )}
                 </div>
-                <Carousel
-                    ref={carouselRef}
-                    responsive={responsive}
-                    infinite={true}
-                    autoPlay={true}
-                    autoPlaySpeed={5000}
-                    arrows={false}
-                    renderButtonGroupOutside={true}
-                >
-                    <ProductCard />
-                    <ProductCard />
-                    <ProductCard />
-                    <ProductCard />
-                    <ProductCard />
-                </Carousel>
+
+                {/* Carousel */}
+                <div className="relative">
+                    <Carousel
+                        ref={carouselRef}
+                        responsive={responsive}
+                        infinite={products.length > 1}
+                        autoPlay={false}
+                        arrows={false}
+                        renderButtonGroupOutside={true}
+                        itemClass="px-2"
+                        containerClass="pb-6"
+                        partialVisible={true}
+                        keyBoardControl={true}
+                        swipeable={true}
+                        draggable={true}
+                        shouldResetAutoplay={false}
+                    >
+                        {products.map((product) => (
+                            <div key={product.product_id} className="h-full">
+                                <Link
+                                    href={route(
+                                        "item-details",
+                                        product.product_id
+                                    )}
+                                >
+                                    <ProductCard
+                                        product={product}
+                                        isFlashSale={true}
+                                    />
+                                </Link>
+                            </div>
+                        ))}
+                    </Carousel>
+
+                    {/* Mobile navigation buttons */}
+                    {showArrows && (
+                        <div className="flex justify-center mt-4 md:hidden">
+                            <button
+                                onClick={goToPrevious}
+                                className="bg-white text-gray-700 p-3 rounded-full shadow-md hover:bg-gray-50 mr-2"
+                                aria-label="Previous products"
+                            >
+                                <FaArrowLeft />
+                            </button>
+                            <button
+                                onClick={goToNext}
+                                className="bg-white text-gray-700 p-3 rounded-full shadow-md hover:bg-gray-50"
+                                aria-label="Next products"
+                            >
+                                <FaArrowRight />
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* View all button */}
+                <div className="text-center mt-8">
+                    <Link href="#">
+                        <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-full font-medium transition-colors shadow-md hover:shadow-lg">
+                            View All Flash Sale Items
+                        </button>
+                    </Link>
+                </div>
             </div>
-        </>
+        </section>
     );
 }

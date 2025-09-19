@@ -1,116 +1,106 @@
-import {
-    Card,
-    CardHeader,
-    CardBody,
-    CardFooter,
-    Button,
-    Typography,
-} from "@material-tailwind/react";
-import { FaStar } from "react-icons/fa";
-import { useEffect, useState } from "react";
+import { FaClock, FaHeart, FaShoppingCart, FaStar } from "react-icons/fa";
+import { useState } from "react";
 
-export function ProductCard({ product }) {
-    const { name, description, image, price, rating, stock, flashEndTime } =
-        product || {};
-    const [timeLeft, setTimeLeft] = useState(0);
+export function ProductCard({ product, isFlashSale }) {
+    if (!product) return null;
 
-    useEffect(() => {
-        if (!flashEndTime) return;
-        const interval = setInterval(() => {
-            const now = new Date().getTime();
-            const distance = new Date(flashEndTime).getTime() - now;
-            setTimeLeft(distance > 0 ? distance : 0);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, [flashEndTime]);
-
-    const formatTime = (ms) => {
-        const totalSeconds = Math.floor(ms / 1000);
-        const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, "0");
-        const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(
-            2,
-            "0"
-        );
-        const seconds = String(totalSeconds % 60).padStart(2, "0");
-        return `${hours}:${minutes}:${seconds}`;
-    };
+    const { category, originalPrice, rating, reviews, discount, timeLeft } =
+        product;
 
     return (
-        <Card className="w-full max-w-xs mx-auto shadow-md hover:shadow-xl transition duration-300 rounded-xl mt-7 mb-5">
-            <CardHeader
-                floated={false}
-                className="relative h-56 overflow-hidden rounded-t-xl"
-            >
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 h-full flex flex-col group">
+            <div className="relative overflow-hidden">
                 <img
-                    src={image || "../image/apple_watch.jpg"}
-                    alt={name || "Product"}
-                    className="w-full h-full object-cover"
+                    src={
+                        import.meta.env.VITE_BASE_URL +
+                        product.product_image[0].image_path
+                    }
+                    alt={product.product_name}
+                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                {/* SALE Badge */}
-                {product && (
-                    <div className="absolute top-2 left-2 bg-red-500 text-white px-3 py-1 text-sm rounded shadow">
-                        SALE
+
+                {/* Flash sale badge */}
+                {isFlashSale && discount && (
+                    <div className="absolute top-3 left-3 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
+                        {discount}% OFF
                     </div>
                 )}
 
-                {/* Countdown Timer */}
-                {flashEndTime && timeLeft > 0 && (
-                    <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-3 py-1 text-sm rounded shadow font-mono">
-                        {formatTime(timeLeft)}
+                {/* Flash sale countdown */}
+                {isFlashSale && timeLeft && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-red-600 bg-opacity-90 text-white text-xs py-1 px-2">
+                        <div className="flex items-center justify-center">
+                            <FaClock className="mr-1" />
+                            <span className="font-mono">{timeLeft}</span>
+                        </div>
                     </div>
                 )}
-            </CardHeader>
+            </div>
 
-            <CardBody>
-                <Typography
-                    variant="h6"
-                    color="blue-gray"
-                    className="mb-1 font-semibold truncate"
-                >
-                    {name || "Apple Watch Series 7"}
-                </Typography>
-                <Typography
-                    variant="small"
-                    color="gray"
-                    className="mb-3 truncate"
-                >
-                    {description || "Aluminium Case – Starlight Sport Band"}
-                </Typography>
+            {/* Product info */}
+            <div className="p-4 flex-grow flex flex-col">
+                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                    {product.product_name}
+                </h3>
+                <span className="text-xs text-gray-500 uppercase font-medium mb-1">
+                    {category.category_name}
+                </span>
 
-                <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-1">
-                        {[...Array(rating || 4)].map((_, i) => (
+                {/* Rating */}
+                <div className="flex items-center mb-3">
+                    <div className="flex items-center">
+                        {[1, 2, 3, 4, 5].map((star) => (
                             <FaStar
-                                key={i}
-                                className="text-yellow-400 text-sm"
+                                key={star}
+                                className={`w-3 h-3 ${
+                                    star <= Math.floor(rating || 0)
+                                        ? "text-yellow-400 fill-current"
+                                        : "text-gray-300"
+                                }`}
                             />
                         ))}
-                        {[...Array(5 - (rating || 4))].map((_, i) => (
-                            <FaStar key={i} className="text-gray-300 text-sm" />
-                        ))}
-                        <span className="text-xs text-gray-500 ml-1">
-                            (128)
-                        </span>
                     </div>
-                    <span
-                        className={`text-sm font-medium ${
-                            stock ? "text-green-600" : "text-red-500"
-                        }`}
-                    >
-                        {stock ? "In Stock" : "Out of Stock"}
+                    <span className="text-xs text-gray-500 ml-1">
+                        ({reviews || 0})
                     </span>
                 </div>
 
-                <div className="text-xl font-bold text-green-700">
-                    {price || "RM200.00"}
-                </div>
-            </CardBody>
+                {/* Price */}
+                <div className="mt-auto flex items-center justify-between">
+                    <div>
+                        <span className="font-bold text-gray-900">
+                            RM {product.product_price}
+                        </span>
+                        {originalPrice && (
+                            <span className="text-xs text-gray-500 line-through ml-2">
+                                {originalPrice}
+                            </span>
+                        )}
+                    </div>
 
-            <CardFooter className="pt-4">
-                <Button fullWidth color="blue" ripple={true}>
-                    Add to Cart
-                </Button>
-            </CardFooter>
-        </Card>
+                    {!isFlashSale && (
+                        <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
+                            <FaShoppingCart className="text-sm" />
+                        </button>
+                    )}
+                </div>
+
+                {/* Progress bar for flash sale items */}
+                {isFlashSale && (
+                    <div className="mt-3">
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>Sold: 72%</span>
+                            <span>Available: 12/50</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                                className="bg-red-600 h-2 rounded-full"
+                                style={{ width: "72%" }}
+                            ></div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }

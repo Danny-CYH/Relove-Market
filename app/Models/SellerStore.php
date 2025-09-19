@@ -22,6 +22,6 @@ class SellerStore extends Model
 
     public function seller()
     {
-        return $this->belongsTo(Seller::class, "store_id", "store_id");
+        return $this->hasMany(Seller::class, "store_id", "store_id");
     }
 }

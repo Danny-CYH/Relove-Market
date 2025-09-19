@@ -22,6 +22,7 @@ return new class extends Migration {
             $table->string('role_id');
             $table->string('seller_id')->nullable(true);
             $table->string('status');
+            $table->timestamp('last_login_at')->nullable();
             $table->timestamps();
         });
 

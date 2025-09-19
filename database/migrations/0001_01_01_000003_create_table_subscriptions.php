@@ -13,7 +13,7 @@ return new class extends Migration {
     {
         Schema::create('subscriptions', function (Blueprint $table) {
             $table->string("subscription_id")->primary();
-            $table->string('subscription_name');
+            $table->string('name');
             $table->decimal('price', 10, 2);
             $table->integer('duration');
             $table->string('description');
@@ -23,7 +23,7 @@ return new class extends Migration {
         Subscription::insert([
             [
                 'subscription_id' => "SUB0001",
-                'subscription_name' => "Basic Plan",
+                'name' => "Basic Plan",
                 "price" => 30,
                 "duration" => 60,
                 "description" => "Starter package for individual sellers",
@@ -32,7 +32,7 @@ return new class extends Migration {
             ],
             [
                 'subscription_id' => "SUB0002",
-                'subscription_name' => "Pro Plan",
+                'name' => "Pro Plan",
                 "price" => 90,
                 "duration" => 60,
                 "description" => "For active independent sellers",
@@ -41,7 +41,7 @@ return new class extends Migration {
             ],
             [
                 'subscription_id' => "SUB0003",
-                'subscription_name' => "Ultimate Plan",
+                'name' => "Ultimate Plan",
                 "price" => 150,
                 "duration" => 60,
                 "description" => "For entrepreneur sellers",

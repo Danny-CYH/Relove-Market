@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create('seller_registrations', function (Blueprint $table) {
             $table->string("registration_id")->primary();
             $table->string("name");
-            $table->string("email")->unique();
+            $table->string("email");
             $table->string("phone_number");
             $table->string("store_name");
             $table->string("store_license");
@@ -24,8 +24,6 @@ return new class extends Migration {
             $table->string('business_id');
             $table->string("status");
             $table->timestamps();
-
-            $table->foreign('business_id')->references('business_id')->on('business')->onDelete('cascade');
         });
     }
 

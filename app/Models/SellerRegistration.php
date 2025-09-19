@@ -31,7 +31,6 @@ class SellerRegistration extends Model
 
     public function business()
     {
-        return $this->belongsTo(Business::class, 'business_id', 'business_id');
+        return $this->hasOne(Business::class, 'business_id', 'business_id');
     }
-
 }

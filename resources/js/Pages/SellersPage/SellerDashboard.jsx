@@ -22,9 +22,7 @@ import {
     faGaugeHigh,
     faTags,
     faTruckFast,
-    faSackDollar,
     faCreditCard,
-    faRightFromBracket,
     faTriangleExclamation,
     faCircleCheck,
     faClock,
@@ -116,7 +114,7 @@ const TrialModal = ({
     planUrl = "/seller/subscription",
 }) => {
     if (!isOpen) return null;
-    
+
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-[1px] flex items-center justify-center z-50">
             <motion.div
@@ -217,7 +215,7 @@ export default function SellerDashboard() {
             try {
                 // Example: replace with your real backend endpoint
                 // const { data } = await axios.get("/seller/dashboard/data");
-                // For now, we’ll use your original dummy shape (with a couple more fields)
+                // For now, we'll use your original dummy shape (with a couple more fields)
                 const data = {
                     shop_name: "Gemilang Store",
                     trial_ends_at: "2025-08-25",
@@ -386,19 +384,19 @@ export default function SellerDashboard() {
             {/* Sidebar */}
             <SellerSidebar shopName={shop.shop_name} />
 
-            {/* Main */}
-            <main className="flex-1 p-6">
+            {/* Main Content */}
+            <main className="flex-1 p-4 md:p-6 md:ml-0">
                 {/* Top header */}
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-900">
                             Welcome back, {shop.shop_name}!
                         </h1>
                         <div className="text-sm text-gray-500">
-                            Here’s what’s happening today.
+                            Here's what's happening today.
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full md:w-auto">
                         <button className="relative p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
                             <FontAwesomeIcon
                                 icon={faBell}
@@ -412,7 +410,7 @@ export default function SellerDashboard() {
                         </button>
                         <a
                             href="/seller/subscription"
-                            className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm"
+                            className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm whitespace-nowrap"
                         >
                             <FontAwesomeIcon
                                 icon={faCreditCard}
@@ -427,7 +425,7 @@ export default function SellerDashboard() {
                 {trialBanner && <div className="mb-6">{trialBanner}</div>}
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <StatCard
                         icon={faBoxOpen}
                         title="Products"
@@ -455,51 +453,55 @@ export default function SellerDashboard() {
                 </div>
 
                 {/* Charts */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
-                    <div className="col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+                    <div className="col-span-1 xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
                         <div className="flex items-center justify-between mb-3">
                             <div className="font-semibold text-gray-800">
                                 Monthly Earnings
                             </div>
                             <Badge color="indigo">Last 12 months</Badge>
                         </div>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <BarChart data={shop.salesGraph}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip />
-                                <Bar
-                                    dataKey="earnings"
-                                    fill="#4f46e5"
-                                    radius={[6, 6, 0, 0]}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <div className="h-64 md:h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={shop.salesGraph}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Bar
+                                        dataKey="earnings"
+                                        fill="#4f46e5"
+                                        radius={[6, 6, 0, 0]}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
 
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
                         <div className="flex items-center justify-between mb-3">
                             <div className="font-semibold text-gray-800">
                                 Store Traffic
                             </div>
                             <Badge color="blue">Visits</Badge>
                         </div>
-                        <ResponsiveContainer width="100%" height={280}>
-                            <LineChart data={shop.salesGraph}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line
-                                    type="monotone"
-                                    dataKey="visits"
-                                    stroke="#0ea5e9"
-                                    strokeWidth={2}
-                                    dot={false}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                        <div className="h-64 md:h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={shop.salesGraph}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="name" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Line
+                                        type="monotone"
+                                        dataKey="visits"
+                                        stroke="#0ea5e9"
+                                        strokeWidth={2}
+                                        dot={false}
+                                    />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
 
@@ -528,19 +530,19 @@ export default function SellerDashboard() {
                         <a
                             key={a.title}
                             href={a.href}
-                            className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition"
+                            className="group rounded-xl border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition"
                         >
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <div className="font-semibold text-gray-800">
+                                    <div className="font-semibold text-gray-800 text-sm md:text-base">
                                         {a.title}
                                     </div>
-                                    <div className="text-sm text-gray-500">
+                                    <div className="text-xs md:text-sm text-gray-500">
                                         {a.desc}
                                     </div>
                                 </div>
                                 <span
-                                    className={`h-10 w-10 rounded-lg flex items-center justify-center
+                                    className={`h-8 w-8 md:h-10 md:w-10 rounded-lg flex items-center justify-center
                     ${a.color === "indigo" && "bg-indigo-50 text-indigo-600"}
                     ${a.color === "blue" && "bg-sky-50 text-sky-600"}
                     ${a.color === "emerald" && "bg-emerald-50 text-emerald-600"}
@@ -554,9 +556,9 @@ export default function SellerDashboard() {
                 </div>
 
                 {/* Content Row: Recent Orders + Top Products */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     {/* Orders */}
-                    <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-5 overflow-hidden">
+                    <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 overflow-hidden">
                         <div className="flex items-center justify-between mb-3">
                             <div className="font-semibold text-gray-800">
                                 Recent Orders
@@ -568,7 +570,7 @@ export default function SellerDashboard() {
                                 View all
                             </a>
                         </div>
-                        <div className="overflow-auto">
+                        <div className="overflow-x-auto">
                             <table className="min-w-full text-sm">
                                 <thead>
                                     <tr className="text-left text-gray-500 border-b">
@@ -584,13 +586,15 @@ export default function SellerDashboard() {
                                 <tbody>
                                     {shop.orders.map((o) => (
                                         <tr key={o.id} className="border-t">
-                                            <td className="p-2 font-medium text-gray-700">
+                                            <td className="p-2 font-medium text-gray-700 whitespace-nowrap">
                                                 {o.id}
                                             </td>
-                                            <td className="p-2">
+                                            <td className="p-2 whitespace-nowrap">
                                                 {o.customer}
                                             </td>
-                                            <td className="p-2">{o.product}</td>
+                                            <td className="p-2 whitespace-nowrap">
+                                                {o.product}
+                                            </td>
                                             <td className="p-2">
                                                 <OrderStatusBadge
                                                     status={o.status}
@@ -607,10 +611,12 @@ export default function SellerDashboard() {
                                                     </Badge>
                                                 )}
                                             </td>
-                                            <td className="p-2">
+                                            <td className="p-2 whitespace-nowrap">
                                                 <Money>{o.total}</Money>
                                             </td>
-                                            <td className="p-2">{o.date}</td>
+                                            <td className="p-2 whitespace-nowrap">
+                                                {o.date}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -619,7 +625,7 @@ export default function SellerDashboard() {
                     </div>
 
                     {/* Top products */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
                         <div className="flex items-center justify-between mb-3">
                             <div className="font-semibold text-gray-800">
                                 Top Products
@@ -634,15 +640,15 @@ export default function SellerDashboard() {
                                     key={p.name}
                                     className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50"
                                 >
-                                    <div>
-                                        <div className="font-medium text-gray-800">
+                                    <div className="truncate">
+                                        <div className="font-medium text-gray-800 truncate">
                                             {p.name}
                                         </div>
                                         <div className="text-xs text-gray-500">
                                             {p.units} units sold
                                         </div>
                                     </div>
-                                    <div className="text-sm text-gray-700">
+                                    <div className="text-sm text-gray-700 whitespace-nowrap ml-2">
                                         <Money>{p.revenue}</Money>
                                     </div>
                                 </div>
@@ -652,7 +658,7 @@ export default function SellerDashboard() {
                 </div>
 
                 {/* Notifications */}
-                <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+                <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
                     <div className="flex items-center justify-between mb-3">
                         <div className="font-semibold text-gray-800">
                             Notifications
@@ -671,7 +677,7 @@ export default function SellerDashboard() {
                                     key={n.id}
                                     className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50"
                                 >
-                                    <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center">
+                                    <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
                                         <FontAwesomeIcon
                                             icon={
                                                 n.type === "success"
