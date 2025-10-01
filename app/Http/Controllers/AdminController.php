@@ -2,9 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\SellerAction;
+use App\Events\AdminPage\Manage_Subscriptions\SubscriptionCreated;
+use App\Events\AdminPage\Manage_Subscriptions\SubscriptionDeleted;
+use App\Events\AdminPage\Manage_Subscriptions\SubscriptionStatusUpdated;
+use App\Events\AdminPage\Manage_Subscriptions\SubscriptionUpdated;
 use App\Events\SellerRegistered;
+
+use App\Models\SellerRegistration;
+use App\Models\Seller;
+use App\Models\SellerStore;
+use App\Models\User;
+use App\Models\Role;
 use App\Models\Subscription;
+use App\Models\SubscriptionFeatures;
+
+use Exception;
 use Inertia\Inertia;
 
 use Illuminate\Http\Request;
@@ -14,16 +26,7 @@ use Illuminate\Support\Facades\DB;
 use App\Mail\SellerApprovedMail;
 use App\Mail\SellerRejectedMail;
 
-use App\Models\SellerRegistration;
-use App\Models\Seller;
-use App\Models\SellerStore;
-use App\Models\User;
-use App\Models\Role;
-
 use Carbon\Carbon;
-
-use phpDocumentor\Reflection\PseudoTypes\True_;
-use Stripe\StripeClient;
 
 class AdminController extends Controller
 {
@@ -61,66 +64,63 @@ class AdminController extends Controller
         return $storeId;
     }
 
-    public function adminDashboard()
+    // Function for generate the feature ID for subscription features
+    private static function generateFeatureId($prefix = 'FTR-', $padLength = 5)
     {
-        $list_sellerRegistration = SellerRegistration::with('business')
-            ->where('status', 'Pending')
-            ->take(3)
-            ->get();
+        $latestFeature = SubscriptionFeatures::orderBy('feature_id', 'desc')->first();
 
-        return Inertia::render("AdminPage/AdminDashboard", ['list_sellerRegistration' => $list_sellerRegistration]);
+        $number = 1;
+        if ($latestFeature && preg_match("/{$prefix}(\d+)/", $latestFeature->feature_id, $matches)) {
+            $number = (int) $matches[1] + 1;
+        }
+
+        return $prefix . str_pad($number, $padLength, '0', STR_PAD_LEFT);
     }
 
-    public function transactionPage()
+    // Function for generate unique subscription plan ID like PLAN-00001
+    private static function generatePlanId($prefix = 'PLAN-', $padLength = 5)
     {
-        return Inertia::render("AdminPage/Transactions");
+        $latestPlan = Subscription::orderBy('subscription_plan_id', 'desc')->first();
+
+        $number = 1;
+        if ($latestPlan && preg_match("/{$prefix}(\d+)/", $latestPlan->subscription_plan_id, $matches)) {
+            $number = (int) $matches[1] + 1;
+        }
+
+        return $prefix . str_pad($number, $padLength, '0', STR_PAD_LEFT);
     }
 
-    public function pendingSellerTable()
+    // Function for get the pending seller data on pending seller table page
+    public function getSellerList(Request $request)
     {
-        $list_sellerRegistration = SellerRegistration::with('business')
-            ->where('status', 'Pending')
-            ->paginate(10);
+        // Read params from the URL query
+        $perPage = $request->get('per_page', 3);      // Default 3 items per page
+        $status = $request->get('status', null);     // Status filter
+        $search = $request->get('search', null);     // Search filter
 
-        return Inertia::render("AdminPage/PendingSellerTable", ['list_sellerRegistration' => $list_sellerRegistration]);
-    }
+        // Base query
+        $query = SellerRegistration::with('business');
 
-    public function profilePage()
-    {
-        return Inertia::render("AdminPage/ProfilePage");
-    }
+        // Apply status filter (only if not "All")
+        if ($status && strtolower($status) !== 'all') {
+            $query->where('status', $status);
+        }
 
-    public function subscriptionManagement()
-    {
-        $list_subscription = Subscription::all();
+        // Apply search filter
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                    ->orWhere('email', 'LIKE', "%{$search}%");
+            });
+        }
 
-        return Inertia::render(
-            "AdminPage/SubscriptionManagement",
-            [
-                "list_subscription" => $list_subscription,
-            ]
-        );
-    }
-
-    public function subscriptionPolicy()
-    {
-        return Inertia::render("AdminPage/SubscriptionPolicy");
-    }
-
-    public function userManagement()
-    {
-        return Inertia::render("AdminPage/UserManagement");
-    }
-
-    public function getSellerList()
-    {
-        $list_sellerRegistration = SellerRegistration::with('business')
-            ->where('status', 'Pending')
-            ->paginate(10);
+        // Paginate results
+        $list_sellerRegistration = $query->paginate($perPage);
 
         return response()->json($list_sellerRegistration);
     }
 
+    // Function for get the user account data on manage user page.
     public function getUserList(Request $request)
     {
         $query = User::with('role');
@@ -153,6 +153,213 @@ class AdminController extends Controller
         return response()->json($list_user);
     }
 
+    // Function for retrieve the list subscriptions.
+    public function getSubscriptions()
+    {
+        $list_subscription = Subscription::with("subscriptionFeatures")
+            ->paginate(6);
+
+        return response()->json($list_subscription);
+    }
+
+    // Function for create new subscriptions
+    public function createSubscriptions(Request $request)
+    {
+        $validated = $request->validate([
+            'plan_name' => 'required|string|max:255',
+            'price' => 'required|numeric|min:0',
+            'description' => 'required|string',
+            'duration' => 'required|integer|min:1',
+            'status' => 'required|string|in:Active,Inactive',
+            'features' => 'nullable|array',
+            'features.*' => 'string'
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $subscription_plan_id = $this->generatePlanId();
+
+            // Create subscription
+            $subscription = Subscription::create([
+                'subscription_plan_id' => $subscription_plan_id,
+                'plan_name' => $validated['plan_name'],
+                'description' => $validated['description'],
+                'price' => $validated['price'],
+                'duration' => $validated['duration'],
+                'status' => $validated['status'],
+            ]);
+
+            // Create features
+            if (!empty($validated['features'])) {
+                foreach ($validated['features'] as $feature) {
+                    if (!empty(trim($feature))) {
+                        SubscriptionFeatures::create([
+                            'subscription_plan_id' => $subscription_plan_id,
+                            'feature_id' => $this->generateFeatureId(),
+                            'feature_text' => trim($feature),
+                        ]);
+                    }
+                }
+            }
+
+            // Load relationships for broadcasting
+            $subscription->load('subscriptionFeatures');
+
+            DB::commit();
+
+            // Broadcast event
+            broadcast(new SubscriptionCreated($subscription));
+
+            return response()->json([
+                'message' => 'Subscription created successfully!',
+                'subscription' => $subscription
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to create subscription',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // Function for update the existing subscriptions
+    public function updateSubscriptions(Request $request, $subscription_plan_id)
+    {
+        // 🔹 Validate input
+        $validated = $request->validate([
+            'plan_name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'duration' => 'required|integer|min:1',      // e.g. in days or months
+            'status' => 'required|string|in:Active,Inactive',
+            'features' => 'nullable|array',
+            'features.*' => 'string',
+        ]);
+
+        try {
+            // 🔹 Find subscription by its custom ID
+            $subscription = Subscription::where('subscription_plan_id', $subscription_plan_id)->firstOrFail();
+
+            // 🔹 Update subscription record
+            $subscription->update([
+                'plan_name' => $validated['plan_name'],
+                'description' => $validated['description'] ?? $subscription->description,
+                'price' => $validated['price'],
+                'duration' => $validated['duration'],
+                'status' => $validated['status'],
+            ]);
+
+            // 🔹 Replace features
+            if (isset($validated['features'])) {
+                // 1. Delete old features
+                SubscriptionFeatures::where('subscription_plan_id', $subscription->subscription_plan_id)->delete();
+
+                // 2. Insert new features
+                foreach ($validated['features'] as $featureText) {
+                    if (!empty(trim($featureText))) {
+                        \Log::info("Inserting feature: " . $featureText);   // debug log
+
+                        SubscriptionFeatures::create([
+                            'subscription_plan_id' => $subscription->subscription_plan_id,
+                            'feature_id' => $this->generateFeatureId(),
+                            'feature_text' => trim($featureText),
+                        ]);
+                    }
+                }
+            }
+
+            // Broadcast event
+            broadcast(new SubscriptionUpdated($subscription));
+
+            return response()->json([
+                'message' => 'Subscription updated successfully!',
+                'subscription' => $subscription,
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Failed to update subscription',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // Function for delete the existing subbscriptions
+    public function deleteSubscriptions($subscription_plan_id)
+    {
+        DB::beginTransaction();
+
+        try {
+            // Find subscription
+            $subscription = Subscription::with("subscriptionFeatures")
+                ->where("subscription_plan_id", $subscription_plan_id)
+                ->firstOrFail();
+
+            // ✅ FIRST: Delete all subscription features
+            SubscriptionFeatures::where('subscription_plan_id', $subscription_plan_id)
+                ->delete();
+
+            // Delete the subscription itself
+            $subscription->delete();
+
+            DB::commit();
+
+            // Broadcast event
+            broadcast(new SubscriptionDeleted($subscription_plan_id));
+
+            return response()->json([
+                "successMessage" => "Subscription deleted successfully"
+            ], 200);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                "errorMessage" => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Functions for active or inactive the subscriptions
+    public function updateStatusSubscriptions(Request $request, $subscription_plan_id)
+    {
+        DB::beginTransaction();
+
+        try {
+            // 🔹 Validate input
+            $validated = $request->validate([
+                'status' => 'required|string|in:Active,Inactive',
+            ]);
+
+            // 🔹 Find subscription
+            $subscription = Subscription::where('subscription_plan_id', $subscription_plan_id)
+                ->firstOrFail();
+
+            // 🔹 Update status
+            $subscription->update([
+                'status' => $validated['status'],
+            ]);
+
+            DB::commit();
+
+            // Broadcast event
+            broadcast(new SubscriptionStatusUpdated($subscription));
+
+            return response()->json([
+                'successMessage' => "Subscription {$validated['status']} successfully!"
+            ], 200);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'errorMessage' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Function for approve or reject the incoming seller request
     public function handleAction(Request $request, $id)
     {
         $request->validate([
@@ -218,5 +425,47 @@ class AdminController extends Controller
                 'successMessage' => "Seller has been rejected successfully.",
             ]);
         }
+    }
+
+    public function adminDashboard()
+    {
+        $list_sellerRegistration = SellerRegistration::with('business')
+            ->where('status', 'Pending')
+            ->take(3)
+            ->get();
+
+        return Inertia::render("AdminPage/AdminDashboard", ['list_sellerRegistration' => $list_sellerRegistration]);
+    }
+
+    public function transactionPage()
+    {
+        return Inertia::render("AdminPage/Transactions");
+    }
+
+    public function pendingSellerTable()
+    {
+        return Inertia::render("AdminPage/PendingSellerTable");
+    }
+
+    public function profilePage()
+    {
+        return Inertia::render("AdminPage/ProfilePage");
+    }
+
+    public function subscriptionManagement()
+    {
+        return Inertia::render(
+            "AdminPage/SubscriptionManagement"
+        );
+    }
+
+    public function subscriptionPolicy()
+    {
+        return Inertia::render("AdminPage/SubscriptionPolicy");
+    }
+
+    public function userManagement()
+    {
+        return Inertia::render("AdminPage/UserManagement");
     }
 }

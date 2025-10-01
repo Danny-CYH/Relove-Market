@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use phpDocumentor\Reflection\PseudoTypes\True_;
 
 return new class extends Migration {
     /**
@@ -18,8 +19,8 @@ return new class extends Migration {
             $table->text('account_number')->nullable();
             $table->string('store_id');
             $table->string('business_id');
-            $table->string('subscription_id')->nullable();
-            $table->boolean("is_verified");
+            $table->string('subscription_plan_id')->nullable();
+            $table->boolean("is_verified")->default(True);
             $table->timestamps();
 
             $table->foreign("store_id")->references('store_id')->on('seller_stores')->onDelete('cascade');

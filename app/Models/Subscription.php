@@ -11,25 +11,28 @@ class Subscription extends Model
 
     protected $table = "subscriptions";
 
-    protected $primaryKey = "subscription_id";
+    protected $primaryKey = "subscription_plan_id";
+
+    public $incrementing = false;
 
     protected $keyType = "string";
 
     protected $fillable = [
-        'subscription_id',
-        'name',
-        'price',
-        'duration',
+        'subscription_plan_id',
+        'plan_name',
         "description",
+        "price",
+        "duration",
+        "status",
     ];
 
     public function seller()
     {
-        return $this->belongsTo(Seller::class, "subscription_id", "subscription_id");
+        return $this->belongsTo(Seller::class, "subscription_plan_id", "subscription_plan_id");
     }
 
     public function subscriptionFeatures()
     {
-        return $this->belongsTo(SubscriptionFeatures::class, "subscription_id", "subscription_id");
+        return $this->hasMany(SubscriptionFeatures::class, "subscription_plan_id", "subscription_plan_id");
     }
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sidebar } from "@/Components/Admin/Sidebar";
+import { Sidebar } from "@/Components/AdminPage/Sidebar";
 
 export default function Transactions() {
     const [transactions, setTransactions] = useState([

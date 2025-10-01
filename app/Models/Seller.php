@@ -11,6 +11,7 @@ class Seller extends Model
     protected $primaryKey = "seller_id";
 
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -20,12 +21,17 @@ class Seller extends Model
         "seller_phone",
         "store_id",
         "business_id",
-        "subscription_id",
+        "subscription_plan_id",
         "is_verified",
     ];
 
     public function sellerStore()
     {
         return $this->belongsTo(SellerStore::class, 'store_id', 'store_id');
+    }
+
+    public function conversations()
+    {
+        return $this->hasMany(Conversation::class, 'seller_id', 'seller_id');
     }
 }

@@ -34,6 +34,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => function () use ($request) {
                     $user = $request->user();
+                    $seller = $request->user('seller');
 
                     if ($user) {
                         $user->load('role');
@@ -43,12 +44,23 @@ class HandleInertiaRequests extends Middleware
                             'name' => $user->name,
                             'email' => $user->email,
                             'role_id' => $user->role_id,
-                            'role_name' => $user->role->role_name, // ✅ from relation
+                            'role_name' => $user->role->role_name,
+                            'seller_id' => $user->seller_id,
+                        ];
+                    }
+                    if ($seller) {
+                        return [
+                            'type' => 'seller',
+                            'seller_id' => $seller->seller_id,
+                            'name' => $seller->seller_name,
+                            'email' => $seller->seller_email,
                         ];
                     }
 
                     return null;
                 },
+
+
             ],
 
             'flash' => [

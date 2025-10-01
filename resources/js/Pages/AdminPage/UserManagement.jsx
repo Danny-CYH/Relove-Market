@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import dayjs from "dayjs";
-import { Sidebar } from "@/Components/Admin/Sidebar";
-import { LoadingProgress } from "@/Components/Admin/LoadingProgress";
+import { Sidebar } from "@/Components/AdminPage/Sidebar";
+import { LoadingProgress } from "@/Components/AdminPage/LoadingProgress";
 
 export default function UserManagement() {
     const [users, setUsers] = useState([]);
@@ -522,10 +522,10 @@ export default function UserManagement() {
 
                                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                                     <div>
-                                                        <span className="font-medium">
+                                                        <span className="text-black font-medium">
                                                             Role:
                                                         </span>
-                                                        <span className="ml-1">
+                                                        <span className="text-gray-600 ml-1">
                                                             {
                                                                 user.role
                                                                     .role_name
@@ -533,7 +533,7 @@ export default function UserManagement() {
                                                         </span>
                                                     </div>
                                                     <div>
-                                                        <span className="font-medium">
+                                                        <span className="text-black font-medium">
                                                             Status:
                                                         </span>
                                                         <span
@@ -551,10 +551,10 @@ export default function UserManagement() {
                                                         </span>
                                                     </div>
                                                     <div>
-                                                        <span className="font-medium">
+                                                        <span className="text-black font-medium">
                                                             Registered:
                                                         </span>
-                                                        <span className="ml-1">
+                                                        <span className="text-gray-500 ml-1">
                                                             {dayjs(
                                                                 user.created_at
                                                             ).format(
@@ -562,21 +562,21 @@ export default function UserManagement() {
                                                             )}
                                                         </span>
                                                     </div>
-                                                    <div>
-                                                        <span className="font-medium">
-                                                            Last Login:
-                                                        </span>
-                                                        <span className="ml-1">
-                                                            {user.last_login_at ==
-                                                            null
-                                                                ? "Never"
-                                                                : dayjs(
-                                                                      user.last_login_at
-                                                                  ).format(
-                                                                      "DD/MM/YYYY"
-                                                                  )}
-                                                        </span>
-                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <span className="text-black text-sm font-medium">
+                                                        Last Login:
+                                                    </span>
+                                                    <span className="text-red-400 text-sm font-bold ml-1">
+                                                        {user.last_login_at ==
+                                                        null
+                                                            ? "Never"
+                                                            : dayjs(
+                                                                  user.last_login_at
+                                                              ).format(
+                                                                  "DD/MM/YYYY"
+                                                              )}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))

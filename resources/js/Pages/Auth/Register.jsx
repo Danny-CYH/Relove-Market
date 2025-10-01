@@ -1,5 +1,5 @@
-import { Footer } from "@/Components/Buyer/Footer";
-import { Navbar } from "@/Components/Buyer/Navbar";
+import { Footer } from "@/Components/BuyerPage/Footer";
+import { Navbar } from "@/Components/BuyerPage/Navbar";
 import TextInput from "@/Components/TextInput";
 import { Link, useForm, usePage } from "@inertiajs/react";
 import { useEffect, useState } from "react";

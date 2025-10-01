@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sidebar } from "@/Components/Admin/Sidebar";
+import { Sidebar } from "@/Components/AdminPage/Sidebar";
 import { FaEdit } from "react-icons/fa";
 import ReactQuill from "react-quill";
 import "react-quill/dist/quill.snow.css";

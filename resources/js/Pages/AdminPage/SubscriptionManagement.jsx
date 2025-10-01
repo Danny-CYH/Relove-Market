@@ -1,90 +1,167 @@
-import { useState } from "react";
-import { Sidebar } from "@/Components/Admin/Sidebar";
+import { useState, useEffect, useRef } from "react";
+
+import axios from "axios";
+
+import { Sidebar } from "@/Components/AdminPage/Sidebar";
+import Create_Subscriptions_Modal from "@/Components/AdminPage/SubscriptionManagement/Create_Subscriptions_Modal";
+import Edit_Subscriptions_Modal from "@/Components/AdminPage/SubscriptionManagement/Edit_Subscriptions_Modal";
+import Delete_Subscriptions_Modal from "@/Components/AdminPage/SubscriptionManagement/Delete_Subscriptions_Modal";
 
 export default function SubscriptionManagement() {
-    const [subscriptions, setSubscriptions] = useState([
-        {
-            id: 1,
-            planName: "Basic Plan",
-            price: "$9.99/month",
-            status: "Active",
-            duration: "Monthly",
-            features: ["Up to 10 products", "Basic analytics", "Email support"],
-            subscribers: 125,
-            revenue: "$1248.75",
-            createdAt: "2023-01-15",
-        },
-        {
-            id: 2,
-            planName: "Pro Plan",
-            price: "$29.99/month",
-            status: "Active",
-            duration: "Monthly",
-            features: [
-                "Unlimited products",
-                "Advanced analytics",
-                "Priority support",
-                "API access",
-            ],
-            subscribers: 78,
-            revenue: "$2339.22",
-            createdAt: "2023-02-10",
-        },
-        {
-            id: 3,
-            planName: "Enterprise Plan",
-            price: "$99.99/month",
-            status: "Active",
-            duration: "Monthly",
-            features: [
-                "Unlimited products",
-                "Advanced analytics",
-                "24/7 support",
-                "API access",
-                "Custom integrations",
-            ],
-            subscribers: 25,
-            revenue: "$2499.75",
-            createdAt: "2023-03-05",
-        },
-        {
-            id: 4,
-            planName: "Annual Basic",
-            price: "$99.99/year",
-            status: "Active",
-            duration: "Yearly",
-            features: ["Up to 10 products", "Basic analytics", "Email support"],
-            subscribers: 42,
-            revenue: "$4199.58",
-            createdAt: "2023-04-20",
-        },
-        {
-            id: 5,
-            planName: "Starter Plan",
-            price: "$4.99/month",
-            status: "Inactive",
-            duration: "Monthly",
-            features: ["Up to 5 products", "Basic analytics"],
-            subscribers: 0,
-            revenue: "$0.00",
-            createdAt: "2023-05-15",
-        },
-    ]);
+    const [subscriptions, setSubscriptions] = useState([]);
 
     const [filter, setFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
     const [durationFilter, setDurationFilter] = useState("All");
+
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+
     const [selectedSubscription, setSelectedSubscription] = useState(null);
+
+    const [loading, setLoading] = useState(false);
+
+    const [errors, setErrors] = useState({});
+
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    const [lastPage, setLastPage] = useState(1);
+    const [pagination, setPagination] = useState({});
+
+    const echoRef = useRef(null);
+
+    const [formData, setFormData] = useState({
+        plan_name: "",
+        price: "",
+        duration: "",
+        status: "Active",
+        features: [""],
+        description: "",
+    });
+
+    // Initialize Echo for real-time updates
+    const initializeEcho = () => {
+        if (typeof window.Echo !== "undefined") {
+            echoRef.current = window.Echo.channel("subscriptions");
+
+            // Listen for subscription created
+            echoRef.current.listen(".subscription.created", async (e) => {
+                console.log("📢 New subscription created event:", e);
+                // Refresh current page to get updated pagination
+                await fetchSubscriptionsWithPage(currentPage);
+            });
+
+            // Listen for subscription updated
+            echoRef.current.listen(".subscription.updated", async (e) => {
+                console.log("📢 Subscription updated event:", e);
+                // Refresh current page to get updated data
+                await fetchSubscriptionsWithPage(currentPage);
+            });
+
+            // Listen for subscription deleted
+            echoRef.current.listen(".subscription.deleted", async (e) => {
+                console.log("📢 Subscription deleted event:", e);
+
+                // Check if we need to adjust page after deletion
+                const currentItemsCount = subscriptions.length;
+                const isLastItemOnPage = currentItemsCount === 1;
+                const hasPreviousPage = currentPage > 1;
+
+                if (isLastItemOnPage && hasPreviousPage) {
+                    await fetchSubscriptionsWithPage(currentPage - 1);
+                } else {
+                    await fetchSubscriptionsWithPage(currentPage);
+                }
+            });
+
+            // Listen for status updates
+            echoRef.current.listen(
+                ".subscription.status.updated",
+                async (e) => {
+                    console.log("📢 Subscription status updated event:", e);
+                    await fetchSubscriptionsWithPage(currentPage);
+                }
+            );
+        } else {
+            console.warn("Echo is not available. Real-time updates disabled.");
+        }
+    };
+
+    // Cleanup Echo listener
+    const cleanupEcho = () => {
+        if (echoRef.current) {
+            echoRef.current.stopListening(".subscription.created");
+            echoRef.current.stopListening(".subscription.updated");
+            echoRef.current.stopListening(".subscription.deleted");
+            echoRef.current.stopListening(".subscription.status.updated");
+            echoRef.current.unsubscribe();
+        }
+    };
+
+    // Helper function to handle pagination after mutations
+    const handlePaginationAfterMutation = async (action = "default") => {
+        const currentItemsCount = subscriptions.length;
+
+        switch (action) {
+            case "delete":
+                // If deleting the last item on a page (not first page), go to previous page
+                if (currentItemsCount === 1 && currentPage > 1) {
+                    await fetchSubscriptionsWithPage(currentPage - 1);
+                } else {
+                    await fetchSubscriptionsWithPage(currentPage);
+                }
+                break;
+
+            case "create":
+                // If creating on a full page, might need to go to first page to see new item
+                // Or stay on current page and let server handle pagination
+                await fetchSubscriptionsWithPage(currentPage);
+                break;
+
+            default:
+                await fetchSubscriptionsWithPage(currentPage);
+        }
+    };
+
+    // Fetch subscriptions from database
+    const fetchSubscriptionsWithPage = async (page = 1) => {
+        setLoading(true);
+        try {
+            const response = await axios.get(
+                `/api/admin/get-subscriptions?page=${page}`
+            );
+            const list_subscriptions = response.data;
+
+            setSubscriptions(list_subscriptions.data);
+
+            setCurrentPage(list_subscriptions.current_page);
+            setLastPage(list_subscriptions.last_page);
+
+            setPagination({
+                from: list_subscriptions.from,
+                to: list_subscriptions.to,
+                total: list_subscriptions.total,
+                current_page: list_subscriptions.current_page,
+                last_page: list_subscriptions.last_page,
+            });
+        } catch (error) {
+            console.error("Error fetching subscriptions:", error);
+            alert("Failed to load subscription plans");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Update your main fetch function to use the same logic
+    const fetchSubscriptions = async () => {
+        await fetchSubscriptionsWithPage(currentPage);
+    };
 
     // Filter subscriptions based on search, status, and duration
     const filteredSubscriptions = subscriptions.filter((subscription) => {
         const matchesSearch =
             filter === "" ||
-            subscription.planName.toLowerCase().includes(filter.toLowerCase());
+            subscription.plan_name.toLowerCase().includes(filter.toLowerCase());
 
         const matchesStatus =
             statusFilter === "All" || subscription.status === statusFilter;
@@ -96,30 +173,254 @@ export default function SubscriptionManagement() {
         return matchesSearch && matchesStatus && matchesDuration;
     });
 
-    // Toggle subscription status
-    const toggleSubscriptionStatus = (id) => {
-        setSubscriptions(
-            subscriptions.map((sub) =>
-                sub.id === id
-                    ? {
-                          ...sub,
-                          status:
-                              sub.status === "Active" ? "Inactive" : "Active",
-                      }
-                    : sub
-            )
+    // Form validation
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!formData.plan_name.trim()) {
+            newErrors.plan_name = "Plan name is required";
+        }
+
+        if (!formData.price || parseFloat(formData.price) <= 0) {
+            newErrors.price = "Valid price is required";
+        }
+
+        if (!formData.duration) {
+            newErrors.duration = "Duration is required";
+        }
+
+        // Fix: Check if features array has at least one non-empty feature
+        const validFeatures = formData.features.filter(
+            (feature) => feature && feature.trim() !== ""
         );
+
+        if (validFeatures.length === 0) {
+            newErrors.features = "At least one feature is required";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    // Reset form
+    const resetForm = () => {
+        setFormData({
+            plan_name: "",
+            price: "",
+            duration: "",
+            status: "Active",
+            features: [""],
+            description: "",
+        });
+        setErrors({});
+    };
+
+    // Handle form input changes
+    const handleInputChange = (field, value) => {
+        setFormData((prev) => ({
+            ...prev,
+            [field]: value,
+        }));
+        // Clear error when user starts typing
+        if (errors[field]) {
+            setErrors((prev) => ({
+                ...prev,
+                [field]: "",
+            }));
+        }
+    };
+
+    // Handle features changes
+    const handleFeatureChange = (index, value) => {
+        const newFeatures = [...formData.features];
+        newFeatures[index] = value;
+        setFormData((prev) => ({
+            ...prev,
+            features: newFeatures,
+        }));
+    };
+
+    const addFeature = () => {
+        setFormData((prev) => ({
+            ...prev,
+            features: [...prev.features, ""],
+        }));
+    };
+
+    const removeFeature = (index) => {
+        if (formData.features.length > 1) {
+            const newFeatures = formData.features.filter((_, i) => i !== index);
+            setFormData((prev) => ({
+                ...prev,
+                features: newFeatures,
+            }));
+        }
+    };
+
+    // Create new subscription
+    const createSubscription = async (e) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        setLoading(true);
+        try {
+            const payload = {
+                ...formData,
+                price: parseFloat(formData.price),
+                features: formData.features.filter(
+                    (feature) => feature.trim() !== ""
+                ),
+            };
+
+            const response = await axios.post(
+                "/api/admin/create-subscriptions",
+                payload
+            );
+
+            const updatedSub = response.data.subscription;
+
+            // Refresh the current page to get updated pagination data
+            await fetchSubscriptionsWithPage(currentPage);
+
+            setShowCreateModal(false);
+            resetForm();
+            alert("Subscription plan created successfully!");
+        } catch (error) {
+            console.error("Error creating subscription:", error);
+            alert("Failed to create subscription plan");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Update subscription
+    const updateSubscription = async (e) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        setLoading(true);
+        try {
+            const payload = {
+                ...formData,
+                price: parseFloat(formData.price),
+                features: formData.features.filter(
+                    (feature) => feature.trim() !== ""
+                ),
+            };
+
+            const response = await axios.put(
+                `/api/admin/update-subscriptions/${selectedSubscription.subscription_plan_id}`,
+                payload
+            );
+
+            // Refresh the current page to get updated data
+            await fetchSubscriptionsWithPage(currentPage);
+
+            setShowEditModal(false);
+            setSelectedSubscription(null);
+            resetForm();
+            alert("Subscription plan updated successfully!");
+        } catch (error) {
+            console.error("❌ Error updating subscription:", error);
+            alert("Failed to update subscription plan");
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Delete subscription
-    const deleteSubscription = (id) => {
-        if (
-            window.confirm(
-                "Are you sure you want to delete this subscription plan?"
-            )
-        ) {
-            setSubscriptions(subscriptions.filter((sub) => sub.id !== id));
+    const deleteSubscription = async () => {
+        setLoading(true);
+        try {
+            await axios.delete(
+                `/api/admin/delete-subscriptions/${selectedSubscription.subscription_plan_id}`
+            );
+
+            await handlePaginationAfterMutation("delete");
+
+            setShowDeleteModal(false);
+            setSelectedSubscription(null);
+            alert("Subscription plan deleted successfully!");
+        } catch (error) {
+            console.error("Error deleting subscription:", error);
+            alert("Failed to delete subscription plan");
+        } finally {
+            setLoading(false);
         }
+    };
+
+    // Toggle subscription status
+    const toggleSubscriptionStatus = async (id) => {
+        const subscription = subscriptions.find(
+            (sub) => sub.subscription_plan_id === id
+        );
+        if (!subscription) return;
+
+        setLoading(true);
+        try {
+            const newStatus =
+                subscription.status === "Active" ? "Inactive" : "Active";
+            const response = await axios.patch(
+                `/api/admin/change-subscriptions/${id}/status`,
+                {
+                    status: newStatus,
+                }
+            );
+
+            console.log(response);
+
+            setSubscriptions((prev) =>
+                prev.map((sub) =>
+                    sub.subscription_plan_id === id
+                        ? { ...sub, status: newStatus }
+                        : sub
+                )
+            );
+            alert(`Subscription ${newStatus.toLowerCase()} successfully!`);
+        } catch (error) {
+            console.error("Error updating subscription status:", error);
+            alert("Failed to update subscription status");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Open edit modal with subscription dat
+    const openEditModal = (subscription) => {
+        setSelectedSubscription(subscription);
+
+        // Extract features properly - handle both object and string formats
+        let features = [""];
+        if (
+            subscription.subscription_features &&
+            subscription.subscription_features.length > 0
+        ) {
+            // Extract feature_text from subscription_features objects
+            features = subscription.subscription_features.map(
+                (feature) => feature.feature_text || ""
+            );
+        } else if (subscription.features && subscription.features.length > 0) {
+            // If features is already an array of strings
+            features = [...subscription.features];
+        }
+
+        setFormData({
+            plan_name: subscription.plan_name,
+            price: subscription.price.toString().replace("RM", "").trim(),
+            duration: subscription.duration,
+            status: subscription.status,
+            features: features,
+            description: subscription.description || "",
+        });
+        setShowEditModal(true);
+    };
+
+    // Open delete modal
+    const openDeleteModal = (subscription) => {
+        setSelectedSubscription(subscription);
+        setShowDeleteModal(true);
     };
 
     // Calculate total metrics
@@ -128,24 +429,33 @@ export default function SubscriptionManagement() {
         0
     );
     const totalRevenue = subscriptions.reduce((sum, sub) => {
+        const revenueValue = sub?.revenue || "$0"; // Default to $0 if missing
         const revenue = parseFloat(
-            sub.revenue.replace("$", "").replace(",", "")
+            revenueValue.toString().replace("$", "").replace(",", "")
         );
-        return sum + revenue;
+        return sum + (isNaN(revenue) ? 0 : revenue); // Avoid NaN
     }, 0);
+
     const activePlans = subscriptions.filter(
         (sub) => sub.status === "Active"
     ).length;
 
+    useEffect(() => {
+        fetchSubscriptions();
+        initializeEcho();
+
+        return () => {
+            cleanupEcho();
+        };
+    }, []);
+
     return (
         <div className="flex min-h-screen bg-gray-50">
             {/* Sidebar for desktop */}
-            <aside className="w-64 bg-white shadow hidden lg:block">
-                <Sidebar pendingCount={3} />
-            </aside>
+            <Sidebar />
 
             {/* Main Content */}
-            <main className="flex-1 p-4 lg:p-6">
+            <main className="flex-1 p-4 lg:p-6 md:mt-0 mt-16">
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="bg-white p-4 rounded-xl shadow-md">
@@ -251,8 +561,12 @@ export default function SubscriptionManagement() {
                             </div>
 
                             <button
-                                onClick={() => setShowCreateModal(true)}
+                                onClick={() => {
+                                    resetForm();
+                                    setShowCreateModal(true);
+                                }}
                                 className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                                disabled={loading}
                             >
                                 <svg
                                     className="w-5 h-5 mr-2"
@@ -282,7 +596,7 @@ export default function SubscriptionManagement() {
                                     placeholder="Search plans by name..."
                                     value={filter}
                                     onChange={(e) => setFilter(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="text-black w-full border border-gray-300 rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 />
                                 <svg
                                     className="w-5 h-5 text-gray-400 absolute left-3 top-2.5"
@@ -305,7 +619,7 @@ export default function SubscriptionManagement() {
                                 onChange={(e) =>
                                     setStatusFilter(e.target.value)
                                 }
-                                className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                className="text-black border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="All">All Statuses</option>
                                 <option value="Active">Active</option>
@@ -317,7 +631,7 @@ export default function SubscriptionManagement() {
                                 onChange={(e) =>
                                     setDurationFilter(e.target.value)
                                 }
-                                className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                className="text-black border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="All">All Durations</option>
                                 <option value="Monthly">Monthly</option>
@@ -326,13 +640,23 @@ export default function SubscriptionManagement() {
                         </div>
                     </div>
 
+                    {/* Loading State */}
+                    {loading && (
+                        <div className="p-8 text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                            <p className="mt-4 text-gray-600">
+                                Loading subscription plans...
+                            </p>
+                        </div>
+                    )}
+
                     {/* Subscription Plans */}
                     <div className="overflow-hidden">
-                        {filteredSubscriptions.length > 0 ? (
+                        {!loading && filteredSubscriptions.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
                                 {filteredSubscriptions.map((plan) => (
                                     <div
-                                        key={plan.id}
+                                        key={plan.subscription_plan_id}
                                         className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow"
                                     >
                                         <div
@@ -344,15 +668,15 @@ export default function SubscriptionManagement() {
                                         >
                                             <div className="flex justify-between items-start">
                                                 <h3 className="text-xl font-bold">
-                                                    {plan.planName}
+                                                    {plan.plan_name}
                                                 </h3>
                                                 <span className="bg-white text-indigo-600 text-xs font-semibold px-2 py-1 rounded">
-                                                    {plan.duration}
+                                                    {plan.duration} days
                                                 </span>
                                             </div>
                                             <div className="mt-2">
                                                 <span className="text-2xl font-bold">
-                                                    {plan.price}
+                                                    RM {plan.price}
                                                 </span>
                                             </div>
                                         </div>
@@ -363,7 +687,7 @@ export default function SubscriptionManagement() {
                                                     Features
                                                 </h4>
                                                 <ul className="text-sm text-gray-700">
-                                                    {plan.features.map(
+                                                    {plan?.features?.map(
                                                         (feature, index) => (
                                                             <li
                                                                 key={index}
@@ -424,15 +748,11 @@ export default function SubscriptionManagement() {
 
                                                 <div className="flex space-x-2">
                                                     <button
-                                                        onClick={() => {
-                                                            setSelectedSubscription(
-                                                                plan
-                                                            );
-                                                            setShowEditModal(
-                                                                true
-                                                            );
-                                                        }}
+                                                        onClick={() =>
+                                                            openEditModal(plan)
+                                                        }
                                                         className="text-indigo-600 hover:text-indigo-900"
+                                                        disabled={loading}
                                                     >
                                                         <svg
                                                             className="w-5 h-5"
@@ -452,7 +772,7 @@ export default function SubscriptionManagement() {
                                                     <button
                                                         onClick={() =>
                                                             toggleSubscriptionStatus(
-                                                                plan.id
+                                                                plan.subscription_plan_id
                                                             )
                                                         }
                                                         className={
@@ -461,6 +781,7 @@ export default function SubscriptionManagement() {
                                                                 ? "text-yellow-600 hover:text-yellow-900"
                                                                 : "text-green-600 hover:text-green-900"
                                                         }
+                                                        disabled={loading}
                                                     >
                                                         {plan.status ===
                                                         "Active" ? (
@@ -501,11 +822,12 @@ export default function SubscriptionManagement() {
                                                     </button>
                                                     <button
                                                         onClick={() =>
-                                                            deleteSubscription(
-                                                                plan.id
+                                                            openDeleteModal(
+                                                                plan
                                                             )
                                                         }
                                                         className="text-red-600 hover:text-red-900"
+                                                        disabled={loading}
                                                     >
                                                         <svg
                                                             className="w-5 h-5"
@@ -529,32 +851,37 @@ export default function SubscriptionManagement() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="p-6 text-center">
-                                <svg
-                                    className="w-16 h-16 text-gray-300 mx-auto"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                                <p className="mt-4 text-gray-500">
-                                    No subscription plans found matching your
-                                    criteria.
-                                </p>
-                                <button
-                                    onClick={() => setShowCreateModal(true)}
-                                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                                >
-                                    Create Your First Plan
-                                </button>
-                            </div>
+                            !loading && (
+                                <div className="p-6 text-center">
+                                    <svg
+                                        className="w-16 h-16 text-gray-300 mx-auto"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <p className="mt-4 text-gray-500">
+                                        No subscription plans found matching
+                                        your criteria.
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            resetForm();
+                                            setShowCreateModal(true);
+                                        }}
+                                        className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                                    >
+                                        Create Your First Plan
+                                    </button>
+                                </div>
+                            )
                         )}
                     </div>
 
@@ -562,92 +889,118 @@ export default function SubscriptionManagement() {
                     <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
                         <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
                             <div className="text-sm text-gray-700">
-                                Showing <span className="font-medium">1</span>{" "}
-                                to <span className="font-medium">5</span> of{" "}
-                                <span className="font-medium">5</span> plans
+                                Showing{" "}
+                                <span className="text-black font-medium">
+                                    {pagination.from}
+                                </span>{" "}
+                                to{" "}
+                                <span className="font-medium">
+                                    {pagination.to}
+                                </span>{" "}
+                                of{" "}
+                                <span className="text-black font-medium">
+                                    {pagination.total}
+                                </span>{" "}
+                                results ({" "}
+                                <span className="text-primary font-bold mx-auto">
+                                    Page {currentPage} of {lastPage}
+                                </span>{" "}
+                                )
                             </div>
+                            // Update your pagination section - Remove the
+                            comment that breaks JSX
                             <div className="inline-flex items-center space-x-2">
-                                <button className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    Previous
-                                </button>
+                                {currentPage > 1 && (
+                                    <button
+                                        className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={async () => {
+                                            const newPage = Math.max(
+                                                currentPage - 1,
+                                                1
+                                            );
+                                            await fetchSubscriptionsWithPage(
+                                                newPage
+                                            );
+                                        }}
+                                    >
+                                        Previous
+                                    </button>
+                                )}
+
                                 <button className="px-3 py-1.5 rounded-md bg-indigo-600 text-white">
-                                    1
+                                    {currentPage}
                                 </button>
-                                <button className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200">
-                                    Next
-                                </button>
+
+                                {currentPage < lastPage && (
+                                    <button
+                                        className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                        onClick={async () => {
+                                            const newPage = Math.min(
+                                                currentPage + 1,
+                                                lastPage
+                                            );
+                                            await fetchSubscriptionsWithPage(
+                                                newPage
+                                            );
+                                        }}
+                                    >
+                                        Next
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Create Plan Modal (simplified) */}
+                {/* Create Plan Modal */}
                 {showCreateModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-                            <div className="p-6 border-b border-gray-200">
-                                <h3 className="text-lg font-semibold text-gray-800">
-                                    Create New Subscription Plan
-                                </h3>
-                            </div>
-                            <div className="p-6">
-                                <p className="text-gray-600 mb-4">
-                                    Subscription plan creation form would go
-                                    here.
-                                </p>
-                                <div className="flex justify-end space-x-3">
-                                    <button
-                                        onClick={() =>
-                                            setShowCreateModal(false)
-                                        }
-                                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={() =>
-                                            setShowCreateModal(false)
-                                        }
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                                    >
-                                        Create Plan
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <Create_Subscriptions_Modal
+                        onClose={() => {
+                            setShowCreateModal(false);
+                            resetForm();
+                        }}
+                        onSubmit={createSubscription}
+                        loading={loading}
+                        formData={formData}
+                        onInputChange={handleInputChange}
+                        onFeatureChange={handleFeatureChange}
+                        onAddFeature={addFeature}
+                        onRemoveFeature={removeFeature}
+                        errors={errors}
+                    />
                 )}
 
-                {/* Edit Plan Modal (simplified) */}
+                {/* Edit Plan Modal */}
                 {showEditModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
-                            <div className="p-6 border-b border-gray-200">
-                                <h3 className="text-lg font-semibold text-gray-800">
-                                    Edit Subscription Plan
-                                </h3>
-                            </div>
-                            <div className="p-6">
-                                <p className="text-gray-600 mb-4">
-                                    Editing: {selectedSubscription?.planName}
-                                </p>
-                                <div className="flex justify-end space-x-3">
-                                    <button
-                                        onClick={() => setShowEditModal(false)}
-                                        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={() => setShowEditModal(false)}
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                                    >
-                                        Save Changes
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <Edit_Subscriptions_Modal
+                        onClose={() => {
+                            setShowEditModal(false);
+                            setSelectedSubscription(null);
+                            resetForm();
+                        }}
+                        onSubmit={updateSubscription}
+                        loading={loading}
+                        formData={formData}
+                        onInputChange={handleInputChange}
+                        onFeatureChange={handleFeatureChange}
+                        onAddFeature={addFeature}
+                        onRemoveFeature={removeFeature}
+                        errors={errors}
+                        selectedSubscription={selectedSubscription}
+                    />
+                )}
+
+                {/* Delete Confirmation Modal */}
+                {showDeleteModal && (
+                    <Delete_Subscriptions_Modal
+                        onClose={() => {
+                            setShowDeleteModal(false);
+                            setSelectedSubscription(null);
+                        }}
+                        onConfirm={deleteSubscription}
+                        loading={loading}
+                        selectedSubscription={selectedSubscription}
+                    />
                 )}
             </main>
         </div>

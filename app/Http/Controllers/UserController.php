@@ -6,7 +6,6 @@ use App\Events\SellerRegistered;
 use App\Models\Business;
 use App\Models\Category;
 use App\Models\Product;
-use App\Models\Seller;
 use App\Models\SellerRegistration;
 
 use App\Models\Wishlist;
@@ -44,10 +43,17 @@ class UserController extends Controller
         }
 
         // Extract product_ids
-        $productIds = collect($data['recommendations'])->pluck('product_id')->toArray();
+        $productIds = collect($data['recommendations'])
+            ->pluck('product_id')
+            ->toArray();
 
         // Query your DB for full product info
-        $products = Product::with("productImage", "productVideo", "productFeature", "productIncludeItem")
+        $products = Product::with(
+            "productImage",
+            "productVideo",
+            "productFeature",
+            "productIncludeItem"
+        )
             ->whereIn('product_id', $productIds)
             ->get();
 
@@ -66,11 +72,16 @@ class UserController extends Controller
 
     public function homepage()
     {
-        $list_shoppingItem = Product::with(['productImage', 'category'])->get();
+        $list_shoppingItem = Product::with([
+            'productImage',
+            'category'
+        ])
+            ->get();
+
         $list_categoryItem = Category::all();
 
         return Inertia::render(
-            'BuyersPage/HomePage',
+            'BuyerPage/HomePage',
             [
                 "list_shoppingItem" => $list_shoppingItem,
                 "list_categoryItem" => $list_categoryItem,
@@ -80,16 +91,21 @@ class UserController extends Controller
 
     public function aboutus()
     {
-        return Inertia::render('BuyersPage/AboutUs');
+        return Inertia::render('BuyerPage/AboutUs');
     }
 
     public function shopping()
     {
-        $list_shoppingItem = Product::with(['productImage', 'category'])->paginate(8);
+        $list_shoppingItem = Product::with([
+            'productImage',
+            'category'
+        ])
+            ->paginate(8);
+
         $list_categoryItem = Category::all();
 
         return Inertia::render(
-            "BuyersPage/ShopPage",
+            "BuyerPage/ShopPage",
             [
                 'list_shoppingItem' => $list_shoppingItem,
                 'list_categoryItem' => $list_categoryItem,
@@ -99,35 +115,29 @@ class UserController extends Controller
 
     public function sellerBenefit()
     {
-        return Inertia::render("BuyersPage/SellerBenefit");
+        return Inertia::render("BuyerPage/SellerBenefit");
     }
 
-    public function itemDetails($product_id)
+    public function productDetails($product_id)
     {
-        $product_info = Product::with(
+        $product_info = Product::with([
             'productImage',
             "productVideo",
             "productFeature",
             "productIncludeItem",
+            "productOption",
+            "productOption.productOptionValue",
             "seller.sellerStore",
-        )->where('product_id', $product_id)->get();
+        ])
+            ->where('product_id', $product_id)
+            ->get();
 
         return Inertia::render(
-            "BuyersPage/ItemDetails",
+            "BuyerPage/ProductDetails",
             [
                 'product_info' => $product_info,
             ]
         );
-    }
-
-    public function buyerDashboard()
-    {
-        return Inertia::render('BuyersPage/BuyerDashboard');
-    }
-
-    public function buyerChat()
-    {
-        return Inertia::render('BuyersPage/BuyerChatPage');
     }
 
     public function sellerRegistration()
@@ -135,7 +145,7 @@ class UserController extends Controller
         $list_business = Business::all();
 
         return Inertia::render(
-            "BuyersPage/SellerRegistration",
+            "BuyerPage/SellerRegistration",
             [
                 'list_business' => $list_business
             ]
@@ -144,30 +154,44 @@ class UserController extends Controller
 
     public function sellerShop()
     {
-        return Inertia::render('BuyersPage/SellerShop');
+        return Inertia::render('BuyerPage/SellerShop');
     }
 
     public function wishlist()
     {
-        $user_wishlist = Wishlist::with("product", "productImage")
+        $user_wishlist = Wishlist::with([
+            "product",
+            "productImage"
+        ])
             ->where("user_id", $this->user_id)
             ->get();
 
-        return Inertia::render("BuyersPage/Wishlist", ["user_wishlist" => $user_wishlist]);
+        return Inertia::render(
+            "BuyerPage/Wishlist",
+            [
+                "user_wishlist" => $user_wishlist
+            ]
+        );
     }
 
     public function profile()
     {
-        return Inertia::render("BuyersPage/ProfilePage");
+        return Inertia::render("BuyerPage/ProfilePage");
     }
 
     public function checkout(Request $request)
     {
         $list_product = $request->input("items");
 
-        return Inertia::render('BuyersPage/Checkout', ["list_product" => $list_product]);
+        return Inertia::render(
+            'BuyerPage/Checkout',
+            [
+                "list_product" => $list_product
+            ]
+        );
     }
 
+    // Function for validate and process the users who want to become a seller in relove market.
     public function sellerRegistrationProcess(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -227,15 +251,11 @@ class UserController extends Controller
             'status' => "Pending",
         ]);
 
-        // Broadcast the registration on admin dashboard
-        // event(
-        //     new SellerRegistered(
-        //         SellerRegistration::with('business')->first()
-        //     )
-        // );
+        // Fire the event to make the request update in real time on admin dashboard.
         broadcast(new SellerRegistered($SellerRegistered, "Registered"));
 
-        return redirect('/relove-market')->with("successMessage", "Registration sucess...Please wait for the approvement");
+        return redirect(route("homepage"))
+            ->with("successMessage", "Registration sucess...Please wait for the approvement");
     }
 
     public function store_wishlist(Request $request)
@@ -256,21 +276,33 @@ class UserController extends Controller
         }
     }
 
-    public function destroy_wishlist($product_id)
+    public function destroy_wishlist(Request $request)
     {
         try {
-            $wishlistItem = Wishlist::where('user_id', $this->user_id)
-                ->where('product_id', $product_id)
-                ->first();
+            $productIds = $request->input('product_id'); // array from frontend
 
-            if ($wishlistItem) {
-                $wishlistItem->delete();
-                return response()->json(['successMessage' => 'Product removed from wishlist']);
+            if (!is_array($productIds)) {
+                $productIds = [$productIds]; // make sure it's an array
             }
 
-            return response()->json(['errorMessage' => 'Item not found in wishlist'], 404);
+            $deletedCount = Wishlist::where('user_id', $this->user_id)
+                ->whereIn('product_id', $productIds)
+                ->delete();
+
+            if ($deletedCount > 0) {
+                return response()->json([
+                    'successMessage' => 'Selected products have been removed from wishlist'
+                ]);
+            }
+
+            return response()->json([
+                'errorMessage' => 'Products not found in wishlist'
+            ], 404);
+
         } catch (Exception $e) {
-            return response()->json(["errorMessage" => $e->getMessage()]);
+            return response()->json([
+                'errorMessage' => $e->getMessage()
+            ], 500);
         }
     }
 }

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sidebar } from "@/Components/Admin/Sidebar";
+import { Sidebar } from "@/Components/AdminPage/Sidebar";
 
 export default function ProfilePage() {
     const [isEditing, setIsEditing] = useState(false);

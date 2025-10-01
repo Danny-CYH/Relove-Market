@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Sidebar } from "@/Components/Admin/Sidebar";
+import { Sidebar } from "@/Components/AdminPage/Sidebar";
 import { Link } from "@inertiajs/react";
 
 export default function AdminDashboard() {

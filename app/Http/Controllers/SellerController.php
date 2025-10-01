@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ChatConversations;
 use App\Models\ProductFeature;
 use App\Models\ProductIncludeItem;
 use App\Models\Category;
@@ -37,7 +38,7 @@ class SellerController extends Controller
     }
     public function sellerDashboard()
     {
-        return Inertia::render('SellersPage/SellerDashboard');
+        return Inertia::render('SellerPage/SellerDashboard');
     }
 
     public function sellerManageProduct()
@@ -47,33 +48,24 @@ class SellerController extends Controller
             ->get();
 
         $list_categories = Category::all();
-        $list_products = Product::with([
-            "productImage",
-            "productVideo",
-            "productFeature",
-            "productIncludeItem",
-            "productOption.productOptionValue",
-            "category"
-        ])->where("seller_id", $this->seller_id)->get();
 
         return Inertia::render(
-            "SellersPage/SellerManageProduct",
+            "SellerPage/SellerManageProduct",
             [
                 'seller_storeInfo' => $seller_storeInfo,
                 'list_categories' => $list_categories,
-                'list_products' => $list_products,
             ]
         );
     }
 
     public function sellerOrderPage()
     {
-        return Inertia::render("SellersPage/SellerOrderPage");
+        return Inertia::render("SellerPage/SellerOrderPage");
     }
 
     public function sellerEarningPage()
     {
-        return Inertia::render("SellersPage/SellerEarningPage");
+        return Inertia::render("SellerPage/SellerEarningPage");
     }
 
     public function sellerPromotionPage()
@@ -81,7 +73,7 @@ class SellerController extends Controller
         $list_promotion = Promotions::all();
 
         return Inertia::render(
-            "SellersPage/SellerPromotionPage",
+            "SellerPage/SellerPromotionPage",
             [
                 "list_promotion" => $list_promotion
             ]
@@ -90,24 +82,12 @@ class SellerController extends Controller
 
     public function sellerSubscriptionPage()
     {
-        return Inertia::render("SellersPage/SellerSubscriptionPage");
+        return Inertia::render("SellerPage/SellerSubscriptionPage");
     }
 
     public function sellerHelpSupportPage()
     {
-        return Inertia::render("SellersPage/SellerHelpSupportPage");
-    }
-
-    public function sellerChatPage()
-    {
-        $seller_storeInfo = Seller::with("sellerStore")->where("seller_id", $this->seller_id)->get();
-
-        return Inertia::render(
-            'SellersPage/SellerChatPage',
-            [
-                "seller_storeInfo" => $seller_storeInfo,
-            ]
-        );
+        return Inertia::render("SellerPage/SellerHelpSupportPage");
     }
 
     public function get_ListProduct()
@@ -120,7 +100,8 @@ class SellerController extends Controller
             "productOption.productOptionValue",
             "category"
         ])
-            ->where("seller_id", $this->seller_id)->get();
+            ->where("seller_id", $this->seller_id)
+            ->paginate(5);
 
         return response()->json([
             "list_product" => $list_product,
@@ -448,11 +429,18 @@ class SellerController extends Controller
 
             // ✅ Replace product options + values
             if ($request->has('options')) {
+                // Get all existing option IDs for this product
+                $existingOptionIds = ProductOption::where('product_id', $product->product_id)
+                    ->pluck('option_id')
+                    ->toArray();
+
+                $submittedOptionIds = [];
+
                 foreach ($request->options as $option) {
                     if (!empty(trim($option['name']))) {
                         // Try to find existing option
                         $existingOption = ProductOption::where('product_id', $product->product_id)
-                            ->where('option_id', $option['id'] ?? null) // assuming request sends option_id
+                            ->where('option_id', $option['id'] ?? null)
                             ->first();
 
                         if ($existingOption) {
@@ -460,6 +448,8 @@ class SellerController extends Controller
                             $existingOption->update([
                                 'option_name' => trim($option['name']),
                             ]);
+                            $currentOption = $existingOption;
+                            $submittedOptionIds[] = $existingOption->option_id;
                         } else {
                             $latestOption = ProductOption::orderBy('option_id', 'desc')->first();
                             $number = ($latestOption && preg_match('/OPT-(\d+)/', $latestOption->option_id, $matches))
@@ -472,39 +462,79 @@ class SellerController extends Controller
                                 'product_id' => $product->product_id,
                                 'option_name' => trim($option['name']),
                             ]);
+                            $currentOption = $newOption;
+                            $submittedOptionIds[] = $newOptionId;
                         }
+
+                        // ✅ Handle option values - get existing values first
+                        $existingValueIds = ProductOptionValue::where('option_id', $currentOption->option_id)
+                            ->pluck('value_id')
+                            ->toArray();
+
+                        $submittedValueIds = [];
 
                         if (!empty($option['values'])) {
                             foreach ($option['values'] as $value) {
-                                if (!empty(trim($value))) {
+                                if (!empty(trim($value['name'] ?? $value))) {
+                                    $valueId = $value['id'] ?? null;
+                                    $valueName = $value['name'] ?? $value;
 
-                                    $existingValue = ProductOptionValue::where('option_id', $existingOption->option_id)
-                                        ->where('value_id', $value['id'] ?? null) // assuming request sends value_id
+                                    $existingValue = ProductOptionValue::where('option_id', $currentOption->option_id)
+                                        ->where('value_id', $valueId)
                                         ->first();
 
                                     if ($existingValue) {
-                                        // Update
+                                        // Update existing value
                                         $existingValue->update([
-                                            'option_value' => trim($value['name']),
+                                            'option_value' => trim($valueName),
                                         ]);
+                                        $submittedValueIds[] = $existingValue->value_id;
                                     } else {
+                                        // Create new value
                                         $latestValue = ProductOptionValue::orderBy('value_id', 'desc')->first();
                                         $vnumber = ($latestValue && preg_match('/VAL-(\d+)/', $latestValue->value_id, $vmatches))
                                             ? (int) $vmatches[1] + 1
                                             : 1;
                                         $newValueId = 'VAL-' . str_pad($vnumber, 5, '0', STR_PAD_LEFT);
 
-                                        ProductOptionValue::create([
+                                        $newValue = ProductOptionValue::create([
                                             'value_id' => $newValueId,
-                                            'option_id' => $newOption->option_id,
-                                            'option_value' => trim($value),
+                                            'option_id' => $currentOption->option_id,
+                                            'option_value' => trim($valueName),
                                         ]);
+                                        $submittedValueIds[] = $newValueId;
                                     }
                                 }
                             }
                         }
+
+                        // ✅ Delete values that were removed from this option
+                        $valuesToDelete = array_diff($existingValueIds, $submittedValueIds);
+                        if (!empty($valuesToDelete)) {
+                            ProductOptionValue::where('option_id', $currentOption->option_id)
+                                ->whereIn('value_id', $valuesToDelete)
+                                ->delete();
+                        }
                     }
                 }
+
+                // ✅ Delete options that were completely removed
+                $optionsToDelete = array_diff($existingOptionIds, $submittedOptionIds);
+                if (!empty($optionsToDelete)) {
+                    // First delete associated values
+                    ProductOptionValue::whereIn('option_id', $optionsToDelete)->delete();
+                    // Then delete the options
+                    ProductOption::whereIn('option_id', $optionsToDelete)->delete();
+                }
+            } else {
+                // ✅ If no options are submitted, delete all existing options and values
+                ProductOptionValue::whereIn('option_id', function ($query) use ($product) {
+                    $query->select('option_id')
+                        ->from('product_options')
+                        ->where('product_id', $product->product_id);
+                })->delete();
+
+                ProductOption::where('product_id', $product->product_id)->delete();
             }
 
             // ✅ Replace images

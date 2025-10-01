@@ -11,8 +11,9 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('subscriptions_features', function (Blueprint $table) {
-            $table->string("features_id")->autoIncrement()->primary();
-            $table->string("subscriptions_id");
+            $table->string("feature_id")->primary();
+            $table->string("subscription_plan_id");
+            $table->string("feature_text");
             $table->timestamps();
         });
     }

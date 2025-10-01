@@ -12,39 +12,33 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('subscriptions', function (Blueprint $table) {
-            $table->string("subscription_id")->primary();
-            $table->string('name');
+            $table->string("subscription_plan_id")->primary();
+            $table->string('plan_name');
+            $table->string("description");
             $table->decimal('price', 10, 2);
             $table->integer('duration');
-            $table->string('description');
+            $table->string('status');
             $table->timestamps();
         });
 
         Subscription::insert([
             [
-                'subscription_id' => "SUB0001",
-                'name' => "Basic Plan",
-                "price" => 30,
+                'subscription_plan_id' => "PLAN-00001",
+                'plan_name' => "Starter Plan",
+                "description" => "Perfect for new sellers starting their online business",
+                "price" => 4.99,
                 "duration" => 60,
-                "description" => "Starter package for individual sellers",
+                "status" => "Active",
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'subscription_id' => "SUB0002",
-                'name' => "Pro Plan",
-                "price" => 90,
+                'subscription_plan_id' => "PLAN-00002",
+                'plan_name' => "Basic Plan",
+                "description" => "Great for growing businesses with basic needs",
+                "price" => 9.99,
                 "duration" => 60,
-                "description" => "For active independent sellers",
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'subscription_id' => "SUB0003",
-                'name' => "Ultimate Plan",
-                "price" => 150,
-                "duration" => 60,
-                "description" => "For entrepreneur sellers",
+                "status" => "Active",
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
