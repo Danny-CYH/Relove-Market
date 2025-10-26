@@ -30,6 +30,8 @@ class Product extends Model
         'product_material',
         'product_manufacturer',
         'product_weight',
+        'featured',
+        'flash_sale',
         'seller_id',
         'category_id',
     ];
@@ -51,12 +53,7 @@ class Product extends Model
 
     public function orders()
     {
-        return $this->hasMany(Order::class);
-    }
-
-    public function ratings()
-    {
-        return $this->hasMany(Rating::class);
+        return $this->hasMany(Order::class, "product_id", "product_id");
     }
 
     public function wishlists()
@@ -94,8 +91,18 @@ class Product extends Model
         return $this->belongsTo(ProductPromotion::class, "product_id", "product_id");
     }
 
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class, "product_id", "product_id");
+    }
+
     public function productEmbeddings()
     {
         return $this->hasMany(ProductEmbeddings::class, "product_id", "product_id");
+    }
+
+    public function productVariant()
+    {
+        return $this->hasMany(ProductVariant::class, "product_id", "product_id");
     }
 }

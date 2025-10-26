@@ -12,6 +12,8 @@ import {
     FaTags,
     FaStar,
     FaExclamationTriangle,
+    FaChevronLeft,
+    FaChevronRight,
 } from "react-icons/fa";
 
 import {
@@ -37,92 +39,9 @@ import { useState, useEffect } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
 
-export default function HomePage({ list_shoppingItem, list_categoryItem }) {
-    const items = [
-        {
-            id: 1,
-            name: "Vintage T-shirt",
-            category: "Fashion",
-            price: "RM20",
-            originalPrice: "RM45",
-            image: "image/apple_watch.jpg",
-            rating: 4.5,
-            reviews: 24,
-            isNew: true,
-        },
-        {
-            id: 2,
-            name: "Bluetooth Speaker",
-            category: "Electronics",
-            price: "RM80",
-            originalPrice: "RM120",
-            image: "image/apple_watch.jpg",
-            rating: 4.2,
-            reviews: 18,
-        },
-        {
-            id: 3,
-            name: "Secondhand Chair",
-            category: "Home Decor",
-            price: "RM50",
-            originalPrice: "RM85",
-            image: "image/apple_watch.jpg",
-            rating: 4.7,
-            reviews: 31,
-        },
-        {
-            id: 4,
-            name: "Novel Book",
-            category: "Books",
-            price: "RM10",
-            originalPrice: "RM15",
-            image: "image/apple_watch.jpg",
-            rating: 4.8,
-            reviews: 42,
-            isNew: true,
-        },
-        {
-            id: 5,
-            name: "Denim Jacket",
-            category: "Fashion",
-            price: "RM35",
-            originalPrice: "RM70",
-            image: "image/apple_watch.jpg",
-            rating: 4.3,
-            reviews: 15,
-        },
-        {
-            id: 6,
-            name: "Old Camera",
-            category: "Electronics",
-            price: "RM150",
-            originalPrice: "RM220",
-            image: "image/apple_watch.jpg",
-            rating: 4.9,
-            reviews: 27,
-        },
-        {
-            id: 7,
-            name: "Wall Painting",
-            category: "Home Decor",
-            price: "RM45",
-            originalPrice: "RM65",
-            image: "image/apple_watch.jpg",
-            rating: 4.1,
-            reviews: 9,
-        },
-        {
-            id: 8,
-            name: "Textbook",
-            category: "Books",
-            price: "RM25",
-            originalPrice: "RM40",
-            image: "image/apple_watch.jpg",
-            rating: 4.6,
-            reviews: 33,
-        },
-    ];
+import axios from "axios";
 
+export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
         "Fashion & Accessories": <Shirt className="w-6 h-6 text-green-600" />,
         "Electronics & Gadgets": <Laptop className="w-6 h-6 text-blue-600" />,
@@ -144,20 +63,28 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [searchResults, setSearchResults] = useState([]);
     const [showSearchResults, setShowSearchResults] = useState(false);
 
+    const [featuredProducts, setFeaturedProducts] = useState([]);
+    const [flashSaleProducts, setFlashSaleProducts] = useState([]);
+
+    // Carousel state
+    const [currentSlide, setCurrentSlide] = useState(0);
+
     const { flash } = usePage().props;
 
-    const filteredItems =
-        selectedCategory === "All"
-            ? items
-            : items.filter((item) => item.category === selectedCategory);
+    const featured_products = featuredProducts.slice(0, 8);
 
-    const displayItems = filteredItems.slice(0, 8);
+    const get_featuredProducts = async () => {
+        const response = await axios.get("/api/buyer/get-featured-products");
 
-    useEffect(() => {
-        if (flash.successMessage) {
-            setIsOpen(true);
-        }
-    }, [flash.successMessage]);
+        console.log(response);
+
+        setFeaturedProducts(response.data.featured_products);
+    };
+
+    const get_flashSaleProducts = async () => {
+        const response = await axios.get("/api/buyer/get-flash-sale-products");
+        setFlashSaleProducts(response.data.flashSaleProducts);
+    };
 
     // Handle search functionality
     const handleSearch = (query) => {
@@ -180,9 +107,29 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    // Check if there are flash sale products
-    const hasFlashSaleProducts =
-        list_shoppingItem && list_shoppingItem.length > 0;
+    // Carousel functions
+    const nextSlide = () => {
+        setCurrentSlide((prev) =>
+            prev === Math.ceil(featured_products.length / 2) - 1 ? 0 : prev + 1
+        );
+    };
+
+    const prevSlide = () => {
+        setCurrentSlide((prev) =>
+            prev === 0 ? Math.ceil(featured_products.length / 2) - 1 : prev - 1
+        );
+    };
+
+    useEffect(() => {
+        if (flash.successMessage) {
+            setIsOpen(true);
+        }
+    }, [flash.successMessage]);
+
+    useEffect(() => {
+        get_featuredProducts();
+        get_flashSaleProducts();
+    }, []);
 
     return (
         <div className="flex flex-col min-h-screen bg-gray-50">
@@ -438,9 +385,9 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 {/* Product Carousel */}
                 <section className="py-12 bg-gray-50 px-4">
                     <div className="max-w-7xl mx-auto">
-                        {hasFlashSaleProducts ? (
+                        {flashSaleProducts ? (
                             <Carousel_ProductData
-                                productData={list_shoppingItem}
+                                productData={flashSaleProducts}
                             />
                         ) : (
                             <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100">
@@ -482,72 +429,225 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                             </a>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {displayItems.map((item) => (
-                                <div
-                                    key={item.id}
-                                    className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                        {/* Desktop Grid View */}
+                        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {featured_products.map((product) => (
+                                <Link
+                                    href={route(
+                                        "product-details",
+                                        product.product_id
+                                    )}
+                                    key={product.product_id}
                                 >
-                                    <div className="relative">
-                                        <img
-                                            src={item.image}
-                                            alt={item.name}
-                                            className="w-full h-56 object-cover"
-                                        />
-                                        {item.isNew && (
-                                            <span className="absolute top-3 left-3 bg-green-500 text-white text-xs px-2 py-1 rounded-full">
-                                                New
-                                            </span>
-                                        )}
-                                        <button className="absolute top-3 right-3 bg-white p-2 rounded-full shadow-md hover:bg-gray-100">
-                                            <FaHeart className="text-gray-400 hover:text-red-500" />
-                                        </button>
-                                        <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
-                                            {item.category}
-                                        </div>
-                                    </div>
-                                    <div className="p-4">
-                                        <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
-                                            {item.name}
-                                        </h3>
-
-                                        <div className="flex items-center mb-2">
-                                            <div className="flex items-center">
-                                                {[1, 2, 3, 4, 5].map((star) => (
-                                                    <FaStar
-                                                        key={star}
-                                                        className={`w-3 h-3 ${
-                                                            star <=
-                                                            Math.floor(
-                                                                item.rating
-                                                            )
-                                                                ? "text-yellow-400 fill-current"
-                                                                : "text-gray-300"
-                                                        }`}
-                                                    />
-                                                ))}
+                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                                        <div className="relative">
+                                            <img
+                                                src={
+                                                    import.meta.env
+                                                        .VITE_BASE_URL +
+                                                    product.product_image[0]
+                                                        .image_path
+                                                }
+                                                alt={product.product_name}
+                                                className="w-full h-56 object-cover"
+                                            />
+                                            <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+                                                {product.category.category_name}
                                             </div>
-                                            <span className="text-xs text-gray-500 ml-1">
-                                                ({item.reviews})
-                                            </span>
                                         </div>
+                                        <div className="p-4">
+                                            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                                                {product.product_name}
+                                            </h3>
 
-                                        <div className="flex items-center justify-between mt-3">
-                                            <div>
-                                                <span className="font-bold text-gray-900">
-                                                    {item.price}
-                                                </span>
-                                                <span className="text-xs text-gray-500 line-through ml-2">
-                                                    {item.originalPrice}
+                                            <div className="flex items-center mb-2">
+                                                <div className="flex items-center">
+                                                    {[1, 2, 3, 4, 5].map(
+                                                        (star) => (
+                                                            <FaStar
+                                                                key={star}
+                                                                className={`w-3 h-3 ${
+                                                                    star <=
+                                                                    Math.floor(
+                                                                        product
+                                                                            .ratings[0]
+                                                                            ?.rating
+                                                                    )
+                                                                        ? "text-yellow-400 fill-current"
+                                                                        : "text-gray-300"
+                                                                }`}
+                                                            />
+                                                        )
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-gray-500 ml-1">
+                                                    ({product.ratings[0]?.rating}
+                                                    )
                                                 </span>
                                             </div>
-                                            <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
-                                                <FaShoppingCart className="text-sm" />
-                                            </button>
+
+                                            <div className="flex items-center justify-between mt-3">
+                                                <div>
+                                                    <span className="font-bold text-gray-900">
+                                                        RM{" "}
+                                                        {product.product_price}
+                                                    </span>
+                                                    <span className="text-xs text-gray-500 line-through ml-2">
+                                                        {product.originalPrice}
+                                                    </span>
+                                                </div>
+                                                <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
+                                                    <FaShoppingCart className="text-sm" />
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             ))}
+                        </div>
+
+                        {/* Mobile Carousel View */}
+                        <div className="md:hidden relative">
+                            <div className="overflow-hidden rounded-xl">
+                                <div
+                                    className="flex transition-transform duration-300 ease-in-out"
+                                    style={{
+                                        transform: `translateX(-${
+                                            currentSlide * 100
+                                        }%)`,
+                                    }}
+                                >
+                                    {featured_products.map((product) => (
+                                        <Link
+                                            href={route(
+                                                "product-details",
+                                                product.product_id
+                                            )}
+                                            key={product.product_id}
+                                        >
+                                            <div className="w-full flex-shrink-0 px-2">
+                                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                                                    <div className="relative">
+                                                        <img
+                                                            src={
+                                                                import.meta.env
+                                                                    .VITE_BASE_URL +
+                                                                product
+                                                                    .product_image[0]
+                                                                    .image_path
+                                                            }
+                                                            alt={
+                                                                product.product_name
+                                                            }
+                                                            className="w-full h-48 object-cover"
+                                                        />
+
+                                                        <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+                                                            {
+                                                                product.category
+                                                                    .category_name
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <div className="p-4">
+                                                        <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                                                            {
+                                                                product.product_name
+                                                            }
+                                                        </h3>
+
+                                                        <div className="flex items-center mb-2">
+                                                            <div className="flex items-center">
+                                                                {[
+                                                                    1, 2, 3, 4,
+                                                                    5,
+                                                                ].map(
+                                                                    (star) => (
+                                                                        <FaStar
+                                                                            key={
+                                                                                star
+                                                                            }
+                                                                            className={`w-3 h-3 ${
+                                                                                star <=
+                                                                                Math.floor(
+                                                                                    product
+                                                                                        .ratings[0]
+                                                                                        ?.rating
+                                                                                )
+                                                                                    ? "text-yellow-400 fill-current"
+                                                                                    : "text-gray-300"
+                                                                            }`}
+                                                                        />
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs text-gray-500 ml-1">
+                                                                (
+                                                                {
+                                                                    product
+                                                                        .ratings[0]
+                                                                        ?.rating
+                                                                }
+                                                                )
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between mt-3">
+                                                            <div>
+                                                                <span className="font-bold text-gray-900">
+                                                                    RM{" "}
+                                                                    {
+                                                                        product.product_price
+                                                                    }
+                                                                </span>
+                                                                <span className="text-xs text-gray-500 line-through ml-2">
+                                                                    {
+                                                                        product.originalPrice
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                            <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
+                                                                <FaShoppingCart className="text-sm" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Carousel Navigation */}
+                            <button
+                                onClick={prevSlide}
+                                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                            >
+                                <FaChevronLeft className="text-gray-700" />
+                            </button>
+                            <button
+                                onClick={nextSlide}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                            >
+                                <FaChevronRight className="text-gray-700" />
+                            </button>
+
+                            {/* Carousel Indicators */}
+                            <div className="flex justify-center mt-4 space-x-2">
+                                {Array.from({
+                                    length: Math.ceil(featured_products.length),
+                                }).map((_, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => setCurrentSlide(index)}
+                                        className={`w-2 h-2 rounded-full transition-all ${
+                                            index === currentSlide
+                                                ? "bg-green-600 w-4"
+                                                : "bg-gray-300"
+                                        }`}
+                                    />
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </section>

@@ -391,7 +391,7 @@ export default function Register() {
                     </div>
 
                     {/* Right Column - Image & Benefits */}
-                    <div className="hidden lg:block relative">
+                    <div className="hidden lg:block relative h-full">
                         <img
                             src="../image/register_bg.jpg"
                             alt="Shopping Woman"

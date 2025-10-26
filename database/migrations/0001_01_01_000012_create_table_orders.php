@@ -12,17 +12,15 @@ return new class extends Migration {
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->string("order_id")->primary();
-            $table->string('buyer_id');
-            $table->string('seller_id');
-            $table->string('product_id');
-            $table->integer("amount");
+            $table->string('payment_intent_id')->unique();
+            $table->double("amount");
             $table->string("currency")->default("myr");
-            $table->string("status")->default("pending");
+            $table->string('user_id');
+            $table->string('seller_id');
+            $table->string("payment_status");
+            $table->string("order_status");
+            $table->text('notes')->nullable();
             $table->timestamps();
-
-            $table->foreign('buyer_id')->references('user_id')->on('users')->onDelete('cascade');
-            $table->foreign('seller_id')->references('seller_id')->on('sellers')->onDelete('cascade');
-            $table->foreign('product_id')->references('product_id')->on('products')->onDelete('cascade');
         });
     }
 

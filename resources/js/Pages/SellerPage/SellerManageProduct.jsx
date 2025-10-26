@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Plus, Edit, Trash, Search, Eye } from "lucide-react";
+import {
+    Plus,
+    Edit,
+    Trash,
+    Search,
+    Eye,
+    Lock,
+    Crown,
+    Star,
+    ToggleLeft,
+    ToggleRight,
+} from "lucide-react";
 
 import { SellerSidebar } from "@/Components/SellerPage/SellerSidebar";
 import { SellerAddProduct_Modal } from "@/Components/SellerPage/SellerManageProduct/SellerAddProduct_Modal";
@@ -11,16 +22,15 @@ import { LoadingProgress } from "@/Components/AdminPage/LoadingProgress";
 
 import axios from "axios";
 
-export default function SellerManageProduct({
-    seller_storeInfo,
-    list_categories,
-}) {
+import { Link } from "@inertiajs/react";
+
+export default function SellerManageProduct({ list_categories }) {
     const [realTimeProducts, setRealTimeProducts] = useState([]);
-    const [filteredProducts, setFilteredProducts] = useState([]);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
     // Loading Progress
     const [loadingProgress, setLoadingProgress] = useState(false);
@@ -45,11 +55,391 @@ export default function SellerManageProduct({
 
     const [loading, setLoading] = useState(false);
 
+    // Subscription state
+    const [subscription, setSubscription] = useState(null);
+    const [subscriptionLimits, setSubscriptionLimits] = useState({});
+    const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
+    // Featured products state
+    const [featuredProducts, setFeaturedProducts] = useState([]);
+    const [togglingProduct, setTogglingProduct] = useState(null);
+
+    // Fetch subscription status
+    const fetchSubscriptionStatus = async () => {
+        try {
+            setSubscriptionLoading(true);
+            const response = await axios.get("/api/seller-subscriptions");
+
+            const sellerSubscription = response.data.seller.subscription;
+
+            // Set subscription data
+            setSubscription(sellerSubscription);
+            setSubscriptionLimits(sellerSubscription.limits || {});
+
+            // Fetch featured products when subscription loads
+            await fetchFeaturedProducts();
+        } catch (error) {
+            console.error("Error fetching subscription:", error);
+        } finally {
+            setSubscriptionLoading(false);
+        }
+    };
+
+    // Fetch featured products
+    const fetchFeaturedProducts = async () => {
+        try {
+            const response = await axios.get("/api/seller/featured-products");
+
+            setFeaturedProducts(response.data.featured_products || []);
+        } catch (error) {
+            console.error("Error fetching featured products:", error);
+        }
+    };
+
+    // Check if user can perform action
+    const canPerformAction = (action) => {
+        if (!subscription) return false;
+
+        const { limits } = subscription;
+
+        // Check specific action permissions
+        switch (action) {
+            case "addProduct":
+                return (
+                    limits.max_products === -1 ||
+                    realTimeProducts.length < parseInt(limits.max_products)
+                );
+            case "editProduct":
+                return true; // Allow editing by default
+            case "deleteProduct":
+                return true; // Allow deletion by default
+            case "toggleListing":
+                return true; // Allow toggling by default
+            case "featureProduct":
+                return limits.featured_listing === true;
+            default:
+                return false;
+        }
+    };
+
+    // Check if user has reached product limit
+    const hasReachedProductLimit = () => {
+        if (!subscription) return false;
+
+        const { limits } = subscription;
+
+        return (
+            limits.max_products !== -1 &&
+            realTimeProducts.length >= parseInt(limits.max_products)
+        );
+    };
+
+    // Check if user can feature more products
+    const canFeatureMoreProducts = () => {
+        if (!subscription) return false;
+
+        const { limits } = subscription;
+
+        // If no featured listing allowed
+        if (!limits.featured_listing) return false;
+
+        // Check if there's a limit on featured products
+        const maxFeatured = limits.max_featured_products || 5; // Default to 5 if not specified
+        return featuredProducts.length < maxFeatured;
+    };
+
+    // Check if product is featured - FIXED: More reliable check
+    const isProductFeatured = (productId) => {
+        const isFeatured = featuredProducts.some(
+            (fp) => fp.product_id === productId
+        );
+        return isFeatured;
+    };
+
+    // Toggle product listing status
+    const toggleProductListing = async (product) => {
+        if (!canPerformAction("toggleListing")) {
+            setIsUpgradeModalOpen(true);
+            return;
+        }
+
+        try {
+            setTogglingProduct(product.product_id);
+
+            const newStatus =
+                product.product_status === "available"
+                    ? "unavailable"
+                    : "available";
+
+            const response = await axios.post("/api/seller/toggle-listing", {
+                product_id: product.product_id,
+                status: newStatus,
+            });
+
+            if (response.data.success) {
+                // Update local state immediately for better UX
+                setRealTimeProducts((prevProducts) =>
+                    prevProducts.map((p) =>
+                        p.product_id === product.product_id
+                            ? { ...p, product_status: newStatus }
+                            : p
+                    )
+                );
+
+                setModalMessage(
+                    `Product ${
+                        newStatus === "available" ? "listed" : "unlisted"
+                    } successfully`
+                );
+                setModalType("success");
+                setLoadingProgress(true);
+
+                setTimeout(() => {
+                    setLoadingProgress(false);
+                }, 2000);
+            }
+        } catch (error) {
+            console.error("Error toggling product listing:", error);
+            setModalMessage("Failed to update product status");
+            setModalType("error");
+            setLoadingProgress(true);
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+            }, 2000);
+        } finally {
+            setTogglingProduct(null);
+        }
+    };
+
+    // Toggle product featured status - FIXED: Better state management
+    const toggleProductFeatured = async (product) => {
+        if (!canPerformAction("featureProduct")) {
+            setIsUpgradeModalOpen(true);
+            return;
+        }
+
+        try {
+            setTogglingProduct(product.product_id);
+
+            const currentFeaturedStatus = isProductFeatured(product.product_id);
+            const newFeaturedStatus = !currentFeaturedStatus;
+
+            console.log("Toggling featured status:", {
+                productId: product.product_id,
+                current: currentFeaturedStatus,
+                new: newFeaturedStatus,
+            });
+
+            const response = await axios.post(
+                "/api/seller/toggle-product-featured",
+                {
+                    product_id: product.product_id,
+                    featured: newFeaturedStatus,
+                }
+            );
+
+            if (response.data.success) {
+                // Update featured products list immediately
+                if (newFeaturedStatus) {
+                    // Add to featured products
+                    setFeaturedProducts((prev) => [
+                        ...prev,
+                        { product_id: product.product_id },
+                    ]);
+                } else {
+                    // Remove from featured products
+                    setFeaturedProducts((prev) =>
+                        prev.filter(
+                            (fp) => fp.product_id !== product.product_id
+                        )
+                    );
+                }
+
+                // Also update realTimeProducts to reflect the change if the field exists
+                setRealTimeProducts((prevProducts) =>
+                    prevProducts.map((p) =>
+                        p.product_id === product.product_id
+                            ? { ...p, is_featured: newFeaturedStatus }
+                            : p
+                    )
+                );
+
+                setModalMessage(
+                    `Product ${
+                        newFeaturedStatus ? "featured" : "unfeatured"
+                    } successfully`
+                );
+                setModalType("success");
+                setLoadingProgress(true);
+
+                setTimeout(() => {
+                    setLoadingProgress(false);
+                }, 2000);
+            }
+        } catch (error) {
+            console.error("Error toggling product featured:", error);
+            setModalMessage("Failed to update featured status");
+            setModalType("error");
+            setLoadingProgress(true);
+
+            setTimeout(() => {
+                setLoadingProgress(false);
+            }, 2000);
+        } finally {
+            setTogglingProduct(null);
+        }
+    };
+
+    // Enhanced toggle buttons with better visual feedback
+    const ListingToggleButton = ({ product }) => (
+        <button
+            onClick={() => toggleProductListing(product)}
+            disabled={togglingProduct === product.product_id}
+            className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 ${
+                product.product_status === "available"
+                    ? "bg-green-100 text-green-800 hover:bg-green-200 border border-green-300"
+                    : "bg-red-100 text-red-800 hover:bg-red-200 border border-red-300"
+            } ${
+                togglingProduct === product.product_id
+                    ? "opacity-50 cursor-not-allowed"
+                    : "cursor-pointer hover:scale-105"
+            }`}
+            title={`Click to ${
+                product.product_status === "available" ? "unlist" : "list"
+            } product`}
+        >
+            {togglingProduct === product.product_id ? (
+                <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1"></div>
+            ) : product.product_status === "available" ? (
+                <ToggleRight size={14} className="mr-1" />
+            ) : (
+                <ToggleLeft size={14} className="mr-1" />
+            )}
+            <span className="font-medium">
+                {product.product_status === "available" ? "Listed" : "Unlisted"}
+            </span>
+        </button>
+    );
+
+    // FIXED: FeaturedToggleButton with proper state management
+    const FeaturedToggleButton = ({ product }) => {
+        // ✅ FIXED: Remove the negation operator
+        const isFeatured = isProductFeatured(product.product_id);
+
+        return (
+            <button
+                onClick={() => toggleProductFeatured(product)}
+                disabled={
+                    togglingProduct === product.product_id ||
+                    !canPerformAction("featureProduct")
+                }
+                className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 ${
+                    isFeatured
+                        ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
+                } ${
+                    togglingProduct === product.product_id ||
+                    !canPerformAction("featureProduct")
+                        ? "opacity-50 cursor-not-allowed"
+                        : "cursor-pointer hover:scale-105"
+                }`}
+                title={
+                    canPerformAction("featureProduct")
+                        ? isFeatured
+                            ? "Click to unfeature"
+                            : "Click to feature"
+                        : "Upgrade to feature products"
+                }
+            >
+                {togglingProduct === product.product_id ? (
+                    <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1"></div>
+                ) : (
+                    <Star
+                        size={14}
+                        className={`mr-1 ${
+                            isFeatured
+                                ? "fill-yellow-400 text-yellow-600"
+                                : "text-gray-500"
+                        }`}
+                    />
+                )}
+                <span className="font-medium">
+                    {isFeatured ? "Featured" : "Feature"}
+                </span>
+            </button>
+        );
+    };
+
+    // Get upgrade required message
+    const getUpgradeMessage = (action) => {
+        if (!subscription) return "Please wait...";
+
+        const { limits } = subscription;
+
+        if (hasReachedProductLimit()) {
+            return `Product limit reached (${limits.max_products}). Upgrade to add more products.`;
+        }
+
+        switch (action) {
+            case "addProduct":
+                return `Upgrade to add more than ${limits.max_products} products.`;
+            case "featureProduct":
+                return "Featured listings require a higher plan.";
+            default:
+                return "Upgrade your plan to access this feature.";
+        }
+    };
+
+    // Handle add product with subscription check
+    const handleAddProductClick = () => {
+        if (!canPerformAction("addProduct")) {
+            setIsUpgradeModalOpen(true);
+            return;
+        }
+        setIsAddOpen(true);
+    };
+
+    // Handle edit product with subscription check
+    const handleEditProductClick = (product) => {
+        if (!canPerformAction("editProduct")) {
+            setIsUpgradeModalOpen(true);
+            return;
+        }
+        setProductToEdit(product);
+        setIsEditOpen(true);
+    };
+
+    // Handle delete product with subscription check
+    const handleDeleteProductClick = (product) => {
+        if (!canPerformAction("deleteProduct")) {
+            setIsUpgradeModalOpen(true);
+            return;
+        }
+        setProductToDelete(product);
+        setIsDeleteOpen(true);
+    };
+
     // Code for adding the new product
     const add_Product = async (e, formData) => {
+        // Double check subscription before proceeding
+        if (!canPerformAction("addProduct")) {
+            setModalMessage(
+                "Subscription limit reached. Please upgrade your plan."
+            );
+            setModalType("error");
+            setLoadingProgress(true);
+            setTimeout(() => {
+                setLoadingProgress(false);
+                setIsUpgradeModalOpen(true);
+            }, 3000);
+            return;
+        }
+
         e.preventDefault();
 
         try {
+            setIsAddOpen(false);
             setModalMessage("Processing your request...");
             setModalType("loading");
             setLoadingProgress(true);
@@ -61,9 +451,10 @@ export default function SellerManageProduct({
             setModalMessage(response.data.successMessage);
             setModalType("success");
 
+            await get_ListProducts(currentPage);
+
             setTimeout(() => {
                 setLoadingProgress(false);
-                setIsAddOpen(false);
             }, 3000);
         } catch (error) {
             const errors = error.response?.data?.errors;
@@ -98,6 +489,7 @@ export default function SellerManageProduct({
         e.preventDefault();
 
         try {
+            setIsEditOpen(false);
             setModalMessage("Processing your request...");
             setModalType("loading");
             setLoadingProgress(true);
@@ -153,6 +545,21 @@ export default function SellerManageProduct({
             setModalMessage(response.data.successMessage);
             setModalType("success");
 
+            // Immediately update local state
+            setRealTimeProducts((prevProducts) =>
+                prevProducts.filter((p) => p.product_id !== product)
+            );
+
+            // Refresh data to get updated pagination
+            const searchParams = {};
+            if (searchTerm.trim() !== "") searchParams.search = searchTerm;
+            if (statusFilter !== "all") searchParams.status = statusFilter;
+            if (categoryFilter !== "all")
+                searchParams.category = categoryFilter;
+            if (sortBy !== "name") searchParams.sort = sortBy;
+
+            get_ListProducts(currentPage, searchParams);
+
             setTimeout(() => {
                 setLoadingProgress(false);
                 setIsDeleteOpen(false);
@@ -168,15 +575,20 @@ export default function SellerManageProduct({
     };
 
     // Get the product of the seller
-    const get_ListProducts = async (page = 1) => {
+    const get_ListProducts = async (page = 1, searchParams = {}) => {
         setLoading(true);
         try {
-            const response = await fetch(
-                `/seller-manage-product/get-product?page=${page}`
-            );
-            const data = await response.json();
+            const params = new URLSearchParams({
+                page: page,
+                ...searchParams,
+            });
 
-            setRealTimeProducts(data.list_product.data);
+            const response = await axios.get(
+                `/api/seller-manage-product/get-product?${params}`
+            );
+            const data = response.data;
+
+            setRealTimeProducts(data.list_product.data || data.list_product);
 
             setCurrentPage(data.list_product.current_page);
             setLastPage(data.list_product.last_page);
@@ -188,10 +600,34 @@ export default function SellerManageProduct({
                 current_page: data.list_product.current_page,
                 last_page: data.list_product.last_page,
             });
+
+            // Fetch featured products after loading products
+            await fetchFeaturedProducts();
         } catch (error) {
             console.log("Error fetching products:", error);
         }
         setLoading(false);
+    };
+
+    // Search handler that triggers API call
+    const handleSearchAndFilters = () => {
+        const searchParams = {};
+
+        if (searchTerm.trim() !== "") {
+            searchParams.search = searchTerm;
+        }
+        if (statusFilter !== "all") {
+            searchParams.status = statusFilter;
+        }
+        if (categoryFilter !== "all") {
+            searchParams.category = categoryFilter;
+        }
+        if (sortBy !== "name") {
+            searchParams.sort = sortBy;
+        }
+
+        setCurrentPage(1); // Reset to page 1 when searching
+        get_ListProducts(1, searchParams);
     };
 
     // Real time update for product listing with Echo
@@ -241,6 +677,11 @@ export default function SellerManageProduct({
         };
     }, []);
 
+    // Fetch subscription on component mount
+    useEffect(() => {
+        fetchSubscriptionStatus();
+    }, []);
+
     // Reset page to 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
@@ -265,44 +706,35 @@ export default function SellerManageProduct({
         }
     }, [errorField, modalToReopen]);
 
-    // Filter and sort products
     useEffect(() => {
-        if (realTimeProducts && realTimeProducts.length > 0) {
-            let filtered = realTimeProducts.filter(
-                (p) =>
-                    (searchTerm.trim() === "" ||
-                        p.product_name
-                            .toLowerCase()
-                            .includes(searchTerm.toLowerCase())) &&
-                    (statusFilter === "all" ||
-                        p.product_status === statusFilter) &&
-                    (categoryFilter === "all" ||
-                        p.category.category_id.toString() === categoryFilter)
-            );
+        // Debounced search - wait 500ms after user stops typing
+        const timeoutId = setTimeout(() => {
+            if (
+                searchTerm.trim() !== "" ||
+                statusFilter !== "all" ||
+                categoryFilter !== "all"
+            ) {
+                handleSearchAndFilters();
+            } else {
+                // If no search/filters, load normal paginated data
+                get_ListProducts(currentPage);
+            }
+        }, 500);
 
-            // Sort products
-            filtered = filtered.sort((a, b) => {
-                switch (sortBy) {
-                    case "name":
-                        return a.product_name.localeCompare(b.product_name);
-                    case "price-high":
-                        return b.product_price - a.product_price;
-                    case "price-low":
-                        return a.product_price - b.product_price;
-                    case "stock-high":
-                        return b.product_quantity - a.product_quantity;
-                    case "stock-low":
-                        return a.product_quantity - b.product_quantity;
-                    default:
-                        return 0;
-                }
-            });
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm, statusFilter, categoryFilter, sortBy]);
 
-            setFilteredProducts(filtered);
-        } else {
-            setFilteredProducts([]);
-        }
-    }, [realTimeProducts, searchTerm, statusFilter, categoryFilter, sortBy]);
+    useEffect(() => {
+        // Load data when page changes
+        const searchParams = {};
+
+        if (searchTerm.trim() !== "") searchParams.search = searchTerm;
+        if (statusFilter !== "all") searchParams.status = statusFilter;
+        if (categoryFilter !== "all") searchParams.category = categoryFilter;
+        if (sortBy !== "name") searchParams.sort = sortBy;
+
+        get_ListProducts(currentPage, searchParams);
+    }, [currentPage]);
 
     // Count products by status
     const productCounts = {
@@ -313,6 +745,75 @@ export default function SellerManageProduct({
         unavailable: realTimeProducts.filter(
             (p) => p.product_status === "unavailable"
         ).length,
+    };
+
+    // Subscription status component
+    const SubscriptionStatus = () => {
+        if (subscriptionLoading || !subscription) {
+            return (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full mr-2"></div>
+                            <span className="text-blue-700 text-sm">
+                                Checking subscription status...
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const { limits } = subscription;
+        const productLimitReached = hasReachedProductLimit();
+        const canFeature = limits.featured_listing === true;
+
+        return (
+            <div
+                className={`border rounded-lg p-4 mb-4 ${
+                    productLimitReached
+                        ? "bg-orange-50 border-orange-200"
+                        : "bg-gray-50 border-gray-200"
+                }`}
+            >
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center space-x-3">
+                        {productLimitReached ? (
+                            <Lock className="text-orange-600" size={20} />
+                        ) : (
+                            <Crown className="text-blue-600" size={20} />
+                        )}
+                        <div>
+                            <p className="font-semibold text-gray-900">
+                                {subscription.plan_name}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                                {limits.maxProducts === -1
+                                    ? `Unlimited products • ${realTimeProducts.length} listed`
+                                    : `${pagination.total}/${limits.max_products} products`}
+                                {canFeature && " • Featured listings available"}
+                            </p>
+                        </div>
+                    </div>
+                    {productLimitReached && (
+                        <Link href={route("seller-manage-subscription")}>
+                            <button
+                                onClick={() => setIsUpgradeModalOpen(true)}
+                                className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"
+                            >
+                                Upgrade Plan
+                            </button>
+                        </Link>
+                    )}
+                </div>
+                {productLimitReached && (
+                    <div className="mt-2 p-2 bg-orange-100 rounded text-orange-800 text-sm">
+                        <strong>Product limit reached:</strong> You cannot add
+                        more products with your current plan.
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -338,6 +839,7 @@ export default function SellerManageProduct({
                     }}
                     errorField={errorField}
                     onErrorFieldHandled={() => setErrorField(null)}
+                    subscription={subscription}
                 />
             )}
 
@@ -373,39 +875,48 @@ export default function SellerManageProduct({
             )}
 
             {/* Sidebar */}
-            <SellerSidebar
-                shopName={seller_storeInfo[0].seller_store.store_name}
-            />
+            <SellerSidebar />
 
             {/* Main content */}
-            <main className="flex-1 p-4 md:p-6">
+            <main className="flex-1 p-3 md:p-6">
                 {/* Page header */}
                 <div className="mb-6">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900">
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-900">
                                 Product Management
                             </h1>
-                            <p className="text-sm text-gray-600 mt-1">
+                            <p className="text-xs md:text-sm text-gray-600 mt-1">
                                 Manage your product inventory and listings
                             </p>
                         </div>
                         <button
-                            onClick={() => setIsAddOpen(true)}
-                            className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                            onClick={handleAddProductClick}
+                            disabled={hasReachedProductLimit()}
+                            className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 mt-3 md:mt-0 rounded-lg transition-colors shadow-sm text-sm md:text-base ${
+                                hasReachedProductLimit()
+                                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                                    : "bg-indigo-600 text-white hover:bg-indigo-700"
+                            }`}
                         >
-                            <Plus size={18} />
-                            Add Product
+                            <Plus size={16} />
+                            <span>Add Product</span>
+                            {hasReachedProductLimit() && (
+                                <Lock size={14} className="ml-1" />
+                            )}
                         </button>
                     </div>
 
-                    {/* Stats summary */}
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                    {/* Subscription Status */}
+                    <SubscriptionStatus />
+
+                    {/* Stats summary - Improved responsiveness */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+                        <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center">
                                 <div className="bg-indigo-100 p-2 rounded-lg mr-3">
                                     <svg
-                                        className="w-5 h-5 text-indigo-600"
+                                        className="w-4 h-4 md:w-5 md:h-5 text-indigo-600"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -420,20 +931,31 @@ export default function SellerManageProduct({
                                     </svg>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-xs md:text-sm text-gray-600">
                                         Total Products
                                     </p>
-                                    <p className="text-lg font-semibold text-gray-900">
-                                        {productCounts.all}
+                                    <p className="text-base md:text-lg font-semibold text-gray-900">
+                                        {pagination.total}
+                                        {subscription?.limits?.max_products &&
+                                            subscription.limits.max_products !==
+                                                -1 && (
+                                                <span className="text-xs text-gray-500 ml-1">
+                                                    /{" "}
+                                                    {
+                                                        subscription.limits
+                                                            .max_products
+                                                    }
+                                                </span>
+                                            )}
                                     </p>
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center">
                                 <div className="bg-green-100 p-2 rounded-lg mr-3">
                                     <svg
-                                        className="w-5 h-5 text-green-600"
+                                        className="w-4 h-4 md:w-5 md:h-5 text-green-600"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -448,20 +970,20 @@ export default function SellerManageProduct({
                                     </svg>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-xs md:text-sm text-gray-600">
                                         Available
                                     </p>
-                                    <p className="text-lg font-semibold text-gray-900">
+                                    <p className="text-base md:text-lg font-semibold text-gray-900">
                                         {productCounts.available}
                                     </p>
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                        <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center">
                                 <div className="bg-red-100 p-2 rounded-lg mr-3">
                                     <svg
-                                        className="w-5 h-5 text-red-600"
+                                        className="w-4 h-4 md:w-5 md:h-5 text-red-600"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -476,10 +998,10 @@ export default function SellerManageProduct({
                                     </svg>
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-600">
+                                    <p className="text-xs md:text-sm text-gray-600">
                                         Unavailable
                                     </p>
-                                    <p className="text-lg font-semibold text-gray-900">
+                                    <p className="text-base md:text-lg font-semibold text-gray-900">
                                         {productCounts.unavailable}
                                     </p>
                                 </div>
@@ -487,9 +1009,10 @@ export default function SellerManageProduct({
                         </div>
                     </div>
 
-                    {/* Search and filters */}
-                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-6">
-                        <div className="flex flex-col md:flex-row gap-4">
+                    {/* Search and filters - Improved responsiveness */}
+                    <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm mb-6">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+                            {/* Search Bar */}
                             <div className="flex-1 relative">
                                 <Search
                                     className="absolute left-3 top-3 text-gray-400"
@@ -502,17 +1025,18 @@ export default function SellerManageProduct({
                                     onChange={(e) =>
                                         setSearchTerm(e.target.value)
                                     }
-                                    className="text-black w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="text-black w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base"
                                 />
                             </div>
 
-                            <div className="flex flex-col sm:flex-row gap-2">
+                            {/* Filters */}
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-2 md:gap-3 md:ml-2">
                                 <select
                                     value={statusFilter}
                                     onChange={(e) =>
                                         setStatusFilter(e.target.value)
                                     }
-                                    className="text-black px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="text-black px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base"
                                 >
                                     <option value="all">All Status</option>
                                     <option value="available">Available</option>
@@ -526,7 +1050,7 @@ export default function SellerManageProduct({
                                     onChange={(e) =>
                                         setCategoryFilter(e.target.value)
                                     }
-                                    className="text-black px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="text-black px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base"
                                 >
                                     <option value="all">All Categories</option>
                                     {list_categories.map((category) => (
@@ -542,7 +1066,7 @@ export default function SellerManageProduct({
                                 <select
                                     value={sortBy}
                                     onChange={(e) => setSortBy(e.target.value)}
-                                    className="text-black px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="text-black px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base"
                                 >
                                     <option value="name">Sort by Name</option>
                                     <option value="price-high">
@@ -564,217 +1088,257 @@ export default function SellerManageProduct({
                 </div>
 
                 {/* Product table (desktop) */}
-                <div className="hidden md:block bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                <div className="hidden lg:block bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                     {loading ? (
                         <LoadingProgress
                             modalType={"success"}
                             modalMessage={"Loading..."}
                         />
                     ) : (
-                        <table className="w-full">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Product
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Price
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Stock
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Category
-                                    </th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredProducts.length === 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[800px]">
+                                <thead className="bg-gray-50">
                                     <tr>
-                                        <td
-                                            colSpan="6"
-                                            className="px-6 py-8 text-center"
-                                        >
-                                            <div className="flex flex-col items-center justify-center text-gray-500">
-                                                <svg
-                                                    className="w-12 h-12 mb-4 text-gray-300"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-16"
-                                                    />
-                                                </svg>
-                                                <p className="text-lg font-medium mb-1">
-                                                    No products found
-                                                </p>
-                                                <p className="text-sm">
-                                                    Try adjusting your search or
-                                                    filters
-                                                </p>
-                                            </div>
-                                        </td>
+                                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Product
+                                        </th>
+                                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Price
+                                        </th>
+                                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Stock
+                                        </th>
+                                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Category
+                                        </th>
+                                        <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Featured
+                                        </th>
+                                        <th className="px-4 md:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
                                     </tr>
-                                ) : (
-                                    filteredProducts.map((product) => (
-                                        <tr
-                                            key={product.product_id}
-                                            className="hover:bg-gray-50"
-                                        >
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center">
-                                                    <div className="h-10 w-10 flex-shrink-0 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
-                                                        {product.product_image ? (
-                                                            <img
-                                                                src={
-                                                                    import.meta
-                                                                        .env
-                                                                        .VITE_BASE_URL +
-                                                                    product
-                                                                        .product_image[0]
-                                                                        .image_path
-                                                                }
-                                                                alt={
-                                                                    product.product_name
-                                                                }
-                                                                className="h-10 w-10 rounded-lg object-cover"
-                                                            />
-                                                        ) : (
-                                                            <svg
-                                                                className="h-6 w-6 text-gray-400"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                viewBox="0 0 24 24"
-                                                                xmlns="http://www.w3.org/2000/svg"
-                                                            >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    strokeWidth={
-                                                                        2
-                                                                    }
-                                                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                                                />
-                                                            </svg>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-medium text-gray-900">
-                                                            {
-                                                                product.product_name
-                                                            }
-                                                        </div>
-                                                        <div className="text-sm text-gray-500">
-                                                            SKU:{" "}
-                                                            {product.product_id}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-gray-900 font-medium">
-                                                    RM {product.product_price}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center">
-                                                    <span className="text-gray-900">
-                                                        {
-                                                            product.product_quantity
-                                                        }
-                                                    </span>
-                                                    {product.product_quantity <
-                                                        10 && (
-                                                        <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                                                            Low stock
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span
-                                                    className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                                        product.product_status ===
-                                                        "available"
-                                                            ? "bg-green-100 text-green-800"
-                                                            : "bg-red-100 text-red-800"
-                                                    }`}
-                                                >
-                                                    {product.product_status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                                                    {
-                                                        product.category
-                                                            .category_name
-                                                    }
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end space-x-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            setProductToView(
-                                                                product
-                                                            );
-                                                            setIsViewOpen(true);
-                                                        }}
-                                                        className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                                                        title="View product"
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {realTimeProducts.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan="7"
+                                                className="px-6 py-8 text-center"
+                                            >
+                                                <div className="flex flex-col items-center justify-center text-gray-500">
+                                                    <svg
+                                                        className="w-12 h-12 mb-4 text-gray-300"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        xmlns="http://www.w3.org/2000/svg"
                                                     >
-                                                        <Eye size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setProductToEdit(
-                                                                product
-                                                            );
-                                                            setIsEditOpen(true);
-                                                        }}
-                                                        className="p-2 text-gray-400 hover:text-green-600 transition-colors"
-                                                        title="Edit product"
-                                                    >
-                                                        <Edit size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setProductToDelete(
-                                                                product
-                                                            );
-                                                            setIsDeleteOpen(
-                                                                true
-                                                            );
-                                                        }}
-                                                        className="p-2 text-gray-400 hover:text-red-600 transition-colors"
-                                                        title="Delete product"
-                                                    >
-                                                        <Trash size={16} />
-                                                    </button>
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-16"
+                                                        />
+                                                    </svg>
+                                                    <p className="text-lg font-medium mb-1">
+                                                        No products found
+                                                    </p>
+                                                    <p className="text-sm">
+                                                        Try adjusting your
+                                                        search or filters
+                                                    </p>
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        realTimeProducts.map((product) => (
+                                            <tr
+                                                key={product.product_id}
+                                                className="hover:bg-gray-50"
+                                            >
+                                                <td className="px-4 md:px-6 py-4">
+                                                    <div className="flex items-center">
+                                                        <div className="h-10 w-10 flex-shrink-0 bg-gray-200 rounded-lg flex items-center justify-center mr-3">
+                                                            {product.product_image ? (
+                                                                <img
+                                                                    src={
+                                                                        import.meta
+                                                                            .env
+                                                                            .VITE_BASE_URL +
+                                                                        product
+                                                                            .product_image[0]
+                                                                            ?.image_path
+                                                                    }
+                                                                    alt={
+                                                                        product.product_name
+                                                                    }
+                                                                    className="h-10 w-10 rounded-lg object-cover"
+                                                                />
+                                                            ) : (
+                                                                <svg
+                                                                    className="h-6 w-6 text-gray-400"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24"
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={
+                                                                            2
+                                                                        }
+                                                                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                                                    />
+                                                                </svg>
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <div className="font-medium text-gray-900 text-sm md:text-base">
+                                                                {
+                                                                    product.product_name
+                                                                }
+                                                            </div>
+                                                            <div className="text-xs md:text-sm text-gray-500">
+                                                                SKU:{" "}
+                                                                {
+                                                                    product.product_id
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 md:px-6 py-4">
+                                                    <div className="text-gray-900 font-medium text-sm md:text-base">
+                                                        RM{" "}
+                                                        {product.product_price}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 md:px-6 py-4">
+                                                    <div className="flex items-center">
+                                                        <span className="text-gray-900 text-sm md:text-base">
+                                                            {
+                                                                product.product_quantity
+                                                            }
+                                                        </span>
+                                                        {product.product_quantity <
+                                                            10 && (
+                                                            <span className="ml-2 px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                                                                Low stock
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 md:px-6 py-4">
+                                                    {
+                                                        <ListingToggleButton
+                                                            product={product}
+                                                        />
+                                                    }
+                                                </td>
+                                                <td className="px-4 md:px-6 py-4">
+                                                    <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                                                        {
+                                                            product.category
+                                                                .category_name
+                                                        }
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 md:px-6 py-4">
+                                                    <FeaturedToggleButton
+                                                        product={product}
+                                                    />
+                                                </td>
+                                                <td className="px-4 md:px-6 py-4 text-right">
+                                                    <div className="flex justify-end space-x-1 md:space-x-2">
+                                                        <button
+                                                            onClick={() => {
+                                                                setProductToView(
+                                                                    product
+                                                                );
+                                                                setIsViewOpen(
+                                                                    true
+                                                                );
+                                                            }}
+                                                            className="p-1.5 md:p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                                                            title="View product"
+                                                        >
+                                                            <Eye size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                handleEditProductClick(
+                                                                    product
+                                                                )
+                                                            }
+                                                            className={`p-1.5 md:p-2 transition-colors ${
+                                                                canPerformAction(
+                                                                    "editProduct"
+                                                                )
+                                                                    ? "text-gray-400 hover:text-green-600"
+                                                                    : "text-gray-300 cursor-not-allowed"
+                                                            }`}
+                                                            title={
+                                                                canPerformAction(
+                                                                    "editProduct"
+                                                                )
+                                                                    ? "Edit product"
+                                                                    : "Upgrade to edit"
+                                                            }
+                                                            disabled={
+                                                                !canPerformAction(
+                                                                    "editProduct"
+                                                                )
+                                                            }
+                                                        >
+                                                            <Edit size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() =>
+                                                                handleDeleteProductClick(
+                                                                    product
+                                                                )
+                                                            }
+                                                            className={`p-1.5 md:p-2 transition-colors ${
+                                                                canPerformAction(
+                                                                    "deleteProduct"
+                                                                )
+                                                                    ? "text-gray-400 hover:text-red-600"
+                                                                    : "text-gray-300 cursor-not-allowed"
+                                                            }`}
+                                                            title={
+                                                                canPerformAction(
+                                                                    "deleteProduct"
+                                                                )
+                                                                    ? "Delete product"
+                                                                    : "Upgrade to delete"
+                                                            }
+                                                            disabled={
+                                                                !canPerformAction(
+                                                                    "deleteProduct"
+                                                                )
+                                                            }
+                                                        >
+                                                            <Trash size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     )}
                 </div>
 
-                {/* Product cards (mobile) */}
-                <div className="md:hidden space-y-3">
-                    {filteredProducts.length === 0 ? (
+                {/* Product cards (tablet and mobile) */}
+                <div className="lg:hidden space-y-3">
+                    {realTimeProducts.length === 0 ? (
                         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm text-center">
                             <svg
                                 className="w-12 h-12 mx-auto mb-4 text-gray-300"
@@ -796,27 +1360,35 @@ export default function SellerManageProduct({
                             </p>
                         </div>
                     ) : (
-                        filteredProducts.map((product) => (
+                        realTimeProducts.map((product) => (
                             <div
                                 key={product.product_id}
-                                className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
+                                className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm"
                             >
-                                <div className="flex items-start space-x-3">
-                                    <div className="flex-shrink-0">
-                                        <div className="h-14 w-14 bg-gray-200 rounded-lg flex items-center justify-center">
-                                            {product.product_image ? (
+                                {/* Product Header */}
+                                <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-3 gap-3">
+                                    {/* Product Image */}
+                                    <div className="flex-shrink-0 self-center sm:self-start">
+                                        <div className="h-20 w-20 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                                            {product.product_image?.[0]
+                                                ?.image_path ? (
                                                 <img
-                                                    src={product.product_image}
+                                                    src={`${
+                                                        import.meta.env
+                                                            .VITE_BASE_URL
+                                                    }${
+                                                        product.product_image[0]
+                                                            .image_path
+                                                    }`}
                                                     alt={product.product_name}
-                                                    className="h-14 w-14 rounded-lg object-cover"
+                                                    className="h-full w-full object-cover"
                                                 />
                                             ) : (
                                                 <svg
-                                                    className="h-8 w-8 text-gray-400"
+                                                    className="h-10 w-10 text-gray-400"
                                                     fill="none"
                                                     stroke="currentColor"
                                                     viewBox="0 0 24 24"
-                                                    xmlns="http://www.w3.org/2000/svg"
                                                 >
                                                     <path
                                                         strokeLinecap="round"
@@ -828,14 +1400,17 @@ export default function SellerManageProduct({
                                             )}
                                         </div>
                                     </div>
+
+                                    {/* Product Info */}
                                     <div className="flex-1 min-w-0">
-                                        <h3 className="font-medium text-gray-900 truncate">
+                                        <h3 className="font-medium text-gray-900 truncate text-sm md:text-base">
                                             {product.product_name}
                                         </h3>
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-xs md:text-sm text-gray-500">
                                             SKU: {product.product_id}
                                         </p>
-                                        <div className="flex items-center mt-1">
+
+                                        <div className="flex flex-wrap items-center mt-1 text-sm md:text-base">
                                             <span className="text-gray-900 font-medium">
                                                 RM {product.product_price}
                                             </span>
@@ -847,24 +1422,23 @@ export default function SellerManageProduct({
                                                 stock
                                             </span>
                                         </div>
-                                        <div className="flex items-center mt-2 space-x-2">
-                                            <span
-                                                className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                                                    product.product_status ===
-                                                    "available"
-                                                        ? "bg-green-100 text-green-800"
-                                                        : "bg-red-100 text-red-800"
-                                                }`}
-                                            >
-                                                {product.product_status}
-                                            </span>
+
+                                        <div className="flex flex-wrap items-center mt-2 gap-2">
+                                            <ListingToggleButton
+                                                product={product}
+                                            />
+                                            <FeaturedToggleButton
+                                                product={product}
+                                            />
                                             <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">
                                                 {product.category.category_name}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-100">
+
+                                {/* Product Footer */}
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-3 pt-3 border-t border-gray-100 gap-2">
                                     <div>
                                         {product.product_quantity < 10 && (
                                             <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
@@ -872,7 +1446,7 @@ export default function SellerManageProduct({
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex space-x-2">
+                                    <div className="flex justify-end w-full sm:w-auto space-x-3">
                                         <button
                                             onClick={() => {
                                                 setProductToView(product);
@@ -884,22 +1458,50 @@ export default function SellerManageProduct({
                                             <Eye size={16} />
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                setProductToEdit(product);
-                                                setIsEditOpen(true);
-                                            }}
-                                            className="p-1.5 text-gray-400 hover:text-green-600 transition-colors"
-                                            title="Edit product"
+                                            onClick={() =>
+                                                handleEditProductClick(product)
+                                            }
+                                            className={`p-1.5 transition-colors ${
+                                                canPerformAction("editProduct")
+                                                    ? "text-gray-400 hover:text-green-600"
+                                                    : "text-gray-300 cursor-not-allowed"
+                                            }`}
+                                            title={
+                                                canPerformAction("editProduct")
+                                                    ? "Edit product"
+                                                    : "Upgrade to edit"
+                                            }
+                                            disabled={
+                                                !canPerformAction("editProduct")
+                                            }
                                         >
                                             <Edit size={16} />
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                setProductToDelete(product);
-                                                setIsDeleteOpen(true);
-                                            }}
-                                            className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
-                                            title="Delete product"
+                                            onClick={() =>
+                                                handleDeleteProductClick(
+                                                    product
+                                                )
+                                            }
+                                            className={`p-1.5 transition-colors ${
+                                                canPerformAction(
+                                                    "deleteProduct"
+                                                )
+                                                    ? "text-gray-400 hover:text-red-600"
+                                                    : "text-gray-300 cursor-not-allowed"
+                                            }`}
+                                            title={
+                                                canPerformAction(
+                                                    "deleteProduct"
+                                                )
+                                                    ? "Delete product"
+                                                    : "Upgrade to delete"
+                                            }
+                                            disabled={
+                                                !canPerformAction(
+                                                    "deleteProduct"
+                                                )
+                                            }
                                         >
                                             <Trash size={16} />
                                         </button>
@@ -910,60 +1512,202 @@ export default function SellerManageProduct({
                     )}
                 </div>
 
-                {/* Pagination */}
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-                        <div className="text-sm text-gray-700">
-                            Showing{" "}
-                            <span className="text-black font-medium">
-                                {pagination.from}
-                            </span>{" "}
-                            to{" "}
-                            <span className="font-medium">{pagination.to}</span>{" "}
-                            of{" "}
-                            <span className="text-black font-medium">
-                                {pagination.total}
-                            </span>{" "}
-                            results ({" "}
-                            <span className="text-primary font-bold mx-auto">
-                                Page {currentPage} of {lastPage}
-                            </span>{" "}
-                            )
+                {/* Enhanced Pagination */}
+                {pagination.total > 0 && (
+                    <div className="px-4 md:px-6 py-4 bg-gray-50 border-t border-gray-200 mt-6">
+                        <div className="flex flex-col md:flex-row items-center justify-between space-y-3 md:space-y-0">
+                            <div className="text-xs md:text-sm text-gray-700">
+                                Showing{" "}
+                                <span className="text-black font-medium">
+                                    {pagination.from}
+                                </span>{" "}
+                                to{" "}
+                                <span className="font-medium">
+                                    {pagination.to}
+                                </span>{" "}
+                                of{" "}
+                                <span className="text-black font-medium">
+                                    {pagination.total}
+                                </span>{" "}
+                                results
+                                <span className="text-primary font-bold mx-1 md:mx-2">
+                                    (Page {currentPage} of {lastPage})
+                                </span>
+                            </div>
+
+                            <div className="flex items-center space-x-1">
+                                {/* Previous Button */}
+                                {currentPage > 1 && (
+                                    <button
+                                        className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={() =>
+                                            setCurrentPage(currentPage - 1)
+                                        }
+                                        disabled={loading}
+                                    >
+                                        <svg
+                                            className="w-4 h-4 mr-1"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M15 19l-7-7 7-7"
+                                            />
+                                        </svg>
+                                        Previous
+                                    </button>
+                                )}
+
+                                {/* Page Numbers */}
+                                <div className="flex items-center space-x-1 mx-2">
+                                    {/* First Page */}
+                                    {currentPage > 2 && (
+                                        <button
+                                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                                1 === currentPage
+                                                    ? "bg-indigo-600 text-white border border-indigo-600"
+                                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                                            } ${
+                                                loading
+                                                    ? "opacity-50 cursor-not-allowed"
+                                                    : ""
+                                            }`}
+                                            onClick={() => setCurrentPage(1)}
+                                            disabled={loading}
+                                        >
+                                            1
+                                        </button>
+                                    )}
+
+                                    {/* Ellipsis */}
+                                    {currentPage > 3 && (
+                                        <span className="px-2 text-gray-500">
+                                            ...
+                                        </span>
+                                    )}
+
+                                    {/* Previous Page */}
+                                    {currentPage > 1 && (
+                                        <button
+                                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                                currentPage - 1 === currentPage
+                                                    ? "bg-indigo-600 text-white border border-indigo-600"
+                                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                                            } ${
+                                                loading
+                                                    ? "opacity-50 cursor-not-allowed"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setCurrentPage(currentPage - 1)
+                                            }
+                                            disabled={loading}
+                                        >
+                                            {currentPage - 1}
+                                        </button>
+                                    )}
+
+                                    {/* Current Page */}
+                                    <button
+                                        className="px-3 py-2 text-sm font-medium bg-indigo-600 text-white border border-indigo-600 rounded-lg transition-colors"
+                                        disabled
+                                    >
+                                        {currentPage}
+                                    </button>
+
+                                    {/* Next Page */}
+                                    {currentPage < lastPage && (
+                                        <button
+                                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                                currentPage + 1 === currentPage
+                                                    ? "bg-indigo-600 text-white border border-indigo-600"
+                                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                                            } ${
+                                                loading
+                                                    ? "opacity-50 cursor-not-allowed"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setCurrentPage(currentPage + 1)
+                                            }
+                                            disabled={loading}
+                                        >
+                                            {currentPage + 1}
+                                        </button>
+                                    )}
+
+                                    {/* Ellipsis */}
+                                    {currentPage < lastPage - 2 && (
+                                        <span className="px-2 text-gray-500">
+                                            ...
+                                        </span>
+                                    )}
+
+                                    {/* Last Page */}
+                                    {currentPage < lastPage - 1 && (
+                                        <button
+                                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                                                lastPage === currentPage
+                                                    ? "bg-indigo-600 text-white border border-indigo-600"
+                                                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                                            } ${
+                                                loading
+                                                    ? "opacity-50 cursor-not-allowed"
+                                                    : ""
+                                            }`}
+                                            onClick={() =>
+                                                setCurrentPage(lastPage)
+                                            }
+                                            disabled={loading}
+                                        >
+                                            {lastPage}
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Next Button */}
+                                {currentPage < lastPage && (
+                                    <button
+                                        className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        onClick={() =>
+                                            setCurrentPage(currentPage + 1)
+                                        }
+                                        disabled={loading}
+                                    >
+                                        Next
+                                        <svg
+                                            className="w-4 h-4 ml-1"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 5l7 7-7 7"
+                                            />
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="inline-flex items-center space-x-2">
-                            {currentPage > 1 && (
-                                <button
-                                    className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={() =>
-                                        setCurrentPage((p) =>
-                                            Math.max(p - 1, 1)
-                                        )
-                                    }
-                                >
-                                    Previous
-                                </button>
-                            )}
-
-                            <button className="px-3 py-1.5 rounded-md bg-indigo-600 text-white">
-                                {currentPage}
-                            </button>
-
-                            {currentPage < lastPage && (
-                                <button
-                                    className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                    onClick={() =>
-                                        setCurrentPage((p) =>
-                                            Math.min(p + 1, lastPage)
-                                        )
-                                    }
-                                >
-                                    Next
-                                </button>
-                            )}
-                        </div>
+                        {/* Loading indicator for pagination */}
+                        {loading && (
+                            <div className="mt-3 flex justify-center">
+                                <div className="flex items-center space-x-2 text-sm text-indigo-600">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-indigo-600 border-t-transparent"></div>
+                                    <span>Loading products...</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                </div>
+                )}
             </main>
         </div>
     );

@@ -2,28 +2,37 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ChatConversations;
+use App\Events\OrderCompleted;
+use App\Models\Order;
 use App\Models\ProductFeature;
 use App\Models\ProductIncludeItem;
 use App\Models\Category;
 use App\Models\ProductImage;
 use App\Models\ProductOption;
 use App\Models\ProductOptionValue;
+use App\Models\ProductVariant;
 use App\Models\ProductVideo;
 use App\Models\Product;
 use App\Models\Seller;
 use App\Models\Promotions;
 
+use App\Models\Subscription;
+
+use App\Models\SubscriptionPurchaseRecords;
 use Exception;
 
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 use Inertia\Inertia;
 
 use App\Events\ProductUpdated;
+
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SellerController extends Controller
 {
@@ -36,9 +45,31 @@ class SellerController extends Controller
         $this->user_id = session('user_id');
         $this->seller_id = session('seller_id');
     }
+
+    public function getSubscriptionStatus()
+    {
+        $seller = Seller::with([
+            "subscription",
+            "subscription.subscriptionFeatures"
+        ])
+            ->where("seller_id", $this->seller_id)
+            ->first();
+
+        if ($seller && $seller->subscription && $seller->subscription->limits) {
+            // Decode the JSON string
+            $seller->subscription->limits = json_decode($seller->subscription->limits, true);
+        }
+
+        return response()->json([
+            "seller" => $seller,
+        ]);
+    }
+
     public function sellerDashboard()
     {
-        return Inertia::render('SellerPage/SellerDashboard');
+        return Inertia::render(
+            'SellerPage/SellerDashboard'
+        );
     }
 
     public function sellerManageProduct()
@@ -82,7 +113,36 @@ class SellerController extends Controller
 
     public function sellerSubscriptionPage()
     {
-        return Inertia::render("SellerPage/SellerSubscriptionPage");
+        $list_subscription = Subscription::with("subscriptionFeatures")
+            ->where(
+                "subscription_plan_id",
+                "!=",
+                "PLAN-TRIAL"
+            )
+            ->paginate(3);
+
+        $billing_records = SubscriptionPurchaseRecords::with([
+            "user",
+            "subscription"
+        ])
+            ->where("seller_id", $this->seller_id)
+            ->paginate(5);
+
+        // Loop through each subscription and decode its limits
+        $list_subscription->transform(function ($subscription) {
+            if (is_string($subscription->limits)) {
+                $subscription->limits = json_decode($subscription->limits, true);
+            }
+            return $subscription;
+        });
+
+        return Inertia::render(
+            "SellerPage/SellerSubscriptionPage",
+            [
+                "list_subscription" => $list_subscription,
+                "billing_records" => $billing_records,
+            ]
+        );
     }
 
     public function sellerHelpSupportPage()
@@ -90,22 +150,361 @@ class SellerController extends Controller
         return Inertia::render("SellerPage/SellerHelpSupportPage");
     }
 
-    public function get_ListProduct()
+    public function startTrial(Request $request)
     {
-        $list_product = Product::with([
+        $request->validate([
+            'status' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+        ]);
+
+        $trial = Seller::where('seller_id', $this->seller_id)
+            ->update([
+                'status' => $request->status,
+                'start_date' => $request->start_date,
+                'end_date' => $request->end_date,
+            ]);
+
+        return response()->json([
+            'message' => 'Trial started successfully.',
+            'trial' => $trial
+        ], 201);
+    }
+
+    public function get_ListProduct(Request $request)
+    {
+        $searchTerm = $request->get('search', '');
+        $statusFilter = $request->get('status', 'all');
+        $categoryFilter = $request->get('category', 'all');
+        $sortBy = $request->get('sort', 'created_at_desc');
+
+        $query = Product::with([
             "productImage",
             "productVideo",
             "productFeature",
             "productIncludeItem",
             "productOption.productOptionValue",
+            "productVariant",
             "category"
-        ])
-            ->where("seller_id", $this->seller_id)
-            ->paginate(5);
+        ])->where("seller_id", $this->seller_id);
+
+        // Apply search across ALL products
+        if (!empty($searchTerm)) {
+            $query->where('product_name', 'like', '%' . $searchTerm . '%');
+        }
+
+        // Apply status filter
+        if ($statusFilter !== 'all') {
+            $query->where('product_status', $statusFilter);
+        }
+
+        // Apply category filter
+        if ($categoryFilter !== 'all') {
+            $query->where('category_id', $categoryFilter);
+        }
+
+        // Apply sorting
+        switch ($sortBy) {
+            case 'name':
+                $query->orderBy('product_name', 'asc');
+                break;
+            case 'price-high':
+                $query->orderBy('product_price', 'desc');
+                break;
+            case 'price-low':
+                $query->orderBy('product_price', 'asc');
+                break;
+            case 'stock-high':
+                $query->orderBy('product_quantity', 'desc');
+                break;
+            case 'stock-low':
+                $query->orderBy('product_quantity', 'asc');
+                break;
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+
+        $list_product = $query->paginate(5);
 
         return response()->json([
             "list_product" => $list_product,
         ]);
+    }
+
+    public function get_listOrder(Request $request)
+    {
+        try {
+            $search = $request->input('search', '');
+            $status = $request->input('status', '');
+            $sort = $request->input('sort', 'created_at');
+            $order = $request->input('order', 'desc');
+            $page = $request->input('page', 1); // Get the page number
+
+            $query = Order::with(['user', 'orderItems.product', "orderItems.productImage"])
+                ->where('seller_id', $this->seller_id);
+
+            // Apply search filter
+            if (!empty($search)) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('order_id', 'LIKE', "%{$search}%")
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('name', 'LIKE', "%{$search}%")
+                                ->orWhere('email', 'LIKE', "%{$search}%");
+                        })
+                        ->orWhereHas('orderItems.product', function ($productQuery) use ($search) {
+                            $productQuery->where('product_name', 'LIKE', "%{$search}%");
+                        })
+                        ->orWhere('amount', 'LIKE', "%{$search}%");
+                });
+            }
+
+            // Apply status filter
+            if (!empty($status)) {
+                $query->where('order_status', $status);
+            }
+
+            // Apply sorting
+            $query->orderBy($sort, $order);
+
+            // ALWAYS use pagination, regardless of search
+            $paginated = $query->paginate(5, ['*'], 'page', $page);
+
+            return response()->json([
+                'success' => true,
+                'data' => $paginated->items(),
+                'total' => $paginated->total(),
+                'from' => $paginated->firstItem(),
+                'to' => $paginated->lastItem(),
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'is_search' => !empty($search) // Just indicate if it's a search, but still paginated
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching orders: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // In your SellerController or EarningsController
+    public function getEarnings(Request $request)
+    {
+        try {
+            $sellerId = $this->seller_id;
+            $filter = $request->input('filter', 'monthly');
+            $page = $request->input('page', 1);
+            $perPage = 5;
+
+            // Total earnings from completed/delivered orders
+            $totalEarnings = Order::where('seller_id', $sellerId)
+                ->whereIn('order_status', ['Delivered', 'completed'])
+                ->sum('amount');
+
+            // Pending payouts (orders that are delivered but not paid out yet)
+            $pendingPayouts = Order::where('seller_id', $sellerId)
+                ->where('order_status', 'Delivered')
+                ->sum('amount');
+
+            // This month earnings
+            $thisMonth = Order::where('seller_id', $sellerId)
+                ->whereIn('order_status', ['Delivered', 'completed'])
+                ->whereYear('created_at', now()->year)
+                ->whereMonth('created_at', now()->month)
+                ->sum('amount');
+
+            // Last month earnings
+            $lastMonth = Order::where('seller_id', $sellerId)
+                ->whereIn('order_status', ['Delivered', 'completed'])
+                ->whereYear('created_at', now()->subMonth()->year)
+                ->whereMonth('created_at', now()->subMonth()->month)
+                ->sum('amount');
+
+            // Today's earnings
+            $today = Order::where('seller_id', $sellerId)
+                ->whereIn('order_status', ['Delivered', 'completed'])
+                ->whereDate('created_at', today())
+                ->sum('amount');
+
+            // Chart data based on filter
+            $chartData = [];
+            $chartLabels = [];
+
+            switch ($filter) {
+                case 'daily':
+                    // Last 7 days
+                    for ($i = 6; $i >= 0; $i--) {
+                        $date = now()->subDays($i);
+                        $dailyEarnings = Order::where('seller_id', $sellerId)
+                            ->whereIn('order_status', ['Delivered', 'completed'])
+                            ->whereDate('created_at', $date->format('Y-m-d'))
+                            ->sum('amount');
+
+                        $chartData[] = $dailyEarnings;
+                        $chartLabels[] = $date->format('D, M d');
+                    }
+                    break;
+
+                case 'monthly':
+                    // Last 6 months
+                    for ($i = 5; $i >= 0; $i--) {
+                        $date = now()->subMonths($i);
+                        $monthlyEarnings = Order::where('seller_id', $sellerId)
+                            ->whereIn('order_status', ['Delivered', 'completed'])
+                            ->whereYear('created_at', $date->year)
+                            ->whereMonth('created_at', $date->month)
+                            ->sum('amount');
+
+                        $chartData[] = $monthlyEarnings;
+                        $chartLabels[] = $date->format('M Y');
+                    }
+                    break;
+
+                case 'yearly':
+                    // Last 5 years
+                    for ($i = 4; $i >= 0; $i--) {
+                        $year = now()->subYears($i)->year;
+                        $yearlyEarnings = Order::where('seller_id', $sellerId)
+                            ->whereIn('order_status', ['Delivered', 'completed'])
+                            ->whereYear('created_at', $year)
+                            ->sum('amount');
+
+                        $chartData[] = $yearlyEarnings;
+                        $chartLabels[] = $year;
+                    }
+                    break;
+            }
+
+            // Recent transactions with pagination
+            $transactionsQuery = Order::with(["orderItems.product"])
+                ->where('seller_id', $sellerId)
+                ->whereIn('order_status', ['Delivered', 'completed'])
+                ->orderBy('created_at', 'desc');
+
+            $paginatedTransactions = $transactionsQuery->paginate($perPage, ['*'], 'page', $page);
+
+            $recentTransactions = $paginatedTransactions->map(function ($order) {
+                $productName = $order->orderItems->first()->product->product_name ?? 'N/A';
+
+                return [
+                    'id' => $order->id,
+                    'order_id' => $order->order_id,
+                    'date' => $order->created_at,
+                    'ref' => $order->order_id,
+                    'product_name' => $productName,
+                    'amount' => $order->amount,
+                    'order_status' => $order->order_status,
+                    'payment_status' => $order->is_paid ? 'Paid' : 'Pending',
+                ];
+            });
+
+            return response()->json([
+                'total_earnings' => $totalEarnings,
+                'pending_payouts' => $pendingPayouts,
+                'this_month' => $thisMonth,
+                'last_month' => $lastMonth,
+                'today' => $today,
+                'chart_data' => [
+                    'labels' => $chartLabels,
+                    'data' => $chartData,
+                ],
+                'recent_transactions' => $recentTransactions,
+                'pagination' => [
+                    'current_page' => $paginatedTransactions->currentPage(),
+                    'last_page' => $paginatedTransactions->lastPage(),
+                    'per_page' => $paginatedTransactions->perPage(),
+                    'total' => $paginatedTransactions->total(),
+                    'from' => $paginatedTransactions->firstItem(),
+                    'to' => $paginatedTransactions->lastItem(),
+                ]
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Error fetching earnings data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function get_FeaturedProducts()
+    {
+        try {
+            $featured_products = Product::with([
+                "productImage"
+            ])
+                ->where("featured", True)
+                ->get();
+
+            return response()->json([
+                "featured_products" => $featured_products
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                "errorMessage" => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function toggleProductListing(Request $request)
+    {
+        try {
+            $product_id = $request->input("product_id");
+            $status = $request->input("status");
+
+            $product = Product::where("product_id", $product_id)->first();
+
+            if (!$product) {
+                return response()->json([
+                    "error" => "Product not found"
+                ], 404);
+            }
+
+            $product->update([
+                "product_status" => $status
+            ]);
+
+            return response()->json([
+                "success" => true,
+                "message" => "Product status updated successfully",
+                "product" => $product
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                "error" => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function toggleProductFeatured(Request $request)
+    {
+        try {
+            $product_id = $request->input("product_id");
+            $featured = $request->input("featured");
+
+            $product = Product::where("product_id", $product_id)->first();
+
+            if (!$product) {
+                return response()->json([
+                    "error" => "Product not found"
+                ], 404);
+            }
+
+            $product->update([
+                "featured" => $featured
+            ]);
+
+            return response()->json([
+                "success" => true,
+                "message" => "Product featured status updated successfully",
+                "product" => $product
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                "error" => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function sellerAddProduct(Request $request)
@@ -214,42 +613,29 @@ class SellerController extends Controller
                 }
             }
 
-            // Add product options
-            if ($request->has('options')) {
-                foreach ($request->options as $optionData) {
-                    if (!empty($optionData['name']) && !empty($optionData['values'])) {
-                        $latestItem = ProductOption::orderBy('option_id', 'desc')->first();
+            if ($request->has('variants')) {
+                foreach ($request->variants as $variantData) {
+                    $combination = json_decode($variantData['combination'], true);
+                    $quantity = $variantData['quantity'] ?? 0;
+                    $price = $variantData['price'] ?? $request->product_price;
+                    $variantKey = $variantData['variant_key'];
 
-                        $optionId = ($latestItem && preg_match('/OPT-(\d+)/', $latestItem->option_id, $matches))
-                            ? (int) $matches[1] + 1
-                            : 1;
+                    // Generate variant ID
+                    $latestVariant = ProductVariant::orderBy('variant_id', 'desc')->first();
+                    $variantId = ($latestVariant && preg_match('/VAR-(\d+)/', $latestVariant->variant_id, $matches))
+                        ? (int) $matches[1] + 1
+                        : 1;
+                    $newVariantId = 'VAR-' . str_pad($variantId, 5, '0', STR_PAD_LEFT);
 
-                        $newOptionId = 'OPT-' . str_pad($optionId, 5, '0', STR_PAD_LEFT);
-
-                        ProductOption::create([
-                            'option_id' => $newOptionId,
-                            'product_id' => $productId,
-                            'option_name' => $optionData['name']
-                        ]);
-
-                        foreach ($optionData['values'] as $value) {
-                            if (!empty(trim($value))) {
-                                $latestValue = ProductOptionValue::orderBy('value_id', 'desc')->first();
-
-                                $valueId = ($latestValue && preg_match('/VAL-(\d+)/', $latestValue->value_id, $matches))
-                                    ? (int) $matches[1] + 1
-                                    : 1;
-
-                                $newValueId = 'VAL-' . str_pad($valueId, 5, '0', STR_PAD_LEFT);
-
-                                ProductOptionValue::create([
-                                    'value_id' => $newValueId,
-                                    'option_id' => $newOptionId,
-                                    'option_value' => trim($value),
-                                ]);
-                            }
-                        }
-                    }
+                    // Create variant
+                    ProductVariant::create([
+                        'variant_id' => $newVariantId,
+                        'product_id' => $productId,
+                        'variant_combination' => json_encode($combination),
+                        'variant_key' => $variantKey,
+                        'quantity' => $quantity,
+                        'price' => $price,
+                    ]);
                 }
             }
 
@@ -343,8 +729,15 @@ class SellerController extends Controller
                 'included_items.*' => 'nullable|string|max:255',
                 'product_optionName.*' => 'nullable|string|max:255',
                 'product_optionValue.*' => 'nullable|string|max:255',
-                'product_image.*' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:5120',
-                'product_video.*' => 'nullable|mimes:mp4,mov,avi,wmv,mkv|max:51200',
+                'new_product_images.*' => 'nullable|image|mimes:jpg,jpeg,png,gif,webp|max:5120', // Updated field name
+                'new_product_videos.*' => 'nullable|mimes:mp4,mov,avi,wmv,mkv|max:51200', // Updated field name
+                'images_to_delete.*' => 'nullable|string', // Add validation for delete arrays
+                'videos_to_delete.*' => 'nullable|string', // Add validation for delete arrays
+                'variants.*.combination' => 'nullable|string',
+                'variants.*.quantity' => 'nullable|integer|min:0',
+                'variants.*.price' => 'nullable|numeric|min:0',
+                'variants.*.variant_key' => 'nullable|string',
+                'variants.*.variant_id' => 'nullable|string|exists:product_variants,variant_id',
             ]);
 
             if ($validator->fails()) {
@@ -360,7 +753,8 @@ class SellerController extends Controller
                 "productVideo",
                 "productFeature",
                 "productIncludeItem",
-                "productOption.productOptionValue"
+                "productOption.productOptionValue",
+                "productVariant"
             ])
                 ->where("product_id", $request->product_id)
                 ->first();
@@ -427,7 +821,7 @@ class SellerController extends Controller
                 }
             }
 
-            // ✅ Replace product options + values
+            // ✅ Handle product options (for variant generation)
             if ($request->has('options')) {
                 // Get all existing option IDs for this product
                 $existingOptionIds = ProductOption::where('product_id', $product->product_id)
@@ -466,7 +860,7 @@ class SellerController extends Controller
                             $submittedOptionIds[] = $newOptionId;
                         }
 
-                        // ✅ Handle option values - get existing values first
+                        // ✅ Handle option values
                         $existingValueIds = ProductOptionValue::where('option_id', $currentOption->option_id)
                             ->pluck('value_id')
                             ->toArray();
@@ -517,7 +911,6 @@ class SellerController extends Controller
                         }
                     }
                 }
-
                 // ✅ Delete options that were completely removed
                 $optionsToDelete = array_diff($existingOptionIds, $submittedOptionIds);
                 if (!empty($optionsToDelete)) {
@@ -537,14 +930,89 @@ class SellerController extends Controller
                 ProductOption::where('product_id', $product->product_id)->delete();
             }
 
-            // ✅ Replace images
-            if ($request->hasFile('product_image')) {
-                foreach ($product->productImage as $oldImage) {
-                    \Storage::disk('public')->delete($oldImage->image_path);
-                    $oldImage->delete();
+            // ✅ Handle product variants
+            if ($request->has('variants')) {
+                // Get all existing variant IDs for this product
+                $existingVariantIds = ProductVariant::where('product_id', $product->product_id)
+                    ->pluck('variant_id')
+                    ->toArray();
+
+                $submittedVariantIds = [];
+
+                foreach ($request->variants as $variantData) {
+                    $combination = json_decode($variantData['combination'], true);
+                    $quantity = $variantData['quantity'] ?? 0;
+                    $price = $variantData['price'] ?? $request->product_price;
+                    $variantKey = $variantData['variant_key'];
+                    $variantId = $variantData['variant_id'] ?? null;
+
+                    if ($variantId) {
+                        // Update existing variant
+                        $existingVariant = ProductVariant::where('variant_id', $variantId)->first();
+                        if ($existingVariant) {
+                            $existingVariant->update([
+                                'variant_combination' => json_encode($combination),
+                                'variant_key' => $variantKey,
+                                'quantity' => $quantity,
+                                'price' => $price,
+                            ]);
+                            $submittedVariantIds[] = $variantId;
+                        }
+                    } else {
+                        // Create new variant
+                        $latestVariant = ProductVariant::orderBy('variant_id', 'desc')->first();
+                        $variantNumber = ($latestVariant && preg_match('/VAR-(\d+)/', $latestVariant->variant_id, $matches))
+                            ? (int) $matches[1] + 1
+                            : 1;
+                        $newVariantId = 'VAR-' . str_pad($variantNumber, 5, '0', STR_PAD_LEFT);
+
+                        ProductVariant::create([
+                            'variant_id' => $newVariantId,
+                            'product_id' => $product->product_id,
+                            'variant_combination' => json_encode($combination),
+                            'variant_key' => $variantKey,
+                            'quantity' => $quantity,
+                            'price' => $price,
+                        ]);
+                        $submittedVariantIds[] = $newVariantId;
+                    }
                 }
 
-                foreach ($request->file('product_image') as $image) {
+                // ✅ Delete variants that were removed
+                $variantsToDelete = array_diff($existingVariantIds, $submittedVariantIds);
+                if (!empty($variantsToDelete)) {
+                    ProductVariant::whereIn('variant_id', $variantsToDelete)->delete();
+                }
+            } else {
+                // ✅ If no variants are submitted, delete all existing variants
+                ProductVariant::where('product_id', $product->product_id)->delete();
+            }
+
+            // ✅ Handle image deletions
+            if ($request->has('images_to_delete')) {
+                foreach ($request->images_to_delete as $imageId) {
+                    $image = ProductImage::where('id', $imageId)->first();
+                    if ($image) {
+                        \Storage::disk('public')->delete($image->image_path);
+                        $image->delete();
+                    }
+                }
+            }
+
+            // ✅ Handle video deletions
+            if ($request->has('videos_to_delete')) {
+                foreach ($request->videos_to_delete as $videoId) {
+                    $video = ProductVideo::where('id', $videoId)->first();
+                    if ($video) {
+                        \Storage::disk('public')->delete($video->video_path);
+                        $video->delete();
+                    }
+                }
+            }
+
+            // ✅ Add new images (append, don't replace)
+            if ($request->hasFile('new_product_images')) {
+                foreach ($request->file('new_product_images') as $image) {
                     $filename = uniqid() . '.' . $image->getClientOriginalExtension();
                     $path = $image->storeAs(
                         "products/{$this->seller_id}/{$product->product_id}/image",
@@ -559,14 +1027,9 @@ class SellerController extends Controller
                 }
             }
 
-            // ✅ Replace videos
-            if ($request->hasFile('product_video')) {
-                foreach ($product->productVideo as $oldVideo) {
-                    \Storage::disk('public')->delete($oldVideo->video_path);
-                    $oldVideo->delete();
-                }
-
-                foreach ($request->file('product_video') as $video) {
+            // ✅ Add new videos (append, don't replace)
+            if ($request->hasFile('new_product_videos')) {
+                foreach ($request->file('new_product_videos') as $video) {
                     $filename = uniqid() . '.' . $video->getClientOriginalExtension();
                     $path = $video->storeAs(
                         "products/{$this->seller_id}/{$product->product_id}/video",
@@ -698,5 +1161,289 @@ class SellerController extends Controller
     public function sellerViewPromotion(Request $request)
     {
 
+    }
+
+    public function sellerPurchaseSubscription($subscription_plan_id)
+    {
+
+        $subscription_plan = Subscription::with("subscriptionFeatures")
+            ->where("subscription_plan_id", $subscription_plan_id)
+            ->first();
+
+        return Inertia::render(
+            "SellerPage/SellerSubscriptionPurchasePage",
+            ["subscription_plan" => $subscription_plan]
+        );
+    }
+
+    public function getData_dashboard()
+    {
+        $seller_storeInfo = Seller::with([
+            "sellerStore",
+            "product",
+        ])
+            ->where("seller_id", $this->seller_id)
+            ->get();
+
+        $order_data = Order::with([
+            "orderItems.product",
+            "user",
+        ])
+            ->where(
+                "seller_id",
+                $this->seller_id
+            )
+            ->orderBy("created_at", "desc")
+            ->get();
+
+        return response()->json([
+            "seller_storeInfo" => $seller_storeInfo,
+            "order_data" => $order_data
+        ]);
+    }
+
+    public function updateStatus(Request $request, $orderId)
+    {
+        try {
+            $order = Order::where('seller_id', $this->seller_id)
+                ->findOrFail($orderId);
+
+            $validated = $request->validate([
+                'status' => 'required|in:Processing,Shipped,Delivered,Cancelled'
+            ]);
+
+            $order->update(['order_status' => $validated['status']]);
+
+            if ($validated['status'] === 'Delivered') {
+                // Trigger earnings update
+                event(new OrderCompleted($order));
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order status updated successfully',
+                'order' => $order->load('user', 'product', 'productImage')
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error updating order status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function getProfile()
+    {
+        try {
+            $seller_storeInfo = Seller::with([
+                "sellerStore"
+            ])
+                ->where("seller_id", $this->seller_id)
+                ->get();
+
+            return Inertia::render("SellerPage/SellerUpdateProfile", [
+                "seller_storeInfo" => $seller_storeInfo
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch profile data'
+            ], 500);
+        }
+    }
+
+    public function updateProfile(Request $request)
+    {
+        try {
+            $seller = Auth::user();
+            $store = $seller->seller_store;
+
+            // Validate personal information
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email,' . $seller->id,
+                'phone' => 'nullable|string|max:20',
+                'store_name' => 'required|string|max:255',
+                'store_description' => 'nullable|string',
+                'store_address' => 'nullable|string',
+                'store_phone' => 'nullable|string|max:20',
+                'profile_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+                'store_image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120',
+            ]);
+
+            // Update user information
+            $seller->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+            ]);
+
+            // Update or create store information
+            if ($store) {
+                $storeData = [
+                    'store_name' => $request->store_name,
+                    'store_description' => $request->store_description,
+                    'store_address' => $request->store_address,
+                    'store_phone' => $request->store_phone,
+                ];
+
+                // Handle profile image upload
+                if ($request->hasFile('profile_image')) {
+                    // Delete old image if exists
+                    if ($seller->profile_image) {
+                        Storage::delete(str_replace('/storage/', 'public/', $seller->profile_image));
+                    }
+
+                    $path = $request->file('profile_image')->store('public/sellers/profile');
+                    $seller->update(['profile_image' => '/storage/' . str_replace('public/', '', $path)]);
+                }
+
+                // Handle store image upload
+                if ($request->hasFile('store_image')) {
+                    // Delete old image if exists
+                    if ($store->store_image) {
+                        Storage::delete(str_replace('/storage/', 'public/', $store->store_image));
+                    }
+
+                    $path = $request->file('store_image')->store('public/stores');
+                    $storeData['store_image'] = '/storage/' . str_replace('public/', '', $path);
+                }
+
+                $store->update($storeData);
+            }
+
+            $seller->load('seller_store');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile updated successfully',
+                'seller' => $seller
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update profile: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function generateIncomeReport(Request $request)
+    {
+        try {
+            $sellerId = $this->seller_id;
+            $period = $request->input('period', 'monthly');
+            $startDate = $request->input('startDate');
+            $endDate = $request->input('endDate');
+            $format = $request->input('format', 'pdf');
+            $includeChart = $request->input('includeChart', true);
+            $includeTransactions = $request->input('includeTransactions', true);
+
+            // Set date range based on period
+            switch ($period) {
+                case 'weekly':
+                    $startDate = now()->startOfWeek()->format('Y-m-d');
+                    $endDate = now()->format('Y-m-d');
+                    break;
+                case 'monthly':
+                    $startDate = now()->startOfMonth()->format('Y-m-d');
+                    $endDate = now()->format('Y-m-d');
+                    break;
+                case 'quarterly':
+                    $startDate = now()->startOfQuarter()->format('Y-m-d');
+                    $endDate = now()->format('Y-m-d');
+                    break;
+                case 'yearly':
+                    $startDate = now()->startOfYear()->format('Y-m-d');
+                    $endDate = now()->format('Y-m-d');
+                    break;
+                case 'custom':
+                    // Use provided dates
+                    break;
+            }
+
+            // Fetch earnings data for the period
+            $query = Order::with(['user', 'orderItems.product'])
+                ->where('seller_id', $sellerId)
+                ->whereIn('order_status', ['Delivered', 'completed'])
+                ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
+
+            $transactions = $query->get();
+            $totalEarnings = $transactions->sum('amount');
+            $transactionCount = $transactions->count();
+
+            // Prepare report data
+            $reportData = [
+                'period' => $period,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'generated_at' => now()->toDateTimeString(),
+                'seller_info' => [
+                    'name' => auth()->user()->name,
+                    'email' => auth()->user()->email,
+                ],
+                'summary' => [
+                    'total_earnings' => $totalEarnings,
+                    'transaction_count' => $transactionCount,
+                    'average_order_value' => $transactionCount > 0 ? $totalEarnings / $transactionCount : 0,
+                ],
+                'transactions' => $includeTransactions ? $transactions->map(function ($order) {
+                    return [
+                        'order_id' => $order->order_id,
+                        'date' => $order->created_at->format('Y-m-d H:i:s'),
+                        'customer_name' => $order->user->name ?? 'N/A',
+                        'product_name' => $order->orderItems->first()->product->product_name ?? 'N/A',
+                        'amount' => $order->amount,
+                        'status' => $order->order_status,
+                    ];
+                }) : [],
+            ];
+
+            // Generate report based on format
+            switch ($format) {
+                case 'pdf':
+                    return $this->generatePdfReport($reportData);
+                case 'csv':
+                    return $this->generateCsvReport($reportData);
+                case 'excel':
+                    return $this->generateExcelReport($reportData);
+                default:
+                    return response()->json(['error' => 'Unsupported format'], 400);
+            }
+
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Error generating report: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function generatePdfReport($data)
+    {
+        $html = view('reports.income-pdf', compact('data'))->render();
+
+        $pdf = Pdf::loadHTML($html);
+        return $pdf->download('income-report.pdf');
+    }
+
+    private function generateCsvReport($data)
+    {
+        $csvContent = "Date,Order ID,Customer,Product,Amount,Status\n";
+
+        foreach ($data['transactions'] as $transaction) {
+            $csvContent .= "{$transaction['date']},{$transaction['order_id']},{$transaction['customer_name']},{$transaction['product_name']},{$transaction['amount']},{$transaction['status']}\n";
+        }
+
+        return response($csvContent)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', 'attachment; filename="income-report.csv"');
+    }
+
+    private function generateExcelReport($data)
+    {
+        // For Excel, you might want to use a library like Maatwebsite/Laravel-Excel
+        // For now, return CSV as Excel
+        return $this->generateCsvReport($data);
     }
 }

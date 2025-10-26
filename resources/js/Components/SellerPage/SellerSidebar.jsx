@@ -9,7 +9,6 @@ import {
     FaMoneyBill,
     FaTags,
     FaCreditCard,
-    FaQuestionCircle,
     FaUserCircle,
     FaSignOutAlt,
     FaStore,
@@ -22,11 +21,9 @@ import {
     FaBell,
 } from "react-icons/fa";
 
-import { Settings, LogOut } from "lucide-react";
-
 import { Link, usePage } from "@inertiajs/react";
 
-export function SellerSidebar({ shopName, notificationCount = 0 }) {
+export function SellerSidebar({ notificationCount = 0 }) {
     const [profileOpen, setProfileOpen] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -85,7 +82,7 @@ export function SellerSidebar({ shopName, notificationCount = 0 }) {
                         </div>
                         <div>
                             <div className="text-lg font-bold truncate max-w-[160px]">
-                                {shopName}
+                                {auth.user.seller_store_name}
                             </div>
                             <div className="text-xs text-indigo-100 opacity-90">
                                 Seller Dashboard
@@ -136,9 +133,9 @@ export function SellerSidebar({ shopName, notificationCount = 0 }) {
                     >
                         <FaBox className="text-lg text-blue-500" />
                         <span className="text-sm font-medium">Products</span>
-                        <span className="ml-auto bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
+                        {/* <span className="ml-auto bg-blue-100 text-blue-600 text-xs px-2 py-1 rounded-full">
                             15
-                        </span>
+                        </span> */}
                     </Link>
 
                     <Link
@@ -151,9 +148,9 @@ export function SellerSidebar({ shopName, notificationCount = 0 }) {
                     >
                         <FaShoppingCart className="text-lg text-green-500" />
                         <span className="text-sm font-medium">Orders</span>
-                        <span className="ml-auto bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">
+                        {/* <span className="ml-auto bg-green-100 text-green-600 text-xs px-2 py-1 rounded-full">
                             24
-                        </span>
+                        </span> */}
                     </Link>
 
                     <Link
@@ -234,7 +231,7 @@ export function SellerSidebar({ shopName, notificationCount = 0 }) {
                 </div>
             </nav>
 
-            {/* User Profile Section - FIXED: Removed fixed height constraint */}
+            {/* User Profile Section */}
             <div className="p-4 border-t border-gray-100 bg-gray-50">
                 <button
                     onClick={() => setProfileOpen(!profileOpen)}
@@ -273,7 +270,7 @@ export function SellerSidebar({ shopName, notificationCount = 0 }) {
                             className="overflow-hidden mt-2 space-y-1"
                         >
                             <Link
-                                href="#"
+                                href={route("seller-manage-profile")}
                                 className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
                             >
                                 <FaUser className="w-4 h-4 mr-2" />
@@ -289,7 +286,7 @@ export function SellerSidebar({ shopName, notificationCount = 0 }) {
                             <Link
                                 href={route("logout")}
                                 method="post"
-                                className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                                className="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
                             >
                                 <FaSignOutAlt className="w-4 h-4 mr-2" />
                                 Logout
@@ -325,7 +322,7 @@ export function SellerSidebar({ shopName, notificationCount = 0 }) {
 
                     <div className="flex items-center">
                         <div className="text-lg font-bold text-gray-800 truncate max-w-[140px]">
-                            {shopName}
+                            {auth.user.seller_store_name}
                         </div>
                     </div>
 

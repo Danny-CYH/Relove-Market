@@ -11,6 +11,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('product_embeddings', function (Blueprint $table) {
+            $table->id();
             $table->string("product_id")->unique();
             $table->string("name");
             $table->binary("embedding");

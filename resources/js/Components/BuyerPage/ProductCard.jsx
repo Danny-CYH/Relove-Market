@@ -1,11 +1,9 @@
-import { FaClock, FaHeart, FaShoppingCart, FaStar } from "react-icons/fa";
-import { useState } from "react";
+import { FaClock, FaShoppingCart, FaStar } from "react-icons/fa";
 
 export function ProductCard({ product, isFlashSale }) {
     if (!product) return null;
 
-    const { category, originalPrice, rating, reviews, discount, timeLeft } =
-        product;
+    const { category, originalPrice, discount, timeLeft } = product;
 
     return (
         <div className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 h-full flex flex-col group">
@@ -53,15 +51,16 @@ export function ProductCard({ product, isFlashSale }) {
                             <FaStar
                                 key={star}
                                 className={`w-3 h-3 ${
-                                    star <= Math.floor(rating || 0)
-                                        ? "text-yellow-400 fill-current"
+                                    star <=
+                                    Math.round(product.ratings[0]?.rating || 0)
+                                        ? "text-yellow-400"
                                         : "text-gray-300"
                                 }`}
                             />
                         ))}
                     </div>
                     <span className="text-xs text-gray-500 ml-1">
-                        ({reviews || 0})
+                        ( {product.ratings[0]?.rating || 0} )
                     </span>
                 </div>
 

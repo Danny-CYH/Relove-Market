@@ -1,24 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-    Search,
-    Clock,
-    MoreVertical,
-    Paperclip,
-    Send,
-    Phone,
-    Video,
-    Info,
-    ChevronLeft,
-    Filter,
-    MessageCircle,
-    Store,
-    User,
-    RefreshCw,
-    AlertCircle,
-} from "lucide-react";
+import { Star, Zap, Crown } from "lucide-react";
 
 import { SellerSidebar } from "@/Components/SellerPage/SellerSidebar";
-import { LoadingProgress } from "@/Components/AdminPage/LoadingProgress";
+
+import { RenderConversationsSidebar } from "@/Components/SellerPage/SellerChatPage/RenderConversationsSidebar";
+import { RenderChatInterface } from "@/Components/SellerPage/SellerChatPage/RenderChatInterface";
+import { TrialWelcomeModal } from "@/Components/SellerPage/SellerChatPage/TrailWelcomeModal";
+import { UpgradeModal } from "@/Components/SellerPage/SellerChatPage/UpgradeModal";
 
 import axios from "axios";
 
@@ -46,11 +34,281 @@ export default function SellerChatPage({ seller_storeInfo }) {
 
     const [imageLoading, setImageLoading] = useState({});
 
+    // New subscription states
+    const [subscription, setSubscription] = useState(null);
+    const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+    const [showTrialModal, setShowTrialModal] = useState(false);
+
     const messagesEndRef = useRef(null);
 
     const pusher = useRef(null);
 
     const { auth } = usePage().props;
+
+    // Subscription tiers configuration
+    const subscriptionTiers = {
+        starter: {
+            name: "Starter",
+            maxConversations: 3,
+            features: [
+                "3 active conversations",
+                "Basic support",
+                "Standard messaging",
+            ],
+            price: "Free",
+            color: "gray",
+            icon: <Star className="w-5 h-5" />,
+        },
+        professional: {
+            name: "Professional",
+            maxConversations: 15,
+            features: [
+                "15 active conversations",
+                "Priority support",
+                "File sharing",
+                "Message templates",
+            ],
+            price: "RM29/month",
+            color: "blue",
+            icon: <Zap className="w-5 h-5" />,
+        },
+        business: {
+            name: "Business",
+            maxConversations: 50,
+            features: [
+                "50 active conversations",
+                "24/7 support",
+                "Advanced analytics",
+                "Custom branding",
+                "API access",
+            ],
+            price: "RM79/month",
+            color: "purple",
+            icon: <Crown className="w-5 h-5" />,
+        },
+        enterprise: {
+            name: "Enterprise",
+            maxConversations: 999, // Unlimited
+            features: [
+                "Unlimited conversations",
+                "Dedicated account manager",
+                "Custom features",
+                "SLA guarantee",
+            ],
+            price: "Custom",
+            color: "gold",
+            icon: <Crown className="w-5 h-5" />,
+        },
+    };
+
+    // Map subscription_plan_id to tier names - ADD THIS FUNCTION
+    const getTierFromPlanId = (planId) => {
+        const planMapping = {
+            null: "starter", // No subscription plan = starter
+            plan_pro: "professional",
+            plan_business: "business",
+            plan_enterprise: "enterprise",
+        };
+        return planMapping[planId] || "starter";
+    };
+
+    // Check if seller is in trial period
+    const isInTrialPeriod = () => {
+        if (!subscription?.created_at) return false;
+
+        const createdAt = new Date(subscription.created_at);
+        const trialEnd = new Date(
+            createdAt.getTime() + 7 * 24 * 60 * 60 * 1000
+        ); // 7 days from creation
+        const now = new Date();
+
+        return now < trialEnd;
+    };
+
+    // Get trial days remaining
+    const getTrialDaysRemaining = () => {
+        if (!subscription?.created_at) return 0;
+
+        const createdAt = new Date(subscription.created_at);
+        const trialEnd = new Date(
+            createdAt.getTime() + 7 * 24 * 60 * 60 * 1000
+        );
+        const now = new Date();
+        const diffTime = trialEnd - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return Math.max(0, diffDays);
+    };
+
+    // Check if subscription is active (either in trial or has active paid plan)
+    const isSubscriptionActive = () => {
+        // If seller has a paid plan
+        if (subscription?.subscription_plan_id) return true;
+
+        // If seller is in trial period
+        return isInTrialPeriod();
+    };
+
+    // Fetch seller's subscription status - UPDATED
+    const fetchSubscriptionStatus = async () => {
+        try {
+            setSubscriptionLoading(true);
+            const response = await axios.get("/api/seller-subscriptions");
+
+            console.log("Subscription API Response:", response);
+
+            const sellerSubscription = response.data.seller_subscription;
+
+            // Transform the data to match frontend expectations
+            const subscriptionData = {
+                tier: getTierFromPlanId(
+                    sellerSubscription?.subscription_plan_id
+                ),
+                subscription_plan_id: sellerSubscription?.subscription_plan_id,
+                ...sellerSubscription,
+            };
+
+            console.log("Processed subscription data:", subscriptionData);
+            setSubscription(subscriptionData);
+
+            // Show trial modal if seller is new and has no conversations yet
+            if (
+                !sellerSubscription?.subscription_plan_id &&
+                conversations.length === 0
+            ) {
+                setTimeout(() => {
+                    setShowTrialModal(true);
+                }, 1000);
+            }
+        } catch (error) {
+            console.error("Error fetching subscription:", error);
+            // Default to starter tier if error
+            setSubscription({ tier: "starter" });
+        } finally {
+            setSubscriptionLoading(false);
+        }
+    };
+
+    // Check if seller can start new conversation - UPDATED with better logging
+    const canStartNewConversation = () => {
+        if (!subscription) {
+            console.log("No subscription data available");
+            return false;
+        }
+
+        const currentTier =
+            subscriptionTiers[subscription.tier] || subscriptionTiers.starter;
+
+        // Count active conversations (last 30 days)
+        const activeConversationsCount = conversations.filter((conv) => {
+            if (!conv.last_message_at) return false;
+
+            const lastMessageDate = new Date(conv.last_message_at);
+            const thirtyDaysAgo = new Date(
+                Date.now() - 30 * 24 * 60 * 60 * 1000
+            );
+            return lastMessageDate > thirtyDaysAgo;
+        }).length;
+
+        console.log(
+            `Active conversations: ${activeConversationsCount}/${currentTier.maxConversations}, Tier: ${subscription.tier}`
+        );
+
+        return activeConversationsCount < currentTier.maxConversations;
+    };
+
+    // Check if seller has reached conversation limit
+    const hasReachedLimit = () => {
+        const reached = !canStartNewConversation();
+        console.log("Has reached limit:", reached);
+        return reached;
+    };
+
+    // Get current tier info
+    const getCurrentTierInfo = () => {
+        const tierName = subscription?.tier || "starter";
+        const tierInfo =
+            subscriptionTiers[tierName] || subscriptionTiers.starter;
+        return tierInfo;
+    };
+
+    // Handle new conversation creation
+    const handleNewConversation = async (buyerId, productId) => {
+        console.log("Checking if can create new conversation...");
+        if (hasReachedLimit()) {
+            console.log("Limit reached, showing upgrade modal");
+            setShowUpgradeModal(true);
+            return false;
+        }
+
+        // Check subscription status first
+        if (!isSubscriptionActive()) {
+            console.log("Trial expired and no active subscription");
+            setShowUpgradeModal(true);
+            return false;
+        }
+
+        if (hasReachedLimit()) {
+            console.log("Limit reached, showing upgrade modal");
+            setShowUpgradeModal(true);
+            return false;
+        }
+
+        try {
+            // Your existing logic to create new conversation
+            const response = await axios.post("/conversations", {
+                buyer_id: buyerId,
+                product_id: productId,
+            });
+            return response.data.conversation;
+        } catch (error) {
+            console.error("Error creating conversation:", error);
+            throw error;
+        }
+    };
+
+    // Upgrade subscription
+    const handleUpgrade = (tier) => {
+        console.log("Upgrading to tier:", tier);
+        // Redirect to payment page or handle upgrade logic
+        window.location.href = `/seller/subscription/upgrade?tier=${tier}`;
+    };
+
+    // Add this function to handle the actual conversation creation from buyers
+    // This should be called when a buyer tries to start a new conversation with the seller
+    const handleIncomingConversation = async (buyerId, productId) => {
+        console.log("Handling incoming conversation request...");
+
+        // Check if we can create a new conversation
+        if (!isSubscriptionActive()) {
+            console.log("Subscription not active - blocking new conversation");
+            // You might want to show an error to the buyer here
+            return { success: false, error: "seller_subscription_inactive" };
+        }
+
+        if (hasReachedLimit()) {
+            console.log(
+                "Conversation limit reached - blocking new conversation"
+            );
+            // You might want to show an error to the buyer here
+            return {
+                success: false,
+                error: "seller_conversation_limit_reached",
+            };
+        }
+
+        try {
+            const newConversation = await handleNewConversation(
+                buyerId,
+                productId
+            );
+            return { success: true, conversation: newConversation };
+        } catch (error) {
+            console.error("Error creating conversation:", error);
+            return { success: false, error: error.message };
+        }
+    };
 
     const handleNewMessage = useCallback(
         (newMessageData) => {
@@ -165,6 +423,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
     // Fetch conversations on component mount
     useEffect(() => {
         fetchConversations();
+        fetchSubscriptionStatus();
     }, []);
 
     // Initialize component with proper data handling
@@ -229,7 +488,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
             setError(null);
 
             const response = await axios.get("/conversations");
-            console.log("API Response:", response);
 
             setConversations(response.data);
         } catch (error) {
@@ -338,9 +596,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
                 const sellerChannel = pusher.current.subscribe(
                     `private-user.${userId}.${roleSuffix}`
                 );
-
-                console.log("Subscribed to:", sellerChannel.name);
-                console.log("Is subscribed:", sellerChannel.subscribed);
 
                 sellerChannel.bind("MessageSent", (data) => {
                     console.log("🔔 New message notification received:", data);
@@ -510,386 +765,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     };
 
-    // User Avatar Component with loading state
-    const UserAvatar = ({ user, size = 8, className = "" }) => {
-        const avatarId = `avatar-${user?.id || "default"}`;
-        const isLoading = imageLoading[avatarId] !== false;
-
-        return (
-            <div className={`relative w-${size} h-${size} ${className}`}>
-                {user?.avatar ? (
-                    <>
-                        {isLoading && (
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
-                            </div>
-                        )}
-                        <img
-                            src={user.avatar}
-                            alt={user.name}
-                            className={`w-full h-full rounded-full object-cover ${
-                                isLoading ? "opacity-0" : "opacity-100"
-                            } transition-opacity`}
-                            onLoad={() => handleImageLoad(avatarId)}
-                            onError={() => handleImageError(avatarId)}
-                        />
-                    </>
-                ) : (
-                    <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                        <span className="text-white text-xs font-semibold">
-                            {user?.name?.charAt(0) || "U"}
-                        </span>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    // MessageBubble component for seller
-    const MessageBubble = ({ message }) => {
-        const isBuyer = message.sender_type === "seller";
-        const isOptimistic = message.isOptimistic;
-
-        return (
-            <div
-                className={`flex gap-2 mb-4 ${
-                    isBuyer ? "justify-end" : "justify-start"
-                }`}
-            >
-                {!isBuyer && (
-                    <UserAvatar
-                        user={message.sender}
-                        size={8}
-                        className="flex-shrink-0"
-                    />
-                )}
-
-                <div
-                    className={`max-w-[70%] flex flex-col ${
-                        isBuyer ? "items-end" : "items-start"
-                    }`}
-                >
-                    {!isBuyer && (
-                        <span className="text-xs text-gray-500 mb-1 ml-1">
-                            {message.sender?.name}
-                        </span>
-                    )}
-                    {message.unread_count > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                            {message.unread_count}
-                        </span>
-                    )}
-                    <div
-                        className={`px-4 py-3 rounded-2xl ${
-                            isBuyer
-                                ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-br-md"
-                                : "bg-gray-100 text-gray-900 rounded-bl-md"
-                        } ${isOptimistic ? "opacity-80" : ""} shadow-sm`}
-                    >
-                        <p className="text-sm leading-relaxed">
-                            {message.message}
-                        </p>
-                    </div>
-                    <div
-                        className={`flex items-center gap-2 mt-1 ${
-                            isBuyer ? "flex-row-reverse" : ""
-                        }`}
-                    >
-                        <span
-                            className={`text-xs ${
-                                isBuyer ? "text-gray-500" : "text-gray-400"
-                            }`}
-                        >
-                            {formatConversationTimeForDisplay(
-                                message.created_at
-                            )}
-                        </span>
-                        {isBuyer && (
-                            <span className="text-xs">
-                                {isOptimistic ? (
-                                    <Clock size={12} className="inline" />
-                                ) : message.read ? (
-                                    "✓✓"
-                                ) : (
-                                    "✓"
-                                )}
-                            </span>
-                        )}
-                        {/* Show read status for seller messages */}
-                        {!isBuyer && message.read && (
-                            <span className="text-xs text-gray-400">Read</span>
-                        )}
-                    </div>
-                </div>
-
-                {isBuyer && (
-                    <UserAvatar
-                        user={auth.user}
-                        size={8}
-                        className="flex-shrink-0"
-                    />
-                )}
-            </div>
-        );
-    };
-
-    // Error display component
-    const ErrorDisplay = () => {
-        if (!error) return null;
-
-        return (
-            <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-lg mb-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <AlertCircle size={16} />
-                    <span className="text-sm">{error}</span>
-                </div>
-                <button
-                    onClick={() => setError(null)}
-                    className="text-red-600 hover:text-red-800"
-                >
-                    <span className="text-lg">×</span>
-                </button>
-            </div>
-        );
-    };
-
-    // Render conversations sidebar
-    const RenderConversationsSidebar = ({ conversations }) => (
-        <div
-            className={`w-full md:w-1/3 border-r border-gray-200 flex flex-col ${
-                isMobile && showChat ? "hidden" : "flex"
-            }`}
-        >
-            <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-indigo-100 p-2 rounded-full">
-                            <Store className="text-indigo-600" size={20} />
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-bold text-gray-900">
-                                Seller Messages
-                            </h1>
-                            <p className="text-sm text-gray-600">
-                                Chat with your customers
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="relative">
-                    <Search
-                        className="absolute left-3 top-2.5 text-gray-400"
-                        size={18}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Search customers or products..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                    />
-                </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto">
-                {conversationsLoading ? (
-                    <div className="flex justify-center items-center h-32">
-                        <LoadingProgress
-                            modalType="loading"
-                            modalMessage="Loading conversations..."
-                        />
-                    </div>
-                ) : conversations.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                        <MessageCircle
-                            size={48}
-                            className="mx-auto mb-3 text-gray-300"
-                        />
-                        <p>No conversations found.</p>
-                        <p className="text-sm mt-1">
-                            {searchTerm
-                                ? "Try adjusting your search terms"
-                                : "When customers message you, they will appear here"}
-                        </p>
-                    </div>
-                ) : (
-                    conversations.map((conversation) => {
-                        return (
-                            <div
-                                key={conversation.id}
-                                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                                    activeConversation?.id === conversation.id
-                                        ? "bg-blue-50 border-l-4 border-l-indigo-600"
-                                        : ""
-                                }`}
-                                onClick={() =>
-                                    handleConversationClick(conversation)
-                                }
-                            >
-                                <div className="flex items-start gap-3">
-                                    <div className="bg-gray-200 rounded-full h-12 w-12 flex items-center justify-center">
-                                        <User
-                                            size={20}
-                                            className="text-gray-600"
-                                        />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <h3 className="font-semibold text-gray-900 truncate">
-                                                {conversation.buyer_name ||
-                                                    "Unknown Customer"}
-                                            </h3>
-                                            <span className="text-xs text-gray-500 whitespace-nowrap">
-                                                {conversation.timestamp}
-                                            </span>
-                                        </div>
-                                        <p className="text-sm text-gray-600 truncate mb-2">
-                                            {conversation.last_message ||
-                                                "No messages yet"}
-                                        </p>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-xs text-indigo-600 bg-indigo-50 px-2 py-1 rounded-full truncate max-w-[120px]">
-                                                {conversation.product}
-                                            </span>
-                                            {conversation.unread_count > 0 && (
-                                                <span className="bg-indigo-600 text-white text-xs h-5 w-5 rounded-full flex items-center justify-center">
-                                                    {conversation.unread_count}
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
-            </div>
-        </div>
-    );
-
-    // Render chat interface
-    const renderChatInterface = () => (
-        <div
-            className={`flex flex-col flex-1 ${
-                isMobile && !showChat ? "hidden" : "flex"
-            }`}
-        >
-            {!activeConversation ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-                    <div className="bg-indigo-100 p-4 rounded-full mb-4">
-                        <Store size={32} className="text-indigo-600" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                        Seller Messages
-                    </h3>
-                    <p className="text-gray-500 max-w-md">
-                        {conversationsLoading
-                            ? "Loading your conversations..."
-                            : "Select a conversation to chat with customers about your products."}
-                    </p>
-                </div>
-            ) : (
-                <>
-                    <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-white">
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={handleBackToConversations}
-                                className="p-1 rounded text-black hover:bg-gray-100 md:hidden"
-                            >
-                                <ChevronLeft size={20} />
-                            </button>
-                            <div className="bg-gray-200 rounded-full h-10 w-10 flex items-center justify-center">
-                                <User size={20} className="text-gray-600" />
-                            </div>
-                            <div>
-                                <h2 className="font-semibold text-gray-900">
-                                    {activeConversation.buyer_name || "Customer"}
-                                </h2>
-                                <p className="text-sm text-gray-500">
-                                    Customer • {activeConversation.product}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full"
-                                title="Conversation info"
-                            >
-                                <Info size={18} />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                        <ErrorDisplay />
-
-                        {messageLoading ? (
-                            <div className="flex justify-center items-center h-full">
-                                <LoadingProgress
-                                    modalType="loading"
-                                    modalMessage="Loading messages..."
-                                />
-                            </div>
-                        ) : messages.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                                <MessageCircle
-                                    size={48}
-                                    className="mb-3 text-gray-300"
-                                />
-                                <p>No messages yet</p>
-                                <p className="text-sm">
-                                    Start the conversation with your customer
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                {messages.map((message) => (
-                                    <MessageBubble
-                                        key={message.id || message.tempId}
-                                        message={message}
-                                    />
-                                ))}
-                                <div ref={messagesEndRef} />
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="p-4 border-t border-gray-200 bg-white">
-                        <form
-                            onSubmit={handleSendMessage}
-                            className="flex items-center gap-2"
-                        >
-                            <button
-                                type="button"
-                                className="p-2 text-gray-500 hover:text-indigo-600 rounded-full hover:bg-indigo-50"
-                                title="Attach file"
-                            >
-                                <Paperclip size={20} />
-                            </button>
-                            <input
-                                type="text"
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Type your message..."
-                                className="text-black flex-1 border border-gray-300 rounded-full px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                disabled={messageLoading}
-                            />
-                            <button
-                                type="submit"
-                                disabled={!newMessage.trim() || messageLoading}
-                                className="p-2 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Send message"
-                            >
-                                <Send size={20} />
-                            </button>
-                        </form>
-                    </div>
-                </>
-            )}
-        </div>
-    );
-
     return (
         <div className="min-h-screen bg-gray-50 flex">
             <SellerSidebar
@@ -903,10 +778,52 @@ export default function SellerChatPage({ seller_storeInfo }) {
                 <div className="bg-white rounded-xl shadow-sm h-[calc(100vh-2rem)] flex overflow-hidden">
                     <RenderConversationsSidebar
                         conversations={filteredConversations}
+                        isMobile={isMobile}
+                        showChat={showChat}
+                        searchConversation={setSearchTerm} // ✅ Pass setter
+                        searchTerm={searchTerm}
+                        conversationsLoading={conversationsLoading}
+                        activeConversation={activeConversation}
+                        getCurrentTierInfo={getCurrentTierInfo}
+                        getTrialDaysRemaining={getTrialDaysRemaining}
+                        isInTrialPeriod={isInTrialPeriod}
+                        isSubscriptionActive={isSubscriptionActive}
+                        handleConversationClick={handleConversationClick}
                     />
-                    {renderChatInterface()}
+                    <RenderChatInterface
+                        isMobile={isMobile}
+                        activeConversation={activeConversation}
+                        conversationsLoading={conversationsLoading}
+                        showChat={showChat}
+                        handleBackToConversations={handleBackToConversations}
+                        error={error}
+                        setError={setError}
+                        messageLoading={messageLoading}
+                        messages={messages}
+                        handleSendMessage={handleSendMessage}
+                        newMessage={newMessage}
+                        setNewMessage={setNewMessage}
+                        messagesEndRef={messagesEndRef}
+                        formatConversationTimeForDisplay={
+                            formatConversationTimeForDisplay
+                        }
+                        imageLoading={imageLoading}
+                    />
                 </div>
             </main>
+
+            <TrialWelcomeModal
+                showTrialModal={showTrialModal}
+                setShowTrialModal={setShowTrialModal}
+            />
+
+            <UpgradeModal
+                showUpgradeModal={showUpgradeModal}
+                setShowUpgradeModal={setShowUpgradeModal}
+                subscription={subscription}
+                subscriptionTiers={subscriptionTiers}
+                handleUpgrade={handleUpgrade}
+            />
         </div>
     );
 }

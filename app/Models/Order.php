@@ -9,27 +9,38 @@ class Order extends Model
 {
     use HasFactory;
 
+    public $primaryKey = "order_id";
+
+    public $incrementing = false;
+
+    protected $keyType = "string";
+
+    protected $table = "orders";
+
     protected $fillable = [
-        'buyer_id',
+        'order_id',
+        'payment_intent_id',
+        'amount',
+        'currency',
+        'payment_status',
+        'order_status',
+        'user_id',
         'seller_id',
-        'item_id',
-        'quantity',
-        'total_price',
-        'status'
+        'notes',
     ];
 
-    public function buyer()
+    public static function generateOrderId()
     {
-        return $this->belongsTo(User::class, 'buyer_id');
+        return 'ORD-' . date('Ymd') . '-' . strtoupper(uniqid());
     }
 
-    public function seller()
+    public function user()
     {
-        return $this->belongsTo(User::class, 'seller_id');
+        return $this->belongsTo(User::class, "user_id", "user_id");
     }
 
-    public function item()
+    public function orderItems()
     {
-        return $this->belongsTo(Item::class);
+        return $this->hasMany(OrderItem::class, "order_id", "order_id");
     }
 }

@@ -157,9 +157,18 @@ export function Navbar() {
                                     aria-label="User menu"
                                 >
                                     <img
-                                        src="../image/shania_yan.png"
-                                        alt={auth.user.name}
-                                        className="w-8 h-8 rounded-full object-cover"
+                                        src={
+                                            auth?.user?.profile_image
+                                                ? import.meta.env
+                                                      .VITE_BASE_URL +
+                                                  auth.user.profile_image
+                                                : "../image/user.png" // ✅ Direct path to your default image in public folder
+                                        }
+                                        alt="Profile"
+                                        className="w-8 max-h-10 rounded-full object-cover"
+                                        onError={(e) => {
+                                            e.target.src = "../image/user.png"; // ✅ consistent fallback
+                                        }}
                                     />
                                 </button>
 

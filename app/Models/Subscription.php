@@ -24,6 +24,7 @@ class Subscription extends Model
         "price",
         "duration",
         "status",
+        "limits",
     ];
 
     public function seller()

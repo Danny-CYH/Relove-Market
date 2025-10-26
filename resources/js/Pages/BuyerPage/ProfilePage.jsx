@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
     Camera,
     Edit3,
@@ -10,41 +10,51 @@ import {
     MapPin,
     Calendar,
     Shield,
-    CreditCard,
     Heart,
     ShoppingBag,
     Settings,
     LogOut,
-    Upload,
     CheckCircle,
-    Eye,
-    EyeOff,
-    ChevronRight,
-    ArrowLeft,
     Bell,
-    Lock,
-    Globe,
-    CreditCardIcon,
+    CreditCard as CreditCardIcon,
+    Package,
+    Truck,
+    CheckCircle2,
 } from "lucide-react";
+
+import dayjs from "dayjs";
+
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
+
+import { OrdersTab } from "@/Components/BuyerPage/ProfilePage/OrdersTab";
+import { SecurityTab } from "@/Components/BuyerPage/ProfilePage/SecurityTab";
+import { NotificationsTab } from "@/Components/BuyerPage/ProfilePage/NotificationsTab";
+import { WishlistTab } from "@/Components/BuyerPage/ProfilePage/WishlistTab";
+import { PaymentsTab } from "@/Components/BuyerPage/ProfilePage/PaymentsTab";
+
+import { usePage } from "@inertiajs/react";
+import { ReceiptModal } from "@/Components/BuyerPage/ProfilePage/ReceiptModal";
 
 export default function ProfilePage() {
     const [activeTab, setActiveTab] = useState("profile");
     const [isEditing, setIsEditing] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [notifications, setNotifications] = useState({
+        email: true,
+        sms: false,
+        push: true,
+        promotions: true,
+    });
+    const [loading, setLoading] = useState(false);
+
     const fileInputRef = useRef(null);
 
-    // Sample user data
-    const [userData, setUserData] = useState({
-        name: "Alex Johnson",
-        email: "alex.johnson@example.com",
-        phone: "+1 (555) 123-4567",
-        address: "123 Main Street, Kuala Lumpur, 50480",
-        joinDate: "January 15, 2023",
-        profileImage: null,
-    });
+    const { auth } = usePage().props;
+
+    // Enhanced user data
+    const [userData, setUserData] = useState(auth.user);
 
     const [formData, setFormData] = useState({ ...userData });
     const [passwordData, setPasswordData] = useState({
@@ -53,25 +63,219 @@ export default function ProfilePage() {
         confirmPassword: "",
     });
 
+    // NEW: Separate state for image preview
+    const [imagePreview, setImagePreview] = useState(null);
+
+    // Order history state with pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(5);
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+    const [orderHistory, setOrderHistory] = useState([]);
+    const [wishlistItems, setWishlistItems] = useState([]);
+    const [paymentMethods, setPaymentMethods] = useState([]);
+
+    // Fetch data on component mount
+    useEffect(() => {
+        fetchOrderHistory();
+    }, []);
+
+    // NEW: Set initial image preview when component mounts
+    useEffect(() => {
+        if (userData.profile_image) {
+            setImagePreview(getProfileImageUrl(userData.profile_image));
+        }
+    }, [userData.profile_image]);
+
+    // Helper function to get proper image URL
+    const getProfileImageUrl = (imagePath) => {
+        if (!imagePath) return "/image/user.png";
+
+        // If it's already a full URL or data URL, return as is
+        if (imagePath.startsWith("http") || imagePath.startsWith("data:")) {
+            return imagePath;
+        }
+
+        // If it's a relative path, prepend base URL
+        if (imagePath.startsWith("/")) {
+            return import.meta.env.VITE_BASE_URL + imagePath;
+        }
+
+        // For storage paths
+        return `${import.meta.env.VITE_BASE_URL}${auth.user.profile_image}`;
+    };
+
+    // Fetch order history from API
+    const fetchOrderHistory = async () => {
+        try {
+            setLoading(true);
+            const response = await axios.get("/api/orders-history", {
+                headers: {
+                    "X-CSRF-TOKEN": document
+                        .querySelector('meta[name="csrf-token"]')
+                        .getAttribute("content"),
+                },
+            });
+
+            console.log(response);
+
+            setOrderHistory(response.data || []);
+        } catch (error) {
+            console.error("Error fetching order history:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // FIXED: Handle image upload with proper preview
     const handleImageUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
+            // Validate file type
+            if (!file.type.startsWith("image/")) {
+                alert("Please select a valid image file");
+                return;
+            }
+
+            // Validate file size (max 5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                alert("Image size should be less than 5MB");
+                return;
+            }
+
             const reader = new FileReader();
             reader.onload = (e) => {
-                setFormData({ ...formData, profileImage: e.target.result });
+                // Set preview immediately
+                setImagePreview(e.target.result);
+
+                // Update form data with file for upload
+                setFormData((prev) => ({
+                    ...prev,
+                    profileImageFile: file, // Store file for upload
+                    profile_image: e.target.result, // Store preview URL
+                }));
+            };
+            reader.onerror = () => {
+                console.error("Error reading file");
+                alert("Error reading image file");
             };
             reader.readAsDataURL(file);
         }
     };
 
-    const handleSave = () => {
-        setUserData({ ...formData });
-        setIsEditing(false);
+    // FIXED: Handle save with proper image handling
+    const handleSave = async () => {
+        try {
+            setLoading(true);
+
+            // Create FormData for all fields
+            const formDataToSend = new FormData();
+            formDataToSend.append("name", formData.name || "");
+            formDataToSend.append("email", formData.email || "");
+            formDataToSend.append("phone", formData.phone || "");
+            formDataToSend.append("address", formData.address || "");
+            formDataToSend.append("city", formData.city || "");
+            formDataToSend.append("zip_code", formData.zip_code || "");
+
+            // Append the actual file if it exists
+            if (formData.profileImageFile) {
+                formDataToSend.append(
+                    "profile_image",
+                    formData.profileImageFile
+                );
+                console.log(
+                    "✅ File appended to FormData:",
+                    formData.profileImageFile.name
+                );
+            } else {
+                console.log("ℹ️ No new file selected, keeping existing image");
+            }
+
+            // Debug: Check FormData contents
+            for (let [key, value] of formDataToSend.entries()) {
+                console.log(
+                    `📋 FormData: ${key} =`,
+                    value instanceof File ? `File: ${value.name}` : value
+                );
+            }
+
+            console.log("📤 Sending profile update request...");
+
+            const response = await axios.post(
+                "/api/profile-update",
+                formDataToSend,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                        "X-CSRF-TOKEN": document
+                            .querySelector('meta[name="csrf-token"]')
+                            .getAttribute("content"),
+                    },
+                }
+            );
+
+            console.log("✅ Response:", response.data);
+
+            if (response.data.success) {
+                const updatedUser = response.data.user;
+
+                // FIXED: Properly update the image URL from response
+                if (response.data.user.profile_image) {
+                    // Use the path returned by the server
+                    updatedUser.profile_image =
+                        response.data.user.profile_image;
+
+                    // Update preview with the new server path
+                    setImagePreview(
+                        getProfileImageUrl(updatedUser.profile_image)
+                    );
+                }
+
+                // Update React states
+                setUserData(updatedUser);
+                setFormData(updatedUser);
+                setIsEditing(false);
+
+                // Clear the file object since it's been uploaded
+                setFormData((prev) => ({
+                    ...prev,
+                    profileImageFile: null,
+                }));
+
+                console.log("🎉 Profile updated successfully!");
+
+                // Show success message
+                alert("Profile updated successfully!");
+            }
+        } catch (error) {
+            console.error("❌ Error updating profile:", error);
+            if (error.response?.data) {
+                console.error("Server response:", error.response.data);
+                alert(
+                    `Error: ${
+                        error.response.data.message ||
+                        "Failed to update profile"
+                    }`
+                );
+            } else {
+                alert("Error updating profile. Please try again.");
+            }
+        } finally {
+            setLoading(false);
+        }
     };
 
+    // FIXED: Handle cancel with proper image reset
     const handleCancel = () => {
         setFormData({ ...userData });
+        setImagePreview(getProfileImageUrl(userData.profile_image)); // Reset to original image
         setIsEditing(false);
+
+        // Clear any selected file
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
     };
 
     const handleInputChange = (e) => {
@@ -97,105 +301,177 @@ export default function ProfilePage() {
         fileInputRef.current.click();
     };
 
-    // Sample order history
-    const orderHistory = [
-        {
-            id: 1,
-            date: "2023-10-15",
-            items: 3,
-            total: "RM 245.99",
-            status: "Delivered",
-            image: "https://via.placeholder.com/60",
-        },
-        {
-            id: 2,
-            date: "2023-09-22",
-            items: 1,
-            total: "RM 89.99",
-            status: "Delivered",
-            image: "https://via.placeholder.com/60",
-        },
-        {
-            id: 3,
-            date: "2023-09-10",
-            items: 2,
-            total: "RM 152.50",
-            status: "Processing",
-            image: "https://via.placeholder.com/60",
-        },
-    ];
+    const handleNotificationToggle = (type) => {
+        setNotifications((prev) => ({
+            ...prev,
+            [type]: !prev[type],
+        }));
+    };
 
-    // Sample wishlist items
-    const wishlistItems = [
-        {
-            id: 1,
-            name: "Wireless Headphones with Noise Cancellation",
-            price: "RM 129.99",
-            image: "https://via.placeholder.com/80",
-        },
-        {
-            id: 2,
-            name: "Smart Watch Series 5",
-            price: "RM 199.99",
-            image: "https://via.placeholder.com/80",
-        },
-        {
-            id: 3,
-            name: "Premium Leather Phone Case",
-            price: "RM 24.99",
-            image: "https://via.placeholder.com/80",
-        },
-    ];
+    const getStatusColor = (status) => {
+        switch (status) {
+            case "delivered":
+                return "bg-green-100 text-green-800";
+            case "shipped":
+                return "bg-blue-100 text-blue-800";
+            case "processing":
+                return "bg-yellow-100 text-yellow-800";
+            case "cancelled":
+                return "bg-red-100 text-red-800";
+            default:
+                return "bg-gray-100 text-gray-800";
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case "delivered":
+                return <CheckCircle2 size={16} />;
+            case "shipped":
+                return <Truck size={16} />;
+            case "processing":
+                return <Package size={16} />;
+            default:
+                return <Package size={16} />;
+        }
+    };
+
+    // View receipt function
+    const viewReceipt = (order) => {
+        setSelectedOrder(order);
+        setShowReceiptModal(true);
+    };
+
+    // Print receipt function
+    const printReceipt = (order) => {
+        const receiptWindow = window.open("", "_blank");
+        const receiptContent = generateReceiptContent(order);
+        receiptWindow.document.write(receiptContent);
+        receiptWindow.document.close();
+        receiptWindow.print();
+    };
+
+    // Generate receipt HTML content
+    const generateReceiptContent = (order) => {
+        return `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Receipt - Order ${order.order_number}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .company-name { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+                    .order-info { margin-bottom: 20px; }
+                    .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                    .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    .items-table th { background-color: #f5f5f5; }
+                    .total-section { text-align: right; margin-top: 20px; }
+                    .thank-you { text-align: center; margin-top: 30px; font-style: italic; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="company-name">Relove Market</div>
+                    <div>Order Receipt</div>
+                </div>
+                
+                <div class="order-info">
+                    <p><strong>Order Number:</strong> ${order.order_number}</p>
+                    <p><strong>Order Date:</strong> ${new Date(
+                        order.date
+                    ).toLocaleDateString()}</p>
+                    <p><strong>Status:</strong> ${order.status}</p>
+                </div>
+
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${order.order_items
+                            .map(
+                                (item) => `
+                            <tr>
+                                <td>${item.name}</td>
+                                <td>${item.quantity}</td>
+                                <td>RM ${item.price}</td>
+                                <td>RM ${(item.price * item.quantity)}</td>
+                            </tr>
+                        `
+                            )
+                            .join("")}
+                    </tbody>
+                </table>
+
+                <div class="total-section">
+                    <p><strong>Total Amount: RM ${order.total}</strong></p>
+                </div>
+
+                <div class="thank-you">
+                    Thank you for your purchase!
+                </div>
+            </body>
+            </html>
+        `;
+    };
+
+    // Pagination calculations
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentOrders = orderHistory.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(orderHistory.length / itemsPerPage);
+
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
             <Navbar />
 
-            <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8 mt-16">
-                {/* Breadcrumb */}
-                <nav className="flex items-center text-sm text-gray-500 mb-8">
-                    <a
-                        href="/"
-                        className="hover:text-blue-600 transition-colors"
-                    >
-                        Home
-                    </a>
-                    <ChevronRight size={16} className="mx-2" />
-                    <span className="text-gray-900 font-medium">
-                        My Account
-                    </span>
-                </nav>
-
+            <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 mt-16">
                 <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Sidebar Navigation */}
-                    <div className="lg:w-1/4">
-                        <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-6">
-                            <div className="flex flex-col items-center mb-6">
+                    {/* Enhanced Sidebar Navigation */}
+                    <div className="lg:w-80 flex-shrink-0">
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-6">
+                            <div className="flex flex-col items-center mb-6 pb-6 border-b border-gray-100">
                                 <div className="relative mb-4 group">
-                                    <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center overflow-hidden">
-                                        {formData.profileImage ? (
-                                            <img
-                                                src={formData.profileImage}
-                                                alt="Profile"
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <User
-                                                size={48}
-                                                className="text-gray-400"
-                                            />
-                                        )}
+                                    <div className="w-28 max-h-28 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                                        <img
+                                            src={
+                                                imagePreview ||
+                                                getProfileImageUrl(
+                                                    userData.profile_image
+                                                ) ||
+                                                auth.user.profile_image
+                                            }
+                                            alt="Profile"
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                                console.error(
+                                                    "Error loading image:",
+                                                    e.target.src
+                                                );
+                                                e.target.src =
+                                                    "/image/user.png";
+                                            }}
+                                        />
                                     </div>
                                     {isEditing && (
                                         <button
                                             onClick={triggerFileInput}
-                                            className="absolute bottom-0 right-0 bg-blue-600 text-white p-2.5 rounded-full shadow-md hover:bg-blue-700 transition-all transform group-hover:scale-105"
+                                            className="absolute bottom-2 right-2 bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-all transform group-hover:scale-110 border-2 border-white"
                                         >
-                                            <Camera size={18} />
+                                            <Camera size={16} />
                                         </button>
                                     )}
                                     <input
                                         type="file"
+                                        name="profile_image"
                                         ref={fileInputRef}
                                         onChange={handleImageUpload}
                                         accept="image/*"
@@ -203,114 +479,107 @@ export default function ProfilePage() {
                                     />
                                 </div>
                                 <h2 className="text-xl font-bold text-gray-900 text-center">
-                                    {userData.name}
+                                    {formData.name}
                                 </h2>
                                 <p className="text-gray-600 text-sm mt-1">
-                                    Member since {userData.joinDate}
+                                    Member since{" "}
+                                    {dayjs(auth.user.created_at).format(
+                                        "MMMM YYYY"
+                                    )}
                                 </p>
+                                <div className="flex items-center mt-2 text-sm text-gray-500">
+                                    <CheckCircle
+                                        size={14}
+                                        className="text-green-500 mr-1"
+                                    />
+                                    Verified Account
+                                </div>
                             </div>
 
                             <nav className="space-y-1">
-                                <button
-                                    onClick={() => setActiveTab("profile")}
-                                    className={`w-full flex items-center px-4 py-3.5 rounded-xl text-left transition-all ${
-                                        activeTab === "profile"
-                                            ? "bg-blue-50 text-blue-600 font-semibold shadow-sm"
-                                            : "text-gray-700 hover:bg-gray-50"
-                                    }`}
-                                >
-                                    <User size={20} className="mr-3" />
-                                    Profile Information
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("orders")}
-                                    className={`w-full flex items-center px-4 py-3.5 rounded-xl text-left transition-all ${
-                                        activeTab === "orders"
-                                            ? "bg-blue-50 text-blue-600 font-semibold shadow-sm"
-                                            : "text-gray-700 hover:bg-gray-50"
-                                    }`}
-                                >
-                                    <ShoppingBag size={20} className="mr-3" />
-                                    Order History
-                                    <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                                        {orderHistory.length}
-                                    </span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("wishlist")}
-                                    className={`w-full flex items-center px-4 py-3.5 rounded-xl text-left transition-all ${
-                                        activeTab === "wishlist"
-                                            ? "bg-blue-50 text-blue-600 font-semibold shadow-sm"
-                                            : "text-gray-700 hover:bg-gray-50"
-                                    }`}
-                                >
-                                    <Heart size={20} className="mr-3" />
-                                    My Wishlist
-                                    <span className="ml-auto bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                                        {wishlistItems.length}
-                                    </span>
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab("security")}
-                                    className={`w-full flex items-center px-4 py-3.5 rounded-xl text-left transition-all ${
-                                        activeTab === "security"
-                                            ? "bg-blue-50 text-blue-600 font-semibold shadow-sm"
-                                            : "text-gray-700 hover:bg-gray-50"
-                                    }`}
-                                >
-                                    <Shield size={20} className="mr-3" />
-                                    Security
-                                </button>
-                                <button className="w-full flex items-center px-4 py-3.5 rounded-xl text-left text-gray-700 hover:bg-gray-50 transition-all">
-                                    <Bell size={20} className="mr-3" />
-                                    Notifications
-                                </button>
-                                <button className="w-full flex items-center px-4 py-3.5 rounded-xl text-left text-gray-700 hover:bg-gray-50 transition-all">
-                                    <CreditCardIcon
+                                {[
+                                    {
+                                        id: "profile",
+                                        icon: User,
+                                        label: "Profile Information",
+                                        badge: null,
+                                    },
+                                    {
+                                        id: "orders",
+                                        icon: ShoppingBag,
+                                        label: "Order History",
+                                        badge: orderHistory.length,
+                                    },
+                                    {
+                                        id: "security",
+                                        icon: Shield,
+                                        label: "Security",
+                                        badge: null,
+                                    },
+                                ].map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setActiveTab(item.id)}
+                                        className={`w-full flex items-center px-4 py-3.5 rounded-xl text-left transition-all group ${
+                                            activeTab === item.id
+                                                ? "bg-blue-50 text-blue-600 font-semibold shadow-sm border border-blue-100"
+                                                : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                                        }`}
+                                    >
+                                        <item.icon
+                                            size={20}
+                                            className="mr-3 flex-shrink-0"
+                                        />
+                                        <span className="flex-1">
+                                            {item.label}
+                                        </span>
+                                        {item.badge !== null && (
+                                            <span
+                                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                    activeTab === item.id
+                                                        ? "bg-blue-100 text-blue-800"
+                                                        : "bg-gray-100 text-gray-600 group-hover:bg-gray-200"
+                                                }`}
+                                            >
+                                                {item.badge}
+                                            </span>
+                                        )}
+                                    </button>
+                                ))}
+
+                                <button className="w-full flex items-center px-4 py-3.5 rounded-xl text-left text-red-600 hover:bg-red-50 transition-all mt-4 group">
+                                    <LogOut
                                         size={20}
-                                        className="mr-3"
+                                        className="mr-3 flex-shrink-0"
                                     />
-                                    Payment Methods
-                                </button>
-                                <button className="w-full flex items-center px-4 py-3.5 rounded-xl text-left text-red-600 hover:bg-red-50 transition-all mt-4">
-                                    <LogOut size={20} className="mr-3" />
-                                    Logout
+                                    <span className="flex-1">Logout</span>
                                 </button>
                             </nav>
                         </div>
                     </div>
 
-                    {/* Main Content */}
-                    <div className="lg:w-3/4">
-                        {/* Mobile Tab Navigation */}
-                        <div className="lg:hidden mb-6">
-                            <select
-                                value={activeTab}
-                                onChange={(e) => setActiveTab(e.target.value)}
-                                className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            >
-                                <option value="profile">
-                                    Profile Information
-                                </option>
-                                <option value="orders">Order History</option>
-                                <option value="wishlist">My Wishlist</option>
-                                <option value="security">Security</option>
-                            </select>
-                        </div>
-
+                    {/* Main Content Area */}
+                    <div className="flex-1 min-w-0">
+                        {/* Profile Tab */}
                         {activeTab === "profile" && (
-                            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                                 <div className="border-b border-gray-100 px-6 py-5">
                                     <div className="flex justify-between items-center">
-                                        <h2 className="text-2xl font-bold text-gray-900">
-                                            Profile Information
-                                        </h2>
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-gray-900">
+                                                Profile Information
+                                            </h2>
+                                            <p className="text-gray-600 mt-1">
+                                                Manage your personal information
+                                                and preferences
+                                            </p>
+                                        </div>
                                         {!isEditing ? (
                                             <button
                                                 onClick={() =>
                                                     setIsEditing(true)
                                                 }
-                                                className="flex items-center text-blue-600 hover:text-blue-800 transition-colors font-medium py-2 px-4 rounded-lg hover:bg-blue-50"
+                                                className="flex items-center bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-sm"
                                             >
                                                 <Edit3
                                                     size={18}
@@ -322,17 +591,26 @@ export default function ProfilePage() {
                                             <div className="flex space-x-2">
                                                 <button
                                                     onClick={handleSave}
-                                                    className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                                                    disabled={loading}
+                                                    className="flex items-center bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    <Save
-                                                        size={18}
-                                                        className="mr-2"
-                                                    />
-                                                    Save Changes
+                                                    {loading ? (
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                    ) : (
+                                                        <Save
+                                                            size={18}
+                                                            className="mr-2"
+                                                        />
+                                                    )}
+                                                    {loading
+                                                        ? "Saving..."
+                                                        : "Save Changes"}
                                                 </button>
+
+                                                {/* Cancel Button */}
                                                 <button
                                                     onClick={handleCancel}
-                                                    className="flex items-center border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                                                    className="flex items-center bg-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-300 transition-colors font-medium"
                                                 >
                                                     <X
                                                         size={18}
@@ -346,9 +624,14 @@ export default function ProfilePage() {
                                 </div>
 
                                 <div className="p-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="md:col-span-2">
-                                            <h3 className="text-lg font-medium text-gray-900 mb-4">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        {/* Personal Information */}
+                                        <div className="lg:col-span-2">
+                                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                                <User
+                                                    size={20}
+                                                    className="mr-2 text-blue-600"
+                                                />
                                                 Personal Information
                                             </h3>
                                         </div>
@@ -363,17 +646,18 @@ export default function ProfilePage() {
                                                     name="name"
                                                     value={formData.name}
                                                     onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                                     placeholder="Enter your full name"
+                                                    autoComplete="off"
                                                 />
                                             ) : (
-                                                <div className="flex items-center p-3 bg-gray-50 rounded-xl">
+                                                <div className="flex items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
                                                     <User
                                                         size={20}
                                                         className="text-gray-400 mr-3"
                                                     />
-                                                    <span className="text-gray-900">
-                                                        {userData.name}
+                                                    <span className="text-gray-900 font-medium">
+                                                        {formData.name}
                                                     </span>
                                                 </div>
                                             )}
@@ -389,17 +673,18 @@ export default function ProfilePage() {
                                                     name="email"
                                                     value={formData.email}
                                                     onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                                     placeholder="Enter your email"
+                                                    autoComplete="off"
                                                 />
                                             ) : (
-                                                <div className="flex items-center p-3 bg-gray-50 rounded-xl">
+                                                <div className="flex items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
                                                     <Mail
                                                         size={20}
                                                         className="text-gray-400 mr-3"
                                                     />
-                                                    <span className="text-gray-900">
-                                                        {userData.email}
+                                                    <span className="text-gray-900 font-medium">
+                                                        {formData.email}
                                                     </span>
                                                 </div>
                                             )}
@@ -413,19 +698,21 @@ export default function ProfilePage() {
                                                 <input
                                                     type="tel"
                                                     name="phone"
-                                                    value={formData.phone}
+                                                    value={formData.phone || ""}
                                                     onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                                     placeholder="Enter your phone number"
+                                                    autoComplete="off"
                                                 />
                                             ) : (
-                                                <div className="flex items-center p-3 bg-gray-50 rounded-xl">
+                                                <div className="flex items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
                                                     <Phone
                                                         size={20}
                                                         className="text-gray-400 mr-3"
                                                     />
-                                                    <span className="text-gray-900">
-                                                        {userData.phone}
+                                                    <span className="text-gray-900 font-medium">
+                                                        {formData.phone ||
+                                                            "No update"}
                                                     </span>
                                                 </div>
                                             )}
@@ -435,454 +722,197 @@ export default function ProfilePage() {
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Member Since
                                             </label>
-                                            <div className="flex items-center p-3 bg-gray-50 rounded-xl">
+                                            <div className="flex items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
                                                 <Calendar
                                                     size={20}
                                                     className="text-gray-400 mr-3"
                                                 />
-                                                <span className="text-gray-900">
-                                                    {userData.joinDate}
+                                                <span className="text-gray-900 font-medium">
+                                                    {dayjs(
+                                                        auth.user.created_at
+                                                    ).format("MMMM YYYY")}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <div className="md:col-span-2">
+                                        <div className="lg:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                                 Address
                                             </label>
                                             {isEditing ? (
                                                 <textarea
                                                     name="address"
-                                                    value={formData.address}
+                                                    value={
+                                                        formData.address || ""
+                                                    }
                                                     onChange={handleInputChange}
                                                     rows={3}
-                                                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                                     placeholder="Enter your address"
                                                 />
                                             ) : (
-                                                <div className="flex items-start p-3 bg-gray-50 rounded-xl">
+                                                <div className="flex items-start p-3 bg-gray-50 rounded-xl border border-gray-200">
                                                     <MapPin
                                                         size={20}
-                                                        className="text-gray-400 mr-3 mt-0.5"
+                                                        className="text-gray-400 mr-3 mt-0.5 flex-shrink-0"
                                                     />
-                                                    <span className="text-gray-900">
-                                                        {userData.address}
+                                                    <span className="text-gray-900 font-medium">
+                                                        {formData.address ||
+                                                            "No update"}
                                                     </span>
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
-                        {activeTab === "orders" && (
-                            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                                <div className="border-b border-gray-100 px-6 py-5">
-                                    <h2 className="text-2xl font-bold text-gray-900">
-                                        Order History
-                                    </h2>
-                                    <p className="text-gray-600 mt-1">
-                                        Your recent purchases
-                                    </p>
-                                </div>
-
-                                <div className="p-6">
-                                    {orderHistory.length === 0 ? (
-                                        <div className="text-center py-8">
-                                            <ShoppingBag
-                                                size={64}
-                                                className="mx-auto text-gray-300 mb-4"
-                                            />
-                                            <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                                No orders yet
-                                            </h3>
-                                            <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                                                Your order history will appear
-                                                here once you make your first
-                                                purchase
-                                            </p>
-                                            <a
-                                                href="/products"
-                                                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                                            >
-                                                Start Shopping
-                                            </a>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {orderHistory.map((order) => (
-                                                <div
-                                                    key={order.id}
-                                                    className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all"
-                                                >
-                                                    <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                                                        <img
-                                                            src={order.image}
-                                                            alt={`Order ${order.id}`}
-                                                            className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                                                        />
-                                                        <div className="flex-1">
-                                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3">
-                                                                <div>
-                                                                    <h3 className="font-semibold text-gray-900">
-                                                                        Order #{" "}
-                                                                        {order.id
-                                                                            .toString()
-                                                                            .padStart(
-                                                                                4,
-                                                                                "0"
-                                                                            )}
-                                                                    </h3>
-                                                                    <p className="text-sm text-gray-500 mt-1">
-                                                                        Placed
-                                                                        on{" "}
-                                                                        {
-                                                                            order.date
-                                                                        }
-                                                                    </p>
-                                                                </div>
-                                                                <span
-                                                                    className={`px-3 py-1 rounded-full text-xs font-medium mt-2 sm:mt-0 self-start ${
-                                                                        order.status ===
-                                                                        "Delivered"
-                                                                            ? "bg-green-100 text-green-800"
-                                                                            : "bg-yellow-100 text-yellow-800"
-                                                                    }`}
-                                                                >
-                                                                    {
-                                                                        order.status
-                                                                    }
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center">
-                                                                <p className="text-sm text-gray-600">
-                                                                    {
-                                                                        order.items
-                                                                    }{" "}
-                                                                    {order.items ===
-                                                                    1
-                                                                        ? "item"
-                                                                        : "items"}
-                                                                </p>
-                                                                <p className="font-semibold text-gray-900">
-                                                                    {
-                                                                        order.total
-                                                                    }
-                                                                </p>
-                                                            </div>
-                                                            <div className="mt-4 pt-4 border-t border-gray-100">
-                                                                <button className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
-                                                                    View Order
-                                                                    Details
-                                                                    <ChevronRight
-                                                                        size={
-                                                                            16
-                                                                        }
-                                                                        className="ml-1"
-                                                                    />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === "wishlist" && (
-                            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                                <div className="border-b border-gray-100 px-6 py-5">
-                                    <h2 className="text-2xl font-bold text-gray-900">
-                                        My Wishlist
-                                    </h2>
-                                    <p className="text-gray-600 mt-1">
-                                        {wishlistItems.length} items saved for
-                                        later
-                                    </p>
-                                </div>
-
-                                <div className="p-6">
-                                    {wishlistItems.length === 0 ? (
-                                        <div className="text-center py-8">
-                                            <Heart
-                                                size={64}
-                                                className="mx-auto text-gray-300 mb-4"
-                                            />
-                                            <h3 className="text-lg font-medium text-gray-900 mb-2">
-                                                Your wishlist is empty
-                                            </h3>
-                                            <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                                                Save items you love for later by
-                                                clicking the heart icon
-                                            </p>
-                                            <a
-                                                href="/products"
-                                                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                                            >
-                                                Browse Products
-                                            </a>
-                                        </div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                            {wishlistItems.map((item) => (
-                                                <div
-                                                    key={item.id}
-                                                    className="border border-gray-200 rounded-xl p-5 hover:shadow-md transition-all"
-                                                >
-                                                    <div className="flex">
-                                                        <img
-                                                            src={item.image}
-                                                            alt={item.name}
-                                                            className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                                                        />
-                                                        <div className="ml-4 flex-1">
-                                                            <h3 className="font-medium text-gray-900 line-clamp-2 mb-2">
-                                                                {item.name}
-                                                            </h3>
-                                                            <p className="text-blue-600 font-semibold">
-                                                                {item.price}
-                                                            </p>
-                                                            <div className="mt-4 flex space-x-2">
-                                                                <button className="flex-1 bg-blue-600 text-white py-2.5 px-4 rounded-lg text-sm hover:bg-blue-700 transition-colors font-medium">
-                                                                    Add to Cart
-                                                                </button>
-                                                                <button className="p-2.5 text-gray-400 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50">
-                                                                    <X
-                                                                        size={
-                                                                            18
-                                                                        }
-                                                                    />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === "security" && (
-                            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                                <div className="border-b border-gray-100 px-6 py-5">
-                                    <h2 className="text-2xl font-bold text-gray-900">
-                                        Security Settings
-                                    </h2>
-                                    <p className="text-gray-600 mt-1">
-                                        Manage your account security
-                                    </p>
-                                </div>
-
-                                <div className="p-6 space-y-6">
-                                    <div className="border border-gray-200 rounded-xl p-6">
-                                        <div className="flex items-start">
-                                            <div className="bg-blue-100 p-3 rounded-lg mr-4">
-                                                <Lock
-                                                    size={24}
-                                                    className="text-blue-600"
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                City
+                                            </label>
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    name="city"
+                                                    value={formData.city || ""}
+                                                    onChange={handleInputChange}
+                                                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    placeholder="Enter your city"
+                                                    autoComplete="off"
                                                 />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-900 mb-1">
-                                                    Password
-                                                </h3>
-                                                <p className="text-gray-600 mb-4">
-                                                    Last changed: 3 months ago
-                                                </p>
-                                                <button
-                                                    onClick={() =>
-                                                        setShowChangePassword(
-                                                            true
-                                                        )
-                                                    }
-                                                    className="bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                                                >
-                                                    Change Password
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="border border-gray-200 rounded-xl p-6">
-                                        <div className="flex items-start">
-                                            <div className="bg-purple-100 p-3 rounded-lg mr-4">
-                                                <Shield
-                                                    size={24}
-                                                    className="text-purple-600"
-                                                />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-900 mb-1">
-                                                    Two-Factor Authentication
-                                                </h3>
-                                                <p className="text-gray-600 mb-4">
-                                                    Add an extra layer of
-                                                    security to your account
-                                                </p>
-                                                <button className="border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors font-medium">
-                                                    Enable 2FA
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="border border-gray-200 rounded-xl p-6">
-                                        <div className="flex items-start">
-                                            <div className="bg-green-100 p-3 rounded-lg mr-4">
-                                                <Globe
-                                                    size={24}
-                                                    className="text-green-600"
-                                                />
-                                            </div>
-                                            <div className="flex-1">
-                                                <h3 className="font-semibold text-gray-900 mb-1">
-                                                    Login Activity
-                                                </h3>
-                                                <p className="text-gray-600 mb-4">
-                                                    Last login: Today at 2:30 PM
-                                                    from Kuala Lumpur, Malaysia
-                                                </p>
-                                                <button className="text-blue-600 hover:text-blue-800 transition-colors font-medium flex items-center">
-                                                    View all login activity
-                                                    <ChevronRight
-                                                        size={16}
-                                                        className="ml-1"
+                                            ) : (
+                                                <div className="flex items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                                    <Mail
+                                                        size={20}
+                                                        className="text-gray-400 mr-3"
                                                     />
-                                                </button>
-                                            </div>
+                                                    <span className="text-gray-900 font-medium">
+                                                        {formData.city ||
+                                                            "No update"}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
-                                </div>
 
-                                {/* Change Password Modal */}
-                                {showChangePassword && (
-                                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                                        <div className="bg-white rounded-2xl shadow-lg max-w-md w-full p-6">
-                                            <div className="flex justify-between items-center mb-5">
-                                                <h3 className="text-xl font-semibold text-gray-900">
-                                                    Change Password
-                                                </h3>
-                                                <button
-                                                    onClick={() =>
-                                                        setShowChangePassword(
-                                                            false
-                                                        )
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Zip Code
+                                            </label>
+                                            {isEditing ? (
+                                                <input
+                                                    type="text"
+                                                    name="zip_code"
+                                                    value={
+                                                        formData.zip_code || ""
                                                     }
-                                                    className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
-                                                >
-                                                    <X size={24} />
-                                                </button>
-                                            </div>
+                                                    onChange={handleInputChange}
+                                                    className="text-black w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                                                    placeholder="Enter your zip code"
+                                                    autoComplete="off"
+                                                />
+                                            ) : (
+                                                <div className="flex items-center p-3 bg-gray-50 rounded-xl border border-gray-200">
+                                                    <Mail
+                                                        size={20}
+                                                        className="text-gray-400 mr-3"
+                                                    />
+                                                    <span className="text-gray-900 font-medium">
+                                                        {formData.zip_code ||
+                                                            "No update"}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
 
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Current Password
-                                                    </label>
-                                                    <div className="relative">
+                                        {/* Preferences Section */}
+                                        <div className="lg:col-span-2 mt-6 pt-6 border-t border-gray-200">
+                                            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                                <Settings
+                                                    size={20}
+                                                    className="mr-2 text-purple-600"
+                                                />
+                                                Preferences
+                                            </h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">
+                                                            Newsletter
+                                                        </p>
+                                                        <p className="text-sm text-gray-600">
+                                                            Receive product
+                                                            updates
+                                                        </p>
+                                                    </div>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
                                                         <input
-                                                            type={
-                                                                showPassword
-                                                                    ? "text"
-                                                                    : "password"
-                                                            }
-                                                            name="currentPassword"
-                                                            value={
-                                                                passwordData.currentPassword
-                                                            }
-                                                            onChange={
-                                                                handlePasswordChange
-                                                            }
-                                                            className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-12"
-                                                            placeholder="Enter current password"
+                                                            type="checkbox"
+                                                            className="sr-only peer"
+                                                            defaultChecked
                                                         />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                setShowPassword(
-                                                                    !showPassword
-                                                                )
-                                                            }
-                                                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                                                        >
-                                                            {showPassword ? (
-                                                                <EyeOff
-                                                                    size={20}
-                                                                />
-                                                            ) : (
-                                                                <Eye
-                                                                    size={20}
-                                                                />
-                                                            )}
-                                                        </button>
+                                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                                    </label>
+                                                </div>
+
+                                                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">
+                                                            SMS Notifications
+                                                        </p>
+                                                        <p className="text-sm text-gray-600">
+                                                            Order updates via
+                                                            SMS
+                                                        </p>
                                                     </div>
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        New Password
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            className="sr-only peer"
+                                                        />
+                                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                                                     </label>
-                                                    <input
-                                                        type="password"
-                                                        name="newPassword"
-                                                        value={
-                                                            passwordData.newPassword
-                                                        }
-                                                        onChange={
-                                                            handlePasswordChange
-                                                        }
-                                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                                        placeholder="Enter new password"
-                                                    />
                                                 </div>
-
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Confirm New Password
-                                                    </label>
-                                                    <input
-                                                        type="password"
-                                                        name="confirmPassword"
-                                                        value={
-                                                            passwordData.confirmPassword
-                                                        }
-                                                        onChange={
-                                                            handlePasswordChange
-                                                        }
-                                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                                                        placeholder="Confirm new password"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="mt-6 flex space-x-3">
-                                                <button
-                                                    onClick={handleSavePassword}
-                                                    className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl hover:bg-blue-700 transition-colors font-medium"
-                                                >
-                                                    Update Password
-                                                </button>
-                                                <button
-                                                    onClick={() =>
-                                                        setShowChangePassword(
-                                                            false
-                                                        )
-                                                    }
-                                                    className="flex-1 border border-gray-300 text-gray-700 py-3 px-4 rounded-xl hover:bg-gray-50 transition-colors"
-                                                >
-                                                    Cancel
-                                                </button>
                                             </div>
                                         </div>
                                     </div>
-                                )}
+                                </div>
                             </div>
+                        )}
+
+                        {/* Orders Tab */}
+                        {activeTab === "orders" && (
+                            <OrdersTab
+                                orderHistory={orderHistory}
+                                getStatusColor={getStatusColor}
+                                getStatusIcon={getStatusIcon}
+                                currentPage={currentPage}
+                                itemsPerPage={itemsPerPage}
+                                totalPages={totalPages}
+                                paginate={paginate}
+                                viewReceipt={viewReceipt}
+                                printReceipt={printReceipt}
+                                loading={loading}
+                            />
+                        )}
+
+                        {/* Security Tab */}
+                        {activeTab === "security" && (
+                            <SecurityTab
+                                showChangePassword={showChangePassword}
+                                setShowChangePassword={setShowChangePassword}
+                                passwordData={passwordData}
+                                handlePasswordChange={handlePasswordChange}
+                                handleSavePassword={handleSavePassword}
+                                showPassword={showPassword}
+                                setShowPassword={setShowPassword}
+                            />
+                        )}
+
+                        {showReceiptModal && (
+                            <ReceiptModal
+                                order={selectedOrder}
+                                isOpen={showReceiptModal}
+                                onClose={() => setShowReceiptModal(false)}
+                                onPrint={printReceipt}
+                            />
                         )}
                     </div>
                 </div>

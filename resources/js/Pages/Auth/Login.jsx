@@ -375,15 +375,15 @@ export default function Login() {
                     </div>
 
                     {/* Right Column - Image & Features */}
-                    <div className="hidden lg:block relative">
+                    <div className="hidden lg:block relative h-full">
                         <img
                             src="../image/login_bg.jpg"
                             alt="Shopping Woman"
                             className="absolute inset-0 h-full w-full object-cover"
                         />
                         <div className="absolute inset-0 bg-blue-900 bg-opacity-70"></div>
-                        <div className="relative flex flex-col justify-center h-full p-12 text-white">
-                            <h3 className="text-3xl font-bold mb-6">
+                        <div className="relative flex flex-col items-center justify-center h-full p-12 text-white">
+                            <h3 className="text-3xl text-center font-bold mb-6">
                                 Join Our Sustainable Community
                             </h3>
                             <ul className="space-y-4">

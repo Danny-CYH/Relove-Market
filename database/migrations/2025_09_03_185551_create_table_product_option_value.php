@@ -14,6 +14,7 @@ return new class extends Migration {
             $table->string("value_id")->primary();
             $table->string("option_id");
             $table->string("option_value");
+            $table->integer("quantity");
             $table->timestamps();
 
             $table->foreign('option_id')

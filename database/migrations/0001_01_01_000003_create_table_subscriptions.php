@@ -18,29 +18,21 @@ return new class extends Migration {
             $table->decimal('price', 10, 2);
             $table->integer('duration');
             $table->string('status');
+            $table->json('limits')->nullable();
             $table->timestamps();
         });
 
         Subscription::insert([
             [
-                'subscription_plan_id' => "PLAN-00001",
-                'plan_name' => "Starter Plan",
-                "description" => "Perfect for new sellers starting their online business",
-                "price" => 4.99,
-                "duration" => 60,
+                'subscription_plan_id' => "PLAN-TRIAL",
+                'plan_name' => "Trial Plan",
+                "description" => "Perfect for new sellers starting their online business for the first try.",
+                "price" => 0.00,
+                "duration" => 7,
                 "status" => "Active",
                 'created_at' => now(),
                 'updated_at' => now(),
-            ],
-            [
-                'subscription_plan_id' => "PLAN-00002",
-                'plan_name' => "Basic Plan",
-                "description" => "Great for growing businesses with basic needs",
-                "price" => 9.99,
-                "duration" => 60,
-                "status" => "Active",
-                'created_at' => now(),
-                'updated_at' => now(),
+                "limits" => json_encode(["free trial" => "No limits"]),
             ],
         ]);
     }

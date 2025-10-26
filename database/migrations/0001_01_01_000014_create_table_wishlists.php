@@ -14,6 +14,8 @@ return new class extends Migration {
             $table->id();
             $table->string('user_id');
             $table->string('product_id');
+            $table->integer('selected_quantity')->default(1);
+            $table->json('selected_variant')->nullable();
             $table->timestamps();
 
             $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');

@@ -99,21 +99,77 @@ export default function Create_Subscriptions_Modal({
                                 </p>
                             )}
                         </div>
+                    </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Status
-                            </label>
-                            <select
-                                value={formData.status}
-                                onChange={(e) =>
-                                    onInputChange("status", e.target.value)
-                                }
-                                className="text-black w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            >
-                                <option value="Active">Active</option>
-                                <option value="Inactive">Inactive</option>
-                            </select>
+                    {/* Limits Section */}
+                    <div className="border-t pt-4">
+                        <h4 className="text-md font-medium text-gray-900 mb-3">
+                            Plan Limits
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Max Products
+                                </label>
+                                <input
+                                    type="text"
+                                    name="max_products"
+                                    value={formData.limits?.max_products || ""}
+                                    onChange={(e) =>
+                                        onInputChange("limits", {
+                                            ...formData.limits,
+                                            max_products: e.target.value,
+                                        })
+                                    }
+                                    className="text-black w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    placeholder="e.g., 50"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Max Conversations
+                                </label>
+                                <input
+                                    type="text"
+                                    name="max_conversations"
+                                    value={
+                                        formData.limits?.max_conversations || ""
+                                    }
+                                    onChange={(e) =>
+                                        onInputChange("limits", {
+                                            ...formData.limits,
+                                            max_conversations: e.target.value,
+                                        })
+                                    }
+                                    className="text-black w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    placeholder="e.g., 15"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Featured Listing
+                                </label>
+                                <select
+                                    value={
+                                        formData.limits?.featured_listing
+                                            ? "true"
+                                            : "false"
+                                    }
+                                    onChange={(e) =>
+                                        onInputChange("limits", {
+                                            ...formData.limits,
+                                            featured_listing:
+                                                e.target.value === "true",
+                                        })
+                                    }
+                                    className="text-black w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option value="false">No</option>
+                                    <option value="true">Yes</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 

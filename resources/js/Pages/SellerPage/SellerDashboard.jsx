@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import {
     BarChart,
     Bar,
@@ -8,309 +9,586 @@ import {
     Tooltip,
     ResponsiveContainer,
     CartesianGrid,
-    LineChart,
-    Line,
 } from "recharts";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import {
     faBoxOpen,
     faCartShopping,
     faMoneyBillTrendUp,
-    faEye,
     faBell,
-    faCircleInfo,
-    faGaugeHigh,
     faTags,
-    faTruckFast,
     faCreditCard,
-    faTriangleExclamation,
-    faCircleCheck,
-    faClock,
+    faMoneyCheck,
+    faCalendarAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
 import { SellerSidebar } from "@/Components/SellerPage/SellerSidebar";
+import { StatCard } from "@/Components/SellerPage/SellerDashboard/StatCard";
+import { TrialModal } from "@/Components/SellerPage/SellerDashboard/TrialModal";
+import { OrderStatusBadge } from "@/Components/SellerPage/SellerDashboard/OrderStatusBadge";
+import { Badge } from "@/Components/SellerPage/SellerDashboard/Badge";
+import { Money } from "@/Components/SellerPage/SellerDashboard/Money";
+import { TrialBanner } from "@/Components/SellerPage/SellerDashboard/TrialBanner";
+import { NotificationDropdown } from "@/Components/SellerPage/SellerDashboard/NotificationDropdown";
 
-/* ============================================
-   Small UI helpers
-============================================= */
-const StatCard = ({ icon, title, value, sub }) => (
-    <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition p-5 border border-gray-100">
-        <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-lg bg-indigo-50 flex items-center justify-center">
-                <FontAwesomeIcon icon={icon} className="text-indigo-600" />
-            </div>
-            <div>
-                <div className="text-sm text-gray-500">{title}</div>
-                <div className="text-2xl font-semibold text-gray-800">
-                    {value}
-                </div>
-                {sub ? (
-                    <div className="text-xs text-gray-500 mt-0.5">{sub}</div>
-                ) : null}
-            </div>
-        </div>
-    </div>
-);
+import axios from "axios";
 
-const Badge = ({ color, children }) => {
-    const styles = {
-        blue: "bg-blue-100 text-blue-700",
-        green: "bg-green-100 text-green-700",
-        yellow: "bg-yellow-100 text-yellow-700",
-        red: "bg-red-100 text-red-700",
-        gray: "bg-gray-100 text-gray-700",
-        indigo: "bg-indigo-100 text-indigo-700",
-        orange: "bg-orange-100 text-orange-700",
-    }[color || "gray"];
-    return (
-        <span className={`px-2 py-0.5 text-xs font-medium rounded ${styles}`}>
-            {children}
-        </span>
-    );
-};
+import { Link, usePage } from "@inertiajs/react";
 
-const OrderStatusBadge = ({ status }) => {
-    const map = {
-        Pending: { color: "yellow", label: "Pending", icon: faClock },
-        Shipped: { color: "blue", label: "Shipped", icon: faTruckFast },
-        Delivered: { color: "green", label: "Delivered", icon: faCircleCheck },
-        Cancelled: {
-            color: "red",
-            label: "Cancelled",
-            icon: faTriangleExclamation,
-        },
-    };
-    const s = map[status] || map.Pending;
-    return (
-        <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium
-      ${s.color === "yellow" && "bg-yellow-100 text-yellow-700"}
-      ${s.color === "blue" && "bg-blue-100 text-blue-700"}
-      ${s.color === "green" && "bg-green-100 text-green-700"}
-      ${s.color === "red" && "bg-red-100 text-red-700"}
-    `}
-        >
-            <FontAwesomeIcon icon={s.icon} />
-            {s.label}
-        </span>
-    );
-};
-
-const Money = ({ children }) => (
-    <span className="font-semibold text-gray-800">
-        RM {Number(children).toFixed(2)}
-    </span>
-);
-
-/* ============================================
-   Trial Modal
-============================================= */
-const TrialModal = ({
-    isOpen,
-    onClose,
-    onSubscribe,
-    trialDaysLeft,
-    trialEndsAt,
-    planUrl = "/seller/subscription",
-}) => {
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-[1px] flex items-center justify-center z-50">
-            <motion.div
-                initial={{ y: 30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-gray-100"
-            >
-                <div className="p-6">
-                    <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-indigo-50 flex items-center justify-center">
-                            <FontAwesomeIcon
-                                icon={faGaugeHigh}
-                                className="text-indigo-600"
-                            />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-xl font-bold text-gray-900">
-                                Welcome to your Free Trial
-                            </h3>
-                            <p className="text-gray-600 mt-1">
-                                You have{" "}
-                                <span className="font-semibold text-gray-900">
-                                    {trialDaysLeft} day(s)
-                                </span>{" "}
-                                left. Your trial ends on{" "}
-                                <span className="font-semibold text-gray-900">
-                                    {new Date(trialEndsAt).toLocaleDateString()}
-                                </span>
-                                .
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 rounded-lg bg-indigo-50 border border-indigo-100 p-4">
-                        <div className="text-sm text-indigo-900">
-                            Upgrade now to unlock:
-                        </div>
-                        <ul className="list-disc pl-5 mt-2 text-sm text-indigo-900 space-y-1">
-                            <li>Unlimited product listings</li>
-                            <li>Priority support & faster payouts</li>
-                            <li>Advanced analytics & marketing tools</li>
-                        </ul>
-                    </div>
-
-                    <p className="text-xs text-gray-500 mt-4">
-                        By subscribing, you agree to our{" "}
-                        <a
-                            href="/terms"
-                            className="text-indigo-600 hover:underline"
-                        >
-                            Terms
-                        </a>{" "}
-                        and{" "}
-                        <a
-                            href="/policy"
-                            className="text-indigo-600 hover:underline"
-                        >
-                            Subscription Policy
-                        </a>
-                        .
-                    </p>
-
-                    <div className="mt-6 flex justify-end gap-3">
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-                        >
-                            Later
-                        </button>
-                        <button
-                            onClick={() => onSubscribe(planUrl)}
-                            className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-                        >
-                            Upgrade Now
-                        </button>
-                    </div>
-                </div>
-            </motion.div>
-        </div>
-    );
-};
-
-/* ============================================
-   Main Seller Dashboard
-============================================= */
 export default function SellerDashboard() {
+    const [sellerData, setSellerData] = useState([]);
     const [shop, setShop] = useState(null);
     const [trialDaysLeft, setTrialDaysLeft] = useState(0);
-    const [showTrialModal, setShowTrialModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [kpis, setKpis] = useState({});
+    const [realTimeOrders, setRealTimeOrders] = useState([]);
+    const [orderData, setOrderData] = useState([]);
+    const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+    const [showTrialModal, setShowTrialModal] = useState(false);
+    const [notificationCount, setNotificationCount] = useState(0);
+    const [newOrders, setNewOrders] = useState(new Set());
+    const [showNewOrderBadge, setShowNewOrderBadge] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const [showNotificationDropdown, setShowNotificationDropdown] =
+        useState(false);
+    const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+    const [listedProducts, setListedProducts] = useState([]);
+    const [timeFilter, setTimeFilter] = useState("monthly"); // 'daily', 'monthly', 'yearly'
 
-    // Fetch your real data here
-    useEffect(() => {
-        let mounted = true;
+    const { auth } = usePage().props;
 
-        (async () => {
-            try {
-                // Example: replace with your real backend endpoint
-                // const { data } = await axios.get("/seller/dashboard/data");
-                // For now, we'll use your original dummy shape (with a couple more fields)
-                const data = {
-                    shop_name: "Gemilang Store",
-                    trial_ends_at: "2025-08-25",
-                    has_subscription: false,
-                    notifications: [
-                        {
-                            id: 1,
-                            type: "info",
-                            message: "3 items are low in stock.",
-                        },
-                        {
-                            id: 2,
-                            type: "success",
-                            message: "Order #INV-00821 has been paid.",
-                        },
-                        {
-                            id: 3,
-                            type: "warning",
-                            message: "Trial ends in 3 days.",
-                        },
-                    ],
-                    kpis: {
-                        products: 15,
-                        orders: 120,
-                        earnings: 3580.75,
-                        views: 8421,
-                        conversionRate: 2.8,
-                    },
-                    orders: [
-                        {
-                            id: "INV-00821",
-                            customer: "Ali Hasan",
-                            product: "Eco-Friendly Bottle",
-                            status: "Shipped",
-                            paid: true,
-                            date: "2025-08-01",
-                            total: 120.0,
-                        },
-                        {
-                            id: "INV-00820",
-                            customer: "Siti Aisyah",
-                            product: "Vintage Jeans",
-                            status: "Pending",
-                            paid: false,
-                            date: "2025-07-31",
-                            total: 89.5,
-                        },
-                        {
-                            id: "INV-00819",
-                            customer: "John Tan",
-                            product: "Handmade Soap",
-                            status: "Delivered",
-                            paid: true,
-                            date: "2025-07-30",
-                            total: 58.75,
-                        },
-                    ],
-                    salesGraph: [
-                        { name: "Jan", earnings: 400, visits: 1200 },
-                        { name: "Feb", earnings: 600, visits: 1500 },
-                        { name: "Mar", earnings: 800, visits: 1700 },
-                        { name: "Apr", earnings: 550, visits: 1600 },
-                        { name: "May", earnings: 900, visits: 2100 },
-                        { name: "Jun", earnings: 760, visits: 2000 },
-                        { name: "Jul", earnings: 970, visits: 2400 },
-                    ],
-                    topProducts: [
-                        { name: "Handmade Soap", units: 150, revenue: 1220 },
-                        {
-                            name: "Eco-Friendly Bottle",
-                            units: 120,
-                            revenue: 2160,
-                        },
-                        { name: "Vintage Jeans", units: 90, revenue: 1890 },
-                    ],
-                };
+    // Function to show notification - FIXED: Use useCallback to prevent recreation
+    const showNotification = useCallback((message, type = "info") => {
+        const newNotification = {
+            id: Date.now(),
+            message,
+            type,
+            timestamp: new Date(),
+        };
 
-                if (!mounted) return;
+        setNotifications((prev) => [newNotification, ...prev].slice(0, 20));
+        setNotificationCount((prev) => prev + 1);
 
-                setShop(data);
-                setKpis(data.kpis || {});
+        // Auto-remove notification after 8 seconds
+        setTimeout(() => {
+            setNotifications((prev) =>
+                prev.filter((n) => n.id !== newNotification.id)
+            );
+            setNotificationCount((prev) => Math.max(0, prev - 1));
+        }, 8000);
+    }, []);
+
+    // Fetch subscription status
+    const fetchSubscriptionStatus = async () => {
+        try {
+            setSubscriptionLoading(true);
+            const response = await axios.get("/api/seller-subscriptions");
+
+            const sellerSubscription = response.data.seller;
+            const sellerSubscription_status = response.data.seller.status;
+
+            setSubscriptionStatus(sellerSubscription);
+
+            if (
+                sellerSubscription.subscription_plan_id === "PLAN-TRIAL" &&
+                sellerSubscription_status !== "active"
+            ) {
+                setTimeout(() => {
+                    setShowTrialModal(true);
+                }, 1500);
+            }
+
+            // Calculate trial days left
+            if (sellerSubscription?.end_date) {
                 const today = new Date();
-                const trialEnd = new Date(data.trial_ends_at);
+                const trialEnd = new Date(sellerSubscription.end_date);
                 const diffTime = trialEnd - today;
                 const daysLeft = Math.max(
                     0,
                     Math.ceil(diffTime / (1000 * 60 * 60 * 24))
                 );
                 setTrialDaysLeft(daysLeft);
+            }
+        } catch (error) {
+            console.error("Error fetching subscription:", error);
+        } finally {
+            setSubscriptionLoading(false);
+        }
+    };
 
-                // Show the modal if on trial and not subscribed
-                if (daysLeft > 0 && !data.has_subscription)
-                    setShowTrialModal(true);
+    // Check if seller has active subscription (not trial)
+    const hasActiveSubscription = useMemo(() => {
+        if (!subscriptionStatus) return false;
+
+        return (
+            subscriptionStatus.subscription_plan_id !== "PLAN-TRIAL" &&
+            subscriptionStatus.status === "active"
+        );
+    }, [subscriptionStatus]);
+
+    // CALCULATE EARNINGS BASED ON TIME FILTER
+    const calculateEarnings = useCallback((orders, filterType) => {
+        if (!orders || !Array.isArray(orders)) return 0;
+
+        const currentDate = new Date();
+
+        const filteredOrders = orders.filter((order) => {
+            if (!order.created_at || !order.amount) return false;
+
+            const orderDate = new Date(order.created_at);
+
+            switch (filterType) {
+                case "daily":
+                    return (
+                        orderDate.getDate() === currentDate.getDate() &&
+                        orderDate.getMonth() === currentDate.getMonth() &&
+                        orderDate.getFullYear() === currentDate.getFullYear()
+                    );
+                case "monthly":
+                    return (
+                        orderDate.getMonth() === currentDate.getMonth() &&
+                        orderDate.getFullYear() === currentDate.getFullYear()
+                    );
+                case "yearly":
+                    return (
+                        orderDate.getFullYear() === currentDate.getFullYear()
+                    );
+                default:
+                    return false;
+            }
+        });
+
+        return filteredOrders.reduce((sum, order) => {
+            const orderAmount = parseFloat(order.amount) || 0;
+            return sum + orderAmount;
+        }, 0);
+    }, []);
+
+    // CALCULATE ORDERS BASED ON TIME FILTER
+    const calculateOrders = useCallback((orders, filterType) => {
+        if (!orders || !Array.isArray(orders)) return 0;
+
+        const currentDate = new Date();
+
+        const filteredOrders = orders.filter((order) => {
+            if (!order.created_at) return false;
+
+            const orderDate = new Date(order.created_at);
+
+            switch (filterType) {
+                case "daily":
+                    return (
+                        orderDate.getDate() === currentDate.getDate() &&
+                        orderDate.getMonth() === currentDate.getMonth() &&
+                        orderDate.getFullYear() === currentDate.getFullYear()
+                    );
+                case "monthly":
+                    return (
+                        orderDate.getMonth() === currentDate.getMonth() &&
+                        orderDate.getFullYear() === currentDate.getFullYear()
+                    );
+                case "yearly":
+                    return (
+                        orderDate.getFullYear() === currentDate.getFullYear()
+                    );
+                default:
+                    return false;
+            }
+        });
+
+        return filteredOrders.length;
+    }, []);
+
+    // CALCULATE STORE TRAFFIC
+    const calculateStoreTraffic = useCallback((orders, products) => {
+        const totalOrders = orders?.length || 0;
+        const estimatedConversionRate = 0.02;
+        const estimatedTraffic = Math.round(
+            totalOrders / estimatedConversionRate
+        );
+
+        const totalProductViews =
+            products?.reduce((sum, product) => {
+                return sum + (product.views || 0);
+            }, 0) || 0;
+
+        return totalProductViews > 0 ? totalProductViews : estimatedTraffic;
+    }, []);
+
+    // CALCULATE CONVERSION RATE
+    const calculateConversionRate = useCallback((orders, traffic) => {
+        if (!traffic || traffic === 0) return 0;
+
+        const totalOrders = orders?.length || 0;
+        const conversionRate = (totalOrders / traffic) * 100;
+        return parseFloat(conversionRate.toFixed(2));
+    }, []);
+
+    // CALCULATE TOTAL ORDERS
+    const calculateTotalOrders = useCallback((orders) => {
+        return orders?.length || 0;
+    }, []);
+
+    // CALCULATE ALL KPIs - FIXED: Use useCallback
+    const calculateAllKPIs = useCallback(
+        (orders, products, filterType = "monthly") => {
+            const earnings = calculateEarnings(orders, filterType);
+            const ordersCount = calculateOrders(orders, filterType);
+            const storeTraffic = calculateStoreTraffic(orders, products);
+            const totalOrders = calculateTotalOrders(orders);
+            const conversionRate = calculateConversionRate(
+                orders,
+                storeTraffic
+            );
+            const totalProducts = products?.length || 0;
+
+            return {
+                earnings,
+                ordersCount,
+                storeTraffic,
+                totalOrders,
+                conversionRate,
+                totalProducts,
+            };
+        },
+        [
+            calculateEarnings,
+            calculateOrders,
+            calculateStoreTraffic,
+            calculateConversionRate,
+            calculateTotalOrders,
+        ]
+    );
+
+    // Clear new order badge when user views orders
+    const handleViewOrders = () => {
+        setShowNewOrderBadge(false);
+        setNewOrders(new Set());
+    };
+
+    useEffect(() => {
+        fetchSubscriptionStatus();
+    }, []);
+
+    // Real-time order updates with Echo - COMPLETELY FIXED VERSION
+    useEffect(() => {
+        if (!auth?.user?.seller_id || !window.Echo) {
+            console.log("Echo not available or seller_id missing");
+            return;
+        }
+
+        const channel = window.Echo.private(
+            `seller.orders.${auth.user.seller_id}`
+        );
+
+        // FIXED: Consistent event names - use WITH dot prefix for both
+        channel.listen(".new.order.created", (e) => {
+            console.log("✅ Real-time new order received:", e);
+
+            const newOrder = e.order;
+            const orderId = newOrder.order_id;
+
+            // Add to new orders set
+            setNewOrders((prev) => {
+                const newSet = new Set(prev);
+                newSet.add(orderId);
+                return newSet;
+            });
+
+            // Show new order badge
+            setShowNewOrderBadge(true);
+
+            // Create detailed notification message
+            const productName =
+                newOrder.product?.product_name || "Unknown Product";
+            const customerName = newOrder.user?.name || "Unknown Customer";
+            const orderAmount = newOrder.amount
+                ? `RM ${newOrder.amount}`
+                : "N/A";
+
+            const notificationMessage = `🆕 New Order #${orderId}\n${productName}\nFrom: ${customerName}\nAmount: ${orderAmount}`;
+
+            // Add notification
+            showNotification(notificationMessage, "success");
+
+            // Update recent orders by prepending the new order
+            setRealTimeOrders((prev) => {
+                const updatedOrders = [newOrder, ...prev];
+                return updatedOrders.slice(0, 5);
+            });
+
+            // Update order data for charts - FIXED: Use functional update
+            setOrderData((prev) => [newOrder, ...prev]);
+
+            // Update KPIs - FIXED: Calculate from updated state
+            setKpis((prev) => {
+                const updatedOrders = [newOrder, ...orderData];
+                const products = sellerData?.product || [];
+                return calculateAllKPIs(updatedOrders, products, timeFilter);
+            });
+
+            console.log("📊 Charts updated with new order data");
+        });
+
+        // Listen for order updates - FIXED: Use dot prefix
+        channel.listen(".order.updated", (e) => {
+            console.log("🔄 Order updated:", e);
+
+            const updatedOrder = e.order;
+
+            // Update in realTimeOrders
+            setRealTimeOrders((prev) =>
+                prev.map((order) =>
+                    order.order_id === updatedOrder.order_id
+                        ? updatedOrder
+                        : order
+                )
+            );
+
+            // Update in orderData
+            setOrderData((prev) =>
+                prev.map((order) =>
+                    order.order_id === updatedOrder.order_id
+                        ? updatedOrder
+                        : order
+                )
+            );
+
+            // Recalculate KPIs after order update
+            setKpis((prev) => {
+                const products = sellerData?.product || [];
+                return calculateAllKPIs(orderData, products, timeFilter);
+            });
+
+            showNotification(
+                `📦 Order #${updatedOrder.order_id} status updated to ${updatedOrder.order_status}`,
+                "info"
+            );
+        });
+
+        return () => {
+            channel.stopListening(".new.order.created");
+            channel.stopListening(".order.updated");
+            window.Echo.leaveChannel(`seller.orders.${auth.user.seller_id}`);
+        };
+    }, [
+        auth?.user?.seller_id,
+        sellerData,
+        showNotification,
+        calculateAllKPIs,
+        timeFilter,
+    ]); // FIXED: Removed orderData dependency
+
+    // Fetch listed products for subscribed sellers
+    useEffect(() => {
+        if (hasActiveSubscription && sellerData?.seller_store?.store_id) {
+            const fetchListedProducts = async () => {
+                try {
+                    const response = await axios.get(
+                        "/api/seller/featured-products"
+                    );
+
+                    setListedProducts(response.data.featured_products || []);
+                } catch (error) {
+                    console.error("Error fetching listed products:", error);
+                    setListedProducts([]);
+                }
+            };
+
+            fetchListedProducts();
+        }
+    }, [hasActiveSubscription, sellerData?.seller_store?.store_id]);
+
+    // GENERATE EARNINGS CHART DATA BASED ON TIME FILTER
+    const generateEarningsChartData = useCallback((orders, filterType) => {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+
+        switch (filterType) {
+            case "daily":
+                // Last 7 days
+                const days = [];
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    days.push({
+                        name: date.toLocaleDateString("en-US", {
+                            weekday: "short",
+                        }),
+                        fullDate: date.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                        }),
+                        date: new Date(date),
+                    });
+                }
+
+                return days.map((day) => {
+                    const dayOrders =
+                        orders?.filter((order) => {
+                            if (!order.created_at || !order.amount)
+                                return false;
+                            const orderDate = new Date(order.created_at);
+                            return (
+                                orderDate.getDate() === day.date.getDate() &&
+                                orderDate.getMonth() === day.date.getMonth() &&
+                                orderDate.getFullYear() ===
+                                    day.date.getFullYear()
+                            );
+                        }) || [];
+
+                    const earnings = dayOrders.reduce((sum, order) => {
+                        const orderAmount = parseFloat(order.amount) || 0;
+                        return sum + orderAmount;
+                    }, 0);
+
+                    const ordersCount = dayOrders.length;
+
+                    return {
+                        name: day.name,
+                        fullName: day.fullDate,
+                        earnings: parseFloat(earnings.toFixed(2)),
+                        orders: ordersCount,
+                    };
+                });
+
+            case "monthly":
+                // Last 6 months
+                const months = [];
+                for (let i = 5; i >= 0; i--) {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    months.push({
+                        name: date.toLocaleDateString("en-US", {
+                            month: "short",
+                        }),
+                        fullName: date.toLocaleDateString("en-US", {
+                            month: "long",
+                            year: "numeric",
+                        }),
+                        month: date.getMonth(),
+                        year: date.getFullYear(),
+                    });
+                }
+
+                return months.map((month) => {
+                    const monthOrders =
+                        orders?.filter((order) => {
+                            if (!order.created_at || !order.amount)
+                                return false;
+                            const orderDate = new Date(order.created_at);
+                            return (
+                                orderDate.getMonth() === month.month &&
+                                orderDate.getFullYear() === month.year
+                            );
+                        }) || [];
+
+                    const earnings = monthOrders.reduce((sum, order) => {
+                        const orderAmount = parseFloat(order.amount) || 0;
+                        return sum + orderAmount;
+                    }, 0);
+
+                    const ordersCount = monthOrders.length;
+
+                    return {
+                        name: month.name,
+                        fullName: month.fullName,
+                        earnings: parseFloat(earnings.toFixed(2)),
+                        orders: ordersCount,
+                    };
+                });
+
+            case "yearly":
+                // Last 5 years
+                const years = [];
+                for (let i = 4; i >= 0; i--) {
+                    const year = currentYear - i;
+                    years.push({
+                        name: year.toString(),
+                        fullName: year.toString(),
+                        year: year,
+                    });
+                }
+
+                return years.map((yearData) => {
+                    const yearOrders =
+                        orders?.filter((order) => {
+                            if (!order.created_at || !order.amount)
+                                return false;
+                            const orderDate = new Date(order.created_at);
+                            return orderDate.getFullYear() === yearData.year;
+                        }) || [];
+
+                    const earnings = yearOrders.reduce((sum, order) => {
+                        const orderAmount = parseFloat(order.amount) || 0;
+                        return sum + orderAmount;
+                    }, 0);
+
+                    const ordersCount = yearOrders.length;
+
+                    return {
+                        name: yearData.name,
+                        fullName: yearData.fullName,
+                        earnings: parseFloat(earnings.toFixed(2)),
+                        orders: ordersCount,
+                    };
+                });
+
+            default:
+                return [];
+        }
+    }, []);
+
+    // Update KPIs when time filter changes
+    useEffect(() => {
+        if (orderData.length > 0) {
+            const products = sellerData?.product || [];
+            const updatedKPIs = calculateAllKPIs(
+                orderData,
+                products,
+                timeFilter
+            );
+            setKpis(updatedKPIs);
+        }
+    }, [timeFilter, orderData, sellerData, calculateAllKPIs]);
+
+    // Fetch initial data
+    useEffect(() => {
+        let mounted = true;
+
+        (async () => {
+            try {
+                const { data } = await axios.get("/api/getData-dashboard");
+
+                if (!mounted) return;
+
+                setSellerData(data.seller_storeInfo[0]);
+                setShop(data);
+
+                const orders = data.order_data || [];
+                const products = data.seller_storeInfo[0]?.product || [];
+
+                const calculatedKPIs = calculateAllKPIs(
+                    orders,
+                    products,
+                    timeFilter
+                );
+                setKpis(calculatedKPIs);
+                setRealTimeOrders(orders);
+                setOrderData(orders);
+
+                if (data.trial_ends_at) {
+                    const today = new Date();
+                    const trialEnd = new Date(data.trial_ends_at);
+                    const diffTime = trialEnd - today;
+                    const daysLeft = Math.max(
+                        0,
+                        Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                    );
+                    setTrialDaysLeft(daysLeft);
+                }
             } catch (e) {
-                console.error(e);
+                console.error("Error fetching dashboard data:", e);
             } finally {
                 if (mounted) setLoading(false);
             }
@@ -319,53 +597,91 @@ export default function SellerDashboard() {
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [calculateAllKPIs, timeFilter]);
 
-    const trialBanner = useMemo(() => {
-        if (!shop) return null;
-        if (shop.has_subscription) return null;
-        if (trialDaysLeft <= 0)
-            return (
-                <div className="rounded-xl border border-red-200 bg-red-50 p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-red-700">
-                        <FontAwesomeIcon icon={faTriangleExclamation} />
-                        <span className="font-medium">
-                            Your trial has expired. Some features are limited.
-                        </span>
-                    </div>
-                    <a
-                        href="/seller/subscription"
-                        className="px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 text-sm"
-                    >
-                        Subscribe Now
-                    </a>
-                </div>
+    const handleStartTrial = async () => {
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setDate(startDate.getDate() + 7);
+
+        const startDateISO = startDate.toISOString();
+        const endDateISO = endDate.toISOString();
+
+        const trialData = {
+            status: "active",
+            start_date: startDateISO,
+            end_date: endDateISO,
+        };
+
+        try {
+            const response = await axios.post("/api/start-trial", trialData);
+            console.log("Trial started:", response.data);
+            setShowTrialModal(false);
+            // Refresh subscription status
+            fetchSubscriptionStatus();
+            alert(
+                "Free trial started successfully! Enjoy your 7-day trial period."
             );
-
-        return (
-            <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-3 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-yellow-800">
-                    <FontAwesomeIcon icon={faClock} />
-                    <span>
-                        You have{" "}
-                        <span className="font-semibold">
-                            {trialDaysLeft} day(s)
-                        </span>{" "}
-                        left in your free trial.
-                    </span>
-                </div>
-                <a
-                    href="/seller/subscription"
-                    className="px-3 py-1.5 rounded-lg bg-yellow-500 text-white hover:bg-yellow-600 text-sm"
-                >
-                    Upgrade
-                </a>
-            </div>
-        );
-    }, [shop, trialDaysLeft]);
+        } catch (error) {
+            console.error("Failed to start trial:", error);
+            alert("Failed to start free trial. Please try again.");
+        }
+    };
 
     const handleSubscribe = (url) => {
-        window.location.href = url || "/seller/subscription";
+        window.location.href = url || "/seller-manage-subscription";
+    };
+
+    // Generate chart data with real order data and time filter
+    const earningsChartData = useMemo(() => {
+        return generateEarningsChartData(orderData, timeFilter);
+    }, [orderData, timeFilter, generateEarningsChartData]);
+
+    // Custom tooltip formatter for the charts
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            const dataPoint = earningsChartData.find(
+                (item) => item.name === label
+            );
+            return (
+                <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                    <p className="font-semibold text-gray-800">
+                        {dataPoint?.fullName || label}
+                    </p>
+                    {payload.map((entry, index) => (
+                        <p
+                            key={index}
+                            className="text-sm"
+                            style={{ color: entry.color }}
+                        >
+                            {entry.name === "earnings"
+                                ? "Earnings: "
+                                : "Orders: "}
+                            <span className="font-medium">
+                                {entry.name === "earnings"
+                                    ? `RM ${entry.value}`
+                                    : entry.value}
+                            </span>
+                        </p>
+                    ))}
+                </div>
+            );
+        }
+        return null;
+    };
+
+    // Get filter display name
+    const getFilterDisplayName = (filter) => {
+        switch (filter) {
+            case "daily":
+                return "Daily";
+            case "monthly":
+                return "Monthly";
+            case "yearly":
+                return "Yearly";
+            default:
+                return "Monthly";
+        }
     };
 
     if (loading || !shop) {
@@ -382,7 +698,7 @@ export default function SellerDashboard() {
     return (
         <div className="min-h-screen bg-gray-50 flex">
             {/* Sidebar */}
-            <SellerSidebar shopName={shop.shop_name} />
+            <SellerSidebar shopName={sellerData.seller_store?.store_name} />
 
             {/* Main Content */}
             <main className="flex-1 p-4 md:p-6 md:ml-0">
@@ -390,26 +706,49 @@ export default function SellerDashboard() {
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3">
                     <div>
                         <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-                            Welcome back, {shop.shop_name}!
+                            Welcome back, {sellerData.seller_name || ""}!
                         </h1>
                         <div className="text-sm text-gray-500">
                             Here's what's happening today.
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto">
-                        <button className="relative p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50">
-                            <FontAwesomeIcon
-                                icon={faBell}
-                                className="text-gray-600"
+                    <div className="flex items-center gap-2 w-full md:w-auto relative">
+                        {/* Notification Bell with Dropdown */}
+                        <div className="relative">
+                            <button
+                                className="relative p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
+                                onClick={() =>
+                                    setShowNotificationDropdown(
+                                        !showNotificationDropdown
+                                    )
+                                }
+                            >
+                                <FontAwesomeIcon
+                                    icon={faBell}
+                                    className="text-gray-600"
+                                />
+                                {notificationCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center">
+                                        {notificationCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Notification dropdown components */}
+                            <NotificationDropdown
+                                notifications={notifications}
+                                showNotificationDropdown={
+                                    showNotificationDropdown
+                                }
+                                setNotifications={setNotifications}
+                                setShowNotificationDropdown={
+                                    setShowNotificationDropdown
+                                }
                             />
-                            {!!shop.notifications?.length && (
-                                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center">
-                                    {shop.notifications.length}
-                                </span>
-                            )}
-                        </button>
-                        <a
-                            href="/seller/subscription"
+                        </div>
+
+                        <Link
+                            href={route("seller-manage-subscription")}
                             className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm whitespace-nowrap"
                         >
                             <FontAwesomeIcon
@@ -417,90 +756,133 @@ export default function SellerDashboard() {
                                 className="mr-2"
                             />
                             Upgrade
-                        </a>
+                        </Link>
                     </div>
                 </div>
 
                 {/* Trial banner */}
-                {trialBanner && <div className="mb-6">{trialBanner}</div>}
+                <TrialBanner
+                    seller={auth.seller}
+                    trialDaysLeft={trialDaysLeft}
+                />
 
                 {/* KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                     <StatCard
                         icon={faBoxOpen}
                         title="Products"
-                        value={kpis.products ?? 0}
+                        value={kpis.totalProducts || 0}
                         sub="Active listings"
                     />
                     <StatCard
                         icon={faCartShopping}
                         title="Orders"
-                        value={kpis.orders ?? 0}
-                        sub="Total orders"
+                        value={kpis.ordersCount || 0}
+                        sub={`${getFilterDisplayName(timeFilter)} orders`}
                     />
                     <StatCard
                         icon={faMoneyBillTrendUp}
-                        title="Earnings"
-                        value={<Money>{kpis.earnings ?? 0}</Money>}
-                        sub="All-time"
-                    />
-                    <StatCard
-                        icon={faEye}
-                        title="Store Views"
-                        value={kpis.views ?? 0}
-                        sub={`Conversion ${kpis.conversionRate ?? 0}%`}
+                        title={`${getFilterDisplayName(timeFilter)} Earnings`}
+                        value={<Money>{kpis.earnings || 0}</Money>}
+                        sub={`Current ${timeFilter}`}
                     />
                 </div>
 
-                {/* Charts */}
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+                {/* Charts with real data */}
+                <div className="grid grid-cols-1 xl:grid-cols-1 gap-4 mb-6">
+                    {/* Earnings Bar Chart */}
                     <div className="col-span-1 xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-3">
                             <div className="font-semibold text-gray-800">
-                                Monthly Earnings
+                                {getFilterDisplayName(timeFilter)} Earnings &
+                                Orders
                             </div>
-                            <Badge color="indigo">Last 12 months</Badge>
+                            <div className="flex items-center gap-2">
+                                <FontAwesomeIcon
+                                    icon={faCalendarAlt}
+                                    className="text-gray-400"
+                                />
+                                <select
+                                    value={timeFilter}
+                                    onChange={(e) =>
+                                        setTimeFilter(e.target.value)
+                                    }
+                                    className="px-3 py-1.5 w-full md:w-40 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                >
+                                    <option value="daily">Daily View</option>
+                                    <option value="monthly">Monthly View</option>
+                                    <option value="yearly">Yearly View</option>
+                                </select>
+                            </div>
                         </div>
                         <div className="h-64 md:h-80">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={shop.salesGraph}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
+                            <ResponsiveContainer width="100%" height={250}>
+                                <BarChart
+                                    data={earningsChartData}
+                                    margin={{
+                                        top: 20,
+                                        right: 30,
+                                        left: 20,
+                                        bottom: 5,
+                                    }}
+                                >
+                                    <CartesianGrid
+                                        strokeDasharray="3 3"
+                                        stroke="#f0f0f0"
+                                    />
+                                    <XAxis
+                                        dataKey="name"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: "#6b7280", fontSize: 12 }}
+                                    />
+                                    <YAxis
+                                        yAxisId="left"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: "#6b7280", fontSize: 12 }}
+                                        tickFormatter={(value) => `RM${value}`}
+                                    />
+                                    <YAxis
+                                        yAxisId="right"
+                                        orientation="right"
+                                        axisLine={false}
+                                        tickLine={false}
+                                        tick={{ fill: "#6b7280", fontSize: 12 }}
+                                    />
+                                    <Tooltip content={<CustomTooltip />} />
                                     <Bar
+                                        yAxisId="left"
                                         dataKey="earnings"
                                         fill="#4f46e5"
-                                        radius={[6, 6, 0, 0]}
+                                        radius={[4, 4, 0, 0]}
+                                        name="earnings"
+                                        maxBarSize={40}
+                                    />
+                                    <Bar
+                                        yAxisId="right"
+                                        dataKey="orders"
+                                        fill="#10b981"
+                                        radius={[4, 4, 0, 0]}
+                                        name="orders"
+                                        maxBarSize={40}
                                     />
                                 </BarChart>
                             </ResponsiveContainer>
                         </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="font-semibold text-gray-800">
-                                Store Traffic
+                        <div className="flex justify-center gap-6 mt-4">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-indigo-600 rounded min-h-[1rem]"></div>
+                                <span className="text-xs text-gray-600">
+                                    Earnings (RM)
+                                </span>
                             </div>
-                            <Badge color="blue">Visits</Badge>
-                        </div>
-                        <div className="h-64 md:h-80">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={shop.salesGraph}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="name" />
-                                    <YAxis />
-                                    <Tooltip />
-                                    <Line
-                                        type="monotone"
-                                        dataKey="visits"
-                                        stroke="#0ea5e9"
-                                        strokeWidth={2}
-                                        dot={false}
-                                    />
-                                </LineChart>
-                            </ResponsiveContainer>
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-green-500 rounded min-h-[1rem]"></div>
+                                <span className="text-xs text-gray-600">
+                                    Orders
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -511,20 +893,23 @@ export default function SellerDashboard() {
                         {
                             title: "Add New Product",
                             desc: "Create a new listing",
-                            href: "/seller/products/create",
+                            href: "/seller-manage-product",
                             color: "indigo",
+                            icon: faBoxOpen,
                         },
                         {
-                            title: "Bulk Upload CSV",
-                            desc: "Upload multiple products",
-                            href: "/seller/products/bulk-upload",
+                            title: "Product Earning",
+                            desc: "Manage product earning",
+                            href: "/seller-manage-earning",
                             color: "blue",
+                            icon: faMoneyCheck,
                         },
                         {
                             title: "Create Discount",
                             desc: "Run a promotion",
-                            href: "/seller/promotions/create",
+                            href: "/seller-manage-discount",
                             color: "emerald",
+                            icon: faTags,
                         },
                     ].map((a) => (
                         <a
@@ -548,27 +933,34 @@ export default function SellerDashboard() {
                     ${a.color === "emerald" && "bg-emerald-50 text-emerald-600"}
                   `}
                                 >
-                                    <FontAwesomeIcon icon={faTags} />
+                                    <FontAwesomeIcon icon={a.icon} />
                                 </span>
                             </div>
                         </a>
                     ))}
                 </div>
 
-                {/* Content Row: Recent Orders + Top Products */}
+                {/* Content Row: Recent Orders + Products Section */}
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
                     {/* Orders */}
                     <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5 overflow-hidden">
                         <div className="flex items-center justify-between mb-3">
-                            <div className="font-semibold text-gray-800">
+                            <div className="font-semibold text-gray-800 flex items-center gap-2">
                                 Recent Orders
+                                {showNewOrderBadge && (
+                                    <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                    </span>
+                                )}
                             </div>
-                            <a
-                                href="/seller/orders"
+                            <Link
+                                href={route("seller-manage-order")}
                                 className="text-sm text-indigo-600 hover:underline"
+                                onClick={handleViewOrders}
                             >
                                 View all
-                            </a>
+                            </Link>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-sm">
@@ -576,32 +968,43 @@ export default function SellerDashboard() {
                                     <tr className="text-left text-gray-500 border-b">
                                         <th className="p-2">Order ID</th>
                                         <th className="p-2">Customer</th>
-                                        <th className="p-2">Product</th>
-                                        <th className="p-2">Status</th>
+                                        <th className="p-2">Order Status</th>
                                         <th className="p-2">Payment</th>
                                         <th className="p-2">Total</th>
                                         <th className="p-2">Date</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {shop.orders.map((o) => (
-                                        <tr key={o.id} className="border-t">
+                                    {realTimeOrders.slice(0, 5).map((order) => (
+                                        <tr
+                                            key={order.order_id}
+                                            className={`border-t hover:bg-gray-50 transition-colors ${
+                                                newOrders.has(order.order_id)
+                                                    ? "bg-green-50 border-l-4 border-l-green-500"
+                                                    : ""
+                                            }`}
+                                        >
                                             <td className="p-2 font-medium text-gray-700 whitespace-nowrap">
-                                                {o.id}
+                                                {order.order_id}
+                                                {newOrders.has(
+                                                    order.order_id
+                                                ) && (
+                                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        New
+                                                    </span>
+                                                )}
                                             </td>
-                                            <td className="p-2 whitespace-nowrap">
-                                                {o.customer}
+                                            <td className="p-2 text-black whitespace-nowrap">
+                                                {order.user?.name || "N/A"}
                                             </td>
-                                            <td className="p-2 whitespace-nowrap">
-                                                {o.product}
-                                            </td>
+
                                             <td className="p-2">
                                                 <OrderStatusBadge
-                                                    status={o.status}
+                                                    status={order.order_status}
                                                 />
                                             </td>
                                             <td className="p-2">
-                                                {o.paid ? (
+                                                {order.payment_status ? (
                                                     <Badge color="green">
                                                         Paid
                                                     </Badge>
@@ -612,10 +1015,12 @@ export default function SellerDashboard() {
                                                 )}
                                             </td>
                                             <td className="p-2 whitespace-nowrap">
-                                                <Money>{o.total}</Money>
+                                                <Money>{order.amount}</Money>
                                             </td>
-                                            <td className="p-2 whitespace-nowrap">
-                                                {o.date}
+                                            <td className="p-2 text-black whitespace-nowrap">
+                                                {new Date(
+                                                    order.created_at
+                                                ).toLocaleDateString()}
                                             </td>
                                         </tr>
                                     ))}
@@ -624,88 +1029,113 @@ export default function SellerDashboard() {
                         </div>
                     </div>
 
-                    {/* Top products */}
+                    {/* Products Section - Dynamic based on subscription */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
                         <div className="flex items-center justify-between mb-3">
                             <div className="font-semibold text-gray-800">
-                                Top Products
+                                {hasActiveSubscription
+                                    ? "Your Products"
+                                    : "Top Products"}
                             </div>
                             <Badge color="gray">
-                                {shop.topProducts.length} items
+                                {hasActiveSubscription
+                                    ? `${listedProducts.length} listed`
+                                    : `${shop.topProducts?.length || 0} items`}
                             </Badge>
                         </div>
-                        <div className="space-y-3">
-                            {shop.topProducts.map((p) => (
-                                <div
-                                    key={p.name}
-                                    className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50"
-                                >
-                                    <div className="truncate">
-                                        <div className="font-medium text-gray-800 truncate">
-                                            {p.name}
-                                        </div>
-                                        <div className="text-xs text-gray-500">
-                                            {p.units} units sold
-                                        </div>
-                                    </div>
-                                    <div className="text-sm text-gray-700 whitespace-nowrap ml-2">
-                                        <Money>{p.revenue}</Money>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
 
-                {/* Notifications */}
-                <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="font-semibold text-gray-800">
-                            Notifications
-                        </div>
-                        <a
-                            href="/seller/notifications"
-                            className="text-sm text-indigo-600 hover:underline"
-                        >
-                            View all
-                        </a>
-                    </div>
-                    {shop.notifications?.length ? (
-                        <ul className="space-y-2">
-                            {shop.notifications.map((n) => (
-                                <li
-                                    key={n.id}
-                                    className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50"
-                                >
-                                    <div className="h-8 w-8 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        {hasActiveSubscription ? (
+                            // Show listed products for subscribed sellers with scrollbar
+                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                                {listedProducts.length > 0 ? (
+                                    listedProducts.map((product) => (
+                                        <div
+                                            key={product.product_id}
+                                            className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <div className="truncate flex-1 min-w-0">
+                                                <div className="font-medium text-gray-800 truncate">
+                                                    {product.product_name}
+                                                </div>
+                                                <div className="text-xs text-gray-500 flex gap-4 flex-wrap">
+                                                    <span>
+                                                        Stock:{" "}
+                                                        {product.product_quantity ||
+                                                            0}
+                                                    </span>
+                                                    <span>
+                                                        Price:{" "}
+                                                        <Money>
+                                                            {
+                                                                product.product_price
+                                                            }
+                                                        </Money>
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div
+                                                className={`text-xs px-2 py-1 rounded flex-shrink-0 ml-2 ${
+                                                    product.product_status ===
+                                                    "available"
+                                                        ? "bg-green-100 text-green-800"
+                                                        : "bg-gray-100 text-gray-800"
+                                                }`}
+                                            >
+                                                {product.product_status ||
+                                                    "draft"}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-4">
                                         <FontAwesomeIcon
-                                            icon={
-                                                n.type === "success"
-                                                    ? faCircleCheck
-                                                    : n.type === "warning"
-                                                    ? faTriangleExclamation
-                                                    : faCircleInfo
-                                            }
-                                            className={
-                                                n.type === "success"
-                                                    ? "text-green-600"
-                                                    : n.type === "warning"
-                                                    ? "text-yellow-600"
-                                                    : "text-gray-600"
-                                            }
+                                            icon={faBoxOpen}
+                                            className="text-gray-300 h-8 w-8 mb-2"
                                         />
+                                        <p className="text-sm text-gray-500">
+                                            No products listed yet
+                                        </p>
+                                        <Link
+                                            href="/seller-manage-product"
+                                            className="text-xs text-indigo-600 hover:text-indigo-800 mt-1 inline-block"
+                                        >
+                                            Add your first product
+                                        </Link>
                                     </div>
-                                    <div className="text-sm text-gray-700">
-                                        {n.message}
+                                )}
+                            </div>
+                        ) : (
+                            // Show top products for trial/non-subscribed sellers
+                            <div className="space-y-3">
+                                {(shop.topProducts || []).map((p) => (
+                                    <div
+                                        key={p.name}
+                                        className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div className="truncate flex-1">
+                                            <div className="font-medium text-gray-800 truncate">
+                                                {p.name}
+                                            </div>
+                                            <div className="text-xs text-gray-500">
+                                                {p.units} units sold
+                                            </div>
+                                        </div>
+                                        <div className="text-sm text-gray-700 whitespace-nowrap ml-2">
+                                            <Money>{p.revenue}</Money>
+                                        </div>
                                     </div>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <div className="text-sm text-gray-500">
-                            No notifications yet.
-                        </div>
-                    )}
+                                ))}
+                                {(!shop.topProducts ||
+                                    shop.topProducts.length === 0) && (
+                                    <div className="text-center py-4">
+                                        <p className="text-sm text-gray-500">
+                                            Subscribe to list your products
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </main>
 
@@ -713,9 +1143,11 @@ export default function SellerDashboard() {
             <TrialModal
                 isOpen={showTrialModal}
                 onClose={() => setShowTrialModal(false)}
+                onStartTrial={handleStartTrial}
                 onSubscribe={handleSubscribe}
                 trialDaysLeft={trialDaysLeft}
                 trialEndsAt={shop.trial_ends_at}
+                storeName={sellerData.seller_store?.store_name || ""}
             />
         </div>
     );

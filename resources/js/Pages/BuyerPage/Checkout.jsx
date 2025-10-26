@@ -5,7 +5,6 @@ import {
     Shield,
     ArrowLeft,
     Gift,
-    CheckCircle,
     Clock,
     HelpCircle,
 } from "lucide-react";
@@ -13,43 +12,168 @@ import {
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
 import { CheckoutForm } from "@/Components/BuyerPage/CheckoutForm";
+import { OrderSuccessModal } from "@/Components/BuyerPage/OrderSuccessModal";
 
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 
 // Initialize Stripe with your publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
 
-export default function CheckoutPage({ list_product }) {
-    console.log(list_product);
+export default function CheckoutPage({ list_product, platform_tax }) {
+    console.log("Checkout products:", list_product);
 
     const [paymentMethod, setPaymentMethod] = useState("credit");
     const [activeStep, setActiveStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
-    const [saveShippingInfo, setSaveShippingInfo] = useState(true);
-    const [shippingInfo, setShippingInfo] = useState({
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        address: "",
-        city: "",
-        zipCode: "",
-        country: "Malaysia", // Display name
-        countryCode: "MY", // ISO code for Stripe
-    });
 
-    const subtotal = list_product.reduce(
-        (sum, product) =>
-            sum +
-            product.product.product_price * product.product.product_quantity,
-        0
-    );
-    const shipping = 5.0;
-    const discount = 10.0;
-    const tax = subtotal * 0.06;
-    const total = subtotal + shipping + tax - discount;
+    const [showSuccessModal, setShowSuccessModal] = useState(true);
+    const [orderData, setOrderData] = useState(null);
+
+    // Get products array for rendering
+    const getProductsArray = () => {
+        if (Array.isArray(list_product)) {
+            return list_product;
+        } else if (list_product && list_product.product_id) {
+            return [list_product];
+        }
+        return [];
+    };
+
+    const handlePaymentSuccess = (orderInfo) => {
+        setOrderData(orderInfo);
+        setShowSuccessModal(true);
+
+        // Optional: Redirect to success page after a delay
+        setTimeout(() => {
+            router.visit(route("profile"));
+        }, 7000);
+    };
+
+    // Parse selected variant from the product data
+    const parseSelectedVariant = (product) => {
+        if (!product.selected_variant) return null;
+
+        try {
+            return typeof product.selected_variant === "string"
+                ? JSON.parse(product.selected_variant)
+                : product.selected_variant;
+        } catch (error) {
+            console.error("Error parsing selected variant:", error);
+            return null;
+        }
+    };
+
+    // Parse selected options from the product data (for backward compatibility)
+    const parseSelectedOptions = (product) => {
+        if (!product.selected_options) return null;
+
+        try {
+            return typeof product.selected_options === "string"
+                ? JSON.parse(product.selected_options)
+                : product.selected_options;
+        } catch (error) {
+            console.error("Error parsing selected options:", error);
+            return null;
+        }
+    };
+
+    // Get variant display text
+    const getVariantDisplayText = (variant) => {
+        if (
+            !variant ||
+            !variant.combination ||
+            Object.keys(variant.combination).length === 0
+        ) {
+            return null;
+        }
+
+        let combination = variant.combination;
+
+        // ✅ Handle JSON string case safely
+        if (typeof combination === "string") {
+            try {
+                combination = JSON.parse(combination);
+            } catch (error) {
+                console.error("Invalid combination JSON:", combination);
+                return null;
+            }
+        }
+
+        // ✅ Build readable text
+        return Object.entries(combination)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(", ");
+    };
+
+    // Get options display text (for backward compatibility)
+    const getOptionsDisplayText = (options) => {
+        if (!options || Object.keys(options).length === 0) {
+            return null;
+        }
+
+        return Object.entries(options)
+            .map(
+                ([optionType, optionData]) =>
+                    `${optionType}: ${optionData.value_name}`
+            )
+            .join(", ");
+    };
+
+    // Normalize product data structure to handle both single and multiple items
+    const normalizeProductData = (product) => {
+        // If it's a single product (from direct purchase)
+        if (product.product_id && !product.product) {
+            return {
+                product: {
+                    product_id: product.product_id,
+                    product_name: product.product_name,
+                    product_price: product.product_price,
+                    product_image:
+                        product.product_image || product.productImage,
+                },
+                selected_quantity:
+                    product.quantity || product.selected_quantity || 1,
+                selected_variant: product.selected_variant || null,
+                selected_options: product.selected_options || null,
+                product_image: product.product_image || product.productImage,
+            };
+        }
+        // If it's already in the correct structure (from cart)
+        return product;
+    };
+
+    // Calculate totals - handle both single item and multiple items
+    const calculateTotals = () => {
+        let subtotal = 0;
+
+        const productsArray = getProductsArray();
+
+        subtotal = productsArray.reduce((sum, product) => {
+            const normalizedProduct = normalizeProductData(product);
+            const quantity = normalizedProduct.selected_quantity || 1;
+
+            // Get price from variant if available, otherwise from product
+            const selectedVariant = parseSelectedVariant(normalizedProduct);
+            const price =
+                selectedVariant?.price ||
+                normalizedProduct.product?.product_price ||
+                normalizedProduct.product_price ||
+                0;
+
+            return sum + price * quantity;
+        }, 0);
+
+        const shipping = 5.0;
+        const tax = subtotal * platform_tax;
+        const total = subtotal + shipping + tax;
+
+        return { subtotal, shipping, tax, total };
+    };
+
+    const { subtotal, shipping, tax, total } = calculateTotals();
+    const productsArray = getProductsArray();
 
     return (
         <div className="bg-gray-50 min-h-screen flex flex-col">
@@ -236,10 +360,20 @@ export default function CheckoutPage({ list_product }) {
                             <CheckoutForm
                                 total={total}
                                 setActiveStep={setActiveStep}
-                                shippingInfo={shippingInfo}
                                 paymentMethod={paymentMethod}
+                                onPaymentSuccess={handlePaymentSuccess}
+                                list_product={productsArray}
                             />
                         </Elements>
+
+                        {/* Success Modal */}
+                        {showSuccessModal && orderData && (
+                            <OrderSuccessModal
+                                orderData={orderData}
+                                isOpen={showSuccessModal}
+                                onClose={() => setShowSuccessModal(false)}
+                            />
+                        )}
                     </>
                 </div>
 
@@ -252,46 +386,99 @@ export default function CheckoutPage({ list_product }) {
 
                         {/* Cart Items */}
                         <div className="space-y-4 max-h-72 overflow-y-auto pr-2 mb-6">
-                            {list_product.map((product) => (
-                                <div
-                                    key={product.product.product_id}
-                                    className="flex items-start gap-4 pb-4 border-b border-gray-100"
-                                >
-                                    <div className="relative">
-                                        <img
-                                            src={`${
-                                                import.meta.env.VITE_BASE_URL
-                                            }${
-                                                product.product_image.image_path
-                                            }`}
-                                            alt={product.product.product_name}
-                                            className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                                        />
-                                        <span className="absolute -top-1 -right-1 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                                            {product.product.product_quantity}
-                                        </span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-gray-900">
-                                            {product.product.product_name}
+                            {productsArray.map((product) => {
+                                const normalizedProduct =
+                                    normalizeProductData(product);
+                                const selectedVariant =
+                                    parseSelectedVariant(normalizedProduct);
+                                const selectedOptions =
+                                    parseSelectedOptions(normalizedProduct);
+                                const quantity =
+                                    normalizedProduct.selected_quantity || 1;
+                                const productData =
+                                    normalizedProduct.product ||
+                                    normalizedProduct;
+                                const productImage =
+                                    normalizedProduct.product_image ||
+                                    productData.product_image;
+
+                                // Get price from variant if available
+                                const displayPrice =
+                                    selectedVariant?.price ||
+                                    productData.product_price;
+
+                                // Get variant or options display text
+                                const variantText =
+                                    getVariantDisplayText(selectedVariant);
+                                const optionsText =
+                                    getOptionsDisplayText(selectedOptions);
+
+                                return (
+                                    <div
+                                        key={productData.product_id}
+                                        className="flex items-start gap-4 pb-4 border-b border-gray-100"
+                                    >
+                                        <div className="relative">
+                                            <img
+                                                src={`${
+                                                    import.meta.env
+                                                        .VITE_BASE_URL
+                                                }${
+                                                    productImage?.image_path ||
+                                                    productImage?.[0]
+                                                        ?.image_path ||
+                                                    "/default-image.jpg"
+                                                }`}
+                                                alt={productData.product_name}
+                                                className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                                            />
+                                            <span className="absolute -top-1 -right-1 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                                                Qty: {quantity}
+                                            </span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900">
+                                                {productData.product_name}
+                                            </p>
+
+                                            {/* Display Selected Variant */}
+                                            {variantText && (
+                                                <div className="mt-1 space-y-1">
+                                                    <div className="flex items-center text-xs text-gray-600">
+                                                        <span>
+                                                            {variantText}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Display Selected Options (backward compatibility) */}
+                                            {!variantText && optionsText && (
+                                                <div className="mt-1 space-y-1">
+                                                    <div className="flex items-center text-xs text-gray-600">
+                                                        <span className="font-medium">
+                                                            Options:
+                                                        </span>
+                                                        <span className="ml-1">
+                                                            {optionsText}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <p className="text-xs text-gray-500 mt-1">
+                                                Price: RM {displayPrice} each
+                                            </p>
+                                        </div>
+                                        <p className="text-sm font-semibold text-gray-900">
+                                            RM{" "}
+                                            {(displayPrice * quantity).toFixed(
+                                                2
+                                            )}
                                         </p>
-                                        {/* <p className="text-xs text-gray-500 mt-1 flex items-center">
-                                            <Truck size={12} className="mr-1" />
-                                            {item.delivery}
-                                        </p>
-                                        <p className="text-xs text-green-600 mt-1">
-                                            In stock ({item.stock} left)
-                                        </p> */}
                                     </div>
-                                    <p className="text-sm font-semibold text-gray-900">
-                                        RM
-                                        {(
-                                            product.product.product_price *
-                                            product.product.product_quantity
-                                        ).toFixed(2)}
-                                    </p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Delivery Estimate */}
@@ -329,10 +516,6 @@ export default function CheckoutPage({ list_product }) {
                                 <span className="text-gray-900">
                                     RM {tax.toFixed(2)}
                                 </span>
-                            </div>
-                            <div className="flex justify-between text-sm text-green-600">
-                                <span>Discount</span>
-                                <span>-RM {discount.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-lg font-semibold border-t border-gray-200 pt-3">
                                 <span className="text-black">Total</span>

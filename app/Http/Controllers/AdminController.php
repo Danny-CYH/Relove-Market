@@ -28,6 +28,8 @@ use App\Mail\SellerRejectedMail;
 
 use Carbon\Carbon;
 
+use Validator;
+
 class AdminController extends Controller
 {
     // function for generate seller ID
@@ -156,10 +158,28 @@ class AdminController extends Controller
     // Function for retrieve the list subscriptions.
     public function getSubscriptions()
     {
-        $list_subscription = Subscription::with("subscriptionFeatures")
-            ->paginate(6);
+        try {
+            // Get all subscriptions with features
+            $subscriptions = Subscription::with('subscriptionFeatures')->paginate(6);
 
-        return response()->json($list_subscription);
+            // Decode limits for each subscription in the collection
+            $subscriptions->getCollection()->transform(function ($item) {
+                if (is_string($item->limits)) {
+                    $item->limits = json_decode($item->limits, true);
+                }
+                return $item;
+            });
+
+            return response()->json([
+                'subscription' => $subscriptions
+            ]);
+
+        } catch (Exception $e) {
+            return response()->json([
+                'error' => 'Subscription not found',
+                'details' => $e->getMessage(),
+            ], 404);
+        }
     }
 
     // Function for create new subscriptions
@@ -172,15 +192,32 @@ class AdminController extends Controller
             'duration' => 'required|integer|min:1',
             'status' => 'required|string|in:Active,Inactive',
             'features' => 'nullable|array',
-            'features.*' => 'string'
+            'features.*' => 'string',
+            'limits' => 'required|array' // Now we expect array
         ]);
+
+        // ✅ Already array, no decoding needed
+        $limits = $validated['limits'];
+
+        // Validate limits structure
+        $limitsValidation = Validator::make($limits, [
+            'max_products' => 'required|integer|min:0',
+            'max_conversations' => 'required|integer|min:0',
+            'featured_listing' => 'required|boolean'
+        ]);
+
+        if ($limitsValidation->fails()) {
+            return response()->json([
+                'error' => 'Invalid limits data',
+                'details' => $limitsValidation->errors()
+            ], 422);
+        }
 
         DB::beginTransaction();
 
-        try {
-            $subscription_plan_id = $this->generatePlanId();
+        $subscription_plan_id = $this->generatePlanId();
 
-            // Create subscription
+        try {
             $subscription = Subscription::create([
                 'subscription_plan_id' => $subscription_plan_id,
                 'plan_name' => $validated['plan_name'],
@@ -188,6 +225,7 @@ class AdminController extends Controller
                 'price' => $validated['price'],
                 'duration' => $validated['duration'],
                 'status' => $validated['status'],
+                'limits' => json_encode($limits) // Store as JSON string in DB
             ]);
 
             // Create features
@@ -203,12 +241,10 @@ class AdminController extends Controller
                 }
             }
 
-            // Load relationships for broadcasting
             $subscription->load('subscriptionFeatures');
 
             DB::commit();
 
-            // Broadcast event
             broadcast(new SubscriptionCreated($subscription));
 
             return response()->json([
@@ -233,29 +269,52 @@ class AdminController extends Controller
             'plan_name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
-            'duration' => 'required|integer|min:1',      // e.g. in days or months
+            'duration' => 'required|integer|min:1',
             'status' => 'required|string|in:Active,Inactive',
             'features' => 'nullable|array',
             'features.*' => 'string',
+            'limits' => 'required|array' // JSON string containing limits
         ]);
+
+        // ✅ Already array, no decoding needed
+        $limits = $validated['limits'];
+
+        // Validate limits structure
+        $limitsValidation = Validator::make($limits, [
+            'max_products' => 'required|integer|min:0',
+            'max_conversations' => 'required|integer|min:0',
+            'featured_listing' => 'required|boolean'
+        ]);
+
+        if ($limitsValidation->fails()) {
+            return response()->json([
+                'error' => 'Invalid limits data',
+                'details' => $limitsValidation->errors()
+            ], 422);
+        }
+
+        DB::beginTransaction();
 
         try {
             // 🔹 Find subscription by its custom ID
-            $subscription = Subscription::where('subscription_plan_id', $subscription_plan_id)->firstOrFail();
+            $subscription = Subscription::where('subscription_plan_id', $subscription_plan_id)
+                ->first();
 
-            // 🔹 Update subscription record
+            // 🔹 Update subscription record with limits
             $subscription->update([
                 'plan_name' => $validated['plan_name'],
                 'description' => $validated['description'] ?? $subscription->description,
                 'price' => $validated['price'],
                 'duration' => $validated['duration'],
                 'status' => $validated['status'],
+                'limits' => json_encode($limits) // Update limits
             ]);
 
             // 🔹 Replace features
             if (isset($validated['features'])) {
                 // 1. Delete old features
-                SubscriptionFeatures::where('subscription_plan_id', $subscription->subscription_plan_id)->delete();
+                SubscriptionFeatures::where('subscription_plan_id', $subscription->subscription_plan_id)
+                    ->delete();
 
                 // 2. Insert new features
                 foreach ($validated['features'] as $featureText) {
@@ -271,6 +330,8 @@ class AdminController extends Controller
                 }
             }
 
+            DB::commit();
+
             // Broadcast event
             broadcast(new SubscriptionUpdated($subscription));
 
@@ -280,6 +341,7 @@ class AdminController extends Controller
             ], 200);
 
         } catch (Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'error' => 'Failed to update subscription',
                 'details' => $e->getMessage(),
@@ -366,7 +428,11 @@ class AdminController extends Controller
             'action' => 'required|in:Approved,Rejected',
         ]);
 
-        $sellerRegistered = SellerRegistration::where('registration_id', $id)->firstOrFail();
+        $sellerRegistered = SellerRegistration::where('registration_id', $id)
+            ->firstOrFail();
+
+        $trial_mode = Subscription::where("subscription_plan_id", "PLAN-TRIAL")
+            ->first();
 
         $sellerRegistered->status = $request->action;
         $user_email = $sellerRegistered->email;
@@ -378,7 +444,8 @@ class AdminController extends Controller
             $store_id = self::generateStoreId();
             $seller_id = self::generateSellerId($sellerRegistered->business_id);
 
-            $sellerRoleId = Role::where('role_name', 'Seller')->value('role_id');
+            $sellerRoleId = Role::where('role_name', 'Seller')
+                ->value('role_id');
 
             SellerStore::create([
                 "store_id" => $store_id,
@@ -395,6 +462,7 @@ class AdminController extends Controller
                 "store_id" => $store_id,
                 "business_id" => $sellerRegistered->business_id,
                 "is_verified" => True,
+                "subscription_plan_id" => $trial_mode->subscription_plan_id
             ]);
 
             User::where('email', $user_email)
@@ -434,7 +502,12 @@ class AdminController extends Controller
             ->take(3)
             ->get();
 
-        return Inertia::render("AdminPage/AdminDashboard", ['list_sellerRegistration' => $list_sellerRegistration]);
+        return Inertia::render(
+            "AdminPage/AdminDashboard",
+            [
+                'list_sellerRegistration' => $list_sellerRegistration
+            ]
+        );
     }
 
     public function transactionPage()

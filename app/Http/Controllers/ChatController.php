@@ -206,17 +206,12 @@ class ChatController extends Controller
         return response()->json($conversations);
     }
 
-    public function buyerChat()
-    {
-        return Inertia::render("BuyersPage/BuyerChatPage");
-    }
-
     public function sellerChat()
     {
         $seller_storeInfo = Seller::with("sellerStore")
             ->where("seller_id", $this->seller_id)
             ->get();
 
-        return Inertia::render("SellersPage/SellerChatPage", ["seller_storeInfo" => $seller_storeInfo]);
+        return Inertia::render("SellerPage/SellerChatPage", ["seller_storeInfo" => $seller_storeInfo]);
     }
 }

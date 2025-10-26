@@ -32,11 +32,16 @@ export default function SubscriptionManagement() {
 
     const [formData, setFormData] = useState({
         plan_name: "",
+        description: "",
         price: "",
         duration: "",
         status: "Active",
         features: [""],
-        description: "",
+        limits: {
+            max_products: 0,
+            max_conversations: 0,
+            featured_listing: false,
+        },
     });
 
     // Initialize Echo for real-time updates
@@ -130,19 +135,18 @@ export default function SubscriptionManagement() {
             const response = await axios.get(
                 `/api/admin/get-subscriptions?page=${page}`
             );
-            const list_subscriptions = response.data;
 
-            setSubscriptions(list_subscriptions.data);
+            setSubscriptions(response.data.subscription.data);
 
-            setCurrentPage(list_subscriptions.current_page);
-            setLastPage(list_subscriptions.last_page);
+            setCurrentPage(response.data.subscription.current_page);
+            setLastPage(response.data.subscription.last_page);
 
             setPagination({
-                from: list_subscriptions.from,
-                to: list_subscriptions.to,
-                total: list_subscriptions.total,
-                current_page: list_subscriptions.current_page,
-                last_page: list_subscriptions.last_page,
+                from: response.data.subscription.from,
+                to: response.data.subscription.to,
+                total: response.data.subscription.total,
+                current_page: response.data.subscription.current_page,
+                last_page: response.data.subscription.last_page,
             });
         } catch (error) {
             console.error("Error fetching subscriptions:", error);
@@ -211,21 +215,22 @@ export default function SubscriptionManagement() {
             status: "Active",
             features: [""],
             description: "",
+            limits: {},
         });
         setErrors({});
     };
 
-    // Handle form input changes
+    // Handle input changes including nested limits
     const handleInputChange = (field, value) => {
-        setFormData((prev) => ({
-            ...prev,
-            [field]: value,
-        }));
-        // Clear error when user starts typing
-        if (errors[field]) {
-            setErrors((prev) => ({
+        if (field === "limits") {
+            setFormData((prev) => ({
                 ...prev,
-                [field]: "",
+                limits: value,
+            }));
+        } else {
+            setFormData((prev) => ({
+                ...prev,
+                [field]: value,
             }));
         }
     };
@@ -271,14 +276,13 @@ export default function SubscriptionManagement() {
                 features: formData.features.filter(
                     (feature) => feature.trim() !== ""
                 ),
+                limits: formData.limits,
             };
 
             const response = await axios.post(
                 "/api/admin/create-subscriptions",
                 payload
             );
-
-            const updatedSub = response.data.subscription;
 
             // Refresh the current page to get updated pagination data
             await fetchSubscriptionsWithPage(currentPage);
@@ -308,6 +312,7 @@ export default function SubscriptionManagement() {
                 features: formData.features.filter(
                     (feature) => feature.trim() !== ""
                 ),
+                limits: formData.limits,
             };
 
             const response = await axios.put(
@@ -413,6 +418,7 @@ export default function SubscriptionManagement() {
             status: subscription.status,
             features: features,
             description: subscription.description || "",
+            limits: subscription.limits || "",
         });
         setShowEditModal(true);
     };

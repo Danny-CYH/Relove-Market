@@ -27,12 +27,15 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
-        'phone',
-        'profile_image',
         'role_id',
         'seller_id',
         'status',
         'last_login_at',
+        'phone',
+        'address',
+        'city',
+        'zip_code',
+        'profile_image',
     ];
 
     /**
@@ -61,5 +64,20 @@ class User extends Authenticatable implements MustVerifyEmail
     public function role()
     {
         return $this->belongsTo(Role::class, 'role_id', 'role_id');
+    }
+
+    public function seller()
+    {
+        return $this->belongsTo(Seller::class, "seller_id", "seller_id");
+    }
+
+    public function order()
+    {
+        return $this->belongsTo(Order::class, "user_id", "user_id");
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
     }
 }

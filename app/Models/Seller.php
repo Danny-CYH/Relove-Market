@@ -30,8 +30,23 @@ class Seller extends Model
         return $this->belongsTo(SellerStore::class, 'store_id', 'store_id');
     }
 
+    public function product()
+    {
+        return $this->hasMany(Product::class, 'seller_id', 'seller_id');
+    }
+
+    public function order()
+    {
+        return $this->hasMany(Order::class, "seller_id", "seller_id");
+    }
+
     public function conversations()
     {
         return $this->hasMany(Conversation::class, 'seller_id', 'seller_id');
+    }
+
+    public function subscription()
+    {
+        return $this->hasOne(Subscription::class, "subscription_plan_id", "subscription_plan_id");
     }
 }

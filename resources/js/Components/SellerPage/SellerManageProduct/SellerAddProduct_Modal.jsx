@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
     X,
-    Upload,
-    Ruler,
     Weight,
     Info,
     Plus,
@@ -11,11 +9,9 @@ import {
     Camera,
     Video,
     CheckCircle,
-    AlertCircle,
     ChevronLeft,
     ChevronRight,
     Trash2,
-    Image as ImageIcon,
 } from "lucide-react";
 
 export function SellerAddProduct_Modal({
@@ -32,7 +28,6 @@ export function SellerAddProduct_Modal({
     const [productName, setProductName] = useState("");
     const [productDescription, setProductDescription] = useState("");
     const [productPrice, setProductPrice] = useState("");
-    const [productQuantity, setProductQuantity] = useState("1");
     const [productStatus, setProductStatus] = useState("available");
     const [productCondition, setProductCondition] = useState("");
     const [productCategories, setProductCategories] = useState("");
@@ -48,6 +43,8 @@ export function SellerAddProduct_Modal({
         },
     ]);
 
+    const [productVariants, setProductVariants] = useState([]);
+
     const [productImages, setProductImages] = useState([]);
     const [productVideos, setProductVideos] = useState([]);
 
@@ -56,8 +53,10 @@ export function SellerAddProduct_Modal({
     const [includedItems, setIncludedItems] = useState([""]);
 
     const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
-    const [isVideoPreviewOpen, setIsVideoPreviewOpen] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+    const [isVideoPreviewOpen, setIsVideoPreviewOpen] = useState(false);
+    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
     // Refs for error field focusing
     const productNameRef = useRef(null);
@@ -124,6 +123,68 @@ export function SellerAddProduct_Modal({
         }
     }, [errorField, onErrorFieldHandled]);
 
+    // Add this function to generate variants when options change
+    const generateVariants = (options) => {
+        if (options.length === 0) return [];
+
+        // Get all option values grouped by option name
+        const optionGroups = options
+            .filter((opt) => opt.option_name && opt.option_values.length > 0)
+            .map((opt) => ({
+                name: opt.option_name,
+                values: opt.option_values.map((v) => v.value),
+            }));
+
+        if (optionGroups.length === 0) return [];
+
+        // Generate all combinations
+        const generateCombinations = (groups, index = 0, current = {}) => {
+            if (index === groups.length) {
+                return [current];
+            }
+
+            const results = [];
+            const currentGroup = groups[index];
+
+            for (const value of currentGroup.values) {
+                const combination = {
+                    ...current,
+                    [currentGroup.name]: value,
+                };
+                results.push(
+                    ...generateCombinations(groups, index + 1, combination)
+                );
+            }
+
+            return results;
+        };
+
+        const combinations = generateCombinations(optionGroups);
+
+        // Map to variant format and preserve existing quantities
+        return combinations.map((combination) => {
+            const variantKey = Object.values(combination).join("|");
+            const existingVariant = productVariants.find(
+                (v) => v.variant_key === variantKey
+            );
+
+            return {
+                variant_key: variantKey,
+                combination: combination,
+                quantity: existingVariant ? existingVariant.quantity : "0",
+                price: existingVariant
+                    ? existingVariant.price
+                    : productPrice || "0",
+            };
+        });
+    };
+
+    // Update this useEffect to generate variants when options change
+    useEffect(() => {
+        const newVariants = generateVariants(productOptions);
+        setProductVariants(newVariants);
+    }, [productOptions]);
+
     const handleSubmit = async (e) => {
         try {
             e.preventDefault();
@@ -131,11 +192,11 @@ export function SellerAddProduct_Modal({
 
             const formData = new FormData();
 
-            // Basic product info
+            // Basic product info (without quantity)
             formData.append("product_name", productName);
             formData.append("product_description", productDescription);
             formData.append("product_price", productPrice);
-            formData.append("product_quantity", productQuantity);
+            // Remove: formData.append("product_quantity", productQuantity);
             formData.append("product_status", productStatus);
             formData.append("product_condition", productCondition);
             formData.append("category_id", productCategories);
@@ -158,24 +219,33 @@ export function SellerAddProduct_Modal({
                 }
             });
 
-            // Add product options
-            productOptions.forEach((option, index) => {
-                if (
-                    option.option_name.trim() !== "" &&
-                    option.option_values.length > 0
-                ) {
+            if (productVariants.length > 0) {
+                productVariants.forEach((variant, index) => {
                     formData.append(
-                        `options[${index}][name]`,
-                        option.option_name
+                        `variants[${index}][combination]`,
+                        JSON.stringify(variant.combination)
                     );
-                    option.option_values.forEach((value, valueIndex) => {
-                        formData.append(
-                            `options[${index}][values][${valueIndex}]`,
-                            value
-                        );
-                    });
-                }
-            });
+                    formData.append(
+                        `variants[${index}][quantity]`,
+                        variant.quantity || "0"
+                    );
+                    formData.append(
+                        `variants[${index}][price]`,
+                        variant.price || productPrice
+                    );
+                    formData.append(
+                        `variants[${index}][variant_key]`,
+                        variant.variant_key
+                    );
+                });
+            }
+
+            // Calculate total quantity from variants
+            const totalQuantity = productVariants.reduce((total, variant) => {
+                return total + parseInt(variant.quantity || "0");
+            }, 0);
+
+            formData.append("product_quantity", totalQuantity);
 
             // Append images
             productImages.forEach((img) => {
@@ -294,11 +364,37 @@ export function SellerAddProduct_Modal({
     const addOptionValue = (index) => {
         const newOptions = [...productOptions];
         const value = newOptions[index].newValue.trim();
-        if (value !== "" && !newOptions[index].option_values.includes(value)) {
-            newOptions[index].option_values.push(value);
+
+        if (
+            value !== "" &&
+            !newOptions[index].option_values.some((v) => v.value === value)
+        ) {
+            newOptions[index].option_values.push({
+                value: value,
+            });
             newOptions[index].newValue = "";
         }
         setProductOptions(newOptions);
+    };
+
+    const updateVariantQuantity = (variantKey, quantity) => {
+        setProductVariants((prev) =>
+            prev.map((variant) =>
+                variant.variant_key === variantKey
+                    ? { ...variant, quantity }
+                    : variant
+            )
+        );
+    };
+
+    const updateVariantPrice = (variantKey, price) => {
+        setProductVariants((prev) =>
+            prev.map((variant) =>
+                variant.variant_key === variantKey
+                    ? { ...variant, price }
+                    : variant
+            )
+        );
     };
 
     const removeOptionValue = (optionIndex, valueIndex) => {
@@ -330,14 +426,41 @@ export function SellerAddProduct_Modal({
         }));
         setProductImages((prev) => [...prev, ...newImages]);
     };
-
     const handleVideoChange = (e) => {
         const files = Array.from(e.target.files);
-        const newVideos = files.map((file) => ({
-            file,
-            preview: URL.createObjectURL(file),
-        }));
+
+        // Check if adding these videos would exceed the limit
+        if (productVideos.length + files.length > 5) {
+            alert("Maximum 5 videos allowed");
+            return;
+        }
+
+        const newVideos = files
+            .map((file) => {
+                // Check file size (50MB limit)
+                if (file.size > 50 * 1024 * 1024) {
+                    alert(
+                        `File ${file.name} is too large. Maximum size is 50MB.`
+                    );
+                    return null;
+                }
+
+                return {
+                    file,
+                    preview: URL.createObjectURL(file),
+                    name: file.name,
+                    size: file.size,
+                };
+            })
+            .filter((video) => video !== null); // Remove null entries (failed validations)
+
         setProductVideos((prev) => [...prev, ...newVideos]);
+    };
+
+    // Add function to preview video
+    const previewVideo = (index) => {
+        setCurrentVideoIndex(index);
+        setIsVideoPreviewOpen(true);
     };
 
     const removeImage = (index) => {
@@ -556,25 +679,6 @@ export function SellerAddProduct_Modal({
                                             placeholder="0.00"
                                             step="0.01"
                                             min="0"
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Quantity *
-                                        </label>
-                                        <input
-                                            ref={productQuantityRef}
-                                            type="text"
-                                            value={productQuantity}
-                                            onChange={(e) =>
-                                                setProductQuantity(
-                                                    e.target.value
-                                                )
-                                            }
-                                            min="1"
                                             className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                                             required
                                         />
@@ -840,6 +944,7 @@ export function SellerAddProduct_Modal({
                             )}
 
                             {/* Step 4: Options */}
+                            {/* Step 4: Options */}
                             {step === 4 && (
                                 <div className="space-y-6">
                                     <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
@@ -848,138 +953,169 @@ export function SellerAddProduct_Modal({
                                                 className="text-blue-500 mt-0.5 mr-3 flex-shrink-0"
                                                 size={20}
                                             />
-                                            <p className="text-sm text-blue-700">
-                                                Add variations like size, color,
-                                                or other options for your
-                                                product
-                                            </p>
+                                            <div>
+                                                <p className="text-sm text-blue-700 font-medium mb-1">
+                                                    Product Variants System
+                                                </p>
+                                                <p className="text-xs text-blue-600">
+                                                    Add options like Color,
+                                                    Size, etc. The system will
+                                                    automatically generate all
+                                                    combinations. Set individual
+                                                    quantities and prices for
+                                                    each variant.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {productOptions.map(
-                                        (option, optionIndex) => (
-                                            <div
-                                                key={optionIndex}
-                                                className="border rounded-lg p-5 bg-gray-50"
-                                            >
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <h4 className="font-semibold text-gray-800">
-                                                        Option {optionIndex + 1}
-                                                    </h4>
-                                                    {productOptions.length >
-                                                        1 && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                removeProductOption(
-                                                                    optionIndex
-                                                                )
-                                                            }
-                                                            className="text-red-600 hover:text-red-800 font-medium text-sm"
-                                                        >
-                                                            Remove Option
-                                                        </button>
-                                                    )}
-                                                </div>
-
-                                                <div className="mb-4">
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Option Name
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={
-                                                            option.option_name
-                                                        }
-                                                        onChange={(e) =>
-                                                            updateProductOptionName(
-                                                                optionIndex,
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        placeholder="e.g., Size, Color, Material"
-                                                        className="text-black w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                                    />
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                        Option Values
-                                                    </label>
-                                                    <div className="flex flex-wrap gap-2 mb-3">
-                                                        {option.option_values.map(
-                                                            (
-                                                                value,
-                                                                valueIndex
-                                                            ) => (
-                                                                <span
-                                                                    key={
-                                                                        valueIndex
-                                                                    }
-                                                                    className="inline-flex items-center bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm"
-                                                                >
-                                                                    {value}
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() =>
-                                                                            removeOptionValue(
-                                                                                optionIndex,
-                                                                                valueIndex
-                                                                            )
-                                                                        }
-                                                                        className="ml-2 text-indigo-500 hover:text-indigo-700"
-                                                                    >
-                                                                        ×
-                                                                    </button>
-                                                                </span>
-                                                            )
+                                    {/* Options Configuration */}
+                                    <div className="space-y-4">
+                                        {productOptions.map(
+                                            (option, optionIndex) => (
+                                                <div
+                                                    key={optionIndex}
+                                                    className="border rounded-lg p-5 bg-gray-50"
+                                                >
+                                                    <div className="flex justify-between items-center mb-4">
+                                                        <h4 className="font-semibold text-gray-800">
+                                                            Option{" "}
+                                                            {optionIndex + 1}
+                                                        </h4>
+                                                        {productOptions.length >
+                                                            1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    removeProductOption(
+                                                                        optionIndex
+                                                                    )
+                                                                }
+                                                                className="text-red-600 hover:text-red-800 font-medium text-sm"
+                                                            >
+                                                                Remove Option
+                                                            </button>
                                                         )}
                                                     </div>
 
-                                                    <div className="flex gap-2">
+                                                    <div className="mb-4">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Option Name *
+                                                        </label>
                                                         <input
                                                             type="text"
                                                             value={
-                                                                option.newValue
+                                                                option.option_name
                                                             }
-                                                            onChange={(e) => {
-                                                                const newOptions =
-                                                                    [
-                                                                        ...productOptions,
-                                                                    ];
-                                                                newOptions[
-                                                                    optionIndex
-                                                                ].newValue =
-                                                                    e.target.value;
-                                                                setProductOptions(
-                                                                    newOptions
-                                                                );
-                                                            }}
-                                                            onKeyDown={(e) =>
-                                                                handleOptionValueKeyDown(
-                                                                    e,
-                                                                    optionIndex
+                                                            onChange={(e) =>
+                                                                updateProductOptionName(
+                                                                    optionIndex,
+                                                                    e.target
+                                                                        .value
                                                                 )
                                                             }
-                                                            placeholder="Add value and press Enter"
-                                                            className="text-black flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                            placeholder="e.g., Size, Color, Material"
+                                                            className="text-black w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                            required
                                                         />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                addOptionValue(
-                                                                    optionIndex
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                            Option Values *
+                                                        </label>
+
+                                                        {/* Display existing option values */}
+                                                        <div className="space-y-2 mb-3">
+                                                            {option.option_values.map(
+                                                                (
+                                                                    value,
+                                                                    valueIndex
+                                                                ) => (
+                                                                    <div
+                                                                        key={
+                                                                            valueIndex
+                                                                        }
+                                                                        className="flex items-center gap-2 bg-white p-3 rounded-lg border"
+                                                                    >
+                                                                        <div className="flex-1">
+                                                                            <span className="font-medium text-gray-700">
+                                                                                {
+                                                                                    value.value
+                                                                                }
+                                                                            </span>
+                                                                        </div>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() =>
+                                                                                removeOptionValue(
+                                                                                    optionIndex,
+                                                                                    valueIndex
+                                                                                )
+                                                                            }
+                                                                            className="text-red-500 hover:text-red-700 p-1"
+                                                                        >
+                                                                            <Trash2
+                                                                                size={
+                                                                                    16
+                                                                                }
+                                                                            />
+                                                                        </button>
+                                                                    </div>
                                                                 )
-                                                            }
-                                                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
-                                                        >
-                                                            Add
-                                                        </button>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Add new option value */}
+                                                        <div className="flex gap-2">
+                                                            <input
+                                                                type="text"
+                                                                value={
+                                                                    option.newValue
+                                                                }
+                                                                onChange={(
+                                                                    e
+                                                                ) => {
+                                                                    const newOptions =
+                                                                        [
+                                                                            ...productOptions,
+                                                                        ];
+                                                                    newOptions[
+                                                                        optionIndex
+                                                                    ].newValue =
+                                                                        e.target.value;
+                                                                    setProductOptions(
+                                                                        newOptions
+                                                                    );
+                                                                }}
+                                                                onKeyDown={(
+                                                                    e
+                                                                ) =>
+                                                                    handleOptionValueKeyDown(
+                                                                        e,
+                                                                        optionIndex
+                                                                    )
+                                                                }
+                                                                placeholder="Option value (e.g., Small, Red)"
+                                                                className="text-black flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    addOptionValue(
+                                                                        optionIndex
+                                                                    )
+                                                                }
+                                                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                                                            >
+                                                                Add
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )
-                                    )}
+                                            )
+                                        )}
+                                    </div>
 
                                     {productOptions.length < 5 && (
                                         <button
@@ -991,9 +1127,135 @@ export function SellerAddProduct_Modal({
                                             Add Another Option
                                         </button>
                                     )}
+
+                                    {/* Variants Display */}
+                                    {productVariants.length > 0 && (
+                                        <div className="mt-8">
+                                            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                                                Product Variants (
+                                                {productVariants.length}{" "}
+                                                combinations)
+                                            </h3>
+
+                                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                                                {productVariants.map(
+                                                    (variant, index) => (
+                                                        <div
+                                                            key={
+                                                                variant.variant_key
+                                                            }
+                                                            className="border rounded-lg p-4 bg-white"
+                                                        >
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <div>
+                                                                    <span className="font-medium text-gray-700">
+                                                                        Variant{" "}
+                                                                        {index +
+                                                                            1}
+                                                                        :
+                                                                    </span>
+                                                                    <span className="ml-2 text-gray-600">
+                                                                        {Object.entries(
+                                                                            variant.combination
+                                                                        )
+                                                                            .map(
+                                                                                ([
+                                                                                    key,
+                                                                                    value,
+                                                                                ]) =>
+                                                                                    `${key}: ${value}`
+                                                                            )
+                                                                            .join(
+                                                                                ", "
+                                                                            )}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    SKU:{" "}
+                                                                    {
+                                                                        variant.variant_key
+                                                                    }
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                        Quantity
+                                                                        *
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={
+                                                                            variant.quantity
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            updateVariantQuantity(
+                                                                                variant.variant_key,
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                                        placeholder="0"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                        Price
+                                                                        (RM) *
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={
+                                                                            variant.price
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            updateVariantPrice(
+                                                                                variant.variant_key,
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                                        placeholder="0.00"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+
+                                            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                                                <p className="text-sm text-gray-600">
+                                                    Total Stock:{" "}
+                                                    {productVariants.reduce(
+                                                        (sum, variant) =>
+                                                            sum +
+                                                            parseInt(
+                                                                variant.quantity ||
+                                                                    0
+                                                            ),
+                                                        0
+                                                    )}{" "}
+                                                    units
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
+                            {/* Step 5: Media */}
                             {/* Step 5: Media */}
                             {step === 5 && (
                                 <div className="space-y-6">
@@ -1031,7 +1293,15 @@ export function SellerAddProduct_Modal({
                                                     <img
                                                         src={img.preview}
                                                         alt=""
-                                                        className="w-full h-24 object-cover rounded-lg border"
+                                                        className="w-full h-24 object-cover rounded-lg border cursor-pointer"
+                                                        onClick={() => {
+                                                            setCurrentImageIndex(
+                                                                index
+                                                            );
+                                                            setIsImagePreviewOpen(
+                                                                true
+                                                            );
+                                                        }}
                                                     />
                                                     <button
                                                         type="button"
@@ -1079,47 +1349,104 @@ export function SellerAddProduct_Modal({
                                     {/* Video Upload */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-3">
-                                            Product Video (Optional)
+                                            Product Videos (Optional)
                                         </label>
-                                        {productVideos.length > 0 ? (
-                                            <div className="relative">
-                                                <video
-                                                    src={
-                                                        productVideos[0].preview
-                                                    }
-                                                    className="w-full rounded-lg border"
-                                                    controls
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        removeVideo(0)
-                                                    }
-                                                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full"
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            </div>
-                                        ) : (
+
+                                        {/* Video Upload Area */}
+                                        {productVideos.length === 0 ? (
                                             <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 cursor-pointer p-6">
                                                 <Video
                                                     className="text-gray-400 mb-2"
                                                     size={32}
                                                 />
                                                 <span className="text-sm text-gray-600 mb-1">
-                                                    Add Video
+                                                    Add Videos
                                                 </span>
                                                 <span className="text-xs text-gray-500">
-                                                    MP4 up to 100MB
+                                                    MP4, MOV, AVI, WMV, MKV up
+                                                    to 50MB each
                                                 </span>
                                                 <input
                                                     type="file"
+                                                    multiple
                                                     accept="video/*"
                                                     onChange={handleVideoChange}
                                                     className="hidden"
                                                 />
                                             </label>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                {/* Video Grid */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {productVideos.map(
+                                                        (video, index) => (
+                                                            <div
+                                                                key={index}
+                                                                className="relative group border rounded-lg overflow-hidden bg-black"
+                                                            >
+                                                                <video
+                                                                    src={
+                                                                        video.preview
+                                                                    }
+                                                                    className="w-full h-40 object-cover"
+                                                                    controls
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        removeVideo(
+                                                                            index
+                                                                        )
+                                                                    }
+                                                                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition"
+                                                                >
+                                                                    <X
+                                                                        size={
+                                                                            16
+                                                                        }
+                                                                    />
+                                                                </button>
+                                                                <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
+                                                                    Video{" "}
+                                                                    {index + 1}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+
+                                                {/* Add More Videos Button */}
+                                                {productVideos.length < 5 && (
+                                                    <label className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 cursor-pointer p-4">
+                                                        <Plus
+                                                            size={20}
+                                                            className="text-gray-400 mr-2"
+                                                        />
+                                                        <span className="text-sm text-gray-600">
+                                                            Add More Videos (
+                                                            {
+                                                                productVideos.length
+                                                            }
+                                                            /5)
+                                                        </span>
+                                                        <input
+                                                            type="file"
+                                                            multiple
+                                                            accept="video/*"
+                                                            onChange={
+                                                                handleVideoChange
+                                                            }
+                                                            className="hidden"
+                                                        />
+                                                    </label>
+                                                )}
+                                            </div>
                                         )}
+
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            {productVideos.length}/5 videos
+                                            allowed • Up to 50MB each
+                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -1194,12 +1521,7 @@ export function SellerAddProduct_Modal({
                                                         </span>{" "}
                                                         RM {productPrice}
                                                     </p>
-                                                    <p className="text-black">
-                                                        <span className="text-gray-500">
-                                                            Quantity:
-                                                        </span>{" "}
-                                                        {productQuantity}
-                                                    </p>
+
                                                     <p className="text-black">
                                                         <span className="text-gray-500">
                                                             Status:
@@ -1393,6 +1715,33 @@ export function SellerAddProduct_Modal({
                         <div className="mt-4 text-center text-white">
                             Image {currentImageIndex + 1} of{" "}
                             {productImages.length}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Video Preview Modal */}
+            {isVideoPreviewOpen && productVideos.length > 0 && (
+                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-4">
+                    <div className="relative w-full max-w-4xl">
+                        <button
+                            onClick={() => setIsVideoPreviewOpen(false)}
+                            className="absolute top-4 right-4 z-10 bg-white/20 text-white p-2 rounded-full hover:bg-white/30"
+                        >
+                            <X size={24} />
+                        </button>
+
+                        <div className="relative">
+                            <video
+                                src={productVideos[0].preview}
+                                className="w-full h-auto max-h-[80vh] rounded-lg"
+                                controls
+                                autoPlay
+                            />
+                        </div>
+
+                        <div className="mt-4 text-center text-white">
+                            Video 1 of {productVideos.length}
                         </div>
                     </div>
                 </div>

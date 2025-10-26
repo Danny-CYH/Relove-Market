@@ -17,9 +17,10 @@ class ProductOptionValue extends Model
     protected $fillable = [
         "value_id",
         "option_id",
-        "option_value"
+        "option_value",
+        "quantity",
     ];
-    
+
     public function productOption()
     {
         return $this->belongsTo(ProductOption::class, "option_id", "option_id");
