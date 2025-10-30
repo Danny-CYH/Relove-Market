@@ -5,7 +5,10 @@ import {
     faTriangleExclamation,
     faCircleInfo,
 } from "@fortawesome/free-solid-svg-icons";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
+import { Link } from "@inertiajs/react";
 
 export function NotificationDropdown({
     showNotificationDropdown,

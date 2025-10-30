@@ -1,38 +1,38 @@
-// Components/SellerPage/SellerDashboard/TrialModal.jsx
-import { X, Star, CheckCircle, Zap, Calendar } from "lucide-react";
+import { Star, CheckCircle, Zap, Loader } from "lucide-react";
 
-export function TrialModal({
-    isOpen,
-    onClose,
-    onStartTrial,
-    onSubscribe,
-    trialDaysLeft,
-    trialEndsAt,
-    storeName,
-}) {
+import { useState } from "react";
+
+export function TrialModal({ isOpen, onStartTrial, onSubscribe }) {
+    const [isStartingTrial, setIsStartingTrial] = useState(false);
+    const [isSubscribing, setIsSubscribing] = useState(false);
+
+    // Handle trial start with loading state
+    const handleStartTrial = async () => {
+        setIsStartingTrial(true);
+        try {
+            await onStartTrial();
+        } finally {
+            setIsStartingTrial(false);
+        }
+    };
+
+    // Handle subscription with loading state
+    const handleSubscribe = async (url) => {
+        setIsSubscribing(true);
+        try {
+            await onSubscribe(url);
+        } finally {
+            setIsSubscribing(false);
+        }
+    };
+
     if (!isOpen) return null;
-
-    const features = [
-        "List up to 50 products",
-        "Basic analytics dashboard",
-        "Order management system",
-        "Customer support",
-        "14-day free trial",
-        "No credit card required",
-    ];
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="relative p-6 border-b border-gray-200">
-                    <button
-                        onClick={onClose}
-                        className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100"
-                    >
-                        <X size={24} />
-                    </button>
-
                     <div className="flex items-center gap-3 mb-2">
                         <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-2 rounded-lg">
                             <Zap size={24} className="text-white" />
@@ -96,11 +96,24 @@ export function TrialModal({
                                 </li>
                             </ul>
                             <button
-                                onClick={onStartTrial}
-                                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                                onClick={handleStartTrial}
+                                disabled={isStartingTrial || isSubscribing}
+                                className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                Start Free Trial
+                                {isStartingTrial ? (
+                                    <>
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                        Starting Trial...
+                                    </>
+                                ) : (
+                                    "Start Free Trial"
+                                )}
                             </button>
+                            {isStartingTrial && (
+                                <p className="text-xs text-green-600 text-center mt-2">
+                                    Setting up your trial account...
+                                </p>
+                            )}
                         </div>
 
                         {/* Premium Card */}
@@ -142,12 +155,27 @@ export function TrialModal({
                             </ul>
                             <button
                                 onClick={() =>
-                                    onSubscribe("/seller-manage-subscription")
+                                    handleSubscribe(
+                                        "/seller-manage-subscription"
+                                    )
                                 }
-                                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                                disabled={isSubscribing || isStartingTrial}
+                                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                Upgrade Now
+                                {isSubscribing ? (
+                                    <>
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                        Redirecting...
+                                    </>
+                                ) : (
+                                    "Upgrade Now"
+                                )}
                             </button>
+                            {isSubscribing && (
+                                <p className="text-xs text-blue-600 text-center mt-2">
+                                    Taking you to subscription page...
+                                </p>
+                            )}
                         </div>
                     </div>
 

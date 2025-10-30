@@ -23,8 +23,9 @@ return new class extends Migration {
             $table->string('product_manufacturer');
             $table->decimal('product_weight');
             $table->float("shipping_fee")->nullable();
-            $table->boolean("listing")->default(false);
+            $table->boolean("featured")->default(false);
             $table->boolean("flash_sale")->default(false);
+            $table->float("total_ratings")->default(0);
             $table->string('seller_id');
             $table->string('category_id');
             $table->timestamps();

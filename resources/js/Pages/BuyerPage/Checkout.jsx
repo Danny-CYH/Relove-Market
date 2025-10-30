@@ -138,10 +138,14 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                 selected_variant: product.selected_variant || null,
                 selected_options: product.selected_options || null,
                 product_image: product.product_image || product.productImage,
+                platform_tax: platform_tax,
             };
         }
         // If it's already in the correct structure (from cart)
-        return product;
+        return {
+            ...product,
+            platform_tax: platform_tax, // Ensure tax is included
+        };
     };
 
     // Calculate totals - handle both single item and multiple items
@@ -363,6 +367,10 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                                 paymentMethod={paymentMethod}
                                 onPaymentSuccess={handlePaymentSuccess}
                                 list_product={productsArray}
+                                platform_tax={platform_tax} // Add this
+                                subtotal={subtotal} // Add this
+                                shipping={shipping} // Add this
+                                tax={tax} // Add this
                             />
                         </Elements>
 
@@ -512,7 +520,9 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                                 </span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">Tax</span>
+                                <span className="text-gray-600">
+                                    Tax ({(platform_tax * 100).toFixed(1)}%)
+                                </span>
                                 <span className="text-gray-900">
                                     RM {tax.toFixed(2)}
                                 </span>

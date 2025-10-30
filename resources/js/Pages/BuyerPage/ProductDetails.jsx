@@ -14,6 +14,7 @@ import {
     ArrowLeft,
     Loader2,
     AlertCircle,
+    CheckCircle,
 } from "lucide-react";
 
 import { FaStar } from "react-icons/fa";
@@ -34,8 +35,6 @@ import { ShowConversationModal } from "@/Components/BuyerPage/ProductDetails/Sho
 import { ShowAllReviewsModal } from "@/Components/BuyerPage/ProductDetails/ShowAllReviewsModal";
 
 export default function ProductDetails({ product_info }) {
-    console.log(product_info);
-
     const [selectedImage, setSelectedImage] = useState(
         product_info[0]?.product_image[0]?.image_path || ""
     );
@@ -48,8 +47,16 @@ export default function ProductDetails({ product_info }) {
     const [showConversationModal, setShowConversationModal] = useState(false);
     const [initialMessage, setInitialMessage] = useState("");
     const [isStartingConversation, setIsStartingConversation] = useState(false);
-    const [loadingStates, setLoadingStates] = useState({});
+    const [loadingStates, setLoadingStates] = useState({
+        addToCart: false,
+        wishlist: false,
+        buyNow: false,
+    });
     const [variantError, setVariantError] = useState("");
+    const [actionSuccess, setActionSuccess] = useState({
+        addToCart: false,
+        wishlist: false,
+    });
 
     // Review and comment states
     const [reviewFilter, setReviewFilter] = useState("all");
@@ -134,7 +141,7 @@ export default function ProductDetails({ product_info }) {
     const checkWishlistStatus = useCallback(async () => {
         try {
             const response = await axios.get(
-                `/api/get-wishlist/${product_info[0]?.product_id}`
+                route("get-wishlist", product_info[0]?.product_id)
             );
 
             setIsWishlisted(response.data.is_wishlisted);
@@ -288,8 +295,7 @@ export default function ProductDetails({ product_info }) {
                 comment: newReview.comment,
             };
 
-            const response = await axios.post("/api/make-reviews", payload);
-            console.log("Review submitted:", response);
+            const response = await axios.post(route("make-review"), payload);
 
             // Fix: Immediately update the UI with the new review
             const newReviewData = response.data.review;
@@ -313,6 +319,13 @@ export default function ProductDetails({ product_info }) {
             // Update both reviews states immediately
             setReviews((prev) => [transformedReview, ...prev]);
             setAllReviews((prev) => [transformedReview, ...prev]);
+
+            const updatedReviews = [transformedReview, ...reviews];
+            const newAverageRating =
+                updatedReviews.reduce(
+                    (acc, review) => acc + (review.rating || 0),
+                    0
+                ) / updatedReviews.length;
 
             // Clear the form
             setNewReview({
@@ -338,12 +351,13 @@ export default function ProductDetails({ product_info }) {
         }
 
         setLoadingStates((prev) => ({ ...prev, addToCart: true }));
+        setActionSuccess((prev) => ({ ...prev, addToCart: false }));
 
         try {
             const cartData = prepareCheckoutData();
             const cartItem = cartData[0]; // Get single item
 
-            const response = await axios.post("/api/store-wishlist", {
+            const response = await axios.post(route("store-wishlist"), {
                 product_id: cartItem.product_id,
                 quantity: cartItem.selected_quantity,
                 selected_variant: cartItem.selected_variant,
@@ -351,7 +365,14 @@ export default function ProductDetails({ product_info }) {
 
             if (response.data.successMessage) {
                 console.log("Added to cart:", response.data);
-                // Show success message or update cart count
+
+                // Show success state
+                setActionSuccess((prev) => ({ ...prev, addToCart: true }));
+
+                // Reset success state after 2 seconds
+                setTimeout(() => {
+                    setActionSuccess((prev) => ({ ...prev, addToCart: false }));
+                }, 2000);
             } else {
                 console.error("Failed to add to cart:", response.data);
             }
@@ -369,27 +390,37 @@ export default function ProductDetails({ product_info }) {
         }
 
         setLoadingStates((prev) => ({ ...prev, wishlist: true }));
+        setActionSuccess((prev) => ({ ...prev, wishlist: false }));
 
         try {
             if (isWishlisted) {
-                await axios.delete("/api/remove-wishlist", {
+                await axios.delete(route("delete-wishlist"), {
                     data: { product_id: [product_id] },
                 });
+                setIsWishlisted(false);
+
+                // Show success state for removal
+                setActionSuccess((prev) => ({ ...prev, wishlist: true }));
             } else {
                 const variantData = prepareSelectedVariantData();
 
-                const response = await axios.post(
-                    `/api/store-wishlist/${product_id}`,
-                    {
-                        selected_variant: variantData,
-                        selected_quantity: quantity,
-                        // This matches the wishlist data structure
-                    }
-                );
+                const response = await axios.post(route("store-wishlist"), {
+                    product_id: product_id,
+                    selected_variant: variantData,
+                    selected_quantity: quantity,
+                });
 
                 console.log("Wishlist added:", response);
+                setIsWishlisted(true);
+
+                // Show success state for addition
+                setActionSuccess((prev) => ({ ...prev, wishlist: true }));
             }
-            setIsWishlisted(!isWishlisted);
+
+            // Reset success state after 2 seconds
+            setTimeout(() => {
+                setActionSuccess((prev) => ({ ...prev, wishlist: false }));
+            }, 2000);
         } catch (error) {
             console.error("Error updating wishlist:", error);
         } finally {
@@ -431,10 +462,11 @@ export default function ProductDetails({ product_info }) {
 
     const getRecommendations = async () => {
         try {
-            const res = await axios.post("/recommend", {
+            const res = await axios.post(route("recommend"), {
                 product_id: product_info[0].product_id,
                 top_k: 4,
             });
+
             setRecommendations(res.data.recommendations);
         } catch (error) {
             console.error("Error fetching recommendations:", error);
@@ -656,7 +688,9 @@ export default function ProductDetails({ product_info }) {
                                             •
                                         </span>
                                         <span className="text-sm">
-                                            {product_info[0].orders.length} sold
+                                            {product_info?.[0]?.order_item
+                                                ?.length || 0}{" "}
+                                            sold
                                         </span>
                                     </div>
                                 </div>
@@ -671,7 +705,13 @@ export default function ProductDetails({ product_info }) {
                                             loadingStates.wishlist ||
                                             (hasVariants && !selectedVariant)
                                         }
-                                        className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className={`p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                                            actionSuccess.wishlist
+                                                ? "bg-green-100 text-green-600 hover:bg-green-200"
+                                                : isWishlisted
+                                                ? "bg-red-100 text-red-500 hover:bg-red-200"
+                                                : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-red-500"
+                                        }`}
                                         title={
                                             hasVariants && !selectedVariant
                                                 ? "Please select a variant first"
@@ -683,13 +723,18 @@ export default function ProductDetails({ product_info }) {
                                                 size={18}
                                                 className="animate-spin"
                                             />
+                                        ) : actionSuccess.wishlist ? (
+                                            <CheckCircle
+                                                size={18}
+                                                className="text-green-600"
+                                            />
                                         ) : (
                                             <Heart
                                                 size={18}
                                                 className={
                                                     isWishlisted
                                                         ? "fill-red-500 text-red-500 stroke-red-500"
-                                                        : "text-gray-600 hover:text-red-500 stroke-gray-600 hover:stroke-red-500"
+                                                        : "text-current stroke-current"
                                                 }
                                             />
                                         )}
@@ -911,10 +956,18 @@ export default function ProductDetails({ product_info }) {
                                         }
                                     >
                                         {loadingStates.addToCart ? (
-                                            <Loader2
-                                                size={18}
-                                                className="animate-spin"
-                                            />
+                                            <>
+                                                <Loader2
+                                                    size={18}
+                                                    className="animate-spin"
+                                                />
+                                                Adding...
+                                            </>
+                                        ) : actionSuccess.addToCart ? (
+                                            <>
+                                                <CheckCircle size={18} />
+                                                Added to Cart!
+                                            </>
                                         ) : (
                                             <>
                                                 <ShoppingCart size={18} />
@@ -943,7 +996,17 @@ export default function ProductDetails({ product_info }) {
                                                 : ""
                                         }
                                     >
-                                        Buy Now
+                                        {loadingStates.buyNow ? (
+                                            <>
+                                                <Loader2
+                                                    size={18}
+                                                    className="animate-spin"
+                                                />
+                                                Processing...
+                                            </>
+                                        ) : (
+                                            "Buy Now"
+                                        )}
                                     </button>
                                 </div>
 

@@ -1,7 +1,5 @@
 import { Store, Search, User, MessageCircle } from "lucide-react";
 
-import { SubscriptionBadge } from "./SubscriptionBadge";
-
 import { LoadingProgress } from "@/Components/AdminPage/LoadingProgress";
 
 export function RenderConversationsSidebar({
@@ -12,10 +10,6 @@ export function RenderConversationsSidebar({
     searchTerm,
     conversationsLoading,
     activeConversation,
-    getCurrentTierInfo,
-    getTrialDaysRemaining,
-    isInTrialPeriod,
-    isSubscriptionActive,
     handleConversationClick,
 }) {
     return (
@@ -40,17 +34,6 @@ export function RenderConversationsSidebar({
                         </div>
                     </div>
                 </div>
-
-                {/* Subscription Status */}
-                {
-                    <SubscriptionBadge
-                        getCurrentTierInfo={getCurrentTierInfo}
-                        getTrialDaysRemaining={getTrialDaysRemaining}
-                        isInTrialPeriod={isInTrialPeriod}
-                        isSubscriptionActive={isSubscriptionActive}
-                        conversations={conversations}
-                    />
-                }
 
                 <div className="relative">
                     <Search

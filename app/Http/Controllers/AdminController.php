@@ -122,39 +122,6 @@ class AdminController extends Controller
         return response()->json($list_sellerRegistration);
     }
 
-    // Function for get the user account data on manage user page.
-    public function getUserList(Request $request)
-    {
-        $query = User::with('role');
-
-        // ✅ Filter by role
-        if ($request->has('role') && $request->role !== 'All') {
-            $query->whereHas('role', function ($q) use ($request) {
-                $q->where('role_name', $request->role); // adjust column if needed
-            });
-        }
-
-        // ✅ Filter by status
-        if ($request->has('status') && $request->status !== 'All') {
-            $query->where('status', $request->status);
-        }
-
-        // ✅ Search by name or email
-        if ($request->has('search') && $request->search !== '') {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            });
-        }
-
-        // ✅ Pagination (default 5 per page, or from query param)
-        $perPage = $request->get('per_page', 5);
-        $list_user = $query->paginate($perPage);
-
-        return response()->json($list_user);
-    }
-
     // Function for retrieve the list subscriptions.
     public function getSubscriptions()
     {
@@ -535,6 +502,11 @@ class AdminController extends Controller
     public function subscriptionPolicy()
     {
         return Inertia::render("AdminPage/SubscriptionPolicy");
+    }
+
+    public function productManagement()
+    {
+        return Inertia::render("AdminPage/ProductManagement");
     }
 
     public function userManagement()

@@ -5,16 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\ProductOptionValue;
 use App\Models\Order;
-use App\Models\OrderItem; // Make sure you have this model
+use App\Models\OrderItem;
 use App\Models\ProductVariant;
-use Illuminate\Support\Facades\DB;
 
 use App\Events\SellerPage\NewOrderCreated;
+
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 use Inertia\Inertia;
+
 use Stripe\Stripe;
 use Stripe\PaymentIntent;
 use Stripe\Exception\ApiErrorException;
@@ -157,6 +159,11 @@ class PaymentController extends Controller
                 'order_items.*.quantity' => 'required|integer|min:1',
                 'order_items.*.price' => 'required|numeric|min:0',
                 'order_items.*.selected_variant' => 'sometimes|array',
+                'platform_tax' => 'required|numeric|min:0',
+                'tax_amount' => 'required|numeric|min:0',
+                'subtotal' => 'required|numeric|min:0',
+                'shipping' => 'required|numeric|min:0',
+                'payment_method' => 'required|string',
             ]);
 
             if ($validator->fails()) {
@@ -184,14 +191,18 @@ class PaymentController extends Controller
                 ];
             }
 
-            Log::info('Creating payment intent for multiple products', [
+            Log::info('Creating payment intent with tax and payment method', [
                 'order_id' => $orderId,
                 'amount' => $amount,
                 'currency' => $currency,
                 'user_id' => $request->user_id,
                 'seller_id' => $request->seller_id,
+                'platform_tax' => $request->platform_tax,
+                'tax_amount' => $request->tax_amount,
+                'subtotal' => $request->subtotal,
+                'shipping' => $request->shipping,
+                'payment_method' => $request->payment_method,
                 'order_items_count' => count($request->order_items),
-                'order_items' => $orderItemsMetadata,
             ]);
 
             $paymentIntent = PaymentIntent::create([
@@ -202,6 +213,11 @@ class PaymentController extends Controller
                     'order_id' => $orderId,
                     'user_id' => $request->user_id,
                     'seller_id' => $request->seller_id,
+                    'platform_tax' => $request->platform_tax,
+                    'tax_amount' => $request->tax_amount,
+                    'subtotal' => $request->subtotal,
+                    'shipping' => $request->shipping,
+                    'payment_method' => $request->payment_method,
                     'order_items_count' => count($request->order_items),
                 ],
             ]);
@@ -238,6 +254,11 @@ class PaymentController extends Controller
             'order_items.*.quantity' => 'required|integer|min:1',
             'order_items.*.price' => 'required|numeric|min:0',
             'order_items.*.selected_variant' => 'sometimes|array',
+            'platform_tax' => 'required|numeric|min:0',
+            'tax_amount' => 'required|numeric|min:0',
+            'subtotal' => 'required|numeric|min:0',
+            'shipping' => 'required|numeric|min:0',
+            'payment_method' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -249,13 +270,21 @@ class PaymentController extends Controller
         }
 
         try {
-            Stripe::setApiKey(env('STRIPE_SECRET'));
+            // For Cash on Delivery, we don't need to check Stripe
+            if ($request->payment_method === 'cod') {
+                $paymentStatus = 'pending';
+                $orderStatus = 'pending';
+            } else {
+                Stripe::setApiKey(env('STRIPE_SECRET'));
+                Log::info('Retrieving payment intent: ' . $request->payment_intent_id);
+                $paymentIntent = PaymentIntent::retrieve($request->payment_intent_id);
+                Log::info('Payment intent status: ' . $paymentIntent->status);
+                $paymentStatus = $paymentIntent->status === 'succeeded' ? 'paid' : 'failed';
+                $orderStatus = $paymentIntent->status === 'succeeded' ? 'pending' : 'incomplete';
+            }
 
-            Log::info('Retrieving payment intent: ' . $request->payment_intent_id);
-            $paymentIntent = PaymentIntent::retrieve($request->payment_intent_id);
-            Log::info('Payment intent status: ' . $paymentIntent->status);
-
-            if ($paymentIntent->status === 'succeeded') {
+            // For successful payments or COD
+            if ($paymentStatus === 'paid' || $request->payment_method === 'cod') {
                 $existingOrder = Order::where('order_id', $request->order_id)->first();
                 if ($existingOrder) {
                     Log::warning('Order already exists', ['order_id' => $request->order_id]);
@@ -268,12 +297,22 @@ class PaymentController extends Controller
 
                 DB::beginTransaction();
 
-                // Process stock deduction for all order items with race condition protection
+                // Process stock deduction for all order items
                 foreach ($request->order_items as $item) {
                     $selectedVariant = $item['selected_variant'] ?? null;
-                    $selectedOptions = $item['selected_options'] ?? null;
                     $quantity = $item['quantity'];
                     $productId = $item['product_id'];
+
+                    // Get the product
+                    $product = Product::where('product_id', $productId)->lockForUpdate()->first();
+
+                    if (!$product) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'error' => "Product not found: {$productId}"
+                        ], 404);
+                    }
 
                     if ($selectedVariant && isset($selectedVariant['variant_id'])) {
                         // Deduct from variant stock
@@ -300,64 +339,6 @@ class PaymentController extends Controller
                         $variant->quantity -= $quantity;
                         $variant->save();
 
-                        Log::info('Variant stock deducted', [
-                            'variant_id' => $variant->variant_id,
-                            'quantity_deducted' => $quantity,
-                            'remaining_stock' => $variant->quantity
-                        ]);
-
-                    } elseif ($selectedOptions) {
-                        // Deduct from option values (backward compatibility)
-                        foreach ($selectedOptions as $optionName => $optionData) {
-                            $valueId = $optionData['value_id'] ?? null;
-
-                            if ($valueId) {
-                                $optionValue = ProductOptionValue::where('value_id', $valueId)
-                                    ->lockForUpdate()
-                                    ->first();
-
-                                if (!$optionValue) {
-                                    DB::rollBack();
-                                    return response()->json([
-                                        'success' => false,
-                                        'error' => "Option value not found: {$valueId}"
-                                    ], 404);
-                                }
-
-                                if ($optionValue->quantity < $quantity) {
-                                    DB::rollBack();
-                                    return response()->json([
-                                        'success' => false,
-                                        'error' => "Insufficient stock for option. Available: {$optionValue->quantity}, Requested: {$quantity}"
-                                    ], 400);
-                                }
-
-                                $optionValue->quantity -= $quantity;
-                                $optionValue->save();
-                            }
-                        }
-                    } else {
-                        // Deduct from main product stock
-                        $product = Product::where('product_id', $productId)
-                            ->lockForUpdate()
-                            ->first();
-
-                        if (!$product) {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'error' => "Product not found: {$productId}"
-                            ], 404);
-                        }
-
-                        if ($product->product_quantity < $quantity) {
-                            DB::rollBack();
-                            return response()->json([
-                                'success' => false,
-                                'error' => "Insufficient stock for product. Available: {$product->product_quantity}, Requested: {$quantity}"
-                            ], 400);
-                        }
-
                         $product->product_quantity -= $quantity;
                         $product->save();
 
@@ -366,19 +347,28 @@ class PaymentController extends Controller
                             'quantity_deducted' => $quantity,
                             'remaining_stock' => $product->product_quantity
                         ]);
+
+                        Log::info('Variant stock deducted', [
+                            'variant_id' => $variant->variant_id,
+                            'quantity_deducted' => $quantity,
+                            'remaining_stock' => $variant->quantity
+                        ]);
                     }
                 }
 
-                // Create main order
+                // Create main order with payment method
                 $order = Order::create([
                     'order_id' => $request->order_id,
                     'payment_intent_id' => $request->payment_intent_id,
                     'amount' => $request->amount / 100,
                     'currency' => $request->currency,
-                    'payment_status' => "paid",
-                    'order_status' => 'pending',
+                    'payment_status' => $paymentStatus,
+                    'order_status' => $orderStatus,
                     'user_id' => $request->user_id,
                     'seller_id' => $request->seller_id,
+                    'platform_tax' => $request->platform_tax,
+                    'tax_amount' => $request->tax_amount,
+                    'payment_method' => $request->payment_method, // Store payment method
                     'notes' => $request->notes ?? null,
                 ]);
 
@@ -393,10 +383,13 @@ class PaymentController extends Controller
                     ]);
                 }
 
-                Log::info('Order created successfully with multiple items', [
+                Log::info('Order created successfully', [
                     'order_id' => $order->order_id,
                     'payment_intent_id' => $order->payment_intent_id,
                     'seller_id' => $order->seller_id,
+                    'payment_method' => $order->payment_method,
+                    'platform_tax' => $order->platform_tax,
+                    'tax_amount' => $order->tax_amount,
                     'items_count' => count($request->order_items),
                 ]);
 
@@ -410,47 +403,49 @@ class PaymentController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Payment confirmed and order created successfully',
+                    'message' => 'Order created successfully',
                     'order' => $order->load('orderItems'),
                     'order_items' => $order->orderItems
                 ]);
-            }
+            } else {
+                // Payment failed
+                DB::beginTransaction();
 
-            // Payment failed - create failed order with items
-            DB::beginTransaction();
-
-            $order = Order::create([
-                'order_id' => $request->order_id,
-                'payment_intent_id' => $request->payment_intent_id,
-                'amount' => $request->amount / 100,
-                'currency' => $request->currency,
-                'payment_status' => 'failed',
-                'order_status' => "incomplete",
-                'user_id' => $request->user_id,
-                'seller_id' => $request->seller_id,
-                'notes' => 'Payment failed: ' . $paymentIntent->status,
-            ]);
-
-            // Create order items even for failed payment (optional)
-            foreach ($request->order_items as $item) {
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                    'selected_variant' => $item['selected_variant'] ?? null,
-                    'selected_options' => $item['selected_options'] ?? null,
+                $order = Order::create([
+                    'order_id' => $request->order_id,
+                    'payment_intent_id' => $request->payment_intent_id,
+                    'amount' => $request->amount / 100,
+                    'currency' => $request->currency,
+                    'payment_status' => 'failed',
+                    'order_status' => "incomplete",
+                    'user_id' => $request->user_id,
+                    'seller_id' => $request->seller_id,
+                    'platform_tax' => $request->platform_tax,
+                    'tax_amount' => $request->tax_amount,
+                    'payment_method' => $request->payment_method,
+                    'notes' => 'Payment failed: ' . ($paymentIntent->status ?? 'unknown'),
                 ]);
+
+                // Create order items for failed payment
+                foreach ($request->order_items as $item) {
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'price' => $item['price'],
+                        'selected_variant' => $item['selected_variant'] ?? null,
+                        'selected_options' => $item['selected_options'] ?? null,
+                    ]);
+                }
+
+                DB::commit();
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Payment not successful. Status: ' . ($paymentIntent->status ?? 'unknown'),
+                    'order_id' => $order->order_id,
+                ], 400);
             }
-
-            DB::commit();
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Payment not successful. Status: ' . $paymentIntent->status,
-                'order_id' => $order->order_id,
-            ], 400);
-
         } catch (\Exception $e) {
             Log::error('Payment confirmation error: ' . $e->getMessage());
             DB::rollBack();

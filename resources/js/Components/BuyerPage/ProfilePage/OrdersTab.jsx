@@ -8,8 +8,6 @@ import {
     Printer,
     Filter,
     Calendar,
-    Truck,
-    Eye,
     ArrowUpDown,
 } from "lucide-react";
 
@@ -25,7 +23,6 @@ export function OrdersTab({
     getStatusIcon,
     currentPage,
     itemsPerPage,
-    totalPages,
     paginate,
     viewReceipt,
     printReceipt,
@@ -115,10 +112,6 @@ export function OrdersTab({
         }
     };
 
-    const toggleOrderExpand = (orderId) => {
-        setExpandedOrder(expandedOrder === orderId ? null : orderId);
-    };
-
     const getStatusBadge = (status) => {
         const baseClasses =
             "px-3 py-1.5 rounded-full text-xs font-medium flex items-center w-fit transition-all";
@@ -139,19 +132,6 @@ export function OrdersTab({
             );
         }
         return order.quantity || 1;
-    };
-
-    // Helper function to get first product image
-    const getFirstProductImage = (order) => {
-        if (order.order_items && order.order_items.length > 0) {
-            const firstItem = order.order_items[0];
-            return (
-                firstItem.product?.product_images?.[0]?.image_path ||
-                firstItem.product_image?.image_path ||
-                "/placeholder-product.png"
-            );
-        }
-        return order.product_image?.image_path || "/placeholder-product.png";
     };
 
     // Helper function to format product name
@@ -234,18 +214,10 @@ export function OrdersTab({
                             </p>
                         </div>
                     </div>
-
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        {/* Export Button */}
-                        <button className="flex items-center justify-center gap-2 border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors font-medium">
-                            <Download size={18} />
-                            Export CSV
-                        </button>
-                    </div>
                 </div>
 
                 {/* Enhanced Filters */}
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Search */}
                     <div className="relative">
                         <Search
@@ -297,35 +269,6 @@ export function OrdersTab({
                             <option value="all">All Time</option>
                             <option value="last30">Last 30 Days</option>
                             <option value="last90">Last 90 Days</option>
-                        </select>
-                    </div>
-
-                    {/* Sort */}
-                    <div className="relative">
-                        <ArrowUpDown
-                            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                            size={18}
-                        />
-                        <select
-                            value={`${sortBy}-${sortOrder}`}
-                            onChange={(e) => {
-                                const [field, order] =
-                                    e.target.value.split("-");
-                                setSortBy(field);
-                                setSortOrder(order);
-                            }}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 appearance-none"
-                        >
-                            <option value="date-desc">Newest First</option>
-                            <option value="date-asc">Oldest First</option>
-                            <option value="total-desc">
-                                Total: High to Low
-                            </option>
-                            <option value="total-asc">
-                                Total: Low to High
-                            </option>
-                            <option value="status-asc">Status: A to Z</option>
-                            <option value="status-desc">Status: Z to A</option>
                         </select>
                     </div>
                 </div>
@@ -457,64 +400,7 @@ export function OrdersTab({
                                             <FileText size={16} />
                                             Receipt
                                         </button>
-                                        <button
-                                            onClick={() =>
-                                                toggleOrderExpand(
-                                                    order.order_id
-                                                )
-                                            }
-                                            className="flex items-center justify-center gap-2 border border-gray-300 text-gray-700 py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-                                        >
-                                            <Eye size={16} />
-                                            Details
-                                        </button>
                                     </div>
-
-                                    {/* Expanded Details */}
-                                    {expandedOrder === order.order_id && (
-                                        <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
-                                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                                <div>
-                                                    <p className="text-gray-500">
-                                                        Tracking Number
-                                                    </p>
-                                                    <p className="font-medium">
-                                                        {order.tracking_number ||
-                                                            `TRK${order.order_id}`}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-500">
-                                                        Payment
-                                                    </p>
-                                                    <p className="font-medium capitalize">
-                                                        {order.payment_method ||
-                                                            "Credit Card"}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-500">
-                                                        Carrier
-                                                    </p>
-                                                    <p className="font-medium">
-                                                        {order.carrier ||
-                                                            "Pos Laju"}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-500">
-                                                        Items
-                                                    </p>
-                                                    <p className="font-medium">
-                                                        {getTotalItemsCount(
-                                                            order
-                                                        )}{" "}
-                                                        items
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             ))}
                         </div>
@@ -688,16 +574,6 @@ export function OrdersTab({
                                                     >
                                                         <FileText size={16} />
                                                         Receipt
-                                                    </button>
-                                                    <button
-                                                        onClick={() =>
-                                                            printReceipt &&
-                                                            printReceipt(order)
-                                                        }
-                                                        className="flex items-center gap-2 border border-gray-300 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium"
-                                                        title="Print Receipt"
-                                                    >
-                                                        <Printer size={16} />
                                                     </button>
                                                 </div>
                                             </td>

@@ -32,6 +32,7 @@ class Product extends Model
         'product_weight',
         'featured',
         'flash_sale',
+        'total_ratings',
         'seller_id',
         'category_id',
     ];
@@ -51,9 +52,9 @@ class Product extends Model
         return $this->hasMany(Promotions::class, 'promotion_id', 'promotion_id');
     }
 
-    public function orders()
+    public function orderItems()
     {
-        return $this->hasMany(Order::class, "product_id", "product_id");
+        return $this->hasMany(OrderItem::class, "product_id", "product_id");
     }
 
     public function wishlists()

@@ -44,7 +44,6 @@ export default function SubscriptionPage({
     const receiptRef = useRef();
 
     const { auth } = usePage().props;
-    console.log(auth);
 
     // Transform the actual subscription data to match your existing structure
     const transformSubscriptionData = (subscriptions) => {

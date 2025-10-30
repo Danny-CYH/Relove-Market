@@ -29,17 +29,19 @@ import {
     Boxes,
 } from "lucide-react";
 
-import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { Footer } from "@/Components/BuyerPage/footer";
-
-import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
-import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
-
 import { useState, useEffect } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
 
 import axios from "axios";
+
+import { Navbar } from "@/Components/BuyerPage/Navbar";
+import { Footer } from "@/Components/BuyerPage/footer";
+
+import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
+import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
+import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
+import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -66,6 +68,9 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [featuredProducts, setFeaturedProducts] = useState([]);
     const [flashSaleProducts, setFlashSaleProducts] = useState([]);
 
+    const [loadingFeatured, setLoadingFeatured] = useState(true);
+    const [loadingFlashSale, setLoadingFlashSale] = useState(true);
+
     // Carousel state
     const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -73,17 +78,34 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const featured_products = featuredProducts.slice(0, 8);
 
+    // get the featured products data
     const get_featuredProducts = async () => {
-        const response = await axios.get("/api/buyer/get-featured-products");
+        try {
+            setLoadingFeatured(true);
+            const response = await axios.get(route("get-featured-products"));
 
-        console.log(response);
-
-        setFeaturedProducts(response.data.featured_products);
+            setFeaturedProducts(response.data.featured_products || []);
+        } catch (error) {
+            console.log(error);
+            setFeaturedProducts([]);
+        } finally {
+            setLoadingFeatured(false);
+        }
     };
 
+    // get the flash sale products data
     const get_flashSaleProducts = async () => {
-        const response = await axios.get("/api/buyer/get-flash-sale-products");
-        setFlashSaleProducts(response.data.flashSaleProducts);
+        try {
+            setLoadingFlashSale(true);
+            const response = await axios.get(route("get-flash-sale-products"));
+            
+            setFlashSaleProducts(response.data.flashSaleProducts || []);
+        } catch (error) {
+            console.log(error);
+            setFlashSaleProducts([]);
+        } finally {
+            setLoadingFlashSale(false);
+        }
     };
 
     // Handle search functionality
@@ -120,12 +142,14 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         );
     };
 
+    // listen to the success message after user register as seller success
     useEffect(() => {
         if (flash.successMessage) {
             setIsOpen(true);
         }
     }, [flash.successMessage]);
 
+    // call the api functions
     useEffect(() => {
         get_featuredProducts();
         get_flashSaleProducts();
@@ -385,7 +409,16 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 {/* Product Carousel */}
                 <section className="py-12 bg-gray-50 px-4">
                     <div className="max-w-7xl mx-auto">
-                        {flashSaleProducts ? (
+                        {loadingFlashSale ? (
+                            <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100">
+                                <div className="animate-pulse">
+                                    <div className="h-6 bg-gray-200 rounded w-48 mx-auto mb-4"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-64 mx-auto mb-6"></div>
+                                    <div className="h-64 bg-gray-200 rounded"></div>
+                                </div>
+                            </div>
+                        ) : flashSaleProducts &&
+                          flashSaleProducts.length > 0 ? (
                             <Carousel_ProductData
                                 productData={flashSaleProducts}
                             />
@@ -420,103 +453,27 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                             <h2 className="text-2xl font-bold text-gray-900 text-center">
                                 Recommended for You
                             </h2>
-                            <a
-                                href="#"
+                            <Link
+                                href={route("shopping")}
                                 className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium mt-3 md:mt-0"
                             >
                                 View all{" "}
                                 <FaArrowRight className="ml-1 text-xs" />
-                            </a>
+                            </Link>
                         </div>
 
-                        {/* Desktop Grid View */}
-                        <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {featured_products.map((product) => (
-                                <Link
-                                    href={route(
-                                        "product-details",
-                                        product.product_id
-                                    )}
-                                    key={product.product_id}
-                                >
-                                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                                        <div className="relative">
-                                            <img
-                                                src={
-                                                    import.meta.env
-                                                        .VITE_BASE_URL +
-                                                    product.product_image[0]
-                                                        .image_path
-                                                }
-                                                alt={product.product_name}
-                                                className="w-full h-56 object-cover"
-                                            />
-                                            <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
-                                                {product.category.category_name}
-                                            </div>
-                                        </div>
-                                        <div className="p-4">
-                                            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
-                                                {product.product_name}
-                                            </h3>
+                        {/* Loading State */}
+                        {loadingFeatured && <FeaturedProductsLoading />}
 
-                                            <div className="flex items-center mb-2">
-                                                <div className="flex items-center">
-                                                    {[1, 2, 3, 4, 5].map(
-                                                        (star) => (
-                                                            <FaStar
-                                                                key={star}
-                                                                className={`w-3 h-3 ${
-                                                                    star <=
-                                                                    Math.floor(
-                                                                        product
-                                                                            .ratings[0]
-                                                                            ?.rating
-                                                                    )
-                                                                        ? "text-yellow-400 fill-current"
-                                                                        : "text-gray-300"
-                                                                }`}
-                                                            />
-                                                        )
-                                                    )}
-                                                </div>
-                                                <span className="text-xs text-gray-500 ml-1">
-                                                    ({product.ratings[0]?.rating}
-                                                    )
-                                                </span>
-                                            </div>
+                        {/* No Featured Products State */}
+                        {!loadingFeatured && featuredProducts.length === 0 && (
+                            <NoFeaturedProducts />
+                        )}
 
-                                            <div className="flex items-center justify-between mt-3">
-                                                <div>
-                                                    <span className="font-bold text-gray-900">
-                                                        RM{" "}
-                                                        {product.product_price}
-                                                    </span>
-                                                    <span className="text-xs text-gray-500 line-through ml-2">
-                                                        {product.originalPrice}
-                                                    </span>
-                                                </div>
-                                                <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
-                                                    <FaShoppingCart className="text-sm" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-
-                        {/* Mobile Carousel View */}
-                        <div className="md:hidden relative">
-                            <div className="overflow-hidden rounded-xl">
-                                <div
-                                    className="flex transition-transform duration-300 ease-in-out"
-                                    style={{
-                                        transform: `translateX(-${
-                                            currentSlide * 100
-                                        }%)`,
-                                    }}
-                                >
+                        {/* Featured Products Grid - Desktop */}
+                        {!loadingFeatured && featuredProducts.length > 0 && (
+                            <>
+                                <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                                     {featured_products.map((product) => (
                                         <Link
                                             href={route(
@@ -525,130 +482,246 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                             )}
                                             key={product.product_id}
                                         >
-                                            <div className="w-full flex-shrink-0 px-2">
-                                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                                                    <div className="relative">
-                                                        <img
-                                                            src={
-                                                                import.meta.env
-                                                                    .VITE_BASE_URL +
-                                                                product
-                                                                    .product_image[0]
-                                                                    .image_path
-                                                            }
-                                                            alt={
-                                                                product.product_name
-                                                            }
-                                                            className="w-full h-48 object-cover"
-                                                        />
-
-                                                        <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
-                                                            {
-                                                                product.category
-                                                                    .category_name
-                                                            }
-                                                        </div>
+                                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                                                <div className="relative">
+                                                    <img
+                                                        src={
+                                                            import.meta.env
+                                                                .VITE_BASE_URL +
+                                                            product
+                                                                .product_image[0]
+                                                                .image_path
+                                                        }
+                                                        alt={
+                                                            product.product_name
+                                                        }
+                                                        className="w-full h-56 object-cover"
+                                                    />
+                                                    <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+                                                        {
+                                                            product.category
+                                                                .category_name
+                                                        }
                                                     </div>
-                                                    <div className="p-4">
-                                                        <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
-                                                            {
-                                                                product.product_name
-                                                            }
-                                                        </h3>
+                                                </div>
+                                                <div className="p-4">
+                                                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                                                        {product.product_name}
+                                                    </h3>
 
-                                                        <div className="flex items-center mb-2">
-                                                            <div className="flex items-center">
-                                                                {[
-                                                                    1, 2, 3, 4,
-                                                                    5,
-                                                                ].map(
-                                                                    (star) => (
-                                                                        <FaStar
-                                                                            key={
-                                                                                star
-                                                                            }
-                                                                            className={`w-3 h-3 ${
-                                                                                star <=
-                                                                                Math.floor(
-                                                                                    product
-                                                                                        .ratings[0]
-                                                                                        ?.rating
-                                                                                )
-                                                                                    ? "text-yellow-400 fill-current"
-                                                                                    : "text-gray-300"
-                                                                            }`}
-                                                                        />
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                            <span className="text-xs text-gray-500 ml-1">
-                                                                (
+                                                    <div className="flex items-center mb-2">
+                                                        <div className="flex items-center">
+                                                            {[
+                                                                1, 2, 3, 4, 5,
+                                                            ].map((star) => (
+                                                                <FaStar
+                                                                    key={star}
+                                                                    className={`w-3 h-3 ${
+                                                                        star <=
+                                                                        Math.floor(
+                                                                            product
+                                                                                .ratings[0]
+                                                                                ?.rating
+                                                                        )
+                                                                            ? "text-yellow-400 fill-current"
+                                                                            : "text-gray-300"
+                                                                    }`}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <span className="text-xs text-gray-500 ml-1">
+                                                            (
+                                                            {
+                                                                product
+                                                                    .ratings[0]
+                                                                    ?.rating
+                                                            }
+                                                            )
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between mt-3">
+                                                        <div>
+                                                            <span className="font-bold text-gray-900">
+                                                                RM{" "}
                                                                 {
-                                                                    product
-                                                                        .ratings[0]
-                                                                        ?.rating
+                                                                    product.product_price
                                                                 }
-                                                                )
+                                                            </span>
+                                                            <span className="text-xs text-gray-500 line-through ml-2">
+                                                                {
+                                                                    product.originalPrice
+                                                                }
                                                             </span>
                                                         </div>
-
-                                                        <div className="flex items-center justify-between mt-3">
-                                                            <div>
-                                                                <span className="font-bold text-gray-900">
-                                                                    RM{" "}
-                                                                    {
-                                                                        product.product_price
-                                                                    }
-                                                                </span>
-                                                                <span className="text-xs text-gray-500 line-through ml-2">
-                                                                    {
-                                                                        product.originalPrice
-                                                                    }
-                                                                </span>
-                                                            </div>
-                                                            <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
-                                                                <FaShoppingCart className="text-sm" />
-                                                            </button>
-                                                        </div>
+                                                        <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
+                                                            <FaShoppingCart className="text-sm" />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </Link>
                                     ))}
                                 </div>
-                            </div>
 
-                            {/* Carousel Navigation */}
-                            <button
-                                onClick={prevSlide}
-                                className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-all"
-                            >
-                                <FaChevronLeft className="text-gray-700" />
-                            </button>
-                            <button
-                                onClick={nextSlide}
-                                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-all"
-                            >
-                                <FaChevronRight className="text-gray-700" />
-                            </button>
+                                {/* Mobile Carousel View */}
+                                <div className="md:hidden relative">
+                                    <div className="overflow-hidden rounded-xl">
+                                        <div
+                                            className="flex transition-transform duration-300 ease-in-out"
+                                            style={{
+                                                transform: `translateX(-${
+                                                    currentSlide * 100
+                                                }%)`,
+                                            }}
+                                        >
+                                            {featured_products.map(
+                                                (product) => (
+                                                    <Link
+                                                        href={route(
+                                                            "product-details",
+                                                            product.product_id
+                                                        )}
+                                                        key={product.product_id}
+                                                    >
+                                                        <div className="w-full flex-shrink-0 px-2">
+                                                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                                                                <div className="relative">
+                                                                    <img
+                                                                        src={
+                                                                            import.meta
+                                                                                .env
+                                                                                .VITE_BASE_URL +
+                                                                            product
+                                                                                .product_image[0]
+                                                                                .image_path
+                                                                        }
+                                                                        alt={
+                                                                            product.product_name
+                                                                        }
+                                                                        className="w-full h-48 object-cover"
+                                                                    />
 
-                            {/* Carousel Indicators */}
-                            <div className="flex justify-center mt-4 space-x-2">
-                                {Array.from({
-                                    length: Math.ceil(featured_products.length),
-                                }).map((_, index) => (
+                                                                    <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
+                                                                        {
+                                                                            product
+                                                                                .category
+                                                                                .category_name
+                                                                        }
+                                                                    </div>
+                                                                </div>
+                                                                <div className="p-4">
+                                                                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                                                                        {
+                                                                            product.product_name
+                                                                        }
+                                                                    </h3>
+
+                                                                    <div className="flex items-center mb-2">
+                                                                        <div className="flex items-center">
+                                                                            {[
+                                                                                1,
+                                                                                2,
+                                                                                3,
+                                                                                4,
+                                                                                5,
+                                                                            ].map(
+                                                                                (
+                                                                                    star
+                                                                                ) => (
+                                                                                    <FaStar
+                                                                                        key={
+                                                                                            star
+                                                                                        }
+                                                                                        className={`w-3 h-3 ${
+                                                                                            star <=
+                                                                                            Math.floor(
+                                                                                                product
+                                                                                                    .ratings[0]
+                                                                                                    ?.rating
+                                                                                            )
+                                                                                                ? "text-yellow-400 fill-current"
+                                                                                                : "text-gray-300"
+                                                                                        }`}
+                                                                                    />
+                                                                                )
+                                                                            )}
+                                                                        </div>
+                                                                        <span className="text-xs text-gray-500 ml-1">
+                                                                            (
+                                                                            {
+                                                                                product
+                                                                                    .ratings[0]
+                                                                                    ?.rating
+                                                                            }
+                                                                            )
+                                                                        </span>
+                                                                    </div>
+
+                                                                    <div className="flex items-center justify-between mt-3">
+                                                                        <div>
+                                                                            <span className="font-bold text-gray-900">
+                                                                                RM{" "}
+                                                                                {
+                                                                                    product.product_price
+                                                                                }
+                                                                            </span>
+                                                                            <span className="text-xs text-gray-500 line-through ml-2">
+                                                                                {
+                                                                                    product.originalPrice
+                                                                                }
+                                                                            </span>
+                                                                        </div>
+                                                                        <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
+                                                                            <FaShoppingCart className="text-sm" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </Link>
+                                                )
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Carousel Navigation */}
                                     <button
-                                        key={index}
-                                        onClick={() => setCurrentSlide(index)}
-                                        className={`w-2 h-2 rounded-full transition-all ${
-                                            index === currentSlide
-                                                ? "bg-green-600 w-4"
-                                                : "bg-gray-300"
-                                        }`}
-                                    />
-                                ))}
-                            </div>
-                        </div>
+                                        onClick={prevSlide}
+                                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                                    >
+                                        <FaChevronLeft className="text-gray-700" />
+                                    </button>
+                                    <button
+                                        onClick={nextSlide}
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                                    >
+                                        <FaChevronRight className="text-gray-700" />
+                                    </button>
+
+                                    {/* Carousel Indicators */}
+                                    <div className="flex justify-center mt-4 space-x-2">
+                                        {Array.from({
+                                            length: Math.ceil(
+                                                featured_products.length
+                                            ),
+                                        }).map((_, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() =>
+                                                    setCurrentSlide(index)
+                                                }
+                                                className={`w-2 h-2 rounded-full transition-all ${
+                                                    index === currentSlide
+                                                        ? "bg-green-600 w-4"
+                                                        : "bg-gray-300"
+                                                }`}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </section>
 

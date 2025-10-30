@@ -1,12 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Star, Zap, Crown } from "lucide-react";
 
 import { SellerSidebar } from "@/Components/SellerPage/SellerSidebar";
 
 import { RenderConversationsSidebar } from "@/Components/SellerPage/SellerChatPage/RenderConversationsSidebar";
 import { RenderChatInterface } from "@/Components/SellerPage/SellerChatPage/RenderChatInterface";
-import { TrialWelcomeModal } from "@/Components/SellerPage/SellerChatPage/TrailWelcomeModal";
-import { UpgradeModal } from "@/Components/SellerPage/SellerChatPage/UpgradeModal";
 
 import axios from "axios";
 
@@ -34,226 +31,29 @@ export default function SellerChatPage({ seller_storeInfo }) {
 
     const [imageLoading, setImageLoading] = useState({});
 
-    // New subscription states
-    const [subscription, setSubscription] = useState(null);
-    const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-    const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-    const [showTrialModal, setShowTrialModal] = useState(false);
-
     const messagesEndRef = useRef(null);
 
     const pusher = useRef(null);
 
     const { auth } = usePage().props;
 
-    // Subscription tiers configuration
-    const subscriptionTiers = {
-        starter: {
-            name: "Starter",
-            maxConversations: 3,
-            features: [
-                "3 active conversations",
-                "Basic support",
-                "Standard messaging",
-            ],
-            price: "Free",
-            color: "gray",
-            icon: <Star className="w-5 h-5" />,
-        },
-        professional: {
-            name: "Professional",
-            maxConversations: 15,
-            features: [
-                "15 active conversations",
-                "Priority support",
-                "File sharing",
-                "Message templates",
-            ],
-            price: "RM29/month",
-            color: "blue",
-            icon: <Zap className="w-5 h-5" />,
-        },
-        business: {
-            name: "Business",
-            maxConversations: 50,
-            features: [
-                "50 active conversations",
-                "24/7 support",
-                "Advanced analytics",
-                "Custom branding",
-                "API access",
-            ],
-            price: "RM79/month",
-            color: "purple",
-            icon: <Crown className="w-5 h-5" />,
-        },
-        enterprise: {
-            name: "Enterprise",
-            maxConversations: 999, // Unlimited
-            features: [
-                "Unlimited conversations",
-                "Dedicated account manager",
-                "Custom features",
-                "SLA guarantee",
-            ],
-            price: "Custom",
-            color: "gold",
-            icon: <Crown className="w-5 h-5" />,
-        },
-    };
+    // ✅ REMOVED: All subscription states and tier configurations
 
-    // Map subscription_plan_id to tier names - ADD THIS FUNCTION
-    const getTierFromPlanId = (planId) => {
-        const planMapping = {
-            null: "starter", // No subscription plan = starter
-            plan_pro: "professional",
-            plan_business: "business",
-            plan_enterprise: "enterprise",
-        };
-        return planMapping[planId] || "starter";
-    };
-
-    // Check if seller is in trial period
-    const isInTrialPeriod = () => {
-        if (!subscription?.created_at) return false;
-
-        const createdAt = new Date(subscription.created_at);
-        const trialEnd = new Date(
-            createdAt.getTime() + 7 * 24 * 60 * 60 * 1000
-        ); // 7 days from creation
-        const now = new Date();
-
-        return now < trialEnd;
-    };
-
-    // Get trial days remaining
-    const getTrialDaysRemaining = () => {
-        if (!subscription?.created_at) return 0;
-
-        const createdAt = new Date(subscription.created_at);
-        const trialEnd = new Date(
-            createdAt.getTime() + 7 * 24 * 60 * 60 * 1000
-        );
-        const now = new Date();
-        const diffTime = trialEnd - now;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        return Math.max(0, diffDays);
-    };
-
-    // Check if subscription is active (either in trial or has active paid plan)
-    const isSubscriptionActive = () => {
-        // If seller has a paid plan
-        if (subscription?.subscription_plan_id) return true;
-
-        // If seller is in trial period
-        return isInTrialPeriod();
-    };
-
-    // Fetch seller's subscription status - UPDATED
-    const fetchSubscriptionStatus = async () => {
-        try {
-            setSubscriptionLoading(true);
-            const response = await axios.get("/api/seller-subscriptions");
-
-            console.log("Subscription API Response:", response);
-
-            const sellerSubscription = response.data.seller_subscription;
-
-            // Transform the data to match frontend expectations
-            const subscriptionData = {
-                tier: getTierFromPlanId(
-                    sellerSubscription?.subscription_plan_id
-                ),
-                subscription_plan_id: sellerSubscription?.subscription_plan_id,
-                ...sellerSubscription,
-            };
-
-            console.log("Processed subscription data:", subscriptionData);
-            setSubscription(subscriptionData);
-
-            // Show trial modal if seller is new and has no conversations yet
-            if (
-                !sellerSubscription?.subscription_plan_id &&
-                conversations.length === 0
-            ) {
-                setTimeout(() => {
-                    setShowTrialModal(true);
-                }, 1000);
-            }
-        } catch (error) {
-            console.error("Error fetching subscription:", error);
-            // Default to starter tier if error
-            setSubscription({ tier: "starter" });
-        } finally {
-            setSubscriptionLoading(false);
-        }
-    };
-
-    // Check if seller can start new conversation - UPDATED with better logging
+    // ✅ KEPT: Check if seller can start new conversation - now always returns true
     const canStartNewConversation = () => {
-        if (!subscription) {
-            console.log("No subscription data available");
-            return false;
-        }
-
-        const currentTier =
-            subscriptionTiers[subscription.tier] || subscriptionTiers.starter;
-
-        // Count active conversations (last 30 days)
-        const activeConversationsCount = conversations.filter((conv) => {
-            if (!conv.last_message_at) return false;
-
-            const lastMessageDate = new Date(conv.last_message_at);
-            const thirtyDaysAgo = new Date(
-                Date.now() - 30 * 24 * 60 * 60 * 1000
-            );
-            return lastMessageDate > thirtyDaysAgo;
-        }).length;
-
-        console.log(
-            `Active conversations: ${activeConversationsCount}/${currentTier.maxConversations}, Tier: ${subscription.tier}`
-        );
-
-        return activeConversationsCount < currentTier.maxConversations;
+        console.log("✅ Unlimited conversations enabled");
+        return true; // Always allow new conversations
     };
 
-    // Check if seller has reached conversation limit
+    // ✅ KEPT: Check if seller has reached conversation limit - now always returns false
     const hasReachedLimit = () => {
-        const reached = !canStartNewConversation();
-        console.log("Has reached limit:", reached);
-        return reached;
+        console.log("✅ No conversation limits");
+        return false; // Never reach limit
     };
 
-    // Get current tier info
-    const getCurrentTierInfo = () => {
-        const tierName = subscription?.tier || "starter";
-        const tierInfo =
-            subscriptionTiers[tierName] || subscriptionTiers.starter;
-        return tierInfo;
-    };
-
-    // Handle new conversation creation
+    // ✅ KEPT: Handle new conversation creation - simplified without subscription checks
     const handleNewConversation = async (buyerId, productId) => {
-        console.log("Checking if can create new conversation...");
-        if (hasReachedLimit()) {
-            console.log("Limit reached, showing upgrade modal");
-            setShowUpgradeModal(true);
-            return false;
-        }
-
-        // Check subscription status first
-        if (!isSubscriptionActive()) {
-            console.log("Trial expired and no active subscription");
-            setShowUpgradeModal(true);
-            return false;
-        }
-
-        if (hasReachedLimit()) {
-            console.log("Limit reached, showing upgrade modal");
-            setShowUpgradeModal(true);
-            return false;
-        }
+        console.log("✅ Creating new conversation without restrictions");
 
         try {
             // Your existing logic to create new conversation
@@ -268,35 +68,11 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     };
 
-    // Upgrade subscription
-    const handleUpgrade = (tier) => {
-        console.log("Upgrading to tier:", tier);
-        // Redirect to payment page or handle upgrade logic
-        window.location.href = `/seller/subscription/upgrade?tier=${tier}`;
-    };
-
-    // Add this function to handle the actual conversation creation from buyers
-    // This should be called when a buyer tries to start a new conversation with the seller
+    // ✅ KEPT: Add this function to handle the actual conversation creation from buyers
     const handleIncomingConversation = async (buyerId, productId) => {
-        console.log("Handling incoming conversation request...");
-
-        // Check if we can create a new conversation
-        if (!isSubscriptionActive()) {
-            console.log("Subscription not active - blocking new conversation");
-            // You might want to show an error to the buyer here
-            return { success: false, error: "seller_subscription_inactive" };
-        }
-
-        if (hasReachedLimit()) {
-            console.log(
-                "Conversation limit reached - blocking new conversation"
-            );
-            // You might want to show an error to the buyer here
-            return {
-                success: false,
-                error: "seller_conversation_limit_reached",
-            };
-        }
+        console.log(
+            "✅ Handling incoming conversation request without restrictions"
+        );
 
         try {
             const newConversation = await handleNewConversation(
@@ -399,16 +175,16 @@ export default function SellerChatPage({ seller_storeInfo }) {
             );
         },
         [auth.user, activeConversation]
-    ); // Make sure to wrap in useCallback
+    );
 
-    // Filter conversations based on search
+    // ✅ KEPT: Filter conversations based on search
     const filteredConversations = conversations.filter(
         (conv) =>
             conv.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             conv.product?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Check if mobile on component mount and resize
+    // ✅ KEPT: Check if mobile on component mount and resize
     useEffect(() => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768);
@@ -420,13 +196,12 @@ export default function SellerChatPage({ seller_storeInfo }) {
         return () => window.removeEventListener("resize", checkMobile);
     }, []);
 
-    // Fetch conversations on component mount
+    // ✅ KEPT: Fetch conversations on component mount
     useEffect(() => {
         fetchConversations();
-        fetchSubscriptionStatus();
     }, []);
 
-    // Initialize component with proper data handling
+    // ✅ KEPT: Initialize component with proper data handling
     useEffect(() => {
         if (conversations && conversations.length > 0) {
             console.log("Setting conversations from props:", conversations);
@@ -445,14 +220,14 @@ export default function SellerChatPage({ seller_storeInfo }) {
                     setActiveConversation(foundConversation);
                     // On mobile, hide sidebar when conversation is selected
                     if (isMobile) {
-                        setShowMobileSidebar(false);
+                        setShowChat(true);
                     }
                 }
             }
         }
     }, [activeConversation, isMobile]);
 
-    // Auto-mark as read when new messages arrive and conversation is active
+    // ✅ KEPT: Auto-mark as read when new messages arrive and conversation is active
     useEffect(() => {
         if (!activeConversation || messages.length === 0) return;
 
@@ -481,7 +256,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     }, [messages, activeConversation]);
 
-    // Fetch conversations from API
+    // ✅ KEPT: Fetch conversations from API
     const fetchConversations = async () => {
         try {
             setConversationsLoading(true);
@@ -499,6 +274,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     };
 
+    // ✅ KEPT: Mark conversation as read
     const markAsRead = async (conversationId) => {
         try {
             await axios.post(`/conversations/${conversationId}/mark-read`);
@@ -526,7 +302,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     };
 
-    // Handle image loading
+    // ✅ KEPT: Handle image loading
     const handleImageLoad = (imageId) => {
         setImageLoading((prev) => ({
             ...prev,
@@ -541,7 +317,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }));
     };
 
-    // Format timestamp for conversation list display
+    // ✅ KEPT: Format timestamp for conversation list display
     const formatConversationTimeForDisplay = (timestamp) => {
         if (!timestamp || timestamp === "No messages") return "No messages";
 
@@ -564,7 +340,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     };
 
-    // Initialize Pusher for real-time messaging
+    // ✅ KEPT: Initialize Pusher for real-time messaging
     useEffect(() => {
         if (!auth.user) return;
 
@@ -580,7 +356,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
                         cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
                         forceTLS: true,
                         authEndpoint: "/broadcasting/auth",
-                        // enabledTransports: ["ws", "wss"],
                     }
                 );
 
@@ -631,7 +406,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         };
     }, [auth.user, activeConversation]);
 
-    // Load messages when active conversation changes
+    // ✅ KEPT: Load messages when active conversation changes
     useEffect(() => {
         if (activeConversation) {
             loadMessages(activeConversation.id);
@@ -639,6 +414,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     }, [activeConversation, handleNewMessage]);
 
+    // ✅ KEPT: Load messages function
     const loadMessages = async (conversationId) => {
         setMessageLoading(true);
         setError(null);
@@ -660,6 +436,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     };
 
+    // ✅ KEPT: Mark conversation as read
     const markConversationAsRead = async (conversationId) => {
         try {
             await axios.post(`/conversations/${conversationId}/mark-read`);
@@ -686,6 +463,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     };
 
+    // ✅ KEPT: Handle send message
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim() || !activeConversation) return;
@@ -743,12 +521,12 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }
     };
 
-    // Scroll to bottom of messages
+    // ✅ KEPT: Scroll to bottom of messages
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // Handle back to conversations list on mobile
+    // ✅ KEPT: Handle back to conversations list on mobile
     const handleBackToConversations = () => {
         setShowChat(false);
         setTimeout(() => {
@@ -756,7 +534,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
         }, 300);
     };
 
-    // Handle conversation click
+    // ✅ KEPT: Handle conversation click
     const handleConversationClick = async (conversation) => {
         setActiveConversation(conversation);
         await markAsRead(conversation.id);
@@ -780,14 +558,11 @@ export default function SellerChatPage({ seller_storeInfo }) {
                         conversations={filteredConversations}
                         isMobile={isMobile}
                         showChat={showChat}
-                        searchConversation={setSearchTerm} // ✅ Pass setter
+                        searchConversation={setSearchTerm}
                         searchTerm={searchTerm}
                         conversationsLoading={conversationsLoading}
                         activeConversation={activeConversation}
-                        getCurrentTierInfo={getCurrentTierInfo}
-                        getTrialDaysRemaining={getTrialDaysRemaining}
-                        isInTrialPeriod={isInTrialPeriod}
-                        isSubscriptionActive={isSubscriptionActive}
+                        // ✅ REMOVED: All subscription-related props
                         handleConversationClick={handleConversationClick}
                     />
                     <RenderChatInterface
@@ -812,18 +587,7 @@ export default function SellerChatPage({ seller_storeInfo }) {
                 </div>
             </main>
 
-            <TrialWelcomeModal
-                showTrialModal={showTrialModal}
-                setShowTrialModal={setShowTrialModal}
-            />
-
-            <UpgradeModal
-                showUpgradeModal={showUpgradeModal}
-                setShowUpgradeModal={setShowUpgradeModal}
-                subscription={subscription}
-                subscriptionTiers={subscriptionTiers}
-                handleUpgrade={handleUpgrade}
-            />
+            {/* ✅ REMOVED: UpgradeModal component */}
         </div>
     );
 }

@@ -71,7 +71,7 @@ export default function EarningsPage() {
     const fetchEarningsData = async (page = 1, chartFilter = filter) => {
         try {
             setIsLoading(true);
-            const response = await axios.get("/api/seller-earnings", {
+            const response = await axios.get(route("earnings"), {
                 params: {
                     page: page,
                     filter: chartFilter,
@@ -213,7 +213,7 @@ export default function EarningsPage() {
             setIsGeneratingReport(true);
 
             const response = await axios.post(
-                "/api/generate-income-report",
+                route("generate-report"),
                 reportConfig,
                 {
                     headers: {

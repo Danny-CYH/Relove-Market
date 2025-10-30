@@ -16,7 +16,6 @@ return new class extends Migration {
             $table->string("seller_name");
             $table->string("seller_email")->unique();
             $table->string("seller_phone");
-            $table->text('account_number')->nullable();
             $table->string('store_id');
             $table->string('business_id');
             $table->string('subscription_plan_id')->nullable();

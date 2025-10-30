@@ -10,7 +10,7 @@ import { Link } from "@inertiajs/react";
 export function TrialBanner({ seller, trialDaysLeft }) {
     const banner = useMemo(() => {
         if (!seller) return null;
-        if (seller.subscription.plan_name !== "PLAN-TRIAL") return null;
+        if (seller?.subscription?.plan_name !== "PLAN-TRIAL") return null;
 
         if (trialDaysLeft <= 0) {
             return (

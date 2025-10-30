@@ -1,6 +1,3 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
 import {
     BarChart,
     Bar,
@@ -22,6 +19,14 @@ import {
     faCalendarAlt,
 } from "@fortawesome/free-solid-svg-icons";
 
+import axios from "axios";
+
+import { Link, usePage } from "@inertiajs/react";
+
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import { SellerSidebar } from "@/Components/SellerPage/SellerSidebar";
 import { StatCard } from "@/Components/SellerPage/SellerDashboard/StatCard";
 import { TrialModal } from "@/Components/SellerPage/SellerDashboard/TrialModal";
@@ -30,10 +35,6 @@ import { Badge } from "@/Components/SellerPage/SellerDashboard/Badge";
 import { Money } from "@/Components/SellerPage/SellerDashboard/Money";
 import { TrialBanner } from "@/Components/SellerPage/SellerDashboard/TrialBanner";
 import { NotificationDropdown } from "@/Components/SellerPage/SellerDashboard/NotificationDropdown";
-
-import axios from "axios";
-
-import { Link, usePage } from "@inertiajs/react";
 
 export default function SellerDashboard() {
     const [sellerData, setSellerData] = useState([]);
@@ -82,7 +83,7 @@ export default function SellerDashboard() {
     const fetchSubscriptionStatus = async () => {
         try {
             setSubscriptionLoading(true);
-            const response = await axios.get("/api/seller-subscriptions");
+            const response = await axios.get(route("seller-subscriptions"));
 
             const sellerSubscription = response.data.seller;
             const sellerSubscription_status = response.data.seller.status;
@@ -385,7 +386,7 @@ export default function SellerDashboard() {
             const fetchListedProducts = async () => {
                 try {
                     const response = await axios.get(
-                        "/api/seller/featured-products"
+                        route("featured-products")
                     );
 
                     setListedProducts(response.data.featured_products || []);
@@ -558,7 +559,7 @@ export default function SellerDashboard() {
 
         (async () => {
             try {
-                const { data } = await axios.get("/api/getData-dashboard");
+                const { data } = await axios.get(route("dashboard-data"));
 
                 if (!mounted) return;
 
@@ -599,6 +600,7 @@ export default function SellerDashboard() {
         };
     }, [calculateAllKPIs, timeFilter]);
 
+    // Code for starting the free trial
     const handleStartTrial = async () => {
         const startDate = new Date();
         const endDate = new Date();
@@ -614,17 +616,24 @@ export default function SellerDashboard() {
         };
 
         try {
-            const response = await axios.post("/api/start-trial", trialData);
-            console.log("Trial started:", response.data);
+            const response = await axios.post(route("start-trial"), trialData);
+
             setShowTrialModal(false);
             // Refresh subscription status
-            fetchSubscriptionStatus();
-            alert(
-                "Free trial started successfully! Enjoy your 7-day trial period."
+            await fetchSubscriptionStatus();
+
+            // Show success notification
+            showNotification(
+                "🎉 Free trial started successfully! Enjoy your 7-day trial period.",
+                "success"
             );
         } catch (error) {
             console.error("Failed to start trial:", error);
-            alert("Failed to start free trial. Please try again.");
+            showNotification(
+                "❌ Failed to start free trial. Please try again.",
+                "error"
+            );
+            throw error; // Re-throw to handle in the modal
         }
     };
 
@@ -698,7 +707,7 @@ export default function SellerDashboard() {
     return (
         <div className="min-h-screen bg-gray-50 flex">
             {/* Sidebar */}
-            <SellerSidebar shopName={sellerData.seller_store?.store_name} />
+            <SellerSidebar />
 
             {/* Main Content */}
             <main className="flex-1 p-4 md:p-6 md:ml-0">
@@ -810,80 +819,112 @@ export default function SellerDashboard() {
                                     className="px-3 py-1.5 w-full md:w-40 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 >
                                     <option value="daily">Daily View</option>
-                                    <option value="monthly">Monthly View</option>
+                                    <option value="monthly">
+                                        Monthly View
+                                    </option>
                                     <option value="yearly">Yearly View</option>
                                 </select>
                             </div>
                         </div>
                         <div className="h-64 md:h-80">
-                            <ResponsiveContainer width="100%" height={250}>
-                                <BarChart
-                                    data={earningsChartData}
-                                    margin={{
-                                        top: 20,
-                                        right: 30,
-                                        left: 20,
-                                        bottom: 5,
-                                    }}
-                                >
-                                    <CartesianGrid
-                                        strokeDasharray="3 3"
-                                        stroke="#f0f0f0"
+                            {earningsChartData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <BarChart
+                                        data={earningsChartData}
+                                        margin={{
+                                            top: 20,
+                                            right: 30,
+                                            left: 20,
+                                            bottom: 5,
+                                        }}
+                                    >
+                                        <CartesianGrid
+                                            strokeDasharray="3 3"
+                                            stroke="#f0f0f0"
+                                        />
+                                        <XAxis
+                                            dataKey="name"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{
+                                                fill: "#6b7280",
+                                                fontSize: 12,
+                                            }}
+                                        />
+                                        <YAxis
+                                            yAxisId="left"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{
+                                                fill: "#6b7280",
+                                                fontSize: 12,
+                                            }}
+                                            tickFormatter={(value) =>
+                                                `RM${value}`
+                                            }
+                                        />
+                                        <YAxis
+                                            yAxisId="right"
+                                            orientation="right"
+                                            axisLine={false}
+                                            tickLine={false}
+                                            tick={{
+                                                fill: "#6b7280",
+                                                fontSize: 12,
+                                            }}
+                                        />
+                                        <Tooltip content={<CustomTooltip />} />
+                                        <Bar
+                                            yAxisId="left"
+                                            dataKey="earnings"
+                                            fill="#4f46e5"
+                                            radius={[4, 4, 0, 0]}
+                                            name="earnings"
+                                            maxBarSize={40}
+                                        />
+                                        <Bar
+                                            yAxisId="right"
+                                            dataKey="orders"
+                                            fill="#10b981"
+                                            radius={[4, 4, 0, 0]}
+                                            name="orders"
+                                            maxBarSize={40}
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                                    <BarChart
+                                        size={48}
+                                        className="text-gray-300 mb-3"
                                     />
-                                    <XAxis
-                                        dataKey="name"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: "#6b7280", fontSize: 12 }}
-                                    />
-                                    <YAxis
-                                        yAxisId="left"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: "#6b7280", fontSize: 12 }}
-                                        tickFormatter={(value) => `RM${value}`}
-                                    />
-                                    <YAxis
-                                        yAxisId="right"
-                                        orientation="right"
-                                        axisLine={false}
-                                        tickLine={false}
-                                        tick={{ fill: "#6b7280", fontSize: 12 }}
-                                    />
-                                    <Tooltip content={<CustomTooltip />} />
-                                    <Bar
-                                        yAxisId="left"
-                                        dataKey="earnings"
-                                        fill="#4f46e5"
-                                        radius={[4, 4, 0, 0]}
-                                        name="earnings"
-                                        maxBarSize={40}
-                                    />
-                                    <Bar
-                                        yAxisId="right"
-                                        dataKey="orders"
-                                        fill="#10b981"
-                                        radius={[4, 4, 0, 0]}
-                                        name="orders"
-                                        maxBarSize={40}
-                                    />
-                                </BarChart>
-                            </ResponsiveContainer>
+                                    <p className="text-sm font-medium text-gray-900 mb-1">
+                                        No data available
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        {orderData.length === 0
+                                            ? "Start selling to see your earnings data"
+                                            : "No data for the selected time period"}
+                                    </p>
+                                </div>
+                            )}
                         </div>
-                        <div className="flex justify-center gap-6 mt-4">
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-indigo-600 rounded min-h-[1rem]"></div>
-                                <span className="text-xs text-gray-600">
-                                    Earnings (RM)
-                                </span>
+                        {earningsChartData.length > 0 && (
+                            <div className="flex justify-center gap-6 mt-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-indigo-600 rounded min-h-[1rem]"></div>
+                                    <span className="text-xs text-gray-600">
+                                        Earnings (RM)
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-green-500 rounded min-h-[1rem]"></div>
+                                    <span className="text-xs text-gray-600">
+                                        Orders
+                                    </span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-green-500 rounded min-h-[1rem]"></div>
-                                <span className="text-xs text-gray-600">
-                                    Orders
-                                </span>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
 
@@ -962,6 +1003,7 @@ export default function SellerDashboard() {
                                 View all
                             </Link>
                         </div>
+                        {/* Recent Orders Table */}
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-sm">
                                 <thead>
@@ -975,55 +1017,87 @@ export default function SellerDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {realTimeOrders.slice(0, 5).map((order) => (
-                                        <tr
-                                            key={order.order_id}
-                                            className={`border-t hover:bg-gray-50 transition-colors ${
-                                                newOrders.has(order.order_id)
-                                                    ? "bg-green-50 border-l-4 border-l-green-500"
-                                                    : ""
-                                            }`}
-                                        >
-                                            <td className="p-2 font-medium text-gray-700 whitespace-nowrap">
-                                                {order.order_id}
-                                                {newOrders.has(
-                                                    order.order_id
-                                                ) && (
-                                                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        New
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="p-2 text-black whitespace-nowrap">
-                                                {order.user?.name || "N/A"}
-                                            </td>
-
-                                            <td className="p-2">
-                                                <OrderStatusBadge
-                                                    status={order.order_status}
-                                                />
-                                            </td>
-                                            <td className="p-2">
-                                                {order.payment_status ? (
-                                                    <Badge color="green">
-                                                        Paid
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge color="orange">
-                                                        Pending
-                                                    </Badge>
-                                                )}
-                                            </td>
-                                            <td className="p-2 whitespace-nowrap">
-                                                <Money>{order.amount}</Money>
-                                            </td>
-                                            <td className="p-2 text-black whitespace-nowrap">
-                                                {new Date(
-                                                    order.created_at
-                                                ).toLocaleDateString()}
+                                    {realTimeOrders.length > 0 ? (
+                                        realTimeOrders
+                                            .slice(0, 5)
+                                            .map((order) => (
+                                                <tr
+                                                    key={order.order_id}
+                                                    className={`border-t hover:bg-gray-50 transition-colors ${
+                                                        newOrders.has(
+                                                            order.order_id
+                                                        )
+                                                            ? "bg-green-50 border-l-4 border-l-green-500"
+                                                            : ""
+                                                    }`}
+                                                >
+                                                    <td className="p-2 font-medium text-gray-700 whitespace-nowrap">
+                                                        {order.order_id}
+                                                        {newOrders.has(
+                                                            order.order_id
+                                                        ) && (
+                                                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                                New
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-2 text-black whitespace-nowrap">
+                                                        {order.user?.name ||
+                                                            "N/A"}
+                                                    </td>
+                                                    <td className="p-2">
+                                                        <OrderStatusBadge
+                                                            status={
+                                                                order.order_status
+                                                            }
+                                                        />
+                                                    </td>
+                                                    <td className="p-2">
+                                                        {order.payment_status ? (
+                                                            <Badge color="green">
+                                                                Paid
+                                                            </Badge>
+                                                        ) : (
+                                                            <Badge color="orange">
+                                                                Pending
+                                                            </Badge>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-2 whitespace-nowrap">
+                                                        <Money>
+                                                            {order.amount}
+                                                        </Money>
+                                                    </td>
+                                                    <td className="p-2 text-black whitespace-nowrap">
+                                                        {new Date(
+                                                            order.created_at
+                                                        ).toLocaleDateString()}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                    ) : (
+                                        <tr>
+                                            <td
+                                                colSpan="6"
+                                                className="p-4 text-center text-gray-500"
+                                            >
+                                                <div className="flex flex-col items-center justify-center py-8">
+                                                    <FontAwesomeIcon
+                                                        icon={faCartShopping}
+                                                        className="text-gray-300 h-12 w-12 mb-3"
+                                                    />
+                                                    <p className="text-sm font-medium text-gray-900 mb-1">
+                                                        No orders yet
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        Your orders will appear
+                                                        here once customers
+                                                        start purchasing
+                                                    </p>
+                                                </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -1087,19 +1161,23 @@ export default function SellerDashboard() {
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="text-center py-4">
+                                    <div className="text-center py-8">
                                         <FontAwesomeIcon
                                             icon={faBoxOpen}
-                                            className="text-gray-300 h-8 w-8 mb-2"
+                                            className="text-gray-300 h-12 w-12 mb-3 mx-auto"
                                         />
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-sm font-medium text-gray-900 mb-1">
                                             No products listed yet
+                                        </p>
+                                        <p className="text-xs text-gray-500 mb-3">
+                                            Start adding products to showcase in
+                                            your store
                                         </p>
                                         <Link
                                             href="/seller-manage-product"
-                                            className="text-xs text-indigo-600 hover:text-indigo-800 mt-1 inline-block"
+                                            className="text-xs bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-block"
                                         >
-                                            Add your first product
+                                            Add Your First Product
                                         </Link>
                                     </div>
                                 )}
@@ -1107,29 +1185,39 @@ export default function SellerDashboard() {
                         ) : (
                             // Show top products for trial/non-subscribed sellers
                             <div className="space-y-3">
-                                {(shop.topProducts || []).map((p) => (
-                                    <div
-                                        key={p.name}
-                                        className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <div className="truncate flex-1">
-                                            <div className="font-medium text-gray-800 truncate">
-                                                {p.name}
+                                {shop.topProducts &&
+                                shop.topProducts.length > 0 ? (
+                                    shop.topProducts.map((p) => (
+                                        <div
+                                            key={p.name}
+                                            className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                                        >
+                                            <div className="truncate flex-1">
+                                                <div className="font-medium text-gray-800 truncate">
+                                                    {p.name}
+                                                </div>
+                                                <div className="text-xs text-gray-500">
+                                                    {p.units} units sold
+                                                </div>
                                             </div>
-                                            <div className="text-xs text-gray-500">
-                                                {p.units} units sold
+                                            <div className="text-sm text-gray-700 whitespace-nowrap ml-2">
+                                                <Money>{p.revenue}</Money>
                                             </div>
                                         </div>
-                                        <div className="text-sm text-gray-700 whitespace-nowrap ml-2">
-                                            <Money>{p.revenue}</Money>
-                                        </div>
-                                    </div>
-                                ))}
-                                {(!shop.topProducts ||
-                                    shop.topProducts.length === 0) && (
-                                    <div className="text-center py-4">
-                                        <p className="text-sm text-gray-500">
-                                            Subscribe to list your products
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <FontAwesomeIcon
+                                            icon={faBoxOpen}
+                                            className="text-gray-300 h-12 w-12 mb-3 mx-auto"
+                                        />
+                                        <p className="text-sm font-medium text-gray-900 mb-1">
+                                            No product data available
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            {subscriptionStatus
+                                                ? "Subscribe to start listing your products"
+                                                : "Start your trial to begin selling"}
                                         </p>
                                     </div>
                                 )}
@@ -1142,12 +1230,8 @@ export default function SellerDashboard() {
             {/* Trial Modal */}
             <TrialModal
                 isOpen={showTrialModal}
-                onClose={() => setShowTrialModal(false)}
                 onStartTrial={handleStartTrial}
                 onSubscribe={handleSubscribe}
-                trialDaysLeft={trialDaysLeft}
-                trialEndsAt={shop.trial_ends_at}
-                storeName={sellerData.seller_store?.store_name || ""}
             />
         </div>
     );

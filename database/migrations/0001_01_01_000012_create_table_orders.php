@@ -17,8 +17,11 @@ return new class extends Migration {
             $table->string("currency")->default("myr");
             $table->string('user_id');
             $table->string('seller_id');
+            $table->string("payment_method");
             $table->string("payment_status");
             $table->string("order_status");
+            $table->string("platform_tax");
+            $table->double("tax_amount");
             $table->text('notes')->nullable();
             $table->timestamps();
         });

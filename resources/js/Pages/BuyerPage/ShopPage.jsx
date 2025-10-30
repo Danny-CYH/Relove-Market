@@ -1,6 +1,3 @@
-import { Footer } from "@/Components/BuyerPage/Footer";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { ProductCard } from "@/Components/BuyerPage/ProductCard";
 import {
     Search,
     ChevronLeft,
@@ -15,8 +12,14 @@ import {
     Plus,
     Minus,
 } from "lucide-react";
+
 import { useState, useEffect, useCallback } from "react";
+
 import { Link } from "@inertiajs/react";
+
+import { Footer } from "@/Components/BuyerPage/Footer";
+import { Navbar } from "@/Components/BuyerPage/Navbar";
+import { ProductCard } from "@/Components/BuyerPage/ProductCard";
 
 export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -87,13 +90,16 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             }
 
             try {
-                const response = await fetch(`/shopping?${params.toString()}`, {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "X-Requested-With": "XMLHttpRequest",
-                    },
-                });
+                const response = await fetch(
+                    `/api/shopping?${params.toString()}`,
+                    {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-Requested-With": "XMLHttpRequest",
+                        },
+                    }
+                );
 
                 if (response.ok) {
                     const data = await response.json();
@@ -119,12 +125,14 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         ]
     );
 
-    // Debounced search function to avoid too many requests
+    // Debounced search function to avoid too many requests - FIXED
     const debouncedSearch = useCallback(
         debounce((query) => {
-            updateFilters({ search: query, page: 1 });
+            // Instead of updateFilters, directly call fetchProducts
+            setSearchQuery(query);
+            fetchProducts(1, { search: query });
         }, 500),
-        []
+        [fetchProducts] // Add fetchProducts to dependencies
     );
 
     const toggleCategory = (category) => {
@@ -189,7 +197,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         fetchProducts(1, { sort_by: sort });
     };
 
-    // Handle search input changes with debouncing
+    // Handle search input changes with debouncing - FIXED
     const handleSearchChange = (e) => {
         const query = e.target.value;
         setSearchQuery(query);
@@ -731,7 +739,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                                     </span>
                                                     <span className="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                                                         {
-                                                            allProducts.filter(
+                                                            products.filter(
                                                                 (p) =>
                                                                     p.category
                                                                         ?.category_name ===
@@ -759,7 +767,9 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                             <button
                                                 onClick={() => {
                                                     setPriceRange([0, 50]);
-                                                    setCurrentPage(1);
+                                                    fetchProducts(1, {
+                                                        price_range: [0, 50],
+                                                    });
                                                 }}
                                                 className="px-2 py-1 border rounded hover:bg-gray-50"
                                             >
@@ -768,7 +778,9 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                             <button
                                                 onClick={() => {
                                                     setPriceRange([50, 100]);
-                                                    setCurrentPage(1);
+                                                    fetchProducts(1, {
+                                                        price_range: [50, 100],
+                                                    });
                                                 }}
                                                 className="px-2 py-1 border rounded hover:bg-gray-50"
                                             >
@@ -777,7 +789,9 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                             <button
                                                 onClick={() => {
                                                     setPriceRange([100, 200]);
-                                                    setCurrentPage(1);
+                                                    fetchProducts(1, {
+                                                        price_range: [100, 200],
+                                                    });
                                                 }}
                                                 className="px-2 py-1 border rounded hover:bg-gray-50"
                                             >
@@ -786,7 +800,11 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                             <button
                                                 onClick={() => {
                                                     setPriceRange([200, 1000]);
-                                                    setCurrentPage(1);
+                                                    fetchProducts(1, {
+                                                        price_range: [
+                                                            200, 1000,
+                                                        ],
+                                                    });
                                                 }}
                                                 className="px-2 py-1 border rounded hover:bg-gray-50"
                                             >
@@ -830,7 +848,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                                 </span>
                                                 <span className="ml-auto text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                                                     {
-                                                        allProducts.filter(
+                                                        products.filter(
                                                             (p) =>
                                                                 p.product_condition ===
                                                                 condition

@@ -18,7 +18,6 @@ import { Footer } from "@/Components/BuyerPage/Footer";
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 
 export default function Wishlist({ user_wishlist }) {
-    console.log(user_wishlist);
     const [wishlist, setWishlist] = useState(user_wishlist);
     const [selected, setSelected] = useState([]);
     const [selectAll, setSelectAll] = useState(false);
@@ -27,14 +26,12 @@ export default function Wishlist({ user_wishlist }) {
 
     const { auth } = usePage().props;
 
-    console.log(user_wishlist);
-
     // Remove single item from wishlist
     const removeWishlistItem = async (productId) => {
         setLoadingStates((prev) => ({ ...prev, [productId]: true }));
 
         try {
-            const response = await axios.delete("/api/remove-wishlist", {
+            const response = await axios.delete(route("remove-wishlist"), {
                 headers: {
                     "X-CSRF-TOKEN": document.querySelector(
                         'meta[name="csrf-token"]'
@@ -70,7 +67,7 @@ export default function Wishlist({ user_wishlist }) {
         setBulkLoading(true);
 
         try {
-            const response = await axios.delete("/api/remove-wishlist", {
+            const response = await axios.delete(route("remove-wishlist"), {
                 headers: {
                     "X-CSRF-TOKEN": document
                         .querySelector('meta[name="csrf-token"]')
@@ -148,7 +145,6 @@ export default function Wishlist({ user_wishlist }) {
 
     // Helper function to get variant display text
     const getVariantDisplayText = (item) => {
-        console.log(item);
         if (!item.selected_variant) return null;
 
         try {

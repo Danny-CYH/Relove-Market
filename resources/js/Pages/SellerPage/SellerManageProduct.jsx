@@ -18,11 +18,13 @@ import { SellerDeleteProduct_Modal } from "@/Components/SellerPage/SellerManageP
 import { SellerEditProduct_Modal } from "@/Components/SellerPage/SellerManageProduct/SellerEditProduct_Modal";
 import { SellerViewProduct_Modal } from "@/Components/SellerPage/SellerManageProduct/SellerViewProduct_Modal";
 
+import { SubscriptionStatus } from "@/Components/SellerPage/SellerManageProduct/SubscriptionStatus";
+import { ListingToggleButton } from "@/Components/SellerPage/SellerManageProduct/ListingToggleButton";
+import { FeaturedToggleButton } from "@/Components/SellerPage/SellerManageProduct/FeaturedToggleButton";
+
 import { LoadingProgress } from "@/Components/AdminPage/LoadingProgress";
 
 import axios from "axios";
-
-import { Link } from "@inertiajs/react";
 
 export default function SellerManageProduct({ list_categories }) {
     const [realTimeProducts, setRealTimeProducts] = useState([]);
@@ -68,7 +70,7 @@ export default function SellerManageProduct({ list_categories }) {
     const fetchSubscriptionStatus = async () => {
         try {
             setSubscriptionLoading(true);
-            const response = await axios.get("/api/seller-subscriptions");
+            const response = await axios.get(route("seller-subscriptions"));
 
             const sellerSubscription = response.data.seller.subscription;
 
@@ -88,7 +90,7 @@ export default function SellerManageProduct({ list_categories }) {
     // Fetch featured products
     const fetchFeaturedProducts = async () => {
         try {
-            const response = await axios.get("/api/seller/featured-products");
+            const response = await axios.get(route("featured-products"));
 
             setFeaturedProducts(response.data.featured_products || []);
         } catch (error) {
@@ -100,9 +102,27 @@ export default function SellerManageProduct({ list_categories }) {
     const canPerformAction = (action) => {
         if (!subscription) return false;
 
-        const { limits } = subscription;
+        const { limits, subscription_plan_id } = subscription;
 
-        // Check specific action permissions
+        // ✅ FREE TRIAL USERS: No limitations for "PLAN-TRIAL"
+        if (subscription_plan_id === "PLAN-TRIAL") {
+            switch (action) {
+                case "addProduct":
+                    return true; // Unlimited products during trial
+                case "editProduct":
+                    return true;
+                case "deleteProduct":
+                    return true;
+                case "toggleListing":
+                    return true;
+                case "featureProduct":
+                    return true; // Allow featuring during trial
+                default:
+                    return true;
+            }
+        }
+
+        // ✅ For paid subscriptions, apply the normal limits
         switch (action) {
             case "addProduct":
                 return (
@@ -110,11 +130,11 @@ export default function SellerManageProduct({ list_categories }) {
                     realTimeProducts.length < parseInt(limits.max_products)
                 );
             case "editProduct":
-                return true; // Allow editing by default
+                return true;
             case "deleteProduct":
-                return true; // Allow deletion by default
+                return true;
             case "toggleListing":
-                return true; // Allow toggling by default
+                return true;
             case "featureProduct":
                 return limits.featured_listing === true;
             default:
@@ -126,8 +146,14 @@ export default function SellerManageProduct({ list_categories }) {
     const hasReachedProductLimit = () => {
         if (!subscription) return false;
 
-        const { limits } = subscription;
+        const { limits, subscription_plan_id } = subscription;
 
+        // ✅ FREE TRIAL USERS: Never reach limit
+        if (subscription_plan_id === "PLAN-TRIAL") {
+            return false;
+        }
+
+        // ✅ For paid subscriptions, check the limits
         return (
             limits.max_products !== -1 &&
             realTimeProducts.length >= parseInt(limits.max_products)
@@ -138,13 +164,18 @@ export default function SellerManageProduct({ list_categories }) {
     const canFeatureMoreProducts = () => {
         if (!subscription) return false;
 
-        const { limits } = subscription;
+        const { limits, subscription_plan_id } = subscription;
+
+        // ✅ FREE TRIAL USERS: Can feature unlimited products
+        if (subscription_plan_id === "PLAN-TRIAL") {
+            return true;
+        }
 
         // If no featured listing allowed
         if (!limits.featured_listing) return false;
 
         // Check if there's a limit on featured products
-        const maxFeatured = limits.max_featured_products || 5; // Default to 5 if not specified
+        const maxFeatured = limits.max_featured_products || 5;
         return featuredProducts.length < maxFeatured;
     };
 
@@ -171,7 +202,7 @@ export default function SellerManageProduct({ list_categories }) {
                     ? "unavailable"
                     : "available";
 
-            const response = await axios.post("/api/seller/toggle-listing", {
+            const response = await axios.post(route("product-listing"), {
                 product_id: product.product_id,
                 status: newStatus,
             });
@@ -231,13 +262,10 @@ export default function SellerManageProduct({ list_categories }) {
                 new: newFeaturedStatus,
             });
 
-            const response = await axios.post(
-                "/api/seller/toggle-product-featured",
-                {
-                    product_id: product.product_id,
-                    featured: newFeaturedStatus,
-                }
-            );
+            const response = await axios.post(route("product-featured"), {
+                product_id: product.product_id,
+                featured: newFeaturedStatus,
+            });
 
             if (response.data.success) {
                 // Update featured products list immediately
@@ -291,91 +319,16 @@ export default function SellerManageProduct({ list_categories }) {
         }
     };
 
-    // Enhanced toggle buttons with better visual feedback
-    const ListingToggleButton = ({ product }) => (
-        <button
-            onClick={() => toggleProductListing(product)}
-            disabled={togglingProduct === product.product_id}
-            className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 ${
-                product.product_status === "available"
-                    ? "bg-green-100 text-green-800 hover:bg-green-200 border border-green-300"
-                    : "bg-red-100 text-red-800 hover:bg-red-200 border border-red-300"
-            } ${
-                togglingProduct === product.product_id
-                    ? "opacity-50 cursor-not-allowed"
-                    : "cursor-pointer hover:scale-105"
-            }`}
-            title={`Click to ${
-                product.product_status === "available" ? "unlist" : "list"
-            } product`}
-        >
-            {togglingProduct === product.product_id ? (
-                <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1"></div>
-            ) : product.product_status === "available" ? (
-                <ToggleRight size={14} className="mr-1" />
-            ) : (
-                <ToggleLeft size={14} className="mr-1" />
-            )}
-            <span className="font-medium">
-                {product.product_status === "available" ? "Listed" : "Unlisted"}
-            </span>
-        </button>
-    );
-
-    // FIXED: FeaturedToggleButton with proper state management
-    const FeaturedToggleButton = ({ product }) => {
-        // ✅ FIXED: Remove the negation operator
-        const isFeatured = isProductFeatured(product.product_id);
-
-        return (
-            <button
-                onClick={() => toggleProductFeatured(product)}
-                disabled={
-                    togglingProduct === product.product_id ||
-                    !canPerformAction("featureProduct")
-                }
-                className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 ${
-                    isFeatured
-                        ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
-                } ${
-                    togglingProduct === product.product_id ||
-                    !canPerformAction("featureProduct")
-                        ? "opacity-50 cursor-not-allowed"
-                        : "cursor-pointer hover:scale-105"
-                }`}
-                title={
-                    canPerformAction("featureProduct")
-                        ? isFeatured
-                            ? "Click to unfeature"
-                            : "Click to feature"
-                        : "Upgrade to feature products"
-                }
-            >
-                {togglingProduct === product.product_id ? (
-                    <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1"></div>
-                ) : (
-                    <Star
-                        size={14}
-                        className={`mr-1 ${
-                            isFeatured
-                                ? "fill-yellow-400 text-yellow-600"
-                                : "text-gray-500"
-                        }`}
-                    />
-                )}
-                <span className="font-medium">
-                    {isFeatured ? "Featured" : "Feature"}
-                </span>
-            </button>
-        );
-    };
-
     // Get upgrade required message
     const getUpgradeMessage = (action) => {
         if (!subscription) return "Please wait...";
 
-        const { limits } = subscription;
+        const { limits, subscription_plan_id } = subscription;
+
+        // ✅ FREE TRIAL USERS: No upgrade messages during trial
+        if (subscription_plan_id === "PLAN-TRIAL") {
+            return "Enjoy your free trial! All features are available.";
+        }
 
         if (hasReachedProductLimit()) {
             return `Product limit reached (${limits.max_products}). Upgrade to add more products.`;
@@ -422,20 +375,6 @@ export default function SellerManageProduct({ list_categories }) {
 
     // Code for adding the new product
     const add_Product = async (e, formData) => {
-        // Double check subscription before proceeding
-        if (!canPerformAction("addProduct")) {
-            setModalMessage(
-                "Subscription limit reached. Please upgrade your plan."
-            );
-            setModalType("error");
-            setLoadingProgress(true);
-            setTimeout(() => {
-                setLoadingProgress(false);
-                setIsUpgradeModalOpen(true);
-            }, 3000);
-            return;
-        }
-
         e.preventDefault();
 
         try {
@@ -583,9 +522,7 @@ export default function SellerManageProduct({ list_categories }) {
                 ...searchParams,
             });
 
-            const response = await axios.get(
-                `/api/seller-manage-product/get-product?${params}`
-            );
+            const response = await axios.get(route("product-data", params));
             const data = response.data;
 
             setRealTimeProducts(data.list_product.data || data.list_product);
@@ -747,75 +684,6 @@ export default function SellerManageProduct({ list_categories }) {
         ).length,
     };
 
-    // Subscription status component
-    const SubscriptionStatus = () => {
-        if (subscriptionLoading || !subscription) {
-            return (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                            <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full mr-2"></div>
-                            <span className="text-blue-700 text-sm">
-                                Checking subscription status...
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            );
-        }
-
-        const { limits } = subscription;
-        const productLimitReached = hasReachedProductLimit();
-        const canFeature = limits.featured_listing === true;
-
-        return (
-            <div
-                className={`border rounded-lg p-4 mb-4 ${
-                    productLimitReached
-                        ? "bg-orange-50 border-orange-200"
-                        : "bg-gray-50 border-gray-200"
-                }`}
-            >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-center space-x-3">
-                        {productLimitReached ? (
-                            <Lock className="text-orange-600" size={20} />
-                        ) : (
-                            <Crown className="text-blue-600" size={20} />
-                        )}
-                        <div>
-                            <p className="font-semibold text-gray-900">
-                                {subscription.plan_name}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                                {limits.maxProducts === -1
-                                    ? `Unlimited products • ${realTimeProducts.length} listed`
-                                    : `${pagination.total}/${limits.max_products} products`}
-                                {canFeature && " • Featured listings available"}
-                            </p>
-                        </div>
-                    </div>
-                    {productLimitReached && (
-                        <Link href={route("seller-manage-subscription")}>
-                            <button
-                                onClick={() => setIsUpgradeModalOpen(true)}
-                                className="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"
-                            >
-                                Upgrade Plan
-                            </button>
-                        </Link>
-                    )}
-                </div>
-                {productLimitReached && (
-                    <div className="mt-2 p-2 bg-orange-100 rounded text-orange-800 text-sm">
-                        <strong>Product limit reached:</strong> You cannot add
-                        more products with your current plan.
-                    </div>
-                )}
-            </div>
-        );
-    };
-
     return (
         <div className="min-h-screen bg-gray-50 flex">
             {/* Modal for view the product */}
@@ -904,11 +772,25 @@ export default function SellerManageProduct({ list_categories }) {
                             {hasReachedProductLimit() && (
                                 <Lock size={14} className="ml-1" />
                             )}
+                            {/* ✅ Show trial badge for free trial users */}
+                            {subscription?.subscription_plan_id ===
+                                "PLAN-TRIAL" && (
+                                <span className="ml-1 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                                    Free Trial
+                                </span>
+                            )}
                         </button>
                     </div>
 
                     {/* Subscription Status */}
-                    <SubscriptionStatus />
+                    <SubscriptionStatus
+                        subscription={subscription}
+                        subscriptionLoading={subscriptionLoading}
+                        hasReachedProductLimit={hasReachedProductLimit}
+                        pagination={pagination}
+                        setIsUpgradeModalOpen={setIsUpgradeModalOpen} // Add this
+                        realTimeProducts={realTimeProducts} // Add this
+                    />
 
                     {/* Stats summary - Improved responsiveness */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
@@ -916,7 +798,7 @@ export default function SellerManageProduct({ list_categories }) {
                             <div className="flex items-center">
                                 <div className="bg-indigo-100 p-2 rounded-lg mr-3">
                                     <svg
-                                        className="w-4 h-4 md:w-5 md:h-5 text-indigo-600"
+                                        className="w-4 h-4 md:w-5 md:h-5 text-green-600"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -926,7 +808,7 @@ export default function SellerManageProduct({ list_categories }) {
                                             strokeLinecap="round"
                                             strokeLinejoin="round"
                                             strokeWidth={2}
-                                            d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-16"
+                                            d="M5 13l4 4L19 7"
                                         />
                                     </svg>
                                 </div>
@@ -936,7 +818,10 @@ export default function SellerManageProduct({ list_categories }) {
                                     </p>
                                     <p className="text-base md:text-lg font-semibold text-gray-900">
                                         {pagination.total}
-                                        {subscription?.limits?.max_products &&
+                                        {subscription?.subscription_plan_id !==
+                                            "PLAN-TRIAL" &&
+                                            subscription?.limits
+                                                ?.max_products &&
                                             subscription.limits.max_products !==
                                                 -1 && (
                                                 <span className="text-xs text-gray-500 ml-1">
@@ -947,6 +832,13 @@ export default function SellerManageProduct({ list_categories }) {
                                                     }
                                                 </span>
                                             )}
+                                        {/* ✅ Show unlimited for trial users */}
+                                        {subscription?.subscription_plan_id ===
+                                            "PLAN-TRIAL" && (
+                                            <span className="text-xs text-green-600 ml-1">
+                                                • Unlimited
+                                            </span>
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -1237,6 +1129,12 @@ export default function SellerManageProduct({ list_categories }) {
                                                     {
                                                         <ListingToggleButton
                                                             product={product}
+                                                            toggleProductListing={
+                                                                toggleProductListing
+                                                            }
+                                                            togglingProduct={
+                                                                togglingProduct
+                                                            }
                                                         />
                                                     }
                                                 </td>
@@ -1251,6 +1149,21 @@ export default function SellerManageProduct({ list_categories }) {
                                                 <td className="px-4 md:px-6 py-4">
                                                     <FeaturedToggleButton
                                                         product={product}
+                                                        subscription={
+                                                            subscription
+                                                        }
+                                                        canPerformAction={
+                                                            canPerformAction
+                                                        }
+                                                        isProductFeatured={
+                                                            isProductFeatured
+                                                        }
+                                                        toggleProductFeatured={
+                                                            toggleProductFeatured
+                                                        }
+                                                        togglingProduct={
+                                                            togglingProduct
+                                                        }
                                                     />
                                                 </td>
                                                 <td className="px-4 md:px-6 py-4 text-right">
@@ -1426,9 +1339,28 @@ export default function SellerManageProduct({ list_categories }) {
                                         <div className="flex flex-wrap items-center mt-2 gap-2">
                                             <ListingToggleButton
                                                 product={product}
+                                                toggleProductListing={
+                                                    toggleProductListing
+                                                }
+                                                togglingProduct={
+                                                    togglingProduct
+                                                }
                                             />
                                             <FeaturedToggleButton
                                                 product={product}
+                                                subscription={subscription}
+                                                canPerformAction={
+                                                    canPerformAction
+                                                }
+                                                isProductFeatured={
+                                                    isProductFeatured
+                                                }
+                                                toggleProductFeatured={
+                                                    toggleProductFeatured
+                                                }
+                                                togglingProduct={
+                                                    togglingProduct
+                                                }
                                             />
                                             <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">
                                                 {product.category.category_name}

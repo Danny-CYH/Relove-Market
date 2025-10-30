@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\BuyerPage;
 
+use App\Http\Controllers\Controller;
+
 use App\Models\Business;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Wishlist;
-
-use App\Http\Controllers\Controller;
 
 use Illuminate\Http\Request;
 
@@ -53,7 +53,7 @@ class UserController extends Controller
     {
         $query = Product::with(['productImage', 'category', 'ratings']);
 
-        // Apply search filter
+        // Apply basic filters for initial load if any
         if ($request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -65,70 +65,16 @@ class UserController extends Controller
             });
         }
 
-        // Apply category filter
-        if ($request->has('categories') && is_array($request->categories) && count($request->categories) > 0) {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->whereIn('category_name', $request->categories);
-            });
-        }
-
-        // Apply price range filter
-        if ($request->has('price_range') && is_array($request->price_range) && count($request->price_range) === 2) {
-            $query->whereBetween('product_price', $request->price_range);
-        }
-
-        // Apply condition filter
-        if ($request->has('conditions') && is_array($request->conditions) && count($request->conditions) > 0) {
-            $query->whereIn('product_condition', $request->conditions);
-        }
-
-        // Apply sorting
-        if ($request->has('sort_by')) {
-            switch ($request->sort_by) {
-                case 'newest':
-                    $query->orderBy('created_at', 'desc');
-                    break;
-                case 'price-low':
-                    $query->orderBy('product_price', 'asc');
-                    break;
-                case 'price-high':
-                    $query->orderBy('product_price', 'desc');
-                    break;
-                case 'rating':
-                    $query->orderBy('average_rating', 'desc');
-                    break;
-                default:
-                    $query->orderBy('created_at', 'desc');
-            }
-        } else {
-            $query->orderBy('created_at', 'desc');
-        }
+        // Default sorting
+        $query->orderBy('created_at', 'desc');
 
         $list_shoppingItem = $query->paginate(6);
         $list_categoryItem = Category::all();
 
-        // If it's an AJAX request, return JSON
-        if ($request->header('X-Requested-With') === 'XMLHttpRequest') {
-            return response()->json([
-                'list_shoppingItem' => $list_shoppingItem,
-                'list_categoryItem' => $list_categoryItem,
-            ]);
-        }
-
-        // ✅ This part allows both visiting and filtering
-        if ($request->wantsJson()) {
-            // AJAX request (used by filter/search)
-            return response()->json([
-                'list_shoppingItem' => $list_shoppingItem,
-                'list_categoryItem' => $list_categoryItem,
-            ]);
-        }
-
-        // Regular Inertia response for initial load
         return Inertia::render("BuyerPage/ShopPage", [
             'list_shoppingItem' => $list_shoppingItem,
             'list_categoryItem' => $list_categoryItem,
-            'filters' => $request->only(['search', 'categories', 'price_range', 'sort_by', 'conditions'])
+            'filters' => $request->only(['search']) // Only pass initial filters
         ]);
     }
 
@@ -149,7 +95,7 @@ class UserController extends Controller
             "productVariant",
             "seller.sellerStore",
             "ratings.user",
-            "orders",
+            "orderItems"
         ])
             ->where('product_id', $product_id)
             ->get();

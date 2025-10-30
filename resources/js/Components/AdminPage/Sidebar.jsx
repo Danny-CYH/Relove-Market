@@ -11,6 +11,9 @@ import {
     FaUsers,
     FaSignOutAlt,
     FaBell,
+    FaExclamationTriangle,
+    FaBox,
+    FaUserCog,
 } from "react-icons/fa";
 
 export function Sidebar({ pendingCount }) {
@@ -22,7 +25,11 @@ export function Sidebar({ pendingCount }) {
     // Check screen size on mount and resize
     useEffect(() => {
         const checkIsMobile = () => {
-            setIsMobile(window.innerWidth < 768);
+            const mobile = window.innerWidth < 768;
+            setIsMobile(mobile);
+            if (!mobile) {
+                setSidebarOpen(false); // Close sidebar when switching to desktop
+            }
         };
 
         checkIsMobile();
@@ -38,7 +45,43 @@ export function Sidebar({ pendingCount }) {
         if (isMobile && sidebarOpen) {
             setSidebarOpen(false);
         }
-    }, [url]);
+    }, [url, isMobile, sidebarOpen]);
+
+    // Close sidebar when clicking outside on mobile
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (isMobile && sidebarOpen) {
+                const sidebar = document.querySelector(".mobile-sidebar");
+                const hamburger = document.querySelector(".hamburger-button");
+                if (
+                    sidebar &&
+                    !sidebar.contains(event.target) &&
+                    hamburger &&
+                    !hamburger.contains(event.target)
+                ) {
+                    setSidebarOpen(false);
+                }
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isMobile, sidebarOpen]);
+
+    // Prevent body scroll when sidebar is open on mobile
+    useEffect(() => {
+        if (isMobile && sidebarOpen) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "unset";
+        }
+
+        return () => {
+            document.body.style.overflow = "unset";
+        };
+    }, [isMobile, sidebarOpen]);
 
     // Check if current route matches
     const isActive = (routeName) => {
@@ -55,67 +98,87 @@ export function Sidebar({ pendingCount }) {
         exit: { x: "-100%", opacity: 0 },
     };
 
+    const backdropVariants = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 0.5 },
+        exit: { opacity: 0 },
+    };
+
     const sidebarContent = (
         <>
-            <div className="p-5 border-b border-indigo-700 flex items-center justify-between">
-                {/* Left side: title + description */}
-                <div>
-                    <h1 className="text-xl font-bold">Admin Panel</h1>
-                    <p className="text-indigo-300 text-sm mt-1">
-                        Administrator Dashboard
-                    </p>
+            {/* Header */}
+            <div className="p-4 border-b border-indigo-700 flex items-center justify-between sticky top-0 bg-indigo-800 z-10">
+                <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                        <span className="text-indigo-800 font-bold text-sm">
+                            A
+                        </span>
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-bold text-white">
+                            Admin Panel
+                        </h1>
+                        <p className="text-indigo-300 text-xs">Administrator</p>
+                    </div>
                 </div>
 
-                {/* Right side: close button */}
+                {/* Close button - only show on mobile */}
                 <button
                     onClick={() => setSidebarOpen(false)}
-                    className="p-2 text-white hover:bg-indigo-700 rounded-lg"
+                    className="p-2 text-white hover:bg-indigo-700 rounded-lg md:hidden transition-colors"
+                    aria-label="Close sidebar"
                 >
-                    <FaTimes className="text-xl md:hidden" />
+                    <FaTimes className="text-lg" />
                 </button>
             </div>
 
-            <nav className="p-4">
-                <ul className="space-y-1">
+            {/* Navigation */}
+            <nav className="p-4 flex-1 overflow-y-auto">
+                <ul className="space-y-2">
                     <li>
                         <Link
                             href={route("admin-dashboard")}
-                            className={`flex items-center p-3 rounded-lg transition-all ${
+                            className={`flex items-center p-3 rounded-lg transition-all group ${
                                 isActive("admin-dashboard")
                                     ? "bg-white text-indigo-800 shadow-md"
-                                    : "text-indigo-100 hover:bg-indigo-700"
+                                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
+                            onClick={() => isMobile && setSidebarOpen(false)}
                         >
-                            <FaHome className="w-5 h-5 mr-3" />
-                            Dashboard
+                            <FaHome className="w-5 h-5 mr-3 flex-shrink-0" />
+                            <span className="font-medium">Dashboard</span>
                         </Link>
                     </li>
                     <li>
                         <Link
                             href={route("list-transaction")}
-                            className={`flex items-center p-3 rounded-lg transition-all ${
+                            className={`flex items-center p-3 rounded-lg transition-all group ${
                                 isActive("list-transaction")
                                     ? "bg-white text-indigo-800 shadow-md"
-                                    : "text-indigo-100 hover:bg-indigo-700"
+                                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
+                            onClick={() => isMobile && setSidebarOpen(false)}
                         >
-                            <FaFileInvoiceDollar className="w-5 h-5 mr-3" />
-                            Transactions
+                            <FaFileInvoiceDollar className="w-5 h-5 mr-3 flex-shrink-0" />
+                            <span className="font-medium">Transactions</span>
                         </Link>
                     </li>
                     <li>
                         <Link
                             href={route("pending-seller-list")}
-                            className={`flex items-center p-3 rounded-lg transition-all relative ${
+                            className={`flex items-center p-3 rounded-lg transition-all group relative ${
                                 isActive("pending-seller-list")
                                     ? "bg-white text-indigo-800 shadow-md"
-                                    : "text-indigo-100 hover:bg-indigo-700"
+                                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
+                            onClick={() => isMobile && setSidebarOpen(false)}
                         >
-                            <FaUserCheck className="w-5 h-5 mr-3" />
-                            Seller Registrations
+                            <FaUserCheck className="w-5 h-5 mr-3 flex-shrink-0" />
+                            <span className="font-medium">
+                                Seller Registrations
+                            </span>
                             {pendingCount > 0 && (
-                                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full min-w-6 flex items-center justify-center">
                                     {pendingCount > 99 ? "99+" : pendingCount}
                                 </span>
                             )}
@@ -124,39 +187,59 @@ export function Sidebar({ pendingCount }) {
                     <li>
                         <Link
                             href={route("subscription-management")}
-                            className={`flex items-center p-3 rounded-lg transition-all ${
+                            className={`flex items-center p-3 rounded-lg transition-all group ${
                                 isActive("subscription-management")
                                     ? "bg-white text-indigo-800 shadow-md"
-                                    : "text-indigo-100 hover:bg-indigo-700"
+                                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
+                            onClick={() => isMobile && setSidebarOpen(false)}
                         >
-                            <FaCreditCard className="w-5 h-5 mr-3" />
-                            Manage Subscriptions
+                            <FaCreditCard className="w-5 h-5 mr-3 flex-shrink-0" />
+                            <span className="font-medium">Subscriptions</span>
+                        </Link>
+                    </li>
+                    <li>
+                        <Link
+                            href={route("product-management")}
+                            className={`flex items-center p-3 rounded-lg transition-all group ${
+                                isActive("product-management")
+                                    ? "bg-white text-indigo-800 shadow-md"
+                                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
+                            }`}
+                            onClick={() => isMobile && setSidebarOpen(false)}
+                        >
+                            <FaBox className="w-5 h-5 mr-3 flex-shrink-0" />
+                            <span className="font-medium">Products</span>
                         </Link>
                     </li>
                     <li>
                         <Link
                             href={route("user-management")}
-                            className={`flex items-center p-3 rounded-lg transition-all ${
+                            className={`flex items-center p-3 rounded-lg transition-all group ${
                                 isActive("user-management")
                                     ? "bg-white text-indigo-800 shadow-md"
-                                    : "text-indigo-100 hover:bg-indigo-700"
+                                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
+                            onClick={() => isMobile && setSidebarOpen(false)}
                         >
-                            <FaUsers className="w-5 h-5 mr-3" />
-                            User Management
+                            <FaUserCog className="w-5 h-5 mr-3 flex-shrink-0" />
+                            <span className="font-medium">Users</span>
                         </Link>
                     </li>
                 </ul>
 
-                {/* Notification summary */}
-                {pendingCount > 0 &&
+                {/* Notification summary - Hidden on mobile to save space */}
+                {!isMobile &&
+                    pendingCount > 0 &&
                     !url.startsWith(route("pending-seller-list")) && (
-                        <Link href={route("pending-seller-list")}>
-                            <div className="mt-6 p-3 bg-indigo-700 rounded-lg border border-indigo-600">
+                        <Link
+                            href={route("pending-seller-list")}
+                            onClick={() => isMobile && setSidebarOpen(false)}
+                        >
+                            <div className="mt-6 p-3 bg-indigo-700 rounded-lg border border-indigo-600 hover:bg-indigo-600 transition-colors">
                                 <div className="flex items-center">
                                     <div className="flex-shrink-0">
-                                        <span className="h-8 w-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold">
+                                        <span className="h-8 w-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                             {pendingCount > 99
                                                 ? "99+"
                                                 : pendingCount}
@@ -179,36 +262,35 @@ export function Sidebar({ pendingCount }) {
             </nav>
 
             {/* User section and Logout */}
-            <div className="p-4 border-t border-indigo-700 mt-auto max-h-full">
+            <div className="p-4 border-t border-indigo-700 bg-indigo-800 sticky bottom-0">
                 {auth?.user && (
                     <div className="mb-4 flex items-center space-x-3">
                         <img
                             src="../image/shania_yan.png"
                             alt={auth.user.name}
-                            className="w-10 h-10 rounded-full object-cover border-2 border-indigo-200"
+                            className="w-8 h-8 rounded-full object-cover border-2 border-indigo-200 flex-shrink-0"
                         />
-                        <div>
-                            <p className="text-sm font-medium text-white">
+                        <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-white truncate">
                                 {auth.user.name}
                             </p>
-                            <p className="text-xs text-indigo-300">
+                            <p className="text-xs text-indigo-300 truncate">
                                 Administrator
                             </p>
                         </div>
                     </div>
                 )}
 
-                <div className="p-4 border-t border-indigo-700 md:mt-auto mt-5">
-                    <Link
-                        href={route("logout")}
-                        method="post"
-                        as="button"
-                        className="w-full flex items-center justify-center text-indigo-200 hover:text-white"
-                    >
-                        <FaSignOutAlt className="w-5 h-5 mr-2" />
-                        Logout
-                    </Link>
-                </div>
+                <Link
+                    href={route("logout")}
+                    method="post"
+                    as="button"
+                    className="w-full flex items-center justify-center p-3 text-indigo-200 hover:text-white hover:bg-indigo-700 rounded-lg transition-colors group"
+                    onClick={() => isMobile && setSidebarOpen(false)}
+                >
+                    <FaSignOutAlt className="w-4 h-4 mr-2 flex-shrink-0" />
+                    <span className="font-medium">Logout</span>
+                </Link>
             </div>
         </>
     );
@@ -217,10 +299,11 @@ export function Sidebar({ pendingCount }) {
         <>
             {/* Mobile Navigation Bar */}
             {isMobile && (
-                <nav className="fixed top-0 left-0 right-0 bg-indigo-800 shadow-md z-60 flex items-center justify-between p-3 md:hidden">
+                <nav className="fixed top-0 left-0 right-0 bg-indigo-800 shadow-lg z-50 flex items-center justify-between p-4 md:hidden safe-top">
                     <button
                         onClick={toggleSidebar}
-                        className="p-2 rounded-lg text-white hover:bg-indigo-700"
+                        className="p-2 rounded-lg text-white hover:bg-indigo-700 transition-colors hamburger-button"
+                        aria-label="Toggle sidebar"
                     >
                         {sidebarOpen ? (
                             <FaTimes className="text-xl" />
@@ -229,20 +312,24 @@ export function Sidebar({ pendingCount }) {
                         )}
                     </button>
 
-                    <div className="flex items-center">
-                        <h1 className="text-lg font-bold text-white">
-                            Admin Panel
-                        </h1>
+                    <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                            <span className="text-indigo-800 font-bold text-sm">
+                                A
+                            </span>
+                        </div>
+                        <h1 className="text-lg font-bold text-white">Admin</h1>
                     </div>
 
                     {/* Notification indicator on mobile navbar */}
                     {pendingCount > 0 && (
                         <Link
                             href={route("pending-seller-list")}
-                            className="p-2 rounded-lg text-white hover:bg-indigo-700 relative"
+                            className="p-2 rounded-lg text-white hover:bg-indigo-700 transition-colors relative"
+                            onClick={() => setSidebarOpen(false)}
                         >
-                            <FaBell className="text-xl" />
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                            <FaBell className="text-lg" />
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-5 h-5 flex items-center justify-center">
                                 {pendingCount > 9 ? "9+" : pendingCount}
                             </span>
                         </Link>
@@ -252,7 +339,7 @@ export function Sidebar({ pendingCount }) {
 
             {/* Desktop Sidebar */}
             {!isMobile && (
-                <div className="h-full bg-gradient-to-b from-indigo-800 to-indigo-900 text-white hidden md:flex md:flex-col">
+                <div className="h-full bg-gradient-to-b from-indigo-800 to-indigo-900 text-white hidden md:flex md:flex-col w-64 flex-shrink-0">
                     {sidebarContent}
                 </div>
             )}
@@ -263,10 +350,12 @@ export function Sidebar({ pendingCount }) {
                     <>
                         {/* Backdrop */}
                         <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 0.5 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black z-70 md:hidden"
+                            variants={backdropVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            transition={{ duration: 0.2 }}
+                            className="fixed inset-0 bg-black z-40 md:hidden"
                             onClick={() => setSidebarOpen(false)}
                         />
 
@@ -276,8 +365,12 @@ export function Sidebar({ pendingCount }) {
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            transition={{ type: "tween", duration: 0.3 }}
-                            className="fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 text-white z-70 md:hidden overflow-y-auto flex flex-col"
+                            transition={{
+                                type: "tween",
+                                duration: 0.3,
+                                ease: "easeOut",
+                            }}
+                            className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-gradient-to-b from-indigo-800 to-indigo-900 text-white z-50 md:hidden overflow-hidden flex flex-col mobile-sidebar safe-area"
                         >
                             {sidebarContent}
                         </motion.div>
@@ -286,7 +379,7 @@ export function Sidebar({ pendingCount }) {
             </AnimatePresence>
 
             {/* Add padding for mobile navbar */}
-            {isMobile && <div className="h-14 md:hidden"></div>}
+            {isMobile && <div className="h-16 md:hidden"></div>}
         </>
     );
 }

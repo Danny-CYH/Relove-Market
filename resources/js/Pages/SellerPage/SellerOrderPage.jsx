@@ -133,7 +133,7 @@ export default function SellerOrderPage() {
     ) => {
         try {
             setIsLoading(true);
-            const response = await axios.get("/api/get-list-order", {
+            const response = await axios.get(route("list-order"), {
                 params: {
                     page: page,
                     search: search,
@@ -382,10 +382,7 @@ export default function SellerOrderPage() {
 
             // API call to update database
             const response = await axios.put(
-                `/api/update-order/${orderId}/status`,
-                {
-                    status: newStatus,
-                },
+                route("update-order", orderId, newStatus),
                 {
                     headers: {
                         "X-CSRF-TOKEN": document

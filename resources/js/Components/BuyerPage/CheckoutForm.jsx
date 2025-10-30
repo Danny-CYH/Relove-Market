@@ -38,6 +38,10 @@ export function CheckoutForm({
     paymentMethod,
     onPaymentSuccess,
     list_product,
+    platform_tax,
+    subtotal,
+    shipping,
+    tax,
 }) {
     const stripe = useStripe();
     const elements = useElements();
@@ -114,7 +118,7 @@ export function CheckoutForm({
                 quantity: quantity,
                 price: price,
                 selected_variant: variantData,
-                selected_options: parseSelectedOptions(product), // Keep for backward compatibility
+                selected_options: parseSelectedOptions(product),
             };
         });
     };
@@ -166,6 +170,11 @@ export function CheckoutForm({
                     user_id: userId,
                     seller_id: sellerId,
                     order_items: orderItems,
+                    platform_tax: platform_tax,
+                    tax_amount: tax,
+                    subtotal: subtotal,
+                    shipping: shipping,
+                    payment_method: paymentMethod, // Include payment method
                 }),
             });
 
@@ -202,8 +211,6 @@ export function CheckoutForm({
             });
 
             const data = await response.json();
-
-            console.log(data);
             return data;
         } catch (error) {
             console.error("Stock validation error:", error);
@@ -225,6 +232,11 @@ export function CheckoutForm({
             amount: Math.round(total * 100),
             currency: "myr",
             order_items: orderItems,
+            platform_tax: platform_tax,
+            tax_amount: tax,
+            subtotal: subtotal,
+            shipping: shipping,
+            payment_method: paymentMethod, // Include payment method
         };
     };
 
@@ -296,6 +308,20 @@ export function CheckoutForm({
                 return;
             }
 
+            // Map frontend payment methods to Stripe payment method types
+            const getPaymentMethodTypes = () => {
+                switch (paymentMethod) {
+                    case "grabpay":
+                        return ["grabpay"];
+                    case "paypal":
+                        return ["paypal"];
+                    case "cod":
+                        return ["cash_on_delivery"]; // You'll need to handle this differently
+                    default:
+                        return ["card"];
+                }
+            };
+
             const response = await fetch("/create-payment-intent", {
                 method: "POST",
                 headers: {
@@ -307,9 +333,7 @@ export function CheckoutForm({
                 body: JSON.stringify({
                     amount: Math.round(total * 100),
                     currency: "myr",
-                    payment_method_types: [
-                        paymentMethod === "grabpay" ? "grabpay" : "fpx",
-                    ],
+                    payment_method_types: getPaymentMethodTypes(),
                     ...orderData,
                 }),
             });
@@ -318,7 +342,22 @@ export function CheckoutForm({
             console.log("Non-card Payment Intent:", data);
 
             if (data.orderId) {
-                await handleSuccessfulPayment(data.id, data.orderId, orderData);
+                // For non-card payments, we need to handle the payment flow differently
+                if (paymentMethod === "cod") {
+                    // Handle Cash on Delivery - create order without payment intent
+                    await handleSuccessfulPayment(
+                        "cod_" + Date.now(),
+                        data.orderId,
+                        orderData
+                    );
+                } else {
+                    // For other payment methods, redirect to their payment page
+                    await handleSuccessfulPayment(
+                        data.id,
+                        data.orderId,
+                        orderData
+                    );
+                }
             } else {
                 setError(
                     data.error || "Failed to create order for non-card payment"
@@ -362,6 +401,11 @@ export function CheckoutForm({
                     user_id: orderData.user_id,
                     seller_id: orderData.seller_id,
                     order_items: orderData.order_items,
+                    platform_tax: platform_tax,
+                    tax_amount: tax,
+                    subtotal: subtotal,
+                    shipping: shipping,
+                    payment_method: paymentMethod, // Include payment method
                 }),
             });
 
@@ -378,14 +422,19 @@ export function CheckoutForm({
                         amount: total,
                         orderData: data.order || data,
                         order_items: data.order_items || orderData.order_items,
+                        tax_amount: tax,
+                        platform_tax: platform_tax,
+                        payment_method: paymentMethod,
                     });
                 } else {
-                    // Fallback: redirect to success page
                     router.visit("/order-success", {
                         data: {
                             order_id: orderId,
                             payment_intent_id: paymentIntentId,
                             amount: total,
+                            tax_amount: tax,
+                            platform_tax: platform_tax,
+                            payment_method: paymentMethod,
                             order_items: JSON.stringify(orderData.order_items),
                         },
                     });
@@ -404,6 +453,7 @@ export function CheckoutForm({
         }
     };
 
+    // ... rest of your component (renderSelectedVariant, renderSelectedOptions, etc.) remains the same
     // Render selected variant for display
     const renderSelectedVariant = (product) => {
         const selectedVariant = parseSelectedVariant(product);
@@ -418,7 +468,6 @@ export function CheckoutForm({
 
         let combination = selectedVariant.combination;
 
-        // Handle both object and string cases safely
         if (typeof combination === "string") {
             try {
                 combination = JSON.parse(combination);
@@ -484,7 +533,7 @@ export function CheckoutForm({
                 </div>
             )}
 
-            {/* Display Order Summary */}
+            {/* Display Order Summary with Tax Breakdown */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <h3 className="font-semibold text-gray-900 mb-3">
                     Order Summary ({list_product.length}{" "}
@@ -524,12 +573,28 @@ export function CheckoutForm({
                         </div>
                     );
                 })}
-                <div className="border-t border-gray-200 mt-3 pt-3">
-                    <div className="flex justify-between items-center mb-2">
-                        <p className="text-gray-600">Total Items</p>
-                        <p className="text-gray-600">{totalQuantity}</p>
+
+                {/* Tax Breakdown */}
+                <div className="border-t border-gray-200 mt-3 pt-3 space-y-2">
+                    <div className="flex justify-between items-center">
+                        <p className="text-gray-600">Subtotal</p>
+                        <p className="text-gray-600">
+                            RM {subtotal.toFixed(2)}
+                        </p>
                     </div>
                     <div className="flex justify-between items-center">
+                        <p className="text-gray-600">Shipping</p>
+                        <p className="text-gray-600">
+                            RM {shipping.toFixed(2)}
+                        </p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <p className="text-gray-600">
+                            Tax ({(platform_tax * 100).toFixed(1)}%)
+                        </p>
+                        <p className="text-gray-600">RM {tax.toFixed(2)}</p>
+                    </div>
+                    <div className="flex justify-between items-center border-t border-gray-300 pt-2">
                         <p className="text-gray-900 font-semibold">
                             Total Amount
                         </p>
