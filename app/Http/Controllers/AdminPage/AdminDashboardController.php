@@ -5,6 +5,7 @@ namespace App\Http\Controllers\AdminPage;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\SellerRegistration;
 use App\Models\User;
 use App\Models\Transaction;
 use App\Models\Product;
@@ -20,19 +21,16 @@ class AdminDashboardController extends Controller
             $timeframe = $request->get('timeframe', 'monthly');
 
             // Total Revenue (from completed orders)
-            $totalRevenue = Order::where('order_status', 'completed')->sum('amount');
+            $totalRevenue = Order::whereIn('order_status', ['completed', 'Delivered'])->sum('tax_amount');
 
             // Total Orders
             $totalOrders = Order::count();
 
             // Total Customers (users with role_id for buyers - adjust based on your role system)
-            $totalCustomers = User::where('role_id', 3)->count();
+            $totalCustomers = User::count();
 
             // Pending Sellers
-            $pendingSellers = User::where('status', 'pending')
-                ->whereHas('role', function ($q) {
-                    $q->where('role_name', 'seller');
-                })->count();
+            $pendingSellers = SellerRegistration::where("status", "pending")->count();
 
             // Average Order Value
             $averageOrderValue = Order::where('order_status', 'completed')
@@ -80,9 +78,9 @@ class AdminDashboardController extends Controller
                 $data = [];
                 for ($i = 6; $i >= 0; $i--) {
                     $date = $now->copy()->subDays($i);
-                    $revenue = Order::where('order_status', 'completed')
+                    $revenue = Order::whereIn('order_status', ['Completed', "Delivered"])
                         ->whereDate('created_at', $date)
-                        ->sum('amount');
+                        ->sum('tax_amount');
                     $data[] = (float) $revenue;
                 }
                 return ['daily' => $data];
@@ -93,9 +91,9 @@ class AdminDashboardController extends Controller
                 for ($i = 3; $i >= 0; $i--) {
                     $startDate = $now->copy()->subWeeks($i + 1)->startOfWeek();
                     $endDate = $now->copy()->subWeeks($i)->startOfWeek();
-                    $revenue = Order::where('order_status', 'completed')
+                    $revenue = Order::whereIn('order_status', ['Completed', "Delivered"])
                         ->whereBetween('created_at', [$startDate, $endDate])
-                        ->sum('amount');
+                        ->sum('tax_amount');
                     $data[] = (float) $revenue;
                 }
                 return ['weekly' => $data];
@@ -106,10 +104,10 @@ class AdminDashboardController extends Controller
                 $data = [];
                 for ($i = 11; $i >= 0; $i--) {
                     $date = $now->copy()->subMonths($i);
-                    $revenue = Order::where('order_status', 'completed')
+                    $revenue = Order::whereIn('order_status', ['Completed', "Delivered"])
                         ->whereYear('created_at', $date->year)
                         ->whereMonth('created_at', $date->month)
-                        ->sum('amount');
+                        ->sum('tax_amount');
                     $data[] = (float) $revenue;
                 }
                 return ['monthly' => $data];
@@ -119,7 +117,10 @@ class AdminDashboardController extends Controller
     private function getRecentActivities()
     {
         // Get recent orders and seller registrations
-        $recentOrders = Order::with('user')
+        $recentOrders = Order::with([
+            'user',
+            'seller'
+        ])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get()
@@ -128,7 +129,7 @@ class AdminDashboardController extends Controller
                     'id' => $order->order_id,
                     'user' => $order->user->name ?? 'Unknown User',
                     'action' => 'placed an order',
-                    'target' => "Order {$order->order_id}",
+                    'target' => "on seller {$order->seller->seller_name}",
                     'time' => $order->created_at->diffForHumans(),
                     'amount' => 'RM ' . number_format($order->amount, 2)
                 ];

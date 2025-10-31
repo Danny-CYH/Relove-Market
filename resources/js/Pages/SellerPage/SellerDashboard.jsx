@@ -35,6 +35,7 @@ import { Badge } from "@/Components/SellerPage/SellerDashboard/Badge";
 import { Money } from "@/Components/SellerPage/SellerDashboard/Money";
 import { TrialBanner } from "@/Components/SellerPage/SellerDashboard/TrialBanner";
 import { NotificationDropdown } from "@/Components/SellerPage/SellerDashboard/NotificationDropdown";
+import { Star } from "lucide-react";
 
 export default function SellerDashboard() {
     const [sellerData, setSellerData] = useState([]);
@@ -54,7 +55,8 @@ export default function SellerDashboard() {
         useState(false);
     const [subscriptionStatus, setSubscriptionStatus] = useState(null);
     const [listedProducts, setListedProducts] = useState([]);
-    const [timeFilter, setTimeFilter] = useState("monthly"); // 'daily', 'monthly', 'yearly'
+    const [timeFilter, setTimeFilter] = useState("daily"); // 'daily', 'monthly', 'yearly'
+    const [featuredProducts, setFeaturedProducts] = useState([]);
 
     const { auth } = usePage().props;
 
@@ -560,11 +562,17 @@ export default function SellerDashboard() {
         (async () => {
             try {
                 const { data } = await axios.get(route("dashboard-data"));
+                const featured_products = await axios.get(
+                    route("featured-products")
+                );
+
+                console.log(featured_products);
 
                 if (!mounted) return;
 
                 setSellerData(data.seller_storeInfo[0]);
                 setShop(data);
+                setFeaturedProducts(featured_products.data.featured_products);
 
                 const orders = data.order_data || [];
                 const products = data.seller_storeInfo[0]?.product || [];
@@ -1107,14 +1115,12 @@ export default function SellerDashboard() {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
                         <div className="flex items-center justify-between mb-3">
                             <div className="font-semibold text-gray-800">
-                                {hasActiveSubscription
-                                    ? "Your Products"
-                                    : "Top Products"}
+                                Featured Products
                             </div>
                             <Badge color="gray">
                                 {hasActiveSubscription
                                     ? `${listedProducts.length} listed`
-                                    : `${shop.topProducts?.length || 0} items`}
+                                    : `${featuredProducts.length || 0} items`}
                             </Badge>
                         </div>
 
@@ -1185,23 +1191,28 @@ export default function SellerDashboard() {
                         ) : (
                             // Show top products for trial/non-subscribed sellers
                             <div className="space-y-3">
-                                {shop.topProducts &&
-                                shop.topProducts.length > 0 ? (
-                                    shop.topProducts.map((p) => (
+                                {featuredProducts &&
+                                featuredProducts.length > 0 ? (
+                                    featuredProducts.map((f_products) => (
                                         <div
-                                            key={p.name}
+                                            key={f_products.product_id}
                                             className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50 transition-colors"
                                         >
                                             <div className="truncate flex-1">
                                                 <div className="font-medium text-gray-800 truncate">
-                                                    {p.name}
+                                                    {f_products.product_name}
                                                 </div>
                                                 <div className="text-xs text-gray-500">
-                                                    {p.units} units sold
+                                                    {
+                                                        f_products.product_quantity
+                                                    }{" "}
+                                                    units
                                                 </div>
                                             </div>
                                             <div className="text-sm text-gray-700 whitespace-nowrap ml-2">
-                                                <Money>{p.revenue}</Money>
+                                                <Star>
+                                                    {f_products.total_ratings}
+                                                </Star>
                                             </div>
                                         </div>
                                     ))

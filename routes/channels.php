@@ -26,6 +26,22 @@ Broadcast::channel('seller.orders.{sellerId}', function ($user, $sellerId) {
     return $isAuthorized;
 });
 
+Broadcast::channel('seller.earnings.{sellerId}', function ($user, $sellerId) {
+    Log::info('🔐 Channel authorization check', [
+        'user_id' => $user->user_id,
+        'user_seller_id' => $user->seller_id,
+        'requested_seller_id' => $sellerId,
+        'user_type' => $user->user_type ?? 'unknown'
+    ]);
+
+    // Check if user is a seller and has the correct seller_id
+    $isAuthorized = $user->seller_id && (string) $user->seller_id === (string) $sellerId;
+
+    Log::info('🔐 Channel authorization result: ' . ($isAuthorized ? 'APPROVED' : 'DENIED'));
+
+    return $isAuthorized;
+});
+
 Broadcast::channel('conversation.{conversationId}', function ($user, $conversationId) {
     $conversation = \App\Models\Conversation::find($conversationId);
 

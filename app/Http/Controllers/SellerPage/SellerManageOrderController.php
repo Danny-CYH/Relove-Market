@@ -98,7 +98,7 @@ class SellerManageOrderController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Order status updated successfully',
-                'order' => $order->load('user', 'product', 'productImage')
+                'order' => $order->load('user', 'orderItems.product', 'orderItems.productImage')
             ]);
 
         } catch (Exception $e) {

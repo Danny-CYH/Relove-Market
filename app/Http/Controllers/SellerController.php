@@ -77,7 +77,10 @@ class SellerController extends Controller
 
     public function sellerSubscriptionPage()
     {
-        $list_subscription = Subscription::with("subscriptionFeatures")
+        $list_subscription = Subscription::with([
+            "subscriptionFeatures",
+            "seller"
+        ])
             ->paginate(3);
 
         $billing_records = SubscriptionPurchaseRecords::with([

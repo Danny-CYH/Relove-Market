@@ -1,82 +1,15 @@
 import { useState } from "react";
+
+import { Search, ChevronLeft, ChevronRight, BarChart3 } from "lucide-react";
+
 import { Sidebar } from "@/Components/AdminPage/Sidebar";
 
-export default function Transactions() {
-    const [transactions, setTransactions] = useState([
-        {
-            id: "TXN-001",
-            customer: "John Doe",
-            customerEmail: "john.doe@example.com",
-            seller: "Fashion Store",
-            amount: "$89.99",
-            status: "Completed",
-            paymentMethod: "Credit Card",
-            date: "2023-10-15 14:30",
-            items: [
-                { name: "Summer T-Shirt", price: "$29.99", quantity: 2 },
-                { name: "Shipping", price: "$5.00", quantity: 1 },
-            ],
-        },
-        {
-            id: "TXN-002",
-            customer: "Jane Smith",
-            customerEmail: "jane.smith@example.com",
-            seller: "Electronics Hub",
-            amount: "$249.99",
-            status: "Completed",
-            paymentMethod: "PayPal",
-            date: "2023-10-14 11:15",
-            items: [
-                { name: "Wireless Earbuds", price: "$79.99", quantity: 1 },
-                { name: "Phone Case", price: "$19.99", quantity: 1 },
-                { name: "Shipping", price: "$10.00", quantity: 1 },
-            ],
-        },
-        {
-            id: "TXN-003",
-            customer: "Robert Johnson",
-            customerEmail: "robert.j@example.com",
-            seller: "Book World",
-            amount: "$45.50",
-            status: "Refunded",
-            paymentMethod: "Credit Card",
-            date: "2023-10-13 16:45",
-            items: [
-                { name: "Programming Book", price: "$35.50", quantity: 1 },
-                { name: "Shipping", price: "$5.00", quantity: 1 },
-            ],
-        },
-        {
-            id: "TXN-004",
-            customer: "Sarah Wilson",
-            customerEmail: "sarah.wilson@example.com",
-            seller: "Home Decor",
-            amount: "$120.00",
-            status: "Pending",
-            paymentMethod: "Bank Transfer",
-            date: "2023-10-12 09:20",
-            items: [
-                { name: "Table Lamp", price: "$65.00", quantity: 1 },
-                { name: "Decorative Vase", price: "$45.00", quantity: 1 },
-                { name: "Shipping", price: "$10.00", quantity: 1 },
-            ],
-        },
-        {
-            id: "TXN-005",
-            customer: "Michael Brown",
-            customerEmail: "michael.b@example.com",
-            seller: "Sports Gear",
-            amount: "$199.99",
-            status: "Failed",
-            paymentMethod: "Credit Card",
-            date: "2023-10-11 13:05",
-            items: [
-                { name: "Running Shoes", price: "$129.99", quantity: 1 },
-                { name: "Sports Bag", price: "$49.99", quantity: 1 },
-                { name: "Shipping", price: "$10.00", quantity: 1 },
-            ],
-        },
-    ]);
+import dayjs from "dayjs";
+
+export default function Transactions({ list_transactions }) {
+    const [transactions, setTransactions] = useState(
+        list_transactions.data || []
+    );
 
     const [filter, setFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
@@ -85,28 +18,34 @@ export default function Transactions() {
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [showReportModal, setShowReportModal] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 10;
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Filter transactions based on search, status, payment method, and date range
     const filteredTransactions = transactions.filter((transaction) => {
         const matchesSearch =
             filter === "" ||
-            transaction.id.toLowerCase().includes(filter.toLowerCase()) ||
-            transaction.customer.toLowerCase().includes(filter.toLowerCase()) ||
-            transaction.seller.toLowerCase().includes(filter.toLowerCase());
+            transaction.payment_intent_id
+                ?.toLowerCase()
+                .includes(filter.toLowerCase()) ||
+            transaction.user?.name
+                ?.toLowerCase()
+                .includes(filter.toLowerCase()) ||
+            transaction.seller?.seller_name
+                ?.toLowerCase()
+                .includes(filter.toLowerCase());
 
         const matchesStatus =
-            statusFilter === "All" || transaction.status === statusFilter;
+            statusFilter === "All" ||
+            transaction.payment_status === statusFilter;
 
         const matchesPaymentMethod =
             paymentMethodFilter === "All" ||
-            transaction.paymentMethod === paymentMethodFilter;
+            transaction.payment_method === paymentMethodFilter;
 
         const matchesDateRange =
             (!dateRange.start && !dateRange.end) ||
-            (new Date(transaction.date) >= new Date(dateRange.start) &&
-                new Date(transaction.date) <= new Date(dateRange.end));
+            (new Date(transaction.created_at) >= new Date(dateRange.start) &&
+                new Date(transaction.created_at) <= new Date(dateRange.end));
 
         return (
             matchesSearch &&
@@ -118,17 +57,18 @@ export default function Transactions() {
 
     // Calculate total metrics
     const totalRevenue = transactions
-        .filter((t) => t.status === "Completed")
-        .reduce((sum, transaction) => {
-            const amount = parseFloat(transaction.amount.replace("$", ""));
-            return sum + amount;
-        }, 0);
+        .filter((t) => t.order_status === "Delivered")
+        .reduce((transaction) => {
+            const amount = parseFloat(transaction.tax_amount) || 0;
+            return amount;
+        });
 
     const completedTransactions = transactions.filter(
-        (t) => t.status === "Completed"
+        (t) => t.payment_status === "paid" && t.order_status === "Delivered"
     ).length;
+
     const pendingTransactions = transactions.filter(
-        (t) => t.status === "Pending"
+        (t) => t.payment_status === "pending"
     ).length;
 
     // Generate receipt for a transaction
@@ -142,51 +82,21 @@ export default function Transactions() {
         setShowReportModal(true);
     };
 
-    // Export transactions to CSV
-    const exportToCSV = () => {
-        const headers = [
-            "ID",
-            "Customer",
-            "Seller",
-            "Amount",
-            "Status",
-            "Payment Method",
-            "Date",
-        ];
-        const csvContent = [
-            headers.join(","),
-            ...filteredTransactions.map((t) =>
-                [
-                    t.id,
-                    t.customer,
-                    t.seller,
-                    t.amount,
-                    t.status,
-                    t.paymentMethod,
-                    t.date,
-                ].join(",")
-            ),
-        ].join("\n");
-
-        const blob = new Blob([csvContent], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `transactions_report_${
-            new Date().toISOString().split("T")[0]
-        }.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    };
-
     return (
         <div className="flex min-h-screen bg-gray-50">
-            {/* Sidebar for desktop */}
-            <Sidebar pendingCount={3} />
+            {/* Sidebar */}
+            <Sidebar />
 
             {/* Main Content */}
-            <main className="flex-1 p-4 lg:p-6">
+            <main className="flex-1 p-4 lg:p-6 min-w-0 w-full">
+                {/* Mobile Header with Menu Button */}
+                <div className="lg:hidden mb-4 flex items-center justify-between">
+                    <h1 className="text-xl font-bold text-gray-800">
+                        Transactions
+                    </h1>
+                    <div className="w-10"></div> {/* Spacer for balance */}
+                </div>
+
                 {/* Stats Overview */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                     <div className="bg-white p-4 rounded-xl shadow-md">
@@ -212,7 +122,7 @@ export default function Transactions() {
                                     Total Revenue
                                 </p>
                                 <p className="text-2xl font-bold text-gray-800">
-                                    ${totalRevenue.toFixed(2)}
+                                    RM {totalRevenue.toFixed(2)}
                                 </p>
                             </div>
                         </div>
@@ -279,57 +189,24 @@ export default function Transactions() {
 
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
                     {/* Header with title and actions */}
-                    <div className="p-6 border-b border-gray-200">
+                    <div className="p-4 lg:p-6 border-b border-gray-200">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div>
-                                <h2 className="text-2xl font-bold text-gray-800">
+                                <h2 className="text-xl lg:text-2xl font-bold text-gray-800">
                                     Transaction Management
                                 </h2>
-                                <p className="text-gray-600">
+                                <p className="text-gray-600 text-sm lg:text-base">
                                     View and manage all transactions
                                 </p>
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                                 <button
                                     onClick={generateReport}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center"
+                                    className="px-3 py-2 lg:px-4 lg:py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors flex items-center justify-center text-sm lg:text-base"
                                 >
-                                    <svg
-                                        className="w-5 h-5 mr-2"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                        />
-                                    </svg>
+                                    <BarChart3 className="w-4 h-4 lg:w-5 lg:h-5 mr-2" />
                                     Generate Report
-                                </button>
-                                <button
-                                    onClick={exportToCSV}
-                                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center"
-                                >
-                                    <svg
-                                        className="w-5 h-5 mr-2"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                                        />
-                                    </svg>
-                                    Export CSV
                                 </button>
                             </div>
                         </div>
@@ -337,29 +214,16 @@ export default function Transactions() {
 
                     {/* Filters */}
                     <div className="p-4 bg-gray-50 border-b border-gray-200">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3">
                             <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder="Search by ID, customer, or seller..."
+                                    placeholder="Search transactions..."
                                     value={filter}
                                     onChange={(e) => setFilter(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-md pl-10 pr-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="text-black w-full border border-gray-300 rounded-md pl-10 pr-4 py-2 text-sm lg:text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 />
-                                <svg
-                                    className="w-5 h-5 text-gray-400 absolute left-3 top-2.5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                                    />
-                                </svg>
+                                <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
                             </div>
 
                             <select
@@ -367,13 +231,13 @@ export default function Transactions() {
                                 onChange={(e) =>
                                     setStatusFilter(e.target.value)
                                 }
-                                className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                className="text-black border border-gray-300 rounded-md px-3 py-2 text-sm lg:text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="All">All Statuses</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Failed">Failed</option>
-                                <option value="Refunded">Refunded</option>
+                                <option value="paid">Completed</option>
+                                <option value="pending">Pending</option>
+                                <option value="failed">Failed</option>
+                                <option value="refunded">Refunded</option>
                             </select>
 
                             <select
@@ -381,7 +245,7 @@ export default function Transactions() {
                                 onChange={(e) =>
                                     setPaymentMethodFilter(e.target.value)
                                 }
-                                className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                className="text-black border border-gray-300 rounded-md px-3 py-2 text-sm lg:text-base focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             >
                                 <option value="All">All Methods</option>
                                 <option value="Credit Card">Credit Card</option>
@@ -391,7 +255,7 @@ export default function Transactions() {
                                 </option>
                             </select>
 
-                            <div className="flex gap-2">
+                            <div className="flex flex-col md:flex-row gap-2">
                                 <input
                                     type="date"
                                     placeholder="Start Date"
@@ -402,7 +266,7 @@ export default function Transactions() {
                                             start: e.target.value,
                                         })
                                     }
-                                    className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="text-black flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 />
                                 <input
                                     type="date"
@@ -414,63 +278,39 @@ export default function Transactions() {
                                             end: e.target.value,
                                         })
                                     }
-                                    className="border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    className="text-black flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Transactions Table */}
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
+                    {/* Transactions Table - FIXED: Proper horizontal scrolling */}
+                    <div className="w-full overflow-x-auto">
+                        <table className="w-full min-w-[900px] divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th
-                                        scope="col"
-                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    >
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Transaction ID
                                     </th>
-                                    <th
-                                        scope="col"
-                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    >
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Customer
                                     </th>
-                                    <th
-                                        scope="col"
-                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    >
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Seller
                                     </th>
-                                    <th
-                                        scope="col"
-                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    >
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Amount
                                     </th>
-                                    <th
-                                        scope="col"
-                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    >
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Status
                                     </th>
-                                    <th
-                                        scope="col"
-                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    >
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Payment Method
                                     </th>
-                                    <th
-                                        scope="col"
-                                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    >
+                                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Date
                                     </th>
-                                    <th
-                                        scope="col"
-                                        className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                                    >
+                                    <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                                         Actions
                                     </th>
                                 </tr>
@@ -479,68 +319,85 @@ export default function Transactions() {
                                 {filteredTransactions.length > 0 ? (
                                     filteredTransactions.map((transaction) => (
                                         <tr
-                                            key={transaction.id}
+                                            key={transaction.payment_intent_id}
                                             className="hover:bg-gray-50"
                                         >
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                {transaction.id}
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                <div
+                                                    className="max-w-[120px] truncate"
+                                                    title={
+                                                        transaction.payment_intent_id
+                                                    }
+                                                >
+                                                    {
+                                                        transaction.payment_intent_id
+                                                    }
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div>
-                                                    <div className="text-sm font-medium text-gray-900">
-                                                        {transaction.customer}
+                                            <td className="px-3 py-4 whitespace-nowrap">
+                                                <div className="max-w-[120px]">
+                                                    <div className="text-sm font-medium text-gray-900 truncate">
+                                                        {transaction.user?.name}
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
+                                                    <div className="text-sm text-gray-500 truncate">
                                                         {
-                                                            transaction.customerEmail
+                                                            transaction.user
+                                                                ?.email
                                                         }
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {transaction.seller}
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 max-w-[100px] truncate">
+                                                {
+                                                    transaction.seller
+                                                        ?.seller_name
+                                                }
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {transaction.amount}
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                RM {transaction.amount}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                            <td className="px-3 py-4 whitespace-nowrap">
                                                 <span
-                                                    className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                                        transaction.status ===
-                                                        "Completed"
+                                                    className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                                        transaction.payment_status ===
+                                                        "paid"
                                                             ? "bg-green-100 text-green-800"
-                                                            : transaction.status ===
-                                                              "Pending"
+                                                            : transaction.payment_status ===
+                                                              "pending"
                                                             ? "bg-yellow-100 text-yellow-800"
-                                                            : transaction.status ===
-                                                              "Failed"
+                                                            : transaction.payment_status ===
+                                                              "failed"
                                                             ? "bg-red-100 text-red-800"
                                                             : "bg-gray-100 text-gray-800"
                                                     }`}
                                                 >
-                                                    {transaction.status}
+                                                    {transaction.payment_status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {transaction.paymentMethod}
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {transaction.payment_method}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {transaction.date}
+                                            <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {dayjs(
+                                                    transaction.created_at
+                                                ).format("DD MMM YYYY")}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                <button
-                                                    onClick={() =>
-                                                        generateReceipt(
-                                                            transaction
-                                                        )
-                                                    }
-                                                    className="text-indigo-600 hover:text-indigo-900 mr-3"
-                                                >
-                                                    Receipt
-                                                </button>
-                                                <button className="text-gray-600 hover:text-gray-900">
-                                                    View Details
-                                                </button>
+                                            <td className="px-3 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <div className="flex flex-col sm:flex-row gap-1 justify-end">
+                                                    <button
+                                                        onClick={() =>
+                                                            generateReceipt(
+                                                                transaction
+                                                            )
+                                                        }
+                                                        className="text-indigo-600 hover:text-indigo-900 text-xs sm:text-sm px-2 py-1 rounded hover:bg-indigo-50 whitespace-nowrap"
+                                                    >
+                                                        Receipt
+                                                    </button>
+                                                    <button className="text-gray-600 hover:text-gray-900 text-xs sm:text-sm px-2 py-1 rounded hover:bg-gray-50 whitespace-nowrap">
+                                                        Details
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -548,7 +405,7 @@ export default function Transactions() {
                                     <tr>
                                         <td
                                             colSpan="8"
-                                            className="px-6 py-4 text-center text-sm text-gray-500"
+                                            className="px-3 py-8 text-center text-sm text-gray-500"
                                         >
                                             No transactions found matching your
                                             criteria.
@@ -560,23 +417,28 @@ export default function Transactions() {
                     </div>
 
                     {/* Pagination */}
-                    <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                        <div className="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0">
-                            <div className="text-sm text-gray-700">
-                                Showing <span className="font-medium">1</span>{" "}
-                                to <span className="font-medium">5</span> of{" "}
-                                <span className="font-medium">5</span>{" "}
+                    <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div className="text-sm text-gray-700 text-center sm:text-left">
+                                Showing{" "}
+                                <span className="font-medium">
+                                    {filteredTransactions.length}
+                                </span>{" "}
+                                of{" "}
+                                <span className="font-medium">
+                                    {transactions.length}
+                                </span>{" "}
                                 transactions
                             </div>
-                            <div className="inline-flex items-center space-x-2">
-                                <button className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                                    Previous
+                            <div className="flex items-center space-x-1">
+                                <button className="p-2 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <ChevronLeft className="w-4 h-4" />
                                 </button>
-                                <button className="px-3 py-1.5 rounded-md bg-indigo-600 text-white">
+                                <button className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm">
                                     1
                                 </button>
-                                <button className="px-3 py-1.5 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200">
-                                    Next
+                                <button className="p-2 rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200">
+                                    <ChevronRight className="w-4 h-4" />
                                 </button>
                             </div>
                         </div>
@@ -586,21 +448,20 @@ export default function Transactions() {
                 {/* Receipt Modal */}
                 {showReceiptModal && selectedTransaction && (
                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl">
-                            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                        <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white">
                                 <h3 className="text-lg font-semibold text-gray-800">
                                     Transaction Receipt
                                 </h3>
                                 <button
                                     onClick={() => setShowReceiptModal(false)}
-                                    className="text-gray-500 hover:text-gray-700"
+                                    className="text-gray-500 hover:text-gray-700 p-1"
                                 >
                                     <svg
                                         className="w-6 h-6"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
-                                        xmlns="http://www.w3.org/2000/svg"
                                     >
                                         <path
                                             strokeLinecap="round"
@@ -615,36 +476,41 @@ export default function Transactions() {
                                 <div className="mb-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
-                                            <h4 className="text-xl font-bold">
+                                            <h4 className="text-xl text-black font-bold">
                                                 INVOICE
                                             </h4>
                                             <p className="text-gray-600">
                                                 Transaction ID:{" "}
-                                                {selectedTransaction.id}
+                                                {
+                                                    selectedTransaction.payment_intent_id
+                                                }
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-lg font-semibold">
-                                                {selectedTransaction.amount}
+                                            <p className="text-lg text-blue-600 font-semibold">
+                                                RM {selectedTransaction.amount}
                                             </p>
                                             <p className="text-sm text-gray-600">
-                                                Status:{" "}
-                                                {selectedTransaction.status}
+                                                Payment Status:{" "}
+                                                {
+                                                    selectedTransaction.payment_status
+                                                }
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-6 mb-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                         <div>
                                             <h5 className="font-semibold text-gray-700 mb-2">
                                                 Customer Information
                                             </h5>
-                                            <p>
-                                                {selectedTransaction.customer}
+                                            <p className="text-black">
+                                                {selectedTransaction.user?.name}
                                             </p>
                                             <p className="text-gray-600">
                                                 {
-                                                    selectedTransaction.customerEmail
+                                                    selectedTransaction.user
+                                                        ?.email
                                                 }
                                             </p>
                                         </div>
@@ -652,11 +518,16 @@ export default function Transactions() {
                                             <h5 className="font-semibold text-gray-700 mb-2">
                                                 Seller Information
                                             </h5>
-                                            <p>{selectedTransaction.seller}</p>
+                                            <p className="text-black">
+                                                {
+                                                    selectedTransaction.seller
+                                                        ?.seller_name
+                                                }
+                                            </p>
                                             <p className="text-gray-600">
                                                 Payment Method:{" "}
                                                 {
-                                                    selectedTransaction.paymentMethod
+                                                    selectedTransaction.payment_method
                                                 }
                                             </p>
                                         </div>
@@ -666,7 +537,12 @@ export default function Transactions() {
                                         <h5 className="font-semibold text-gray-700 mb-2">
                                             Transaction Details
                                         </h5>
-                                        <p>Date: {selectedTransaction.date}</p>
+                                        <p className="text-gray-500">
+                                            Date:{" "}
+                                            {dayjs(
+                                                selectedTransaction.created_at
+                                            ).format("DD MMM YYYY HH:mm")}
+                                        </p>
                                     </div>
 
                                     <div className="border-t border-b border-gray-200 py-4">
@@ -674,34 +550,43 @@ export default function Transactions() {
                                             Items
                                         </h5>
                                         <div className="space-y-2">
-                                            {selectedTransaction.items.map(
+                                            {selectedTransaction.order_items?.map(
                                                 (item, index) => (
                                                     <div
                                                         key={index}
                                                         className="flex justify-between"
                                                     >
-                                                        <span>
+                                                        <span className="text-black">
                                                             {item.quantity} x{" "}
-                                                            {item.name}
+                                                            {
+                                                                item.product
+                                                                    ?.product_name
+                                                            }
                                                         </span>
-                                                        <span>
-                                                            {item.price}
+                                                        <span className="text-green-600 font-bold">
+                                                            RM {item.price}
                                                         </span>
                                                     </div>
                                                 )
+                                            ) || (
+                                                <p className="text-gray-500">
+                                                    No items found
+                                                </p>
                                             )}
                                         </div>
                                     </div>
 
                                     <div className="flex justify-between items-center mt-4 font-semibold">
-                                        <span>Total Amount:</span>
-                                        <span>
-                                            {selectedTransaction.amount}
+                                        <span className="text-black">
+                                            Total Amount:
+                                        </span>
+                                        <span className="text-blue-600">
+                                            RM {selectedTransaction.amount}
                                         </span>
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end space-x-3">
+                                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
                                     <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100">
                                         Print Receipt
                                     </button>

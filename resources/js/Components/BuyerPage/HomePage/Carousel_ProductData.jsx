@@ -130,6 +130,7 @@ export function Carousel_ProductData({ productData }) {
                                     )}
                                 >
                                     <ProductCard
+                                        key={product.product_id}
                                         product={product}
                                         isFlashSale={true}
                                     />

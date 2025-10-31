@@ -51,7 +51,13 @@ class UserController extends Controller
     // Code for returning the shopping page (some bug, product details cannot return back to shop page)
     public function shopping(Request $request)
     {
-        $query = Product::with(['productImage', 'category', 'ratings']);
+        $query = Product::with([
+            'productImage',
+            'productVariant',
+            'category',
+            'ratings',
+            'seller.sellerStore'
+        ]);
 
         // Apply basic filters for initial load if any
         if ($request->has('search') && $request->search) {

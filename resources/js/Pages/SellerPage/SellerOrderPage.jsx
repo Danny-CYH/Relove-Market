@@ -382,7 +382,8 @@ export default function SellerOrderPage() {
 
             // API call to update database
             const response = await axios.put(
-                route("update-order", orderId, newStatus),
+                route("update-order", orderId),
+                { status: newStatus },
                 {
                     headers: {
                         "X-CSRF-TOKEN": document
@@ -391,8 +392,6 @@ export default function SellerOrderPage() {
                     },
                 }
             );
-
-            console.log(response);
 
             if (!response.data.success) {
                 // Revert if failed
@@ -537,119 +536,675 @@ export default function SellerOrderPage() {
     );
 
     const printOrder = (order) => {
-        console.log(order);
+        console.log("Printing order:", order);
+
+        // Calculate order totals
+        const calculateOrderTotals = () => {
+            const subtotal =
+                order.order_items?.reduce((sum, item) => {
+                    return (
+                        sum +
+                        (parseFloat(item.price) || 0) * (item.quantity || 1)
+                    );
+                }, 0) || 0;
+
+            const shipping = parseFloat(order.shipping_fee) || 0;
+            const tax = parseFloat(order.tax_amount) || 0;
+            const total = parseFloat(order.amount) || subtotal + shipping + tax;
+
+            return { subtotal, shipping, tax, total };
+        };
+
+        const { subtotal, shipping, tax, total } = calculateOrderTotals();
+
         const printContent = `
+        <!DOCTYPE html>
         <html>
-            <head>
-                <title>Order Invoice - ${order.order_id}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; margin: 20px; }
-                    .header { text-align: center; margin-bottom: 30px; }
-                    .section { margin-bottom: 20px; }
-                    .section-title { font-weight: bold; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
-                    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                    th { background-color: #f5f5f5; }
-                    .total { font-weight: bold; font-size: 1.1em; }
-                    @media print {
-                        body { margin: 0; }
-                        .no-print { display: none; }
+        <head>
+            <title>Invoice - ${order.order_id}</title>
+            <meta charset="UTF-8">
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    background: #fff;
+                    padding: 20px;
+                    max-width: 1000px;
+                    margin: 0 auto;
+                }
+                
+                .invoice-container {
+                    background: white;
+                    border: 2px solid #e5e7eb;
+                    border-radius: 12px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                }
+                
+                .header {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    padding: 30px;
+                    text-align: center;
+                }
+                
+                .header h1 {
+                    font-size: 28px;
+                    font-weight: 700;
+                    margin-bottom: 5px;
+                }
+                
+                .header h2 {
+                    font-size: 18px;
+                    font-weight: 400;
+                    opacity: 0.9;
+                }
+                
+                .order-id {
+                    background: rgba(255, 255, 255, 0.2);
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    display: inline-block;
+                    margin-top: 10px;
+                }
+                
+                .content {
+                    padding: 30px;
+                }
+                
+                .section {
+                    margin-bottom: 30px;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+                
+                .section-header {
+                    background: #f8fafc;
+                    padding: 15px 20px;
+                    border-bottom: 1px solid #e5e7eb;
+                    font-weight: 600;
+                    color: #374151;
+                    font-size: 16px;
+                }
+                
+                .section-body {
+                    padding: 20px;
+                }
+                
+                .info-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 20px;
+                }
+                
+                .info-item {
+                    margin-bottom: 12px;
+                }
+                
+                .info-label {
+                    font-weight: 600;
+                    color: #6b7280;
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                }
+                
+                .info-value {
+                    color: #111827;
+                    font-size: 15px;
+                }
+                
+                .status-badge {
+                    display: inline-block;
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .status-processing { background: #dbeafe; color: #1e40af; }
+                .status-shipped { background: #e0e7ff; color: #3730a3; }
+                .status-delivered { background: #d1fae5; color: #065f46; }
+                .status-cancelled { background: #fee2e2; color: #991b1b; }
+                .status-pending { background: #fef3c7; color: #92400e; }
+                
+                .payment-badge {
+                    display: inline-block;
+                    padding: 4px 8px;
+                    background: #10b981;
+                    color: white;
+                    border-radius: 6px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                }
+                
+                .payment-pending { background: #f59e0b; }
+                .payment-failed { background: #ef4444; }
+                
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 15px 0;
+                }
+                
+                th {
+                    background: #f8fafc;
+                    padding: 12px 15px;
+                    text-align: left;
+                    font-weight: 600;
+                    color: #374151;
+                    border-bottom: 2px solid #e5e7eb;
+                    font-size: 14px;
+                }
+                
+                td {
+                    padding: 12px 15px;
+                    border-bottom: 1px solid #e5e7eb;
+                    vertical-align: top;
+                }
+                
+                .product-info {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 12px;
+                }
+                
+                .product-image {
+                    width: 50px;
+                    height: 50px;
+                    object-fit: cover;
+                    border-radius: 6px;
+                    border: 1px solid #e5e7eb;
+                }
+                
+                .product-details {
+                    flex: 1;
+                }
+                
+                .product-name {
+                    font-weight: 600;
+                    color: #111827;
+                    margin-bottom: 4px;
+                }
+                
+                .product-id {
+                    font-size: 12px;
+                    color: #6b7280;
+                }
+                
+                .variant-info {
+                    font-size: 12px;
+                    color: #6b7280;
+                    margin-top: 4px;
+                    font-style: italic;
+                }
+                
+                .text-right {
+                    text-align: right;
+                }
+                
+                .text-center {
+                    text-align: center;
+                }
+                
+                .totals {
+                    background: #f8fafc;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin-top: 20px;
+                }
+                
+                .total-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 8px 0;
+                }
+                
+                .total-row:not(:last-child) {
+                    border-bottom: 1px solid #e5e7eb;
+                }
+                
+                .total-final {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #111827;
+                    padding-top: 12px;
+                    border-top: 2px solid #e5e7eb;
+                }
+                
+                .footer {
+                    margin-top: 40px;
+                    padding-top: 20px;
+                    border-top: 2px solid #e5e7eb;
+                    text-align: center;
+                    color: #6b7280;
+                    font-size: 14px;
+                }
+                
+                .company-info {
+                    margin-bottom: 15px;
+                }
+                
+                .thank-you {
+                    font-size: 16px;
+                    color: #374151;
+                    font-weight: 600;
+                    margin: 20px 0;
+                }
+                
+                .no-print {
+                    display: none;
+                }
+                
+                @media print {
+                    body {
+                        padding: 0;
+                        margin: 0;
                     }
-                </style>
-            </head>
-            <body>
+                    
+                    .invoice-container {
+                        border: none;
+                        box-shadow: none;
+                        border-radius: 0;
+                    }
+                    
+                    .no-print {
+                        display: none !important;
+                    }
+                    
+                    @page {
+                        margin: 0.5cm;
+                        size: A4 portrait;
+                    }
+                }
+                
+                @media (max-width: 768px) {
+                    body {
+                        padding: 10px;
+                    }
+                    
+                    .content {
+                        padding: 15px;
+                    }
+                    
+                    .info-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    table {
+                        font-size: 12px;
+                    display: block;
+                        overflow-x: auto;
+                        white-space: nowrap;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="invoice-container">
+                <!-- Header -->
                 <div class="header">
-                    <h1>ORDER INVOICE</h1>
-                    <h2>Order ID: ${order.order_id}</h2>
+                    <h1>INVOICE</h1>
+                    <h2>Thank you for your business</h2>
+                    <div class="order-id">Order #${order.order_id}</div>
                 </div>
                 
-                <div class="section">
-                    <div class="section-title">Order Information</div>
-                    <p><strong>Order Date:</strong> ${dayjs(
-                        order.created_at
-                    ).format("DD MMM YYYY, hh:mm A")}</p>
-                    <p><strong>Status:</strong> ${order.order_status}</p>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">Customer Information</div>
-                    <p><strong>Name:</strong> ${order.user?.name || "N/A"}</p>
-                    <p><strong>Email:</strong> ${order.user?.email || "N/A"}</p>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">Order Items</div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Price (RM)</th>
-                                <th>Quantity</th>
-                                <th>Total (RM)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        ${order.order_items
-                            .map(
-                                (product) => `
-                        <tr>
-                            <td>${product.product?.product_name || "N/A"}</td>
-                            <td>${parseFloat(product.price || 0).toFixed(
-                                2
-                            )}</td>
-                            <td>${product.quantity || 1}</td>
-                            <td>${order.amount}</td>
-                        </tr>
+                <div class="content">
+                    <!-- Order & Customer Information -->
+                    <div class="info-grid">
+                        <!-- Order Information -->
+                        <div class="section">
+                            <div class="section-header">Order Information</div>
+                            <div class="section-body">
+                                <div class="info-item">
+                                    <div class="info-label">Order ID</div>
+                                    <div class="info-value">${
+                                        order.order_id
+                                    }</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Order Date</div>
+                                    <div class="info-value">${dayjs(
+                                        order.created_at
+                                    ).format("DD MMM YYYY, hh:mm A")}</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Order Status</div>
+                                    <div class="info-value">
+                                        <span class="status-badge status-${order.order_status?.toLowerCase()}">
+                                            ${order.order_status}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Payment Method</div>
+                                    <div class="info-value" style="text-transform: capitalize;">
+                                        ${
+                                            order.payment_method?.replace(
+                                                /_/g,
+                                                " "
+                                            ) || "Credit Card"
+                                        }
+                                    </div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Payment Status</div>
+                                    <div class="info-value">
+                                        <span class="payment-badge ${
+                                            order.payment_status === "pending"
+                                                ? "payment-pending"
+                                                : order.payment_status ===
+                                                  "failed"
+                                                ? "payment-failed"
+                                                : ""
+                                        }">
+                                            ${
+                                                order.payment_status?.toUpperCase() ||
+                                                "PAID"
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Customer Information -->
+                        <div class="section">
+                            <div class="section-header">Customer Information</div>
+                            <div class="section-body">
+                                <div class="info-item">
+                                    <div class="info-label">Customer Name</div>
+                                    <div class="info-value">${
+                                        order.user?.name || "N/A"
+                                    }</div>
+                                </div>
+                                <div class="info-item">
+                                    <div class="info-label">Email</div>
+                                    <div class="info-value">${
+                                        order.user?.email || "N/A"
+                                    }</div>
+                                </div>
+                                ${
+                                    order.user?.phone
+                                        ? `
+                                <div class="info-item">
+                                    <div class="info-label">Phone</div>
+                                    <div class="info-value">${order.user.phone}</div>
+                                </div>
+                                `
+                                        : ""
+                                }
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Shipping Information -->
+                    ${
+                        order.shipping_address || order.tracking_number
+                            ? `
+                    <div class="section">
+                        <div class="section-header">Shipping Information</div>
+                        <div class="section-body">
+                            ${
+                                order.shipping_address
+                                    ? `
+                            <div class="info-item">
+                                <div class="info-label">Shipping Address</div>
+                                <div class="info-value">${order.shipping_address}</div>
+                            </div>
+                            `
+                                    : ""
+                            }
+                            ${
+                                order.tracking_number
+                                    ? `
+                            <div class="info-item">
+                                <div class="info-label">Tracking Number</div>
+                                <div class="info-value">${order.tracking_number}</div>
+                            </div>
+                            `
+                                    : ""
+                            }
+                        </div>
+                    </div>
                     `
-                            )
-                            .join("")}
-                        </tbody>
-                    </table>
+                            : ""
+                    }
+                    
+                    <!-- Order Items -->
+                    <div class="section">
+                        <div class="section-header">Order Items</div>
+                        <div class="section-body">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="text-right">Unit Price</th>
+                                        <th class="text-center">Qty</th>
+                                        <th class="text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${order.order_items
+                                        ?.map((item, index) => {
+                                            const itemTotal =
+                                                (parseFloat(item.price) || 0) *
+                                                (item.quantity || 1);
+                                            const variantText =
+                                                item.selected_variant
+                                                    ? Object.entries(
+                                                          JSON.parse(
+                                                              item
+                                                                  .selected_variant
+                                                                  .combination ||
+                                                                  "{}"
+                                                          )
+                                                      )
+                                                          .map(
+                                                              ([key, value]) =>
+                                                                  `${key}: ${value}`
+                                                          )
+                                                          .join(", ")
+                                                    : "";
+
+                                            return `
+                                        <tr>
+                                            <td>
+                                                <div class="product-info">
+                                                    <img 
+                                                        src="${
+                                                            import.meta.env
+                                                                .VITE_BASE_URL
+                                                        }${
+                                                item.product_image
+                                                    ?.image_path ||
+                                                item.product?.product_image?.[0]
+                                                    ?.image_path ||
+                                                "/default-image.jpg"
+                                            }" 
+                                                        alt="${
+                                                            item.product
+                                                                ?.product_name ||
+                                                            "Product"
+                                                        }"
+                                                        class="product-image"
+                                                        onerror="this.src='../image/no-image.png'"
+                                                    />
+                                                    <div class="product-details">
+                                                        <div class="product-name">${
+                                                            item.product
+                                                                ?.product_name ||
+                                                            "N/A"
+                                                        }</div>
+                                                        <div class="product-id">ID: ${
+                                                            item.product_id
+                                                        }</div>
+                                                        ${
+                                                            variantText
+                                                                ? `<div class="variant-info">${variantText}</div>`
+                                                                : ""
+                                                        }
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-right">RM ${parseFloat(
+                                                item.price || 0
+                                            ).toFixed(2)}</td>
+                                            <td class="text-center">${
+                                                item.quantity || 1
+                                            }</td>
+                                            <td class="text-right">RM ${itemTotal.toFixed(
+                                                2
+                                            )}</td>
+                                        </tr>
+                                        `;
+                                        })
+                                        .join("")}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Order Summary -->
+                    <div class="section">
+                        <div class="section-header">Order Summary</div>
+                        <div class="section-body">
+                            <div class="totals">
+                                <div class="total-row">
+                                    <span>Subtotal:</span>
+                                    <span>RM ${subtotal.toFixed(2)}</span>
+                                </div>
+                                ${
+                                    shipping > 0
+                                        ? `
+                                <div class="total-row">
+                                    <span>Shipping Fee:</span>
+                                    <span>RM ${shipping.toFixed(2)}</span>
+                                </div>
+                                `
+                                        : ""
+                                }
+                                ${
+                                    tax > 0
+                                        ? `
+                                <div class="total-row">
+                                    <span>Tax (${(
+                                        order.platform_tax * 100
+                                    ).toFixed(1)}%):</span>
+                                    <span>RM ${tax.toFixed(2)}</span>
+                                </div>
+                                `
+                                        : ""
+                                }
+                                <div class="total-row total-final">
+                                    <span>Total Amount:</span>
+                                    <span>RM ${total.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="footer">
+                        <div class="company-info">
+                            <div style="font-weight: 600; margin-bottom: 5px;">Relove Market</div>
+                            <div>relovemarket006@gmail.com | +60126547653</div>
+                        </div>
+                        <div class="thank-you">
+                            Thank you for your purchase!
+                        </div>
+                        <div>
+                            If you have any questions about this invoice, please contact our customer service.
+                        </div>
+                    </div>
                 </div>
-                
-                <div class="section">
-                    <div class="section-title">Order Summary</div>
-                    <table>
-                        <tr>
-                            <td><strong>Subtotal:</strong></td>
-                            <td>RM ${parseFloat(
-                                order.total_amount || order.amount || 0
-                            ).toFixed(2)}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Shipping:</strong></td>
-                            <td>RM 0.00</td>
-                        </tr>
-                        <tr class="total">
-                            <td><strong>Total:</strong></td>
-                            <td>RM ${parseFloat(
-                                order.total_amount || order.amount || 0
-                            ).toFixed(2)}</td>
-                        </tr>
-                    </table>
-                </div>
-                
-                <div class="no-print" style="margin-top: 30px; text-align: center;">
-                    <button onclick="window.print()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                        Print Invoice
-                    </button>
-                    <button onclick="window.close()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; margin-left: 10px;">
-                        Close
-                    </button>
-                </div>
-                
-                <script>
-                    window.onload = function() {
+            </div>
+            
+            <!-- Print Controls -->
+            <div class="no-print" style="margin-top: 30px; text-align: center; padding: 20px; background: #f8fafc; border-radius: 8px;">
+                <button onclick="window.print()" style="padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600; margin-right: 10px;">
+                    🖨️ Print Invoice
+                </button>
+                <button onclick="window.close()" style="padding: 12px 24px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600;">
+                    ❌ Close Window
+                </button>
+                <p style="margin-top: 15px; color: #6b7280; font-size: 14px;">
+                    The print dialog should open automatically. If it doesn't, click the "Print Invoice" button above.
+                </p>
+            </div>
+            
+            <script>
+                // Auto-print when the window loads
+                window.onload = function() {
+                    setTimeout(() => {
                         window.print();
-                    };
-                </script>
-            </body>
+                    }, 500);
+                };
+                
+                // Close window after print (if user chooses to)
+                window.onafterprint = function() {
+                    setTimeout(() => {
+                        if (confirm('Close this window?')) {
+                            window.close();
+                        }
+                    }, 100);
+                };
+                
+                // Handle image errors
+                document.addEventListener('DOMContentLoaded', function() {
+                    const images = document.querySelectorAll('img');
+                    images.forEach(img => {
+                        img.onerror = function() {
+                            this.src = '../image/no-image.png';
+                        };
+                    });
+                });
+            </script>
+        </body>
         </html>
     `;
 
-        const printWindow = window.open("", "_blank");
-        printWindow.document.write(printContent);
-        printWindow.document.close();
+        // Create print window
+        const printWindow = window.open(
+            "",
+            "_blank",
+            "width=1000,height=800,scrollbars=yes"
+        );
+
+        if (printWindow) {
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+
+            // Focus the window
+            printWindow.focus();
+
+            // Fallback: if popup is blocked, show alert
+            if (
+                printWindow.closed ||
+                typeof printWindow.closed === "undefined"
+            ) {
+                alert(
+                    "Popup blocked! Please allow popups for this site to print invoices."
+                );
+            }
+        } else {
+            alert(
+                "Unable to open print window. Please check your popup blocker settings."
+            );
+        }
     };
 
     const handleRefresh = () => {

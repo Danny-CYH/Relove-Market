@@ -373,7 +373,6 @@ export default function AdminDashboard() {
                     <StatCard
                         title="Total Revenue"
                         value={`RM ${dashboardData.overview.totalRevenue.toLocaleString()}`}
-                        change={dashboardData.changes?.revenue}
                         trend="up"
                         icon={
                             <FaDollarSign className="w-6 h-6 text-green-600" />
@@ -385,7 +384,6 @@ export default function AdminDashboard() {
                     <StatCard
                         title="Total Orders"
                         value={dashboardData.overview.totalOrders}
-                        change={dashboardData.changes?.orders}
                         trend="up"
                         icon={
                             <FaShoppingCart className="w-6 h-6 text-blue-600" />
@@ -397,7 +395,6 @@ export default function AdminDashboard() {
                     <StatCard
                         title="Total Customers"
                         value={dashboardData.overview.totalCustomers}
-                        change={dashboardData.changes?.customers}
                         trend="up"
                         icon={<FaUsers className="w-6 h-6 text-purple-600" />}
                         color="bg-purple-50"
@@ -407,7 +404,6 @@ export default function AdminDashboard() {
                     <StatCard
                         title="Pending Sellers"
                         value={dashboardData.overview.pendingSellers}
-                        change={dashboardData.changes?.sellers}
                         trend={
                             dashboardData.changes?.sellers >= 0 ? "up" : "down"
                         }
@@ -433,12 +429,6 @@ export default function AdminDashboard() {
                                 {timeFrame === "monthly" &&
                                     "Year-to-date revenue"}
                             </p>
-                        </div>
-                        <div className="flex items-center space-x-2 text-sm text-gray-600 mt-2 sm:mt-0">
-                            <FaChartBar className="w-4 h-4" />
-                            <span>
-                                {error ? "Sample Data" : "Real-time Data"}
-                            </span>
                         </div>
                     </div>
 

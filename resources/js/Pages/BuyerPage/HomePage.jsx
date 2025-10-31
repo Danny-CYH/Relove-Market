@@ -29,7 +29,7 @@ import {
     Boxes,
 } from "lucide-react";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
 
@@ -39,6 +39,7 @@ import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/footer";
 
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
+import { ProductCard } from "@/Components/BuyerPage/ProductCard";
 import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
 import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
 import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
@@ -71,12 +72,45 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [loadingFeatured, setLoadingFeatured] = useState(true);
     const [loadingFlashSale, setLoadingFlashSale] = useState(true);
 
+    const [preview, setPreview] = useState(null);
+    const [recommendations, setRecommendations] = useState([]);
+
     // Carousel state
     const [currentSlide, setCurrentSlide] = useState(0);
 
     const { flash } = usePage().props;
 
     const featured_products = featuredProducts.slice(0, 8);
+
+    const fileInputRef = useRef(null);
+
+    // 🟢 Make this async so await works
+    const handleImageChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("image", file);
+
+        try {
+            const response = await axios.post(
+                route("camera-search"),
+                formData,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                }
+            );
+
+            console.log("Camera search results:", response.data);
+            // You can update state here to show the products in UI
+        } catch (error) {
+            console.error("Camera search failed:", error);
+        }
+    };
+
+    const handleCameraClick = () => {
+        fileInputRef.current.click();
+    };
 
     // get the featured products data
     const get_featuredProducts = async () => {
@@ -98,13 +132,29 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         try {
             setLoadingFlashSale(true);
             const response = await axios.get(route("get-flash-sale-products"));
-            
+
             setFlashSaleProducts(response.data.flashSaleProducts || []);
         } catch (error) {
             console.log(error);
             setFlashSaleProducts([]);
         } finally {
             setLoadingFlashSale(false);
+        }
+    };
+
+    const save_wishlist = async (product_id, variant_id = null) => {
+        try {
+            const response = await axios.post(route("store-wishlist"), {
+                product_id: product_id,
+                variant_id: variant_id,
+            });
+
+            console.log("Wishlist saved:", response.data);
+        } catch (error) {
+            console.error(
+                "Error saving wishlist:",
+                error.response?.data || error
+            );
         }
     };
 
@@ -274,9 +324,21 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                         </div>
                                     )}
                                 </div>
-                                <button className="px-6 py-4 bg-gray-800 text-white rounded-full flex items-center justify-center gap-2 hover:bg-gray-900 transition-colors">
+                                <button
+                                    onClick={handleCameraClick}
+                                    className="px-6 py-4 bg-gray-800 text-white rounded-full flex items-center justify-center gap-2 hover:bg-gray-900 transition-colors"
+                                >
                                     <FaCamera /> Camera Search
                                 </button>
+
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment" // opens camera directly on mobile
+                                    ref={fileInputRef}
+                                    onChange={handleImageChange}
+                                    className="hidden"
+                                />
                             </div>
 
                             <div className="flex flex-wrap gap-4 pt-4">
@@ -473,94 +535,15 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                         {/* Featured Products Grid - Desktop */}
                         {!loadingFeatured && featuredProducts.length > 0 && (
                             <>
-                                <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {/* Desktop Grid View */}
+                                <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                     {featured_products.map((product) => (
-                                        <Link
-                                            href={route(
-                                                "product-details",
-                                                product.product_id
-                                            )}
+                                        <ProductCard
                                             key={product.product_id}
-                                        >
-                                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                                                <div className="relative">
-                                                    <img
-                                                        src={
-                                                            import.meta.env
-                                                                .VITE_BASE_URL +
-                                                            product
-                                                                .product_image[0]
-                                                                .image_path
-                                                        }
-                                                        alt={
-                                                            product.product_name
-                                                        }
-                                                        className="w-full h-56 object-cover"
-                                                    />
-                                                    <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
-                                                        {
-                                                            product.category
-                                                                .category_name
-                                                        }
-                                                    </div>
-                                                </div>
-                                                <div className="p-4">
-                                                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
-                                                        {product.product_name}
-                                                    </h3>
-
-                                                    <div className="flex items-center mb-2">
-                                                        <div className="flex items-center">
-                                                            {[
-                                                                1, 2, 3, 4, 5,
-                                                            ].map((star) => (
-                                                                <FaStar
-                                                                    key={star}
-                                                                    className={`w-3 h-3 ${
-                                                                        star <=
-                                                                        Math.floor(
-                                                                            product
-                                                                                .ratings[0]
-                                                                                ?.rating
-                                                                        )
-                                                                            ? "text-yellow-400 fill-current"
-                                                                            : "text-gray-300"
-                                                                    }`}
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                        <span className="text-xs text-gray-500 ml-1">
-                                                            (
-                                                            {
-                                                                product
-                                                                    .ratings[0]
-                                                                    ?.rating
-                                                            }
-                                                            )
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="flex items-center justify-between mt-3">
-                                                        <div>
-                                                            <span className="font-bold text-gray-900">
-                                                                RM{" "}
-                                                                {
-                                                                    product.product_price
-                                                                }
-                                                            </span>
-                                                            <span className="text-xs text-gray-500 line-through ml-2">
-                                                                {
-                                                                    product.originalPrice
-                                                                }
-                                                            </span>
-                                                        </div>
-                                                        <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
-                                                            <FaShoppingCart className="text-sm" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
+                                            product={product}
+                                            isFlashSale={false}
+                                            save_wishlist={save_wishlist}
+                                        />
                                     ))}
                                 </div>
 
@@ -577,109 +560,18 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                         >
                                             {featured_products.map(
                                                 (product) => (
-                                                    <Link
-                                                        href={route(
-                                                            "product-details",
-                                                            product.product_id
-                                                        )}
+                                                    <div
                                                         key={product.product_id}
+                                                        className="w-full flex-shrink-0 px-3"
                                                     >
-                                                        <div className="w-full flex-shrink-0 px-2">
-                                                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                                                                <div className="relative">
-                                                                    <img
-                                                                        src={
-                                                                            import.meta
-                                                                                .env
-                                                                                .VITE_BASE_URL +
-                                                                            product
-                                                                                .product_image[0]
-                                                                                .image_path
-                                                                        }
-                                                                        alt={
-                                                                            product.product_name
-                                                                        }
-                                                                        className="w-full h-48 object-cover"
-                                                                    />
-
-                                                                    <div className="absolute bottom-3 left-3 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded-full">
-                                                                        {
-                                                                            product
-                                                                                .category
-                                                                                .category_name
-                                                                        }
-                                                                    </div>
-                                                                </div>
-                                                                <div className="p-4">
-                                                                    <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
-                                                                        {
-                                                                            product.product_name
-                                                                        }
-                                                                    </h3>
-
-                                                                    <div className="flex items-center mb-2">
-                                                                        <div className="flex items-center">
-                                                                            {[
-                                                                                1,
-                                                                                2,
-                                                                                3,
-                                                                                4,
-                                                                                5,
-                                                                            ].map(
-                                                                                (
-                                                                                    star
-                                                                                ) => (
-                                                                                    <FaStar
-                                                                                        key={
-                                                                                            star
-                                                                                        }
-                                                                                        className={`w-3 h-3 ${
-                                                                                            star <=
-                                                                                            Math.floor(
-                                                                                                product
-                                                                                                    .ratings[0]
-                                                                                                    ?.rating
-                                                                                            )
-                                                                                                ? "text-yellow-400 fill-current"
-                                                                                                : "text-gray-300"
-                                                                                        }`}
-                                                                                    />
-                                                                                )
-                                                                            )}
-                                                                        </div>
-                                                                        <span className="text-xs text-gray-500 ml-1">
-                                                                            (
-                                                                            {
-                                                                                product
-                                                                                    .ratings[0]
-                                                                                    ?.rating
-                                                                            }
-                                                                            )
-                                                                        </span>
-                                                                    </div>
-
-                                                                    <div className="flex items-center justify-between mt-3">
-                                                                        <div>
-                                                                            <span className="font-bold text-gray-900">
-                                                                                RM{" "}
-                                                                                {
-                                                                                    product.product_price
-                                                                                }
-                                                                            </span>
-                                                                            <span className="text-xs text-gray-500 line-through ml-2">
-                                                                                {
-                                                                                    product.originalPrice
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                        <button className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
-                                                                            <FaShoppingCart className="text-sm" />
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </Link>
+                                                        <ProductCard
+                                                            product={product}
+                                                            isFlashSale={false}
+                                                            save_wishlist={
+                                                                save_wishlist
+                                                            }
+                                                        />
+                                                    </div>
                                                 )
                                             )}
                                         </div>
@@ -688,33 +580,33 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     {/* Carousel Navigation */}
                                     <button
                                         onClick={prevSlide}
-                                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-xl transition-all backdrop-blur-sm"
                                     >
-                                        <FaChevronLeft className="text-gray-700" />
+                                        <FaChevronLeft className="text-gray-700 w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={nextSlide}
-                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white p-2 rounded-full shadow-lg transition-all"
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-xl transition-all backdrop-blur-sm"
                                     >
-                                        <FaChevronRight className="text-gray-700" />
+                                        <FaChevronRight className="text-gray-700 w-4 h-4" />
                                     </button>
 
                                     {/* Carousel Indicators */}
-                                    <div className="flex justify-center mt-4 space-x-2">
+                                    <div className="flex justify-center mt-6 space-x-2">
                                         {Array.from({
                                             length: Math.ceil(
-                                                featured_products.length
-                                            ),
+                                                featured_products.length / 1
+                                            ), // 1 item per slide on mobile
                                         }).map((_, index) => (
                                             <button
                                                 key={index}
                                                 onClick={() =>
                                                     setCurrentSlide(index)
                                                 }
-                                                className={`w-2 h-2 rounded-full transition-all ${
+                                                className={`w-3 h-3 rounded-full transition-all duration-300 ${
                                                     index === currentSlide
-                                                        ? "bg-green-600 w-4"
-                                                        : "bg-gray-300"
+                                                        ? "bg-gradient-to-r from-gray-900 to-gray-800 w-8"
+                                                        : "bg-gray-300 hover:bg-gray-400"
                                                 }`}
                                             />
                                         ))}

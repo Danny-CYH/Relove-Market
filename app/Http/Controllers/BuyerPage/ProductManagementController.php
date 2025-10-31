@@ -29,7 +29,13 @@ class ProductManagementController extends Controller
     // Code for API/filter requests
     public function shoppingApi(Request $request)
     {
-        $query = Product::with(['productImage', 'category', 'ratings']);
+        $query = Product::with([
+            'productImage',
+            'productVariant',
+            'category',
+            'ratings',
+            'seller.sellerStore'
+        ]);
 
         // Apply search filter
         if ($request->has('search') && $request->search) {

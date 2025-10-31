@@ -16,7 +16,7 @@ import {
     FaUserCog,
 } from "react-icons/fa";
 
-export function Sidebar({ pendingCount }) {
+export function Sidebar({ pendingCount = 0 }) {
     const { url } = usePage();
     const { auth } = usePage().props;
     const [isMobile, setIsMobile] = useState(false);
@@ -40,13 +40,6 @@ export function Sidebar({ pendingCount }) {
         };
     }, []);
 
-    // Close sidebar when route changes on mobile
-    useEffect(() => {
-        if (isMobile && sidebarOpen) {
-            setSidebarOpen(false);
-        }
-    }, [url, isMobile, sidebarOpen]);
-
     // Close sidebar when clicking outside on mobile
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -65,8 +58,11 @@ export function Sidebar({ pendingCount }) {
         };
 
         document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchstart", handleClickOutside);
         };
     }, [isMobile, sidebarOpen]);
 
@@ -74,12 +70,15 @@ export function Sidebar({ pendingCount }) {
     useEffect(() => {
         if (isMobile && sidebarOpen) {
             document.body.style.overflow = "hidden";
+            document.body.style.touchAction = "none";
         } else {
             document.body.style.overflow = "unset";
+            document.body.style.touchAction = "unset";
         }
 
         return () => {
             document.body.style.overflow = "unset";
+            document.body.style.touchAction = "unset";
         };
     }, [isMobile, sidebarOpen]);
 
@@ -92,22 +91,44 @@ export function Sidebar({ pendingCount }) {
         setSidebarOpen(!sidebarOpen);
     };
 
+    // Handle navigation click - close sidebar on mobile
+    const handleNavClick = () => {
+        if (isMobile) {
+            setSidebarOpen(false);
+        }
+    };
+
     const sidebarVariants = {
         hidden: { x: "-100%", opacity: 0 },
-        visible: { x: 0, opacity: 1 },
-        exit: { x: "-100%", opacity: 0 },
+        visible: {
+            x: 0,
+            opacity: 1,
+            transition: {
+                type: "spring",
+                damping: 25,
+                stiffness: 200,
+            },
+        },
+        exit: {
+            x: "-100%",
+            opacity: 0,
+            transition: {
+                type: "tween",
+                duration: 0.2,
+            },
+        },
     };
 
     const backdropVariants = {
         hidden: { opacity: 0 },
-        visible: { opacity: 0.5 },
+        visible: { opacity: 1 },
         exit: { opacity: 0 },
     };
 
     const sidebarContent = (
         <>
             {/* Header */}
-            <div className="p-4 border-b border-indigo-700 flex items-center justify-between sticky top-0 bg-indigo-800 z-10">
+            <div className="p-4 border-b border-indigo-700 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                         <span className="text-indigo-800 font-bold text-sm">
@@ -123,13 +144,15 @@ export function Sidebar({ pendingCount }) {
                 </div>
 
                 {/* Close button - only show on mobile */}
-                <button
-                    onClick={() => setSidebarOpen(false)}
-                    className="p-2 text-white hover:bg-indigo-700 rounded-lg md:hidden transition-colors"
-                    aria-label="Close sidebar"
-                >
-                    <FaTimes className="text-lg" />
-                </button>
+                {isMobile && (
+                    <button
+                        onClick={() => setSidebarOpen(false)}
+                        className="p-2 text-white hover:bg-indigo-700 rounded-lg transition-colors"
+                        aria-label="Close sidebar"
+                    >
+                        <FaTimes className="text-lg" />
+                    </button>
+                )}
             </div>
 
             {/* Navigation */}
@@ -143,7 +166,7 @@ export function Sidebar({ pendingCount }) {
                                     ? "bg-white text-indigo-800 shadow-md"
                                     : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
-                            onClick={() => isMobile && setSidebarOpen(false)}
+                            onClick={handleNavClick}
                         >
                             <FaHome className="w-5 h-5 mr-3 flex-shrink-0" />
                             <span className="font-medium">Dashboard</span>
@@ -157,7 +180,7 @@ export function Sidebar({ pendingCount }) {
                                     ? "bg-white text-indigo-800 shadow-md"
                                     : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
-                            onClick={() => isMobile && setSidebarOpen(false)}
+                            onClick={handleNavClick}
                         >
                             <FaFileInvoiceDollar className="w-5 h-5 mr-3 flex-shrink-0" />
                             <span className="font-medium">Transactions</span>
@@ -171,7 +194,7 @@ export function Sidebar({ pendingCount }) {
                                     ? "bg-white text-indigo-800 shadow-md"
                                     : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
-                            onClick={() => isMobile && setSidebarOpen(false)}
+                            onClick={handleNavClick}
                         >
                             <FaUserCheck className="w-5 h-5 mr-3 flex-shrink-0" />
                             <span className="font-medium">
@@ -192,7 +215,7 @@ export function Sidebar({ pendingCount }) {
                                     ? "bg-white text-indigo-800 shadow-md"
                                     : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
-                            onClick={() => isMobile && setSidebarOpen(false)}
+                            onClick={handleNavClick}
                         >
                             <FaCreditCard className="w-5 h-5 mr-3 flex-shrink-0" />
                             <span className="font-medium">Subscriptions</span>
@@ -206,7 +229,7 @@ export function Sidebar({ pendingCount }) {
                                     ? "bg-white text-indigo-800 shadow-md"
                                     : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
-                            onClick={() => isMobile && setSidebarOpen(false)}
+                            onClick={handleNavClick}
                         >
                             <FaBox className="w-5 h-5 mr-3 flex-shrink-0" />
                             <span className="font-medium">Products</span>
@@ -220,7 +243,7 @@ export function Sidebar({ pendingCount }) {
                                     ? "bg-white text-indigo-800 shadow-md"
                                     : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
-                            onClick={() => isMobile && setSidebarOpen(false)}
+                            onClick={handleNavClick}
                         >
                             <FaUserCog className="w-5 h-5 mr-3 flex-shrink-0" />
                             <span className="font-medium">Users</span>
@@ -234,7 +257,7 @@ export function Sidebar({ pendingCount }) {
                     !url.startsWith(route("pending-seller-list")) && (
                         <Link
                             href={route("pending-seller-list")}
-                            onClick={() => isMobile && setSidebarOpen(false)}
+                            onClick={handleNavClick}
                         >
                             <div className="mt-6 p-3 bg-indigo-700 rounded-lg border border-indigo-600 hover:bg-indigo-600 transition-colors">
                                 <div className="flex items-center">
@@ -262,7 +285,7 @@ export function Sidebar({ pendingCount }) {
             </nav>
 
             {/* User section and Logout */}
-            <div className="p-4 border-t border-indigo-700 bg-indigo-800 sticky bottom-0">
+            <div className="p-4 border-t border-indigo-700 bg-indigo-800">
                 {auth?.user && (
                     <div className="mb-4 flex items-center space-x-3">
                         <img
@@ -286,7 +309,7 @@ export function Sidebar({ pendingCount }) {
                     method="post"
                     as="button"
                     className="w-full flex items-center justify-center p-3 text-indigo-200 hover:text-white hover:bg-indigo-700 rounded-lg transition-colors group"
-                    onClick={() => isMobile && setSidebarOpen(false)}
+                    onClick={handleNavClick}
                 >
                     <FaSignOutAlt className="w-4 h-4 mr-2 flex-shrink-0" />
                     <span className="font-medium">Logout</span>
@@ -326,7 +349,7 @@ export function Sidebar({ pendingCount }) {
                         <Link
                             href={route("pending-seller-list")}
                             className="p-2 rounded-lg text-white hover:bg-indigo-700 transition-colors relative"
-                            onClick={() => setSidebarOpen(false)}
+                            onClick={handleNavClick}
                         >
                             <FaBell className="text-lg" />
                             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-5 h-5 flex items-center justify-center">
@@ -337,7 +360,7 @@ export function Sidebar({ pendingCount }) {
                 </nav>
             )}
 
-            {/* Desktop Sidebar */}
+            {/* Desktop Sidebar - RESTORED TO ORIGINAL */}
             {!isMobile && (
                 <div className="h-full bg-gradient-to-b from-indigo-800 to-indigo-900 text-white hidden md:flex md:flex-col w-64 flex-shrink-0">
                     {sidebarContent}
@@ -359,7 +382,7 @@ export function Sidebar({ pendingCount }) {
                             onClick={() => setSidebarOpen(false)}
                         />
 
-                        {/* Sidebar */}
+                        {/* Sidebar - FIXED FULL HEIGHT */}
                         <motion.div
                             variants={sidebarVariants}
                             initial="hidden"

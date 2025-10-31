@@ -13,6 +13,7 @@ use Exception;
 use Illuminate\Http\Request;
 
 use Carbon\Carbon;
+use phpDocumentor\Reflection\PseudoTypes\True_;
 
 class SellerDashboardController extends Controller
 {
@@ -75,10 +76,12 @@ class SellerDashboardController extends Controller
     public function getData_dashboard()
     {
         $seller_storeInfo = Seller::with([
-            "sellerStore",
-            "product",
+            'sellerStore',
+            'product' => function ($query) {
+                $query->where('featured', true);
+            },
         ])
-            ->where("seller_id", $this->seller_id)
+            ->where('seller_id', $this->seller_id)
             ->get();
 
         $order_data = Order::with([

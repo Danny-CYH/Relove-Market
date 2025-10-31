@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BuyerPage\HomePageController;
 use App\Http\Controllers\BuyerPage\ProductManagementController;
 use App\Http\Controllers\BuyerPage\UserController;
 
@@ -41,6 +42,7 @@ Route::get('/seller-shop', [UserController::class, 'sellerShop'])->name('seller-
 
 // Code for calling the product image based recommendation for user
 Route::post("/api/recommend", [ProductManagementController::class, "getRecommendations"])->name("recommend");
+Route::post('/camera-search', [HomePageController::class, 'cameraSearch'])->name("camera-search");
 Route::get("/api/get-list-products", [ProductManagementController::class, "get_listProducts"]);
 
 // Need to login account and is a buyer can access this all feature

@@ -67,11 +67,6 @@ class Product extends Model
         return $this->hasMany(ProductFeature::class, "product_id", 'product_id');
     }
 
-    public function productOption()
-    {
-        return $this->hasMany(ProductOption::class, "product_id", "product_id");
-    }
-
     public function productIncludeItem()
     {
         return $this->hasMany(ProductIncludeItem::class, 'product_id', 'product_id');

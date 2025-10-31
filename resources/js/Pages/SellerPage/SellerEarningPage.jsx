@@ -143,11 +143,6 @@ export default function EarningsPage() {
     useEffect(() => {
         if (!auth?.user?.seller_id || !window.Echo) return;
 
-        console.log(
-            "🎧 Subscribing to earnings channel:",
-            `seller.earnings.${auth.user.seller_id}`
-        );
-
         const channel = window.Echo.private(
             `seller.earnings.${auth.user.seller_id}`
         );
@@ -395,11 +390,10 @@ export default function EarningsPage() {
                         <select
                             value={reportConfig.period}
                             onChange={(e) => handlePeriodChange(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         >
                             <option value="weekly">Last 7 Days</option>
                             <option value="monthly">This Month</option>
-                            <option value="quarterly">This Quarter</option>
                             <option value="yearly">This Year</option>
                             <option value="custom">Custom Range</option>
                         </select>
@@ -421,7 +415,7 @@ export default function EarningsPage() {
                                             startDate: e.target.value,
                                         })
                                     }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                 />
                             </div>
                             <div>
@@ -437,7 +431,7 @@ export default function EarningsPage() {
                                             endDate: e.target.value,
                                         })
                                     }
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                                    className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                                 />
                             </div>
                         </div>
@@ -456,11 +450,9 @@ export default function EarningsPage() {
                                     format: e.target.value,
                                 })
                             }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         >
                             <option value="pdf">PDF Document</option>
-                            <option value="csv">CSV Spreadsheet</option>
-                            <option value="excel">Excel File</option>
                         </select>
                     </div>
 
@@ -658,7 +650,7 @@ export default function EarningsPage() {
                         <select
                             value={filter}
                             onChange={(e) => setFilter(e.target.value)}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                            className="px-3 py-2 w-52 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
                         >
                             <option value="daily">Daily (Last 7 Days)</option>
                             <option value="monthly">

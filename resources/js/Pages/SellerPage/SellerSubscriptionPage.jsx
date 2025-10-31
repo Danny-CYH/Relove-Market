@@ -1,7 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useRef } from "react";
 import {
     Check,
-    CreditCard,
     Download,
     AlertCircle,
     Star,
@@ -24,6 +23,9 @@ export default function SubscriptionPage({
     list_subscription,
     billing_records,
 }) {
+    console.log("Subscription data:", list_subscription);
+    console.log("Billing records:", billing_records);
+
     const [billingCycle, setBillingCycle] = useState("monthly");
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [activeTab, setActiveTab] = useState("plans");
@@ -31,10 +33,9 @@ export default function SubscriptionPage({
     const [selectedReceipt, setSelectedReceipt] = useState(null);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
 
-    // Use actual billing records data instead of empty array
-    const [billingHistory, setBillingHistory] = useState(
-        billing_records?.data || []
-    );
+    // Use actual data directly
+    const subscriptionPlans = list_subscription?.data || [];
+    const billingHistory = billing_records?.data || [];
 
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
@@ -45,74 +46,43 @@ export default function SubscriptionPage({
 
     const { auth } = usePage().props;
 
-    // Transform the actual subscription data to match your existing structure
-    const transformSubscriptionData = (subscriptions) => {
-        return subscriptions.reduce((acc, subscription) => {
-            const limits =
-                typeof subscription.limits === "string"
-                    ? JSON.parse(subscription.limits)
-                    : subscription.limits || {};
-
-            const planKey =
-                subscription.subscription_plan_id
-                    ?.toLowerCase()
-                    ?.replace("plan-", "") || subscription.subscription_plan_id;
-
-            acc[planKey] = {
-                name: subscription.plan_name,
-                price: parseFloat(subscription.price) || 0,
-                monthlyPrice: parseFloat(subscription.price) || 0,
-                yearlyPrice: (parseFloat(subscription.price) || 0) * 0.8, // 20% discount for yearly
-                description: subscription.description,
-                features:
-                    subscription.subscription_features?.map(
-                        (f) => f.feature_text
-                    ) || [],
-                limitations: getLimitations(subscription.plan_name, limits),
-                popular:
-                    subscription.plan_name?.toLowerCase().includes("pro") ||
-                    subscription.plan_name
-                        ?.toLowerCase()
-                        .includes("professional"),
-                icon: getPlanIcon(subscription.plan_name),
-                limits: limits,
-                subscription_plan_id: subscription.subscription_plan_id,
-                status: subscription.status,
-                duration: subscription.duration,
-                // Add subscription dates for next billing calculation
-                start_date: subscription.start_date,
-                end_date: subscription.end_date,
-                last_billing_date: subscription.last_billing_date,
-            };
-            return acc;
-        }, {});
-    };
-
+    // Simple helper functions
     const getPlanIcon = (planName) => {
         const name = planName?.toLowerCase() || "";
         if (
             name.includes("starter") ||
             name.includes("free") ||
-            name.includes("trial")
+            name.includes("basic")
         ) {
             return <Sparkles size={24} className="text-gray-400" />;
-        } else if (name.includes("pro") || name.includes("professional")) {
+        } else if (
+            name.includes("pro") ||
+            name.includes("professional") ||
+            name.includes("business")
+        ) {
             return <Rocket size={24} className="text-blue-500" />;
-        } else if (name.includes("enterprise") || name.includes("business")) {
+        } else if (
+            name.includes("enterprise") ||
+            name.includes("premium") ||
+            name.includes("ultimate")
+        ) {
             return <Gem size={24} className="text-purple-500" />;
         }
         return <Sparkles size={24} className="text-gray-400" />;
     };
 
-    const getLimitations = (planName, limits) => {
-        const name = planName?.toLowerCase() || "";
+    const getLimitations = (plan) => {
         const limitations = [];
+        const limits =
+            typeof plan.limits === "string"
+                ? JSON.parse(plan.limits)
+                : plan.limits || {};
 
-        if (limits?.max_products > 0 && limits.max_products < 999) {
+        if (limits?.max_products > 0 && limits.max_products < 9999) {
             limitations.push(`Limited to ${limits.max_products} products`);
         }
 
-        if (limits?.max_conversations > 0 && limits.max_conversations < 999) {
+        if (limits?.max_conversations > 0 && limits.max_conversations < 9999) {
             limitations.push(
                 `Limited to ${limits.max_conversations} active conversations`
             );
@@ -122,158 +92,51 @@ export default function SubscriptionPage({
             limitations.push("No featured listing priority");
         }
 
-        if (name.includes("starter") || name.includes("free")) {
+        if (
+            plan.plan_name?.toLowerCase().includes("starter") ||
+            plan.plan_name?.toLowerCase().includes("free")
+        ) {
             limitations.push("No advanced analytics", "Limited customization");
         }
 
         return limitations.length > 0 ? limitations : ["No limitations"];
     };
 
-    // Calculate next billing date based on subscription data
-    const calculateNextBillingDate = (currentPlan) => {
-        if (!currentPlan) return "August 15, 2025"; // Fallback date
-
-        // Use the end_date if available
-        if (currentPlan.end_date) {
-            const endDate = new Date(currentPlan.end_date);
-            return endDate.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-            });
+    // Get current active plan (simplified - you might want to get this from user's active subscription)
+    const getCurrentPlan = () => {
+        // For now, return the first plan or a default
+        if (subscriptionPlans.length > 0) {
+            return subscriptionPlans[0];
         }
 
-        // Use last_billing_date + duration if available
-        if (currentPlan.last_billing_date && currentPlan.duration) {
-            const lastBillingDate = new Date(currentPlan.last_billing_date);
-            const nextBillingDate = new Date(lastBillingDate);
-            nextBillingDate.setDate(
-                nextBillingDate.getDate() + parseInt(currentPlan.duration)
-            );
-
-            return nextBillingDate.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-            });
-        }
-
-        // Use start_date + duration if available
-        if (currentPlan.start_date && currentPlan.duration) {
-            const startDate = new Date(currentPlan.start_date);
-            const nextBillingDate = new Date(startDate);
-            nextBillingDate.setDate(
-                nextBillingDate.getDate() + parseInt(currentPlan.duration)
-            );
-
-            return nextBillingDate.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-            });
-        }
-
-        // Fallback to current date + 30 days
-        const nextDate = new Date();
-        nextDate.setDate(nextDate.getDate() + 30);
-        return nextDate.toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-        });
+        return {
+            plan_name: "Starter",
+            price: 0,
+            description: "Default free plan",
+        };
     };
 
-    // Extract subscription data from the paginated response
-    const subscriptionData = list_subscription?.data || [];
+    const currentPlan = getCurrentPlan();
 
-    // Use actual data if available, otherwise fallback to demo data
-    const plans =
-        subscriptionData.length > 0
-            ? transformSubscriptionData(subscriptionData)
-            : "No subscriptions data";
+    // Calculate price based on billing cycle
+    const calculatePrice = (plan) => {
+        if (!plan) return 0;
+        const basePrice = parseFloat(plan.price) || 0;
+        return billingCycle === "yearly" ? basePrice * 0.8 * 12 : basePrice;
+    };
 
-    // Pagination calculations for billing history
+    // Pagination calculations
     const totalPages = Math.ceil(billingHistory.length / itemsPerPage);
     const currentBillingItems = billingHistory.slice(
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
 
-    // Safely get current plan - use the first available plan or a default
-    const getCurrentPlan = () => {
-        const planValues = Object.values(plans);
-        if (planValues.length === 0) {
-            // Return a default plan if no plans exist
-            return {
-                name: "Starter",
-                monthlyPrice: 0,
-                yearlyPrice: 0,
-            };
-        }
-
-        // Try to find a pro plan, otherwise use the first plan
-        return (
-            plans.pro ||
-            plans.professional ||
-            planValues.find((p) => p.popular) ||
-            planValues[0]
-        );
-    };
-
-    const currentPlan = getCurrentPlan();
-    const nextBillingDate = calculateNextBillingDate(currentPlan);
-
-    const savings =
-        billingCycle === "yearly" && currentPlan?.monthlyPrice > 0
-            ? currentPlan.monthlyPrice * 12 - currentPlan.yearlyPrice * 12
-            : 0;
-
-    const handleUpgrade = (planKey) => {
-        console.log("Upgrading to plan:", planKey);
-        setSelectedPlan(plans[planKey]);
-        setShowPaymentModal(true);
-    };
-
-    const calculatePrice = (plan) => {
-        if (!plan) return 0;
-        return billingCycle === "yearly"
-            ? plan.yearlyPrice || 0
-            : plan.monthlyPrice || 0;
-    };
-
-    // Format billing record data for display
-    const formatBillingRecord = (record) => {
-        return {
-            id: record.invoice_id || record.id || `INV-${record.id}`,
-            date: record.created_at
-                ? new Date(record.created_at).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                  })
-                : "N/A",
-            plan:
-                record.plan_name ||
-                record.subscription_plan?.plan_name ||
-                "Unknown Plan",
-            amount: record.amount
-                ? `RM ${parseFloat(record.amount).toFixed(2)}`
-                : "RM 0.00",
-            method: record.payment_method || "Credit Card",
-            status: record.status || "Pending",
-            receipt_url: record.receipt_url || null,
-            // Additional fields for receipt
-            originalRecord: record,
-        };
-    };
-
-    // Handle view receipt
     const handleViewReceipt = (bill) => {
         setSelectedReceipt(bill);
         setShowReceiptModal(true);
     };
 
-    // Handle print receipt
     const handlePrintReceipt = () => {
         const printContent = receiptRef.current.innerHTML;
         const originalContent = document.body.innerHTML;
@@ -281,20 +144,19 @@ export default function SubscriptionPage({
         document.body.innerHTML = printContent;
         window.print();
         document.body.innerHTML = originalContent;
-        window.location.reload(); // Reload to restore React functionality
+        window.location.reload();
     };
 
-    // Generate receipt number
     const generateReceiptNumber = (bill) => {
-        const date = new Date(bill.originalRecord?.created_at || new Date());
+        const date = new Date(bill.created_at || new Date());
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, "0");
         const day = String(date.getDate()).padStart(2, "0");
-        const id = bill.originalRecord?.id || "0000";
+        const id = bill.id || "0000";
         return `RCP-${year}${month}${day}-${String(id).padStart(4, "0")}`;
     };
 
-    // Pagination component
+    // Pagination Component
     const Pagination = () => {
         const pageNumbers = [];
         const maxVisiblePages = 5;
@@ -478,12 +340,15 @@ export default function SubscriptionPage({
                                 </div>
                                 <div className="text-right">
                                     <p className="text-gray-600">
-                                        Date: {selectedReceipt.date}
+                                        Date:{" "}
+                                        {dayjs(
+                                            selectedReceipt.created_at
+                                        ).format("DD MMM YYYY")}
                                     </p>
                                     <p className="text-gray-600 text-sm">
                                         Status:{" "}
                                         <span className="font-semibold text-green-600">
-                                            {selectedReceipt.status}
+                                            {selectedReceipt.payment_status}
                                         </span>
                                     </p>
                                 </div>
@@ -516,35 +381,24 @@ export default function SubscriptionPage({
                                         <td className="px-6 py-4 align-top">
                                             <div className="space-y-1">
                                                 <p className="font-medium text-gray-900">
-                                                    {selectedReceipt
-                                                        ?.subscription
-                                                        ?.plan_name
-                                                        ? `${selectedReceipt.subscription.plan_name} - Plan Subscription`
-                                                        : "Plan Subscription"}
+                                                    {
+                                                        selectedReceipt.subscription_plan_id
+                                                    }{" "}
+                                                    - Plan Subscription
                                                 </p>
                                                 <p className="text-gray-600 text-sm">
                                                     Payment Date:{" "}
-                                                    {selectedReceipt?.created_at
-                                                        ? dayjs(
-                                                              selectedReceipt.created_at
-                                                          ).format("MMMM YYYY")
-                                                        : "N/A"}
-                                                </p>
-                                                <p className="text-gray-600 text-sm">
-                                                    Duration:{" "}
-                                                    {selectedReceipt
-                                                        ?.subscription
-                                                        .duration || "N/A"}{" "}
-                                                    days
+                                                    {dayjs(
+                                                        selectedReceipt.created_at
+                                                    ).format("MMMM YYYY")}
                                                 </p>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-right font-medium text-gray-900 align-top">
-                                            {selectedReceipt?.amount
-                                                ? `RM ${parseFloat(
-                                                      selectedReceipt.amount
-                                                  ).toFixed(2)}`
-                                                : "RM 0.00"}
+                                            RM{" "}
+                                            {parseFloat(
+                                                selectedReceipt.amount || 0
+                                            ).toFixed(2)}
                                         </td>
                                     </tr>
                                 </tbody>
@@ -554,11 +408,10 @@ export default function SubscriptionPage({
                                             Total Amount:
                                         </td>
                                         <td className="px-6 py-3 text-right font-semibold text-gray-900">
-                                            {selectedReceipt?.amount
-                                                ? `RM ${parseFloat(
-                                                      selectedReceipt.amount
-                                                  ).toFixed(2)}`
-                                                : "RM 0.00"}
+                                            RM{" "}
+                                            {parseFloat(
+                                                selectedReceipt.amount || 0
+                                            ).toFixed(2)}
                                         </td>
                                     </tr>
                                 </tfoot>
@@ -571,7 +424,11 @@ export default function SubscriptionPage({
                                     <p className="font-semibold">
                                         Payment Details:
                                     </p>
-                                    <p>Method: {selectedReceipt.method}</p>
+                                    <p>
+                                        Method:{" "}
+                                        {selectedReceipt.payment_method ||
+                                            "Credit Card"}
+                                    </p>
                                     <p>
                                         Status: {selectedReceipt.payment_status}
                                     </p>
@@ -616,10 +473,11 @@ export default function SubscriptionPage({
                         Choose the perfect plan for your business growth and
                         manage your billing
                     </p>
+
                     {/* Debug info */}
-                    {subscriptionData.length > 0 && (
+                    {subscriptionPlans.length > 0 && (
                         <p className="text-sm text-green-600 mt-1">
-                            Loaded {subscriptionData.length} subscription
+                            Loaded {subscriptionPlans.length} subscription
                             plan(s) from server
                         </p>
                     )}
@@ -666,18 +524,15 @@ export default function SubscriptionPage({
                                             Your Current Plan
                                         </h2>
                                         <p className="text-blue-100 text-sm md:text-base">
-                                            {currentPlan.name} • RM
-                                            {currentPlan.monthlyPrice}/month
+                                            {currentPlan.plan_name} • RM{" "}
+                                            {parseFloat(
+                                                currentPlan.price || 0
+                                            ).toFixed(2)}
+                                            /month
                                         </p>
                                         <p className="text-blue-100 text-xs md:text-sm mt-1">
-                                            Next billing date: {nextBillingDate}
+                                            {currentPlan.description}
                                         </p>
-                                        {currentPlan.duration && (
-                                            <p className="text-blue-100 text-xs md:text-sm mt-1">
-                                                Duration: {currentPlan.duration}{" "}
-                                                days
-                                            </p>
-                                        )}
                                     </div>
                                     <div className="bg-white/20 px-3 md:px-4 py-1 md:py-2 rounded-full self-start md:self-auto">
                                         <span className="text-xs md:text-sm font-medium">
@@ -710,26 +565,30 @@ export default function SubscriptionPage({
                                     }`}
                                 >
                                     Yearly
-                                    {billingCycle === "yearly" &&
-                                        currentPlan?.monthlyPrice > 0 && (
-                                            <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                                                Save 20%
-                                            </span>
-                                        )}
+                                    {billingCycle === "yearly" && (
+                                        <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                            Save 20%
+                                        </span>
+                                    )}
                                 </button>
                             </div>
                         </div>
 
                         {/* Plans Grid */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
-                            {Object.entries(plans).map(([key, plan]) => {
+                            {subscriptionPlans.map((plan, index) => {
                                 const price = calculatePrice(plan);
                                 const isCurrent =
-                                    plan.name === currentPlan?.name;
+                                    plan.plan_name === currentPlan?.plan_name;
+                                const limitations = getLimitations(plan);
+                                const features =
+                                    plan.subscription_features?.map(
+                                        (f) => f.feature_text
+                                    ) || [];
 
                                 return (
                                     <div
-                                        key={key}
+                                        key={plan.id || index}
                                         className={`relative rounded-xl border-2 p-4 md:p-6 transition-all ${
                                             plan.popular
                                                 ? "border-blue-500 shadow-lg md:shadow-xl md:transform md:scale-105"
@@ -762,10 +621,10 @@ export default function SubscriptionPage({
 
                                         <div className="text-center mb-4 md:mb-6">
                                             <div className="flex justify-center mb-3 md:mb-4">
-                                                {plan.icon}
+                                                {getPlanIcon(plan.plan_name)}
                                             </div>
                                             <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">
-                                                {plan.name}
+                                                {plan.plan_name}
                                             </h3>
                                             <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4">
                                                 {plan.description}
@@ -773,7 +632,7 @@ export default function SubscriptionPage({
 
                                             <div className="mb-3 md:mb-4">
                                                 <span className="text-2xl md:text-3xl font-bold text-gray-900">
-                                                    RM {price}
+                                                    RM {price.toFixed(2)}
                                                 </span>
                                                 <span className="text-gray-600 text-sm md:text-base">
                                                     /
@@ -783,60 +642,59 @@ export default function SubscriptionPage({
                                                 </span>
                                             </div>
 
-                                            {billingCycle === "yearly" &&
-                                                plan.monthlyPrice > 0 && (
-                                                    <p className="text-xs md:text-sm text-gray-500">
-                                                        Equivalent to RM
-                                                        {plan.yearlyPrice}/month
-                                                    </p>
-                                                )}
+                                            {billingCycle === "yearly" && (
+                                                <p className="text-xs md:text-sm text-gray-500">
+                                                    Equivalent to RM{" "}
+                                                    {(
+                                                        parseFloat(
+                                                            plan.price || 0
+                                                        ) * 0.8
+                                                    ).toFixed(2)}
+                                                    /month
+                                                </p>
+                                            )}
                                         </div>
 
                                         <div className="space-y-3 md:space-y-4 mb-4 md:mb-6">
-                                            {plan.features.map(
-                                                (feature, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="flex items-center"
-                                                    >
-                                                        <Check
-                                                            size={14}
-                                                            className="text-green-500 mr-2 md:mr-3 flex-shrink-0"
-                                                        />
-                                                        <span className="text-xs md:text-sm text-gray-700">
-                                                            {feature}
-                                                        </span>
-                                                    </div>
-                                                )
-                                            )}
+                                            {features.map((feature, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="flex items-center"
+                                                >
+                                                    <Check
+                                                        size={14}
+                                                        className="text-green-500 mr-2 md:mr-3 flex-shrink-0"
+                                                    />
+                                                    <span className="text-xs md:text-sm text-gray-700">
+                                                        {feature}
+                                                    </span>
+                                                </div>
+                                            ))}
                                         </div>
 
-                                        {plan.limitations &&
-                                            plan.limitations.length > 0 && (
-                                                <div className="bg-gray-50 rounded-lg p-3 md:p-4 mb-4 md:mb-6">
-                                                    <h4 className="text-xs md:text-sm font-semibold text-gray-900 mb-2">
-                                                        Limitations
-                                                    </h4>
-                                                    <ul className="text-xs md:text-sm text-gray-600 space-y-1">
-                                                        {plan.limitations.map(
-                                                            (limit, index) => (
-                                                                <li
-                                                                    key={index}
-                                                                    className="flex items-center"
-                                                                >
-                                                                    <AlertCircle
-                                                                        size={
-                                                                            12
-                                                                        }
-                                                                        className="text-gray-400 mr-2"
-                                                                    />
-                                                                    {limit}
-                                                                </li>
-                                                            )
-                                                        )}
-                                                    </ul>
-                                                </div>
-                                            )}
+                                        {limitations.length > 0 && (
+                                            <div className="bg-gray-50 rounded-lg p-3 md:p-4 mb-4 md:mb-6">
+                                                <h4 className="text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                                                    Limitations
+                                                </h4>
+                                                <ul className="text-xs md:text-sm text-gray-600 space-y-1">
+                                                    {limitations.map(
+                                                        (limit, index) => (
+                                                            <li
+                                                                key={index}
+                                                                className="flex items-center"
+                                                            >
+                                                                <AlertCircle
+                                                                    size={12}
+                                                                    className="text-gray-400 mr-2"
+                                                                />
+                                                                {limit}
+                                                            </li>
+                                                        )
+                                                    )}
+                                                </ul>
+                                            </div>
+                                        )}
 
                                         <Link
                                             href={route(
@@ -865,7 +723,7 @@ export default function SubscriptionPage({
                         </div>
 
                         {/* Feature Comparison */}
-                        {Object.keys(plans).length > 0 && (
+                        {subscriptionPlans.length > 0 && (
                             <div className="bg-white rounded-xl shadow-sm p-4 md:p-6 mb-6 md:mb-8">
                                 <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4 md:mb-6 text-center">
                                     Plan Comparison
@@ -879,72 +737,94 @@ export default function SubscriptionPage({
                                                         <th className="text-left pb-3 md:pb-4 px-2 md:px-0">
                                                             Features
                                                         </th>
-                                                        {Object.values(
-                                                            plans
-                                                        ).map((plan, index) => (
-                                                            <th
-                                                                key={index}
-                                                                className="text-center pb-3 md:pb-4 px-2 md:px-0"
-                                                            >
-                                                                <span className="text-xs md:text-sm">
-                                                                    {plan.name}
-                                                                </span>
-                                                            </th>
-                                                        ))}
+                                                        {subscriptionPlans.map(
+                                                            (plan, index) => (
+                                                                <th
+                                                                    key={index}
+                                                                    className="text-center pb-3 md:pb-4 px-2 md:px-0"
+                                                                >
+                                                                    <span className="text-xs md:text-sm">
+                                                                        {
+                                                                            plan.plan_name
+                                                                        }
+                                                                    </span>
+                                                                </th>
+                                                            )
+                                                        )}
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     {[
                                                         [
                                                             "Max Products",
-                                                            ...Object.values(
-                                                                plans
-                                                            ).map(
-                                                                (p) =>
-                                                                    p.limits
-                                                                        ?.max_products ||
-                                                                    "Unlimited"
+                                                            ...subscriptionPlans.map(
+                                                                (p) => {
+                                                                    const limits =
+                                                                        typeof p.limits ===
+                                                                        "string"
+                                                                            ? JSON.parse(
+                                                                                  p.limits
+                                                                              )
+                                                                            : p.limits ||
+                                                                              {};
+                                                                    return limits?.max_products >
+                                                                        0 &&
+                                                                        limits.max_products <
+                                                                            9999
+                                                                        ? limits.max_products
+                                                                        : "Unlimited";
+                                                                }
                                                             ),
                                                         ],
                                                         [
                                                             "Max Conversations",
-                                                            ...Object.values(
-                                                                plans
-                                                            ).map(
-                                                                (p) =>
-                                                                    p.limits
-                                                                        ?.max_conversations ||
-                                                                    "Unlimited"
+                                                            ...subscriptionPlans.map(
+                                                                (p) => {
+                                                                    const limits =
+                                                                        typeof p.limits ===
+                                                                        "string"
+                                                                            ? JSON.parse(
+                                                                                  p.limits
+                                                                              )
+                                                                            : p.limits ||
+                                                                              {};
+                                                                    return limits?.max_conversations >
+                                                                        0 &&
+                                                                        limits.max_conversations <
+                                                                            9999
+                                                                        ? limits.max_conversations
+                                                                        : "Unlimited";
+                                                                }
                                                             ),
                                                         ],
                                                         [
                                                             "Featured Listing",
-                                                            ...Object.values(
-                                                                plans
-                                                            ).map((p) =>
-                                                                p.limits
-                                                                    ?.featured_listing
-                                                                    ? "✓"
-                                                                    : "✗"
+                                                            ...subscriptionPlans.map(
+                                                                (p) => {
+                                                                    const limits =
+                                                                        typeof p.limits ===
+                                                                        "string"
+                                                                            ? JSON.parse(
+                                                                                  p.limits
+                                                                              )
+                                                                            : p.limits ||
+                                                                              {};
+                                                                    return limits?.featured_listing
+                                                                        ? "✓"
+                                                                        : "✗";
+                                                                }
                                                             ),
                                                         ],
                                                         [
-                                                            "Support",
-                                                            ...Object.values(
-                                                                plans
-                                                            ).map((p) =>
-                                                                p.name.includes(
-                                                                    "Enterprise"
-                                                                )
-                                                                    ? "24/7"
-                                                                    : p.name.includes(
-                                                                          "Pro"
-                                                                      ) ||
-                                                                      p.name.includes(
-                                                                          "Professional"
-                                                                      )
-                                                                    ? "Priority"
-                                                                    : "Email"
+                                                            "Monthly Price",
+                                                            ...subscriptionPlans.map(
+                                                                (p) =>
+                                                                    `RM ${parseFloat(
+                                                                        p.price ||
+                                                                            0
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}`
                                                             ),
                                                         ],
                                                     ].map(
@@ -1090,101 +970,100 @@ export default function SubscriptionPage({
                                                 {currentBillingItems.length >
                                                 0 ? (
                                                     currentBillingItems.map(
-                                                        (bill, index) => {
-                                                            return (
-                                                                <tr
-                                                                    key={
-                                                                        bill.receipt_id ||
-                                                                        index
+                                                        (bill, index) => (
+                                                            <tr
+                                                                key={
+                                                                    bill.id ||
+                                                                    index
+                                                                }
+                                                                className="hover:bg-gray-50"
+                                                            >
+                                                                <td className="px-3 md:px-4 py-2 md:py-3 font-medium text-gray-900 text-xs md:text-sm">
+                                                                    {bill.receipt_id ||
+                                                                        `INV-${bill.id}`}
+                                                                </td>
+                                                                <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm">
+                                                                    {dayjs(
+                                                                        bill.created_at
+                                                                    ).format(
+                                                                        "MMM YYYY"
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm">
+                                                                    {
+                                                                        bill.subscription_plan_id
                                                                     }
-                                                                    className="hover:bg-gray-50"
-                                                                >
-                                                                    <td className="px-3 md:px-4 py-2 md:py-3 font-medium text-gray-900 text-xs md:text-sm">
+                                                                </td>
+                                                                <td className="px-3 md:px-4 py-2 md:py-3 font-medium text-gray-900 text-xs md:text-sm">
+                                                                    RM{" "}
+                                                                    {parseFloat(
+                                                                        bill.amount ||
+                                                                            0
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 md:px-4 py-2 md:py-3">
+                                                                    <span
+                                                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                                            bill.payment_status ===
+                                                                                "paid" ||
+                                                                            bill.payment_status ===
+                                                                                "completed"
+                                                                                ? "bg-green-100 text-green-800"
+                                                                                : bill.payment_status ===
+                                                                                  "pending"
+                                                                                ? "bg-yellow-100 text-yellow-800"
+                                                                                : "bg-red-100 text-red-800"
+                                                                        }`}
+                                                                    >
                                                                         {
-                                                                            bill.receipt_id
+                                                                            bill.payment_status
                                                                         }
-                                                                    </td>
-                                                                    <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm">
-                                                                        {dayjs(
-                                                                            bill.created_at
-                                                                        ).format(
-                                                                            "MMM YYYY"
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm">
-                                                                        {
-                                                                            bill.subscription_plan_id
-                                                                        }
-                                                                    </td>
-                                                                    <td className="px-3 md:px-4 py-2 md:py-3 font-medium text-gray-900 text-xs md:text-sm">
-                                                                        RM{" "}
-                                                                        {
-                                                                            bill.amount
-                                                                        }
-                                                                    </td>
-
-                                                                    <td className="px-3 md:px-4 py-2 md:py-3">
-                                                                        <span
-                                                                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                                                                bill.payment_status ===
-                                                                                    "paid" ||
-                                                                                bill.payment_status ===
-                                                                                    "completed"
-                                                                                    ? "bg-green-100 text-green-800"
-                                                                                    : bill.payment_status ===
-                                                                                      "pending"
-                                                                                    ? "bg-yellow-100 text-yellow-800"
-                                                                                    : "bg-red-100 text-red-800"
-                                                                            }`}
-                                                                        >
-                                                                            {
-                                                                                bill.payment_status
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 md:px-4 py-2 md:py-3">
+                                                                    <div className="flex gap-1 md:gap-2">
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                handleViewReceipt(
+                                                                                    bill
+                                                                                )
                                                                             }
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="px-3 md:px-4 py-2 md:py-3">
-                                                                        <div className="flex gap-1 md:gap-2">
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    handleViewReceipt(
-                                                                                        bill
-                                                                                    )
+                                                                            className="flex items-center gap-1 px-2 md:px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
+                                                                        >
+                                                                            <FileText
+                                                                                size={
+                                                                                    10
                                                                                 }
-                                                                                className="flex items-center gap-1 px-2 md:px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
+                                                                            />
+                                                                            <span className="hidden xs:inline">
+                                                                                Receipt
+                                                                            </span>
+                                                                        </button>
+                                                                        {bill.receipt_url && (
+                                                                            <a
+                                                                                href={
+                                                                                    bill.receipt_url
+                                                                                }
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="flex items-center gap-1 px-2 md:px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50"
                                                                             >
-                                                                                <FileText
+                                                                                <Download
                                                                                     size={
                                                                                         10
                                                                                     }
                                                                                 />
                                                                                 <span className="hidden xs:inline">
-                                                                                    Receipt
+                                                                                    Download
                                                                                 </span>
-                                                                            </button>
-                                                                            {bill.receipt_url && (
-                                                                                <a
-                                                                                    href={
-                                                                                        bill.receipt_url
-                                                                                    }
-                                                                                    target="_blank"
-                                                                                    rel="noopener noreferrer"
-                                                                                    className="flex items-center gap-1 px-2 md:px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50"
-                                                                                >
-                                                                                    <Download
-                                                                                        size={
-                                                                                            10
-                                                                                        }
-                                                                                    />
-                                                                                    <span className="hidden xs:inline">
-                                                                                        Download
-                                                                                    </span>
-                                                                                </a>
-                                                                            )}
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        }
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )
                                                     )
                                                 ) : (
                                                     <tr>
@@ -1211,94 +1090,6 @@ export default function SubscriptionPage({
 
                 {/* Receipt Modal */}
                 {showReceiptModal && <ReceiptModal />}
-
-                {/* Payment Modal */}
-                {showPaymentModal && selectedPlan && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-xl p-4 md:p-6 w-full max-w-md">
-                            <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-                                Upgrade to {selectedPlan.name}
-                            </h3>
-                            <div className="bg-blue-50 rounded-lg p-3 md:p-4 mb-4">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium text-sm md:text-base">
-                                        Total Due Today
-                                    </span>
-                                    <span className="text-xl md:text-2xl font-bold">
-                                        RM {calculatePrice(selectedPlan)}
-                                    </span>
-                                </div>
-                                {billingCycle === "yearly" &&
-                                    selectedPlan.monthlyPrice > 0 && (
-                                        <p className="text-xs md:text-sm text-blue-700">
-                                            You'll save RM
-                                            {selectedPlan.monthlyPrice * 12 -
-                                                selectedPlan.yearlyPrice *
-                                                    12}{" "}
-                                            annually compared to monthly billing
-                                        </p>
-                                    )}
-                            </div>
-
-                            <div className="space-y-3 md:space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Card Number
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="1234 5678 9012 3456"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3 md:gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Expiry Date
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="MM/YY"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            CVV
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="123"
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 md:gap-3 mt-4 md:mt-6">
-                                <button
-                                    onClick={() => {
-                                        setShowPaymentModal(false);
-                                        setSelectedPlan(null);
-                                    }}
-                                    className="flex-1 py-2 md:py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 text-sm md:text-base"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setShowPaymentModal(false);
-                                        setSelectedPlan(null);
-                                    }}
-                                    className="flex-1 py-2 md:py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 text-sm md:text-base"
-                                >
-                                    Confirm Payment
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </main>
         </div>
     );

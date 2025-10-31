@@ -1,12 +1,9 @@
 import {
     X,
     Package,
-    Ruler,
     Weight,
-    Shield,
     CheckCircle,
     Truck,
-    Sliders,
     Star,
     Box,
     List,
@@ -22,6 +19,11 @@ import {
     BarChart3,
     ChevronLeft,
     ChevronRight,
+    Palette,
+    PackageOpen,
+    TrendingUp,
+    Hash,
+    AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -77,6 +79,19 @@ export function SellerViewProduct_Modal({ product, onClose }) {
         return labels[status] || status;
     };
 
+    const getVariantStatusStyle = (quantity) => {
+        if (quantity === 0) return "bg-red-100 text-red-800 border-red-200";
+        if (quantity <= 5)
+            return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-green-100 text-green-800 border-green-200";
+    };
+
+    const getVariantStatusLabel = (quantity) => {
+        if (quantity === 0) return "Out of Stock";
+        if (quantity <= 5) return "Low Stock";
+        return "In Stock";
+    };
+
     const hasOptions = product?.product_option?.some(
         (option) => option.product_option_value?.length > 0
     );
@@ -85,6 +100,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
     const hasIncludedItems = product?.product_include_item?.length > 0;
     const hasImages = product?.product_image?.length > 0;
     const hasVideos = product?.product_video?.length > 0;
+    const hasVariants = product?.product_variant?.length > 0;
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString("en-US", {
@@ -115,6 +131,49 @@ export function SellerViewProduct_Modal({ product, onClose }) {
         );
     };
 
+    // Calculate variant statistics
+    const calculateVariantStats = () => {
+        if (!hasVariants) return null;
+
+        const variants = product.product_variant;
+        const totalVariants = variants.length;
+        const inStockVariants = variants.filter((v) => v.quantity > 0).length;
+        const outOfStockVariants = variants.filter(
+            (v) => v.quantity === 0
+        ).length;
+        const lowStockVariants = variants.filter(
+            (v) => v.quantity > 0 && v.quantity <= 5
+        ).length;
+
+        const totalStock = variants.reduce(
+            (sum, v) => sum + (v.quantity || 0),
+            0
+        );
+        const minPrice = Math.min(
+            ...variants.map((v) =>
+                parseFloat(v.price || product.product_price || 0)
+            )
+        );
+        const maxPrice = Math.max(
+            ...variants.map((v) =>
+                parseFloat(v.price || product.product_price || 0)
+            )
+        );
+
+        return {
+            totalVariants,
+            inStockVariants,
+            outOfStockVariants,
+            lowStockVariants,
+            totalStock,
+            minPrice,
+            maxPrice,
+            hasPriceRange: minPrice !== maxPrice,
+        };
+    };
+
+    const variantStats = calculateVariantStats();
+
     return (
         <>
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 sm:p-4">
@@ -144,6 +203,17 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                             product?.product_status
                                         )}
                                     </span>
+                                    {hasVariants && (
+                                        <>
+                                            <span className="hidden sm:inline">
+                                                •
+                                            </span>
+                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                                {variantStats.totalVariants}{" "}
+                                                Variants
+                                            </span>
+                                        </>
+                                    )}
                                 </p>
                             </div>
                         </div>
@@ -170,9 +240,10 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                     icon: List,
                                 },
                                 {
-                                    id: "options",
-                                    label: "Options",
-                                    icon: Sliders,
+                                    id: "variants",
+                                    label: "Variants",
+                                    icon: Palette,
+                                    show: hasVariants,
                                 },
                                 {
                                     id: "media",
@@ -203,6 +274,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                     </span>
                                     <span className="xs:hidden">
                                         {tab.label === "Overview" && "View"}
+                                        {tab.label === "Variants" && "Var"}
                                         {tab.label === "Features" && "Feat"}
                                         {tab.label === "Options" && "Opt"}
                                         {tab.label === "Media" && "Media"}
@@ -283,13 +355,35 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                     <div className="flex flex-col xs:flex-row xs:justify-between xs:items-start gap-3 sm:gap-0">
                                         <div>
                                             <p className="text-2xl sm:text-3xl font-bold text-gray-900">
-                                                RM{" "}
-                                                {parseFloat(
-                                                    product?.product_price || 0
-                                                ).toFixed(2)}
+                                                {hasVariants &&
+                                                variantStats.hasPriceRange ? (
+                                                    <>
+                                                        RM{" "}
+                                                        {variantStats.minPrice.toFixed(
+                                                            2
+                                                        )}{" "}
+                                                        - RM{" "}
+                                                        {variantStats.maxPrice.toFixed(
+                                                            2
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        RM{" "}
+                                                        {parseFloat(
+                                                            product?.product_price ||
+                                                                0
+                                                        ).toFixed(2)}
+                                                    </>
+                                                )}
                                             </p>
                                             <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                                                Selling Price
+                                                {hasVariants &&
+                                                variantStats.hasPriceRange
+                                                    ? "Price Range"
+                                                    : "Selling Price"}
+                                                {hasVariants &&
+                                                    ` (${variantStats.totalVariants} variants)`}
                                             </p>
                                         </div>
                                         <div className="xs:text-right">
@@ -317,12 +411,32 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                     className="text-gray-400"
                                                 />
                                                 <span className="text-base sm:text-lg font-semibold text-gray-900">
-                                                    {product?.product_quantity ||
-                                                        0}
+                                                    {hasVariants
+                                                        ? variantStats.totalStock
+                                                        : product?.product_quantity ||
+                                                          0}
                                                 </span>
                                             </div>
                                             <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                                                In Stock
+                                                Total Stock
+                                            </p>
+                                        </div>
+                                        <div className="text-center p-2 sm:p-3 bg-white rounded-lg">
+                                            <div className="flex items-center justify-center space-x-1">
+                                                <PackageOpen
+                                                    size={16}
+                                                    className="text-gray-400"
+                                                />
+                                                <span className="text-base sm:text-lg font-semibold text-gray-900">
+                                                    {hasVariants
+                                                        ? variantStats.totalVariants
+                                                        : 1}
+                                                </span>
+                                            </div>
+                                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                                                {hasVariants
+                                                    ? "Variants"
+                                                    : "Variant"}
                                             </p>
                                         </div>
                                         <div className="text-center p-2 sm:p-3 bg-white rounded-lg">
@@ -358,6 +472,66 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                             </p>
                                         </div>
                                     </div>
+
+                                    {/* Variant Quick Stats */}
+                                    {hasVariants && (
+                                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-200">
+                                            <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center text-sm sm:text-base">
+                                                <TrendingUp
+                                                    size={16}
+                                                    className="mr-2 text-purple-500"
+                                                />
+                                                Variant Summary
+                                            </h3>
+                                            <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">
+                                                        In Stock:
+                                                    </span>
+                                                    <span className="font-medium text-green-600">
+                                                        {
+                                                            variantStats.inStockVariants
+                                                        }
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">
+                                                        Low Stock:
+                                                    </span>
+                                                    <span className="font-medium text-yellow-600">
+                                                        {
+                                                            variantStats.lowStockVariants
+                                                        }
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">
+                                                        Out of Stock:
+                                                    </span>
+                                                    <span className="font-medium text-red-600">
+                                                        {
+                                                            variantStats.outOfStockVariants
+                                                        }
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">
+                                                        Price Range:
+                                                    </span>
+                                                    <span className="font-medium text-blue-600">
+                                                        RM
+                                                        {variantStats.minPrice.toFixed(
+                                                            2
+                                                        )}
+                                                        -
+                                                        {variantStats.maxPrice.toFixed(
+                                                            2
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* Description */}
                                     <div className="bg-white rounded-lg border p-3 sm:p-4">
@@ -519,83 +693,310 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                         )}
 
                         {/* Options Tab */}
-                        {activeTab === "options" && (
+                        {activeTab === "variants" && hasVariants && (
                             <div className="p-3 sm:p-4 md:p-6">
-                                <div className="bg-white rounded-lg sm:rounded-xl border p-4 sm:p-6">
-                                    <h3 className="font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center text-sm sm:text-base">
-                                        <Sliders
-                                            size={18}
-                                            className="text-purple-500 mr-2"
-                                        />
-                                        Product Options
-                                    </h3>
+                                <div className="bg-white rounded-lg sm:rounded-xl border">
+                                    {/* Variants Header */}
+                                    <div className="p-4 sm:p-6 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
+                                        <h3 className="font-semibold text-gray-900 mb-2 flex items-center text-lg sm:text-xl">
+                                            <Palette
+                                                size={20}
+                                                className="mr-2 text-purple-500"
+                                            />
+                                            Product Variants
+                                        </h3>
+                                        <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                                            <div className="flex items-center gap-1">
+                                                <Hash size={16} />
+                                                <span>
+                                                    Total:{" "}
+                                                    <strong>
+                                                        {
+                                                            variantStats.totalVariants
+                                                        }
+                                                    </strong>{" "}
+                                                    variants
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <CheckCircle
+                                                    size={16}
+                                                    className="text-green-500"
+                                                />
+                                                <span>
+                                                    In Stock:{" "}
+                                                    <strong>
+                                                        {
+                                                            variantStats.inStockVariants
+                                                        }
+                                                    </strong>
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <AlertTriangle
+                                                    size={16}
+                                                    className="text-yellow-500"
+                                                />
+                                                <span>
+                                                    Low Stock:{" "}
+                                                    <strong>
+                                                        {
+                                                            variantStats.lowStockVariants
+                                                        }
+                                                    </strong>
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <X
+                                                    size={16}
+                                                    className="text-red-500"
+                                                />
+                                                <span>
+                                                    Out of Stock:{" "}
+                                                    <strong>
+                                                        {
+                                                            variantStats.outOfStockVariants
+                                                        }
+                                                    </strong>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    {hasOptions ? (
-                                        <div className="space-y-5 sm:space-y-6">
-                                            {product.product_option.map(
-                                                (option, optionIndex) =>
-                                                    option.product_option_value
-                                                        ?.length > 0 && (
+                                    {/* Variants Table */}
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50">
+                                                <tr className="text-left text-xs sm:text-sm text-gray-700">
+                                                    <th className="px-4 py-3 font-medium">
+                                                        Variant ID
+                                                    </th>
+                                                    <th className="px-4 py-3 font-medium">
+                                                        Combination
+                                                    </th>
+                                                    <th className="px-4 py-3 font-medium text-right">
+                                                        Price (RM)
+                                                    </th>
+                                                    <th className="px-4 py-3 font-medium text-right">
+                                                        Quantity
+                                                    </th>
+                                                    <th className="px-4 py-3 font-medium text-center">
+                                                        Status
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {product.product_variant.map(
+                                                    (variant, index) => {
+                                                        const combination =
+                                                            typeof variant.variant_combination ===
+                                                            "string"
+                                                                ? JSON.parse(
+                                                                      variant.variant_combination ||
+                                                                          "{}"
+                                                                  )
+                                                                : variant.variant_combination ||
+                                                                  {};
+
+                                                        return (
+                                                            <tr
+                                                                key={
+                                                                    variant.variant_id
+                                                                }
+                                                                className="hover:bg-gray-50 transition-colors"
+                                                            >
+                                                                <td className="px-4 py-3 text-xs sm:text-sm font-mono text-gray-600">
+                                                                    {
+                                                                        variant.variant_id
+                                                                    }
+                                                                </td>
+                                                                <td className="px-4 py-3">
+                                                                    <div className="flex flex-wrap gap-1">
+                                                                        {Object.entries(
+                                                                            combination
+                                                                        ).map(
+                                                                            ([
+                                                                                key,
+                                                                                value,
+                                                                            ]) => (
+                                                                                <span
+                                                                                    key={
+                                                                                        key
+                                                                                    }
+                                                                                    className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium"
+                                                                                >
+                                                                                    {
+                                                                                        key
+                                                                                    }
+
+                                                                                    :{" "}
+                                                                                    {
+                                                                                        value
+                                                                                    }
+                                                                                </span>
+                                                                            )
+                                                                        )}
+                                                                        {Object.keys(
+                                                                            combination
+                                                                        )
+                                                                            .length ===
+                                                                            0 && (
+                                                                            <span className="text-gray-400 text-xs">
+                                                                                Default
+                                                                                variant
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right text-sm sm:text-base font-semibold text-gray-900">
+                                                                    {parseFloat(
+                                                                        variant.price ||
+                                                                            0
+                                                                    ).toFixed(
+                                                                        2
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    <span
+                                                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                                            variant.quantity ===
+                                                                            0
+                                                                                ? "bg-red-100 text-red-800"
+                                                                                : variant.quantity <=
+                                                                                  5
+                                                                                ? "bg-yellow-100 text-yellow-800"
+                                                                                : "bg-green-100 text-green-800"
+                                                                        }`}
+                                                                    >
+                                                                        {variant.quantity ||
+                                                                            0}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <span
+                                                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getVariantStatusStyle(
+                                                                            variant.quantity
+                                                                        )}`}
+                                                                    >
+                                                                        {getVariantStatusLabel(
+                                                                            variant.quantity
+                                                                        )}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Mobile Variants View */}
+                                    <div className="md:hidden p-4">
+                                        <div className="space-y-3">
+                                            {product.product_variant.map(
+                                                (variant, index) => {
+                                                    const combination =
+                                                        typeof variant.combination ===
+                                                        "string"
+                                                            ? JSON.parse(
+                                                                  variant.combination ||
+                                                                      "{}"
+                                                              )
+                                                            : variant.combination ||
+                                                              {};
+
+                                                    return (
                                                         <div
-                                                            key={optionIndex}
-                                                            className="border rounded-lg p-4 bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                                                            key={
+                                                                variant.variant_id
+                                                            }
+                                                            className="border rounded-lg p-3 bg-white"
                                                         >
-                                                            <h4 className="font-medium text-gray-800 mb-3 capitalize text-sm sm:text-base">
-                                                                {option.option_name ||
-                                                                    `Option ${
-                                                                        optionIndex +
-                                                                        1
-                                                                    }`}
-                                                            </h4>
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <div className="font-mono text-xs text-gray-500">
+                                                                    {
+                                                                        variant.variant_id
+                                                                    }
+                                                                </div>
+                                                                <span
+                                                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getVariantStatusStyle(
+                                                                        variant.quantity
+                                                                    )}`}
+                                                                >
+                                                                    {getVariantStatusLabel(
+                                                                        variant.quantity
+                                                                    )}
+                                                                </span>
+                                                            </div>
 
-                                                            <div className="flex flex-wrap gap-2 sm:gap-3">
-                                                                {option.product_option_value.map(
-                                                                    (
-                                                                        value,
-                                                                        valueIndex
-                                                                    ) => (
-                                                                        <div
-                                                                            key={
-                                                                                valueIndex
-                                                                            }
-                                                                            className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2 shadow-sm hover:shadow-md transition"
-                                                                        >
-                                                                            <span className="text-gray-800 text-sm font-medium">
+                                                            <div className="mb-2">
+                                                                <div className="flex flex-wrap gap-1 mb-2">
+                                                                    {Object.entries(
+                                                                        combination
+                                                                    ).map(
+                                                                        ([
+                                                                            key,
+                                                                            value,
+                                                                        ]) => (
+                                                                            <span
+                                                                                key={
+                                                                                    key
+                                                                                }
+                                                                                className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium"
+                                                                            >
                                                                                 {
-                                                                                    value.option_value
+                                                                                    key
+                                                                                }
+
+                                                                                :{" "}
+                                                                                {
+                                                                                    value
                                                                                 }
                                                                             </span>
+                                                                        )
+                                                                    )}
+                                                                </div>
+                                                            </div>
 
-                                                                            <span className="bg-purple-100 text-purple-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                                                                                Qty:{" "}
-                                                                                {
-                                                                                    value.quantity
-                                                                                }
-                                                                            </span>
-                                                                        </div>
-                                                                    )
-                                                                )}
+                                                            <div className="flex justify-between items-center text-sm">
+                                                                <div>
+                                                                    <span className="font-semibold text-gray-900">
+                                                                        RM{" "}
+                                                                        {parseFloat(
+                                                                            variant.price ||
+                                                                                0
+                                                                        ).toFixed(
+                                                                            2
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-gray-600">
+                                                                        Qty:{" "}
+                                                                    </span>
+                                                                    <span
+                                                                        className={`font-medium ${
+                                                                            variant.quantity ===
+                                                                            0
+                                                                                ? "text-red-600"
+                                                                                : variant.quantity <=
+                                                                                  5
+                                                                                ? "text-yellow-600"
+                                                                                : "text-green-600"
+                                                                        }`}
+                                                                    >
+                                                                        {variant.quantity ||
+                                                                            0}
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    )
+                                                    );
+                                                }
                                             )}
                                         </div>
-                                    ) : (
-                                        <div className="text-center py-8 sm:py-12">
-                                            <Sliders
-                                                size={40}
-                                                className="text-gray-300 mx-auto mb-3 sm:mb-4"
-                                            />
-                                            <p className="text-gray-500 text-base sm:text-lg font-medium">
-                                                No product options available
-                                            </p>
-                                            <p className="text-gray-400 text-xs sm:text-sm mt-2">
-                                                This product doesn't have any
-                                                variations or options
-                                                configured.
-                                            </p>
-                                        </div>
-                                    )}
+                                    </div>
                                 </div>
                             </div>
                         )}

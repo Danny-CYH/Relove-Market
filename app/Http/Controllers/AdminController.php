@@ -8,6 +8,7 @@ use App\Events\AdminPage\Manage_Subscriptions\SubscriptionStatusUpdated;
 use App\Events\AdminPage\Manage_Subscriptions\SubscriptionUpdated;
 use App\Events\SellerRegistered;
 
+use App\Models\Order;
 use App\Models\SellerRegistration;
 use App\Models\Seller;
 use App\Models\SellerStore;
@@ -479,7 +480,16 @@ class AdminController extends Controller
 
     public function transactionPage()
     {
-        return Inertia::render("AdminPage/Transactions");
+        $list_transactions = Order::with([
+            "user",
+            "seller",
+            "orderItems.product"
+        ])
+            ->paginate(5);
+
+        return Inertia::render("AdminPage/Transactions", [
+            "list_transactions" => $list_transactions
+        ]);
     }
 
     public function pendingSellerTable()

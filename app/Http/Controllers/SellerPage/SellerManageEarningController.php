@@ -84,7 +84,7 @@ class SellerManageEarningController extends Controller
                 case 'monthly':
                     // Last 6 months
                     for ($i = 5; $i >= 0; $i--) {
-                        $date = now()->subMonths($i);
+                        $date = now()->startOfMonth()->subMonths($i);
                         $monthlyEarnings = Order::where('seller_id', $sellerId)
                             ->whereIn('order_status', ['Delivered', 'completed'])
                             ->whereYear('created_at', $date->year)
@@ -92,7 +92,7 @@ class SellerManageEarningController extends Controller
                             ->sum('amount');
 
                         $chartData[] = $monthlyEarnings;
-                        $chartLabels[] = $date->format('M Y');
+                        $chartLabels[] = $date->format('M');
                     }
                     break;
 
@@ -130,7 +130,7 @@ class SellerManageEarningController extends Controller
                     'product_name' => $productName,
                     'amount' => $order->amount,
                     'order_status' => $order->order_status,
-                    'payment_status' => $order->is_paid ? 'Paid' : 'Pending',
+                    'payment_status' => $order->payment_status,
                 ];
             });
 
