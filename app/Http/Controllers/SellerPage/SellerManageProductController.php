@@ -5,13 +5,12 @@ namespace App\Http\Controllers\SellerPage;
 use App\Events\ProductUpdated;
 use App\Http\Controllers\Controller;
 
+use App\Models\Category;
 use App\Models\Product;
 
 use App\Models\ProductFeature;
 use App\Models\ProductImage;
 use App\Models\ProductIncludeItem;
-use App\Models\ProductOption;
-use App\Models\ProductOptionValue;
 use App\Models\ProductVariant;
 use App\Models\ProductVideo;
 use Exception;
@@ -36,17 +35,19 @@ class SellerManageProductController extends Controller
     // Code for getting all the product for the current login seller
     public function get_ListProduct(Request $request)
     {
+        \Log::info('📥 Received request:', $request->all());
+        \Log::info('📥 Page parameter:', ['page' => $request->get('page')]);
+
         $searchTerm = $request->get('search', '');
         $statusFilter = $request->get('status', 'all');
         $categoryFilter = $request->get('category', 'all');
-        $sortBy = $request->get('sort', 'created_at_desc');
+        $sortBy = $request->get('sort', 'name');
 
         $query = Product::with([
             "productImage",
             "productVideo",
             "productFeature",
             "productIncludeItem",
-            "productOption.productOptionValue",
             "productVariant",
             "category"
         ])->where("seller_id", $this->seller_id);
@@ -84,11 +85,18 @@ class SellerManageProductController extends Controller
                 $query->orderBy('product_quantity', 'asc');
                 break;
             default:
-                $query->orderBy('created_at', 'desc');
+                $query->orderBy('product_name', 'asc');
                 break;
         }
 
         $list_product = $query->paginate(5);
+
+        \Log::info('📤 Sending response:', [
+            'current_page' => $list_product->currentPage(),
+            'last_page' => $list_product->lastPage(),
+            'total' => $list_product->total(),
+            'per_page' => $list_product->perPage()
+        ]);
 
         return response()->json([
             "list_product" => $list_product,
@@ -112,8 +120,6 @@ class SellerManageProductController extends Controller
             'category_id' => 'required|exists:categories,category_id',
             'key_features.*' => 'required|string|max:255',
             'included_items.*' => 'string|max:255',
-            'product_optionName.*' => 'string|max:255',
-            'product_optionValue.*' => 'string|max:255',
             'product_image.*' => 'required|image|mimes:jpg,jpeg,png,gif,webp|max:5120',
             'product_video.*' => 'nullable|mimes:mp4,mov,avi,wmv,mkv|max:51200',
         ], [
@@ -245,16 +251,20 @@ class SellerManageProductController extends Controller
 
                     // Get full storage path to the image
                     $fullPath = storage_path("app/public/{$path}");
+                    $category = Category::where("category_id", $request->category_id)->first();
 
-                    // Send to FastAPI
+                    $mlServiceUrl = env('ML_SERVICE_URL') . '/add_product/';
+
                     Http::attach(
                         'image',
                         file_get_contents($fullPath),
                         $filename
-                    )->asMultipart()->post('https://recommendation-product-service.onrender.com/add_product/', [
-                                ['name' => 'product_id', 'contents' => $productId], // force int
+                    )->asMultipart()->post($mlServiceUrl, [
+                                ['name' => 'product_id', 'contents' => $productId],
                                 ['name' => 'name', 'contents' => $request->product_name],
+                                ['name' => 'category', 'contents' => $category->category_name],
                             ]);
+
                 }
             }
 
@@ -343,7 +353,6 @@ class SellerManageProductController extends Controller
                 "productVideo",
                 "productFeature",
                 "productIncludeItem",
-                "productOption.productOptionValue",
                 "productVariant"
             ])
                 ->where("product_id", $request->product_id)
@@ -409,115 +418,6 @@ class SellerManageProductController extends Controller
                         ]);
                     }
                 }
-            }
-
-            // ✅ Handle product options (for variant generation)
-            if ($request->has('options')) {
-                // Get all existing option IDs for this product
-                $existingOptionIds = ProductOption::where('product_id', $product->product_id)
-                    ->pluck('option_id')
-                    ->toArray();
-
-                $submittedOptionIds = [];
-
-                foreach ($request->options as $option) {
-                    if (!empty(trim($option['name']))) {
-                        // Try to find existing option
-                        $existingOption = ProductOption::where('product_id', $product->product_id)
-                            ->where('option_id', $option['id'] ?? null)
-                            ->first();
-
-                        if ($existingOption) {
-                            // Update
-                            $existingOption->update([
-                                'option_name' => trim($option['name']),
-                            ]);
-                            $currentOption = $existingOption;
-                            $submittedOptionIds[] = $existingOption->option_id;
-                        } else {
-                            $latestOption = ProductOption::orderBy('option_id', 'desc')->first();
-                            $number = ($latestOption && preg_match('/OPT-(\d+)/', $latestOption->option_id, $matches))
-                                ? (int) $matches[1] + 1
-                                : 1;
-                            $newOptionId = 'OPT-' . str_pad($number, 5, '0', STR_PAD_LEFT);
-
-                            $newOption = ProductOption::create([
-                                'option_id' => $newOptionId,
-                                'product_id' => $product->product_id,
-                                'option_name' => trim($option['name']),
-                            ]);
-                            $currentOption = $newOption;
-                            $submittedOptionIds[] = $newOptionId;
-                        }
-
-                        // ✅ Handle option values
-                        $existingValueIds = ProductOptionValue::where('option_id', $currentOption->option_id)
-                            ->pluck('value_id')
-                            ->toArray();
-
-                        $submittedValueIds = [];
-
-                        if (!empty($option['values'])) {
-                            foreach ($option['values'] as $value) {
-                                if (!empty(trim($value['name'] ?? $value))) {
-                                    $valueId = $value['id'] ?? null;
-                                    $valueName = $value['name'] ?? $value;
-
-                                    $existingValue = ProductOptionValue::where('option_id', $currentOption->option_id)
-                                        ->where('value_id', $valueId)
-                                        ->first();
-
-                                    if ($existingValue) {
-                                        // Update existing value
-                                        $existingValue->update([
-                                            'option_value' => trim($valueName),
-                                        ]);
-                                        $submittedValueIds[] = $existingValue->value_id;
-                                    } else {
-                                        // Create new value
-                                        $latestValue = ProductOptionValue::orderBy('value_id', 'desc')->first();
-                                        $vnumber = ($latestValue && preg_match('/VAL-(\d+)/', $latestValue->value_id, $vmatches))
-                                            ? (int) $vmatches[1] + 1
-                                            : 1;
-                                        $newValueId = 'VAL-' . str_pad($vnumber, 5, '0', STR_PAD_LEFT);
-
-                                        $newValue = ProductOptionValue::create([
-                                            'value_id' => $newValueId,
-                                            'option_id' => $currentOption->option_id,
-                                            'option_value' => trim($valueName),
-                                        ]);
-                                        $submittedValueIds[] = $newValueId;
-                                    }
-                                }
-                            }
-                        }
-
-                        // ✅ Delete values that were removed from this option
-                        $valuesToDelete = array_diff($existingValueIds, $submittedValueIds);
-                        if (!empty($valuesToDelete)) {
-                            ProductOptionValue::where('option_id', $currentOption->option_id)
-                                ->whereIn('value_id', $valuesToDelete)
-                                ->delete();
-                        }
-                    }
-                }
-                // ✅ Delete options that were completely removed
-                $optionsToDelete = array_diff($existingOptionIds, $submittedOptionIds);
-                if (!empty($optionsToDelete)) {
-                    // First delete associated values
-                    ProductOptionValue::whereIn('option_id', $optionsToDelete)->delete();
-                    // Then delete the options
-                    ProductOption::whereIn('option_id', $optionsToDelete)->delete();
-                }
-            } else {
-                // ✅ If no options are submitted, delete all existing options and values
-                ProductOptionValue::whereIn('option_id', function ($query) use ($product) {
-                    $query->select('option_id')
-                        ->from('product_options')
-                        ->where('product_id', $product->product_id);
-                })->delete();
-
-                ProductOption::where('product_id', $product->product_id)->delete();
             }
 
             // ✅ Handle product variants
@@ -659,8 +559,6 @@ class SellerManageProductController extends Controller
                 "productVideo",
                 "productFeature",
                 "productIncludeItem",
-                "productOption",
-                "productOption.productOptionValue",
                 "productEmbeddings",
             )
                 ->find($request->product_id);

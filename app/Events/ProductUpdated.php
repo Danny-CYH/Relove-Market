@@ -46,7 +46,6 @@ class ProductUpdated implements ShouldBroadcastNow
                 'productVideo',
                 'productFeature',
                 'productIncludeItem',
-                'productOption.productOptionValue',
                 'category'
             ])->toArray(),
         ];

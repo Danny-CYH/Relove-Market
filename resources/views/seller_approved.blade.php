@@ -377,7 +377,7 @@
 
             <!-- CTA Section -->
             <div class="cta-section">
-                <a href="{{ route('seller.dashboard') }}" class="cta-button">
+                <a href="{{ route('seller-dashboard') }}" class="cta-button">
                     Launch Your Seller Dashboard
                 </a>
                 <p style="margin-top: 15px; color: #6b7280; font-size: 14px;">

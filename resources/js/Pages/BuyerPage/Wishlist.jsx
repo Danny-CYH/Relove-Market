@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     Trash2,
     Heart,
@@ -9,6 +9,8 @@ import {
     Minus,
     Star,
     Loader2,
+    AlertCircle,
+    ChevronDown,
 } from "lucide-react";
 import axios from "axios";
 
@@ -23,11 +25,144 @@ export default function Wishlist({ user_wishlist }) {
     const [selectAll, setSelectAll] = useState(false);
     const [loadingStates, setLoadingStates] = useState({});
     const [bulkLoading, setBulkLoading] = useState(false);
+    const [variantModal, setVariantModal] = useState(null);
+    const [addressError, setAddressError] = useState(false);
 
     const { auth } = usePage().props;
 
+    // Check address on component mount
+    useEffect(() => {
+        if (!auth.user?.address) {
+            setAddressError(true);
+        }
+    }, [auth.user]);
+
+    // Enhanced variant parsing function
+    const parseVariantData = (variantData) => {
+        if (!variantData) return null;
+
+        try {
+            // If it's already an object, return it
+            if (typeof variantData === "object") {
+                return variantData;
+            }
+
+            // If it's a string, try to parse it
+            if (typeof variantData === "string") {
+                return JSON.parse(variantData);
+            }
+
+            return null;
+        } catch (error) {
+            console.error("Error parsing variant data:", error);
+            return null;
+        }
+    };
+
+    // Enhanced variant display text
+    const getVariantDisplayText = (item) => {
+        const variantData = parseVariantData(item.selected_variant);
+        if (!variantData) return null;
+
+        // Handle different variant data structures
+        if (
+            variantData.variant_combination &&
+            typeof variantData.variant_combination === "object"
+        ) {
+            return Object.entries(variantData.variant_combination)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(", ");
+        } else if (
+            variantData.selected_options &&
+            typeof variantData.selected_options === "object"
+        ) {
+            return Object.entries(variantData.selected_options)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(", ");
+        } else if (variantData.variant_name) {
+            return variantData.variant_name;
+        }
+
+        return null;
+    };
+
+    // Enhanced variant price
+    const getVariantPrice = (item) => {
+        if (!item.selected_variant) {
+            return (
+                parseFloat(item.product?.product_price) ||
+                parseFloat(item.product_price) ||
+                0
+            );
+        }
+
+        const variantData = parseVariantData(item.selected_variant);
+        if (!variantData)
+            return (
+                parseFloat(item.product?.product_price) ||
+                parseFloat(item.product_price) ||
+                0
+            );
+
+        // Try different price fields - use 'price' from your data structure
+        const price =
+            variantData.price ||
+            variantData.variant_price ||
+            item.product?.product_price ||
+            item.product_price;
+        return parseFloat(price) || 0;
+    };
+
+    // Enhanced available stock
+    const getAvailableStock = (item) => {
+        if (!item.selected_variant) {
+            return item.product?.product_quantity || item.product_quantity || 0;
+        }
+
+        const variantData = parseVariantData(item.selected_variant);
+        if (!variantData)
+            return item.product?.product_quantity || item.product_quantity || 0;
+
+        // Try different quantity fields - use 'quantity' from your data structure
+        return (
+            variantData.quantity ||
+            variantData.stock_quantity ||
+            item.product?.product_quantity ||
+            item.product_quantity ||
+            0
+        );
+    };
+
+    // Enhanced variant ID getter
+    const getVariantId = (item) => {
+        if (!item.selected_variant) return null;
+
+        const variantData = parseVariantData(item.selected_variant);
+        return variantData?.variant_id || variantData?.id || null;
+    };
+
+    // Check if product has variants
+    const hasVariants = (item) => {
+        const variants = item.product_variant || item.product?.product_variant;
+        return (
+            variants &&
+            Array.isArray(variants) &&
+            variants.length > 0 &&
+            variants.some((variant) => {
+                const combination = variant.variant_combination;
+                return (
+                    combination &&
+                    ((typeof combination === "string" &&
+                        combination.trim() !== "") ||
+                        (typeof combination === "object" &&
+                            Object.keys(combination).length > 0))
+                );
+            })
+        );
+    };
+
     // Remove single item from wishlist
-    const removeWishlistItem = async (productId) => {
+    const removeWishlistItem = async (productId, variantId = null) => {
         setLoadingStates((prev) => ({ ...prev, [productId]: true }));
 
         try {
@@ -40,14 +175,24 @@ export default function Wishlist({ user_wishlist }) {
                     Accept: "application/json",
                 },
                 data: {
-                    product_id: [productId],
+                    product_id: productId,
+                    variant_id: variantId,
                 },
             });
 
             if (response.data.successMessage) {
-                // Remove item from local state immediately
                 setWishlist((prev) =>
-                    prev.filter((item) => item.product_id !== productId)
+                    prev.filter((item) => {
+                        const itemVariantId = getVariantId(item);
+                        if (variantId) {
+                            return !(
+                                item.product_id === productId &&
+                                itemVariantId === variantId
+                            );
+                        } else {
+                            return item.product_id !== productId;
+                        }
+                    })
                 );
                 setSelected((prev) => prev.filter((id) => id !== productId));
             } else {
@@ -67,6 +212,14 @@ export default function Wishlist({ user_wishlist }) {
         setBulkLoading(true);
 
         try {
+            const itemsToRemove = selected.map((id) => {
+                const item = wishlist.find((item) => item.product_id === id);
+                return {
+                    product_id: id,
+                    variant_id: getVariantId(item),
+                };
+            });
+
             const response = await axios.delete(route("remove-wishlist"), {
                 headers: {
                     "X-CSRF-TOKEN": document
@@ -76,19 +229,16 @@ export default function Wishlist({ user_wishlist }) {
                     Accept: "application/json",
                 },
                 data: {
-                    product_id: selected,
+                    items: itemsToRemove,
                 },
             });
 
             if (response.data.successMessage) {
-                // Remove selected items from local state immediately
                 setWishlist((prev) =>
                     prev.filter((item) => !selected.includes(item.product_id))
                 );
                 setSelected([]);
                 setSelectAll(false);
-
-                console.log("Selected items removed from wishlist");
             } else {
                 console.error(
                     "Failed to remove items:",
@@ -99,6 +249,49 @@ export default function Wishlist({ user_wishlist }) {
             console.error("Error removing wishlist items:", error);
         } finally {
             setBulkLoading(false);
+        }
+    };
+
+    // Update the updateWishlistVariant function to handle loading state
+    const updateWishlistVariant = async (productId, newVariant) => {
+        setLoadingStates((prev) => ({ ...prev, [productId]: true }));
+
+        try {
+            const response = await axios.post(
+                route("update-wishlist-variant"),
+                {
+                    product_id: productId,
+                    variant_data: newVariant,
+                },
+                {
+                    headers: {
+                        "X-CSRF-TOKEN": document.querySelector(
+                            'meta[name="csrf-token"]'
+                        ).content,
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                }
+            );
+
+            if (response.data.success) {
+                // Update local state with the proper variant data structure
+                setWishlist((prev) =>
+                    prev.map((item) =>
+                        item.product_id === productId
+                            ? {
+                                  ...item,
+                                  selected_variant: newVariant, // Store as object
+                              }
+                            : item
+                    )
+                );
+                setVariantModal(null);
+            }
+        } catch (error) {
+            console.error("Error updating variant:", error);
+        } finally {
+            setLoadingStates((prev) => ({ ...prev, [productId]: false }));
         }
     };
 
@@ -121,10 +314,8 @@ export default function Wishlist({ user_wishlist }) {
         setWishlist((prev) =>
             prev.map((item) => {
                 if (item.product_id === id) {
-                    const currentQty = item.selected_quantity;
-                    const availableStock =
-                        item.selected_variant?.quantity ||
-                        item.product.product_quantity;
+                    const currentQty = item.selected_quantity || 1;
+                    const availableStock = getAvailableStock(item);
 
                     let newQty;
                     if (type === "inc") {
@@ -143,68 +334,6 @@ export default function Wishlist({ user_wishlist }) {
         );
     };
 
-    // Helper function to get variant display text
-    const getVariantDisplayText = (item) => {
-        if (!item.selected_variant) return null;
-
-        try {
-            const variantData =
-                typeof item.selected_variant === "string"
-                    ? JSON.parse(item.selected_variant)
-                    : item.selected_variant;
-
-            if (
-                variantData.variant_combination &&
-                Object.keys(variantData.variant_combination).length > 0
-            ) {
-                return Object.entries(variantData.variant_combination)
-                    .map(([key, value]) => `${key}: ${value}`)
-                    .join(", ");
-            }
-            return null;
-        } catch (error) {
-            console.error("Error parsing variant data:", error);
-            return null;
-        }
-    };
-
-    // Helper function to get variant price
-    const getVariantPrice = (item) => {
-        if (!item.selected_variant) {
-            return parseFloat(item.product.product_price) || 0;
-        }
-
-        try {
-            const variantData =
-                typeof item.selected_variant === "string"
-                    ? JSON.parse(item.selected_variant)
-                    : item.selected_variant;
-
-            const price = variantData.price || item.product.product_price;
-            return parseFloat(price) || 0;
-        } catch (error) {
-            console.error("Error getting variant price:", error);
-            return parseFloat(item.product.product_price) || 0;
-        }
-    };
-
-    // Helper function to get available stock
-    const getAvailableStock = (item) => {
-        if (!item.selected_variant) return item.product.product_quantity;
-
-        try {
-            const variantData =
-                typeof item.selected_variant === "string"
-                    ? JSON.parse(item.selected_variant)
-                    : item.selected_variant;
-
-            return variantData.quantity || item.product.product_quantity;
-        } catch (error) {
-            console.error("Error getting variant stock:", error);
-            return item.product.product_quantity;
-        }
-    };
-
     const selectedItems = wishlist
         .filter((item) => selected.includes(item.product_id))
         .map((item) => ({
@@ -217,7 +346,8 @@ export default function Wishlist({ user_wishlist }) {
         }));
 
     const totalPrice = selectedItems.reduce(
-        (sum, item) => sum + getVariantPrice(item) * item.selected_quantity,
+        (sum, item) =>
+            sum + getVariantPrice(item) * (item.selected_quantity || 1),
         0
     );
 
@@ -226,9 +356,385 @@ export default function Wishlist({ user_wishlist }) {
             sum +
             ((item.originalPrice || getVariantPrice(item)) -
                 getVariantPrice(item)) *
-                item.selected_quantity,
+                (item.selected_quantity || 1),
         0
     );
+
+    // Handle checkout with address validation
+    const handleCheckout = () => {
+        if (!auth.user?.address) {
+            setAddressError(true);
+            return;
+        }
+
+        const checkoutItems = selectedItems.map((item) => {
+            const variantData = parseVariantData(item.selected_variant);
+
+            return {
+                product_id: item.product_id,
+                product_name: item.product?.product_name || item.product_name,
+                product_price: getVariantPrice(item),
+                product_quantity: getAvailableStock(item),
+                product_image:
+                    item.product_image || item.product?.product_image?.[0],
+                seller_id: item.product?.seller_id,
+                selected_quantity: item.selected_quantity || 1,
+                selected_variant: variantData,
+                variant_id: getVariantId(item),
+                user: item.user,
+                originalPrice: item.originalPrice,
+            };
+        });
+
+        router.post(route("checkout"), {
+            items: checkoutItems,
+        });
+    };
+
+    // Fixed Variant Selection Modal - Updated for your data structure
+    const VariantModal = ({ item, onClose, onUpdate }) => {
+        const [selectedOptions, setSelectedOptions] = useState({});
+        const [availableVariants, setAvailableVariants] = useState([]);
+        const [variantAttributes, setVariantAttributes] = useState([]);
+
+        useEffect(() => {
+            if (item) {
+                // Get variants from either item.product_variant or item.product.product_variant
+                const variants =
+                    item.product_variant || item.product?.product_variant || [];
+                setAvailableVariants(variants);
+
+                // Extract variant attributes
+                const attributes = extractVariantAttributes(variants);
+                setVariantAttributes(attributes);
+
+                // Initialize selected options
+                initializeSelectedOptions(variants, attributes, item);
+            }
+        }, [item]);
+
+        // Extract all unique variant attributes from available variants
+        const extractVariantAttributes = (variants) => {
+            const attributes = new Set();
+
+            variants.forEach((variant) => {
+                if (variant.variant_combination) {
+                    try {
+                        const combination =
+                            typeof variant.variant_combination === "string"
+                                ? JSON.parse(variant.variant_combination)
+                                : variant.variant_combination;
+
+                        if (combination && typeof combination === "object") {
+                            Object.keys(combination).forEach((attr) => {
+                                attributes.add(attr);
+                            });
+                        }
+                    } catch (error) {
+                        console.error(
+                            "Error parsing variant combination:",
+                            error
+                        );
+                    }
+                }
+            });
+
+            return Array.from(attributes);
+        };
+
+        // Initialize selected options
+        const initializeSelectedOptions = (
+            variants,
+            attributes,
+            currentItem
+        ) => {
+            const currentVariant = parseVariantData(
+                currentItem.selected_variant
+            );
+            const initialOptions = {};
+
+            if (currentVariant?.variant_combination) {
+                // Use current variant selection
+                Object.entries(currentVariant.variant_combination).forEach(
+                    ([key, value]) => {
+                        initialOptions[key] = value;
+                    }
+                );
+            } else {
+                // Initialize with first available options for each attribute
+                attributes.forEach((attr) => {
+                    const options = getAvailableOptions(attr, variants, {});
+                    if (options.length > 0) {
+                        initialOptions[attr] = options[0];
+                    }
+                });
+            }
+
+            console.log("Initial selected options:", initialOptions);
+            setSelectedOptions(initialOptions);
+        };
+
+        // Get available options for an attribute based on current selection
+        const getAvailableOptions = (
+            attribute,
+            variants = availableVariants,
+            currentSelection = selectedOptions
+        ) => {
+            const options = new Set();
+
+            variants.forEach((variant) => {
+                if (variant.variant_combination && variant.quantity > 0) {
+                    // Use 'quantity' instead of 'stock_quantity'
+                    try {
+                        const combination =
+                            typeof variant.variant_combination === "string"
+                                ? JSON.parse(variant.variant_combination)
+                                : variant.variant_combination;
+
+                        if (combination && combination[attribute]) {
+                            // Check if this variant matches currently selected options (except the current attribute)
+                            const matchesCurrentSelection = Object.entries(
+                                currentSelection
+                            )
+                                .filter(([key]) => key !== attribute)
+                                .every(
+                                    ([key, value]) => combination[key] === value
+                                );
+
+                            if (matchesCurrentSelection) {
+                                options.add(combination[attribute]);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(
+                            "Error parsing variant combination:",
+                            error
+                        );
+                    }
+                }
+            });
+
+            return Array.from(options);
+        };
+
+        const handleOptionSelect = (attribute, value) => {
+            const newSelection = {
+                ...selectedOptions,
+                [attribute]: value,
+            };
+
+            setSelectedOptions(newSelection);
+            console.log("Selected options updated:", newSelection);
+        };
+
+        // Find the variant that matches the current selection
+        const getSelectedVariant = () => {
+            return availableVariants.find((variant) => {
+                if (!variant.variant_combination) return false;
+
+                try {
+                    const combination =
+                        typeof variant.variant_combination === "string"
+                            ? JSON.parse(variant.variant_combination)
+                            : variant.variant_combination;
+
+                    if (!combination || typeof combination !== "object")
+                        return false;
+
+                    return Object.keys(selectedOptions).every(
+                        (key) => combination[key] === selectedOptions[key]
+                    );
+                } catch (error) {
+                    console.error("Error parsing variant combination:", error);
+                    return false;
+                }
+            });
+        };
+
+        const selectedVariant = getSelectedVariant();
+        const canUpdate = selectedVariant && selectedVariant.quantity > 0; // Use 'quantity' instead of 'stock_quantity'
+
+        const handleUpdate = () => {
+            if (selectedVariant) {
+                // Create the variant data structure matching your example
+                const variantData = {
+                    variant_id: selectedVariant.variant_id,
+                    variant_combination: selectedOptions,
+                    price: selectedVariant.price, // Use 'price' from your data structure
+                    quantity: selectedVariant.quantity, // Use 'quantity' from your data structure
+                };
+
+                console.log("Updating variant with data:", variantData);
+                onUpdate(variantData);
+            }
+        };
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+                    <div className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg text-black font-semibold">
+                                Select Variant
+                            </h3>
+                            <button
+                                onClick={onClose}
+                                className="text-gray-500 hover:text-gray-700 text-2xl"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="mb-4">
+                            <h4 className="font-medium text-gray-900 mb-2">
+                                {item?.product?.product_name ||
+                                    item?.product_name}
+                            </h4>
+
+                            {/* Current Selected Variant Display */}
+                            {item.selected_variant && (
+                                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                                    <p className="text-sm font-medium text-blue-800">
+                                        Current Selection:
+                                    </p>
+                                    <p className="text-sm text-blue-600">
+                                        {getVariantDisplayText(item)}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Debug info - remove in production */}
+                            <div className="mb-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
+                                <div>
+                                    Available Attributes:{" "}
+                                    {variantAttributes.length}
+                                </div>
+                                <div>
+                                    Available Variants:{" "}
+                                    {availableVariants.length}
+                                </div>
+                                <div>
+                                    Selected Options:{" "}
+                                    {JSON.stringify(selectedOptions)}
+                                </div>
+                            </div>
+
+                            {/* Variant Selection Options */}
+                            {variantAttributes.map((attribute) => {
+                                const availableOptions =
+                                    getAvailableOptions(attribute);
+
+                                return (
+                                    <div key={attribute} className="mb-4">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            {attribute.charAt(0).toUpperCase() +
+                                                attribute.slice(1)}
+                                        </label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {availableOptions.map((option) => (
+                                                <button
+                                                    key={option}
+                                                    onClick={() =>
+                                                        handleOptionSelect(
+                                                            attribute,
+                                                            option
+                                                        )
+                                                    }
+                                                    className={`px-3 py-2 border rounded-lg text-sm transition-colors ${
+                                                        selectedOptions[
+                                                            attribute
+                                                        ] === option
+                                                            ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
+                                                            : "border-gray-300 text-gray-700 hover:border-blue-300 hover:bg-blue-25"
+                                                    }`}
+                                                >
+                                                    {option}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {availableOptions.length === 0 && (
+                                            <p className="text-xs text-red-500 mt-1">
+                                                No options available with
+                                                current selection
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Selected Variant Details */}
+                        {selectedVariant ? (
+                            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                                <div className="flex justify-between items-center">
+                                    <div>
+                                        <p className="font-medium text-gray-900">
+                                            RM {selectedVariant.price}{" "}
+                                            {/* Use 'price' */}
+                                        </p>
+                                        <p
+                                            className={`text-sm ${
+                                                selectedVariant.quantity > 0
+                                                    ? "text-green-600"
+                                                    : "text-red-600"
+                                            }`}
+                                        >
+                                            {selectedVariant.quantity > 0
+                                                ? `${selectedVariant.quantity} in stock`
+                                                : "Out of stock"}
+                                        </p>
+                                    </div>
+                                    {selectedVariant.sku && (
+                                        <p className="text-xs text-gray-500">
+                                            SKU: {selectedVariant.sku}
+                                        </p>
+                                    )}
+                                </div>
+                                {/* Display selected combination */}
+                                <div className="mt-2 text-xs text-gray-600">
+                                    {Object.entries(selectedOptions).map(
+                                        ([key, value]) => (
+                                            <span key={key} className="mr-2">
+                                                {key}: <strong>{value}</strong>
+                                            </span>
+                                        )
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="bg-yellow-50 p-4 rounded-lg mb-4">
+                                <p className="text-sm text-yellow-800">
+                                    {variantAttributes.length === 0
+                                        ? "No variants available for this product"
+                                        : "Please select all variant options"}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={onClose}
+                                className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleUpdate}
+                                disabled={!canUpdate}
+                                className={`flex-1 py-2 px-4 rounded-lg text-white transition-colors font-medium ${
+                                    canUpdate
+                                        ? "bg-blue-600 hover:bg-blue-700 shadow-sm"
+                                        : "bg-gray-400 cursor-not-allowed"
+                                }`}
+                            >
+                                Update Variant
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
@@ -359,11 +865,16 @@ export default function Wishlist({ user_wishlist }) {
                                         getVariantPrice(product);
                                     const availableStock =
                                         getAvailableStock(product);
+                                    const variantId = getVariantId(product);
                                     const isOutOfStock = availableStock === 0;
+                                    const productHasVariants =
+                                        hasVariants(product);
 
                                     return (
                                         <div
-                                            key={product.product_id}
+                                            key={`${product.product_id}-${
+                                                variantId || "base"
+                                            }`}
                                             className={`bg-white rounded-2xl shadow-sm border transition-all duration-300 hover:shadow-md ${
                                                 isSelected
                                                     ? "border-blue-500 border-2"
@@ -373,7 +884,7 @@ export default function Wishlist({ user_wishlist }) {
                                             }`}
                                         >
                                             <div className="flex flex-col sm:flex-row">
-                                                {/* Selection Checkbox - Enhanced */}
+                                                {/* Selection Checkbox */}
                                                 <div className="flex items-start p-4 sm:p-6">
                                                     <label className="relative flex items-center cursor-pointer">
                                                         <input
@@ -421,7 +932,7 @@ export default function Wishlist({ user_wishlist }) {
                                                     </label>
                                                 </div>
 
-                                                {/* Product Image - Landscape Optimized */}
+                                                {/* Product Image */}
                                                 <Link
                                                     href={route(
                                                         "product-details",
@@ -434,20 +945,27 @@ export default function Wishlist({ user_wishlist }) {
                                                             src={
                                                                 import.meta.env
                                                                     .VITE_BASE_URL +
-                                                                product
+                                                                (product
                                                                     .product_image
-                                                                    .image_path
+                                                                    ?.image_path ||
+                                                                    product
+                                                                        .product
+                                                                        ?.product_image?.[0]
+                                                                        ?.image_path ||
+                                                                    "/default-product-image.jpg")
                                                             }
                                                             alt={
                                                                 product.product
-                                                                    .product_name
+                                                                    ?.product_name ||
+                                                                product.product_name ||
+                                                                "Product"
                                                             }
                                                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                                                         />
                                                     </div>
                                                 </Link>
 
-                                                {/* Product Info - Enhanced Layout */}
+                                                {/* Product Info */}
                                                 <div className="flex-1 p-4 sm:p-6">
                                                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                                                         {/* Left Side - Product Details */}
@@ -456,24 +974,94 @@ export default function Wishlist({ user_wishlist }) {
                                                                 href={`/product-details/${product.product_id}`}
                                                             >
                                                                 <h2 className="text-lg font-semibold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer line-clamp-2">
-                                                                    {
-                                                                        product
-                                                                            .product
-                                                                            .product_name
-                                                                    }
+                                                                    {product
+                                                                        .product
+                                                                        ?.product_name ||
+                                                                        product.product_name ||
+                                                                        "Unnamed Product"}
                                                                 </h2>
                                                             </Link>
 
-                                                            {/* Variant Information */}
-                                                            {variantText && (
-                                                                <div className="mt-2">
-                                                                    <span className="inline-flex items-center px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                                                                        {
-                                                                            variantText
-                                                                        }
-                                                                    </span>
-                                                                </div>
-                                                            )}
+                                                            {/* Variant Information with Reselect Option */}
+                                                            <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                                                {variantText && (
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="inline-flex items-center px-2.5 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                                                                            {
+                                                                                variantText
+                                                                            }
+                                                                        </span>
+                                                                        {productHasVariants && (
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    setVariantModal(
+                                                                                        product
+                                                                                    )
+                                                                                }
+                                                                                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium transition-colors hover:underline"
+                                                                            >
+                                                                                Change
+                                                                                <ChevronDown
+                                                                                    size={
+                                                                                        12
+                                                                                    }
+                                                                                />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Show "Select variant" button if no variant is selected but product has variants */}
+                                                                {!variantText &&
+                                                                    productHasVariants && (
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                setVariantModal(
+                                                                                    product
+                                                                                )
+                                                                            }
+                                                                            className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-medium transition-colors bg-blue-50 px-2.5 py-0.5 rounded-full hover:bg-blue-100"
+                                                                        >
+                                                                            Select
+                                                                            variant
+                                                                            <ChevronDown
+                                                                                size={
+                                                                                    12
+                                                                                }
+                                                                            />
+                                                                        </button>
+                                                                    )}
+                                                            </div>
+
+                                                            {/* Variant Price Difference */}
+                                                            {variantId &&
+                                                                product.product
+                                                                    ?.product_price &&
+                                                                variantPrice !==
+                                                                    parseFloat(
+                                                                        product
+                                                                            .product
+                                                                            .product_price
+                                                                    ) && (
+                                                                    <div className="mt-1 text-sm text-gray-600">
+                                                                        <span className="line-through text-gray-500">
+                                                                            RM
+                                                                            {parseFloat(
+                                                                                product
+                                                                                    .product
+                                                                                    .product_price
+                                                                            ).toFixed(
+                                                                                2
+                                                                            )}
+                                                                        </span>
+                                                                        <span className="ml-2 text-green-600 font-medium">
+                                                                            RM
+                                                                            {variantPrice.toFixed(
+                                                                                2
+                                                                            )}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
 
                                                             {/* Rating and Stock Status */}
                                                             <div className="flex items-center gap-4 mt-2">
@@ -507,7 +1095,7 @@ export default function Wishlist({ user_wishlist }) {
                                                                     }`}
                                                                 >
                                                                     {!isOutOfStock
-                                                                        ? "In Stock"
+                                                                        ? `In Stock (${availableStock})`
                                                                         : "Out of Stock"}
                                                                 </span>
                                                             </div>
@@ -530,7 +1118,8 @@ export default function Wishlist({ user_wishlist }) {
                                                                             );
                                                                         }}
                                                                         disabled={
-                                                                            product.selected_quantity <=
+                                                                            (product.selected_quantity ||
+                                                                                1) <=
                                                                                 1 ||
                                                                             isOutOfStock
                                                                         }
@@ -543,9 +1132,8 @@ export default function Wishlist({ user_wishlist }) {
                                                                         />
                                                                     </button>
                                                                     <span className="px-3 py-1 text-gray-900 min-w-[2rem] text-center text-sm font-medium">
-                                                                        {
-                                                                            product.selected_quantity
-                                                                        }
+                                                                        {product.selected_quantity ||
+                                                                            1}
                                                                     </span>
                                                                     <button
                                                                         onClick={(
@@ -559,7 +1147,8 @@ export default function Wishlist({ user_wishlist }) {
                                                                             );
                                                                         }}
                                                                         disabled={
-                                                                            product.selected_quantity >=
+                                                                            (product.selected_quantity ||
+                                                                                1) >=
                                                                                 availableStock ||
                                                                             isOutOfStock
                                                                         }
@@ -572,14 +1161,6 @@ export default function Wishlist({ user_wishlist }) {
                                                                         />
                                                                     </button>
                                                                 </div>
-                                                                {!isOutOfStock && (
-                                                                    <span className="text-xs text-gray-500">
-                                                                        {
-                                                                            availableStock
-                                                                        }{" "}
-                                                                        available
-                                                                    </span>
-                                                                )}
                                                             </div>
                                                         </div>
 
@@ -589,9 +1170,9 @@ export default function Wishlist({ user_wishlist }) {
                                                             <div className="text-right">
                                                                 <span className="text-xl font-bold text-gray-900">
                                                                     RM{" "}
-                                                                    {
-                                                                        variantPrice
-                                                                    }
+                                                                    {variantPrice.toFixed(
+                                                                        2
+                                                                    )}
                                                                 </span>
                                                                 {product.originalPrice &&
                                                                     product.originalPrice >
@@ -613,7 +1194,8 @@ export default function Wishlist({ user_wishlist }) {
                                                                     e.preventDefault();
                                                                     e.stopPropagation();
                                                                     removeWishlistItem(
-                                                                        product.product_id
+                                                                        product.product_id,
+                                                                        variantId
                                                                     );
                                                                 }}
                                                                 disabled={
@@ -663,26 +1245,52 @@ export default function Wishlist({ user_wishlist }) {
                                 {selectedItems.length} items selected
                             </p>
 
-                            {/* Enhanced Address Section */}
-                            <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                            {/* Enhanced Address Section with Validation */}
+                            <div
+                                className={`mb-6 p-4 rounded-xl border ${
+                                    addressError && !auth.user?.address
+                                        ? "bg-red-50 border-red-200"
+                                        : "bg-blue-50 border-blue-100"
+                                }`}
+                            >
                                 <div className="flex items-start gap-3">
                                     <MapPin
-                                        className="text-blue-600 mt-0.5 flex-shrink-0"
+                                        className={`mt-0.5 flex-shrink-0 ${
+                                            addressError && !auth.user?.address
+                                                ? "text-red-600"
+                                                : "text-blue-600"
+                                        }`}
                                         size={18}
                                     />
                                     <div className="flex-1">
-                                        <p className="text-sm font-medium text-gray-900">
-                                            Delivery Address
-                                        </p>
+                                        <div className="flex items-center gap-2">
+                                            <p className="text-sm font-medium text-gray-900">
+                                                Delivery Address
+                                            </p>
+                                            {addressError &&
+                                                !auth.user?.address && (
+                                                    <AlertCircle
+                                                        size={16}
+                                                        className="text-red-600"
+                                                    />
+                                                )}
+                                        </div>
 
                                         {auth.user?.address ? (
                                             <p className="text-sm text-gray-600 mt-1">
                                                 {auth.user.address}
                                             </p>
                                         ) : (
-                                            <p className="text-sm text-red-600 mt-1">
-                                                No address found.
-                                            </p>
+                                            <div>
+                                                <p className="text-sm text-red-600 mt-1">
+                                                    Address required for
+                                                    checkout
+                                                </p>
+                                                <p className="text-xs text-red-500 mt-1">
+                                                    Please update your profile
+                                                    address to proceed
+                                                </p>
+                                            </div>
                                         )}
                                     </div>
 
@@ -739,74 +1347,40 @@ export default function Wishlist({ user_wishlist }) {
                                 </span>
                             </div>
 
-                            {/* Checkout button */}
+                            {/* Checkout button with address validation */}
                             <button
-                                disabled={selectedItems.length === 0}
-                                onClick={() => {
-                                    // Prepare the items in the correct structure for multiple products
-                                    const checkoutItems = selectedItems.map(
-                                        (item) => {
-                                            // Parse selected_variant if it's a string
-                                            let selectedVariant =
-                                                item.selected_variant;
-                                            if (
-                                                typeof selectedVariant ===
-                                                "string"
-                                            ) {
-                                                try {
-                                                    selectedVariant =
-                                                        JSON.parse(
-                                                            selectedVariant
-                                                        );
-                                                } catch (error) {
-                                                    console.error(
-                                                        "Error parsing selected_variant:",
-                                                        error
-                                                    );
-                                                    selectedVariant = null;
-                                                }
-                                            }
-
-                                            return {
-                                                product_id: item.product_id,
-                                                product_name:
-                                                    item.product.product_name,
-                                                product_price:
-                                                    getVariantPrice(item),
-                                                product_quantity:
-                                                    getAvailableStock(item),
-                                                product_image:
-                                                    item.product_image,
-                                                seller_id:
-                                                    item.product.seller_id,
-                                                selected_quantity:
-                                                    item.selected_quantity,
-                                                selected_variant:
-                                                    selectedVariant,
-                                                user: item.user,
-                                                originalPrice:
-                                                    item.originalPrice,
-                                            };
-                                        }
-                                    );
-
-                                    console.log(
-                                        "Sending to checkout:",
-                                        checkoutItems
-                                    );
-
-                                    router.post(route("checkout"), {
-                                        items: checkoutItems,
-                                    });
-                                }}
+                                disabled={
+                                    selectedItems.length === 0 ||
+                                    !auth.user?.address
+                                }
+                                onClick={handleCheckout}
                                 className={`w-full py-3.5 rounded-xl font-semibold transition-all duration-200 ${
-                                    selectedItems.length === 0
+                                    selectedItems.length === 0 ||
+                                    !auth.user?.address
                                         ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                                         : "bg-blue-600 text-white hover:bg-blue-700 shadow-lg hover:shadow-xl"
                                 }`}
                             >
-                                Proceed to Checkout
+                                {!auth.user?.address
+                                    ? "Update Address to Checkout"
+                                    : "Proceed to Checkout"}
                             </button>
+
+                            {/* Address warning */}
+                            {!auth.user?.address && (
+                                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <AlertCircle
+                                            size={16}
+                                            className="text-yellow-600"
+                                        />
+                                        <p className="text-sm text-yellow-800">
+                                            Please update your delivery address
+                                            in profile settings
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Continue shopping */}
                             <Link href={route("shopping")}>
@@ -820,6 +1394,20 @@ export default function Wishlist({ user_wishlist }) {
             </main>
 
             <Footer />
+
+            {/* Variant Selection Modal */}
+            {variantModal && (
+                <VariantModal
+                    item={variantModal}
+                    onClose={() => setVariantModal(null)}
+                    onUpdate={(newVariant) =>
+                        updateWishlistVariant(
+                            variantModal.product_id,
+                            newVariant
+                        )
+                    }
+                />
+            )}
         </div>
     );
 }

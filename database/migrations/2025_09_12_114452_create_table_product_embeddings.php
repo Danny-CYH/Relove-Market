@@ -14,8 +14,11 @@ return new class extends Migration {
             $table->id();
             $table->string("product_id")->unique();
             $table->string("name");
-            $table->binary("embedding");
+            $table->vector("embedding");
+            $table->string("category");
             $table->timestamps();
+
+            $table->foreign('product_id')->references('product_id')->on('products')->onDelete('cascade');
         });
     }
 

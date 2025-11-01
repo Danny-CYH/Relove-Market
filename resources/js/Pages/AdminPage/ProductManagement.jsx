@@ -34,11 +34,13 @@ export default function ProductManagement() {
 
     // Pagination state from database
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage, setItemsPerPage] = useState(5);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
     const [totalPages, setTotalPages] = useState(1);
     const [totalProducts, setTotalProducts] = useState(0);
     const [from, setFrom] = useState(0);
     const [to, setTo] = useState(0);
+    // Add this to your component state
+    const [actionReason, setActionReason] = useState("");
 
     // Stats state
     const [stats, setStats] = useState({
@@ -61,27 +63,31 @@ export default function ProductManagement() {
                 per_page: itemsPerPage,
                 search,
                 status: status !== "all" ? status : "",
-                rating,
+                rating: rating !== "all" ? rating : "",
             };
 
             const response = await axios.get(route("get-all-products"), {
                 params,
             });
-            const data = response.data.allProducts;
 
-            console.log(data);
+            console.log("Products response:", response);
 
-            setProducts(data.data);
-            setCurrentPage(data.current_page);
-            setTotalPages(data.last_page);
-            setTotalProducts(data.total);
-            setFrom(data.from || 0);
-            setTo(data.to || 0);
+            const data = response.data.products;
 
-            // Fetch stats separately or calculate from data if available
-            fetchStats();
+            if (data && data.data) {
+                setProducts(data.data);
+                setCurrentPage(data.current_page);
+                setTotalPages(data.last_page);
+                setTotalProducts(data.total);
+                setFrom(data.from || 0);
+                setTo(data.to || 0);
+            } else {
+                setProducts([]);
+                setTotalProducts(0);
+            }
         } catch (error) {
             console.error("Error fetching products:", error);
+            setProducts([]);
         } finally {
             setLoading(false);
         }
@@ -90,7 +96,16 @@ export default function ProductManagement() {
     const fetchStats = async () => {
         try {
             const response = await axios.get(route("get-product-stats"));
-            setStats(response.data);
+            console.log("Stats response:", response.data);
+
+            if (response.data) {
+                setStats({
+                    flagged: response.data.flagged || 0,
+                    blocked: response.data.blocked || 0,
+                    lowRated: response.data.lowRated || 0,
+                    active: response.data.active || 0,
+                });
+            }
         } catch (error) {
             console.error("Error fetching stats:", error);
         }
@@ -98,6 +113,7 @@ export default function ProductManagement() {
 
     useEffect(() => {
         fetchProducts();
+        fetchStats();
     }, []);
 
     // Debounced search and filter
@@ -119,19 +135,61 @@ export default function ProductManagement() {
         if (!selectedProduct) return;
 
         try {
-            // Make API call to update product status
-            await axios.post(
-                `/api/admin/products/${selectedProduct.id}/${actionType}`
-            );
+            let endpoint;
+            let method = "post";
 
-            // Refresh the data
-            fetchProducts(currentPage, searchTerm, statusFilter, ratingFilter);
-            fetchStats();
+            switch (actionType) {
+                case "block":
+                    endpoint = route(
+                        "admin.products.block",
+                        selectedProduct.product_id
+                    );
+                    break;
+                case "unblock":
+                    endpoint = route(
+                        "admin.products.unblock",
+                        selectedProduct.product_id
+                    );
+                    break;
+                case "flag":
+                    endpoint = route(
+                        "admin.products.flag",
+                        selectedProduct.product_id
+                    );
+                    break;
+                default:
+                    console.error("Unknown action type:", actionType);
+                    return;
+            }
+
+            const response = await axios[method](endpoint, {
+                reason: `Product ${actionType}ed by admin for policy violation`,
+            });
+
+            if (response.data.success) {
+                // Show success message
+                console.log(response.data.message);
+
+                // Refresh the data
+                fetchProducts(
+                    currentPage,
+                    searchTerm,
+                    statusFilter,
+                    ratingFilter
+                );
+                fetchStats();
+            } else {
+                console.error("Action failed:", response.data.error);
+                // You can show an error toast here
+            }
 
             setShowModal(false);
             setSelectedProduct(null);
         } catch (error) {
-            console.error("Error updating product:", error);
+            console.error("Error performing action:", error);
+            // Show error message to user
+            setShowModal(false);
+            setSelectedProduct(null);
         }
     };
 
@@ -242,15 +300,16 @@ export default function ProductManagement() {
 
     const getStatusBadge = (status) => {
         const statusConfig = {
-            active: { color: "bg-green-100 text-green-800", text: "Active" },
+            available: { color: "bg-green-100 text-green-800", text: "Active" },
             flagged: {
                 color: "bg-yellow-100 text-yellow-800",
                 text: "Flagged",
             },
             blocked: { color: "bg-red-100 text-red-800", text: "Blocked" },
+            draft: { color: "bg-gray-100 text-gray-800", text: "Draft" },
         };
 
-        const config = statusConfig[status] || statusConfig.active;
+        const config = statusConfig[status] || statusConfig.available;
         return (
             <span
                 className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}
@@ -267,13 +326,20 @@ export default function ProductManagement() {
 
         for (let i = 1; i <= 5; i++) {
             if (i <= fullStars) {
-                stars.push(<FaStar key={i} className="text-yellow-400" />);
+                stars.push(
+                    <FaStar key={i} className="text-yellow-400 w-3 h-3" />
+                );
             } else if (i === fullStars + 1 && hasHalfStar) {
                 stars.push(
-                    <FaStarHalfAlt key={i} className="text-yellow-400" />
+                    <FaStarHalfAlt
+                        key={i}
+                        className="text-yellow-400 w-3 h-3"
+                    />
                 );
             } else {
-                stars.push(<FaRegStar key={i} className="text-yellow-400" />);
+                stars.push(
+                    <FaRegStar key={i} className="text-yellow-400 w-3 h-3" />
+                );
             }
         }
 
@@ -281,15 +347,13 @@ export default function ProductManagement() {
     };
 
     const getRiskLevel = (product) => {
-        // Calculate risk based on your business logic
-        // This is an example - adjust based on your actual data structure
         const negativeReviews = product.negative_reviews_count || 0;
         const totalReviews = product.reviews_count || 1;
         const negativeRatio = negativeReviews / totalReviews;
+        const averageRating = product.average_rating || 0;
 
-        if (negativeRatio > 0.4 || product.average_rating < 2.0) return "high";
-        if (negativeRatio > 0.2 || product.average_rating < 3.0)
-            return "medium";
+        if (negativeRatio > 0.4 || averageRating < 2.0) return "high";
+        if (negativeRatio > 0.2 || averageRating < 3.0) return "medium";
         return "low";
     };
 
@@ -450,7 +514,7 @@ export default function ProductManagement() {
                                     }
                                 >
                                     <option value="all">All Status</option>
-                                    <option value="active">Active</option>
+                                    <option value="available">Active</option>
                                     <option value="flagged">Flagged</option>
                                     <option value="blocked">Blocked</option>
                                 </select>
@@ -553,7 +617,9 @@ export default function ProductManagement() {
                                             <td className="px-4 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
                                                     <div className="h-8 w-8 md:h-10 md:w-10 flex-shrink-0 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                        {product.product_image ? (
+                                                        {product.product_image &&
+                                                        product.product_image
+                                                            .length > 0 ? (
                                                             <img
                                                                 src={
                                                                     import.meta
@@ -576,15 +642,19 @@ export default function ProductManagement() {
                                                     </div>
                                                     <div className="ml-3">
                                                         <div className="text-sm font-medium text-gray-900 truncate max-w-[150px] md:max-w-none">
-                                                            {product.product_name}
+                                                            {
+                                                                product.product_name
+                                                            }
                                                         </div>
                                                         <div className="text-xs text-gray-500 sm:hidden">
                                                             {product.seller
-                                                                ?.seller_name || "N/A"}
+                                                                ?.seller_name ||
+                                                                "N/A"}
                                                         </div>
                                                         <div className="text-xs text-gray-500 md:hidden">
-                                                            {product.average_rating ||
-                                                                0}{" "}
+                                                            {product.average_rating?.toFixed(
+                                                                1
+                                                            ) || 0}{" "}
                                                             ★ (
                                                             {product.reviews_count ||
                                                                 0}{" "}
@@ -594,16 +664,14 @@ export default function ProductManagement() {
                                                 </div>
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap hidden sm:table-cell">
-                                                <Link
-                                                    href=""
-                                                    className="text-sm text-indigo-600 hover:text-indigo-900 flex items-center"
-                                                >
-                                                    <FaStore className="mr-2 flex-shrink-0" />
+                                                <div className="text-sm text-gray-900 flex items-center">
+                                                    <FaStore className="mr-2 flex-shrink-0 text-gray-400" />
                                                     <span className="truncate max-w-[120px]">
-                                                        {product.seller?.seller_name ||
+                                                        {product.seller
+                                                            ?.seller_name ||
                                                             "N/A"}
                                                     </span>
-                                                </Link>
+                                                </div>
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap hidden md:table-cell">
                                                 <div className="flex items-center space-x-2">
@@ -612,8 +680,9 @@ export default function ProductManagement() {
                                                             0
                                                     )}
                                                     <span className="text-sm text-gray-900">
-                                                        {product.average_rating ||
-                                                            0}
+                                                        {product.average_rating?.toFixed(
+                                                            1
+                                                        ) || 0}
                                                     </span>
                                                 </div>
                                                 <div className="text-sm text-gray-500">
@@ -637,12 +706,17 @@ export default function ProductManagement() {
                                                 )}
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap hidden lg:table-cell">
-                                                {getStatusBadge(product.product_status)}
+                                                {getStatusBadge(
+                                                    product.product_status
+                                                )}
                                             </td>
                                             <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex items-center space-x-1 md:space-x-2">
                                                     <Link
-                                                        href=""
+                                                        href={route(
+                                                            "product-details",
+                                                            product.product_id
+                                                        )}
                                                         className="text-indigo-600 hover:text-indigo-900 p-1"
                                                         title="View Details"
                                                     >
@@ -747,15 +821,34 @@ export default function ProductManagement() {
                             className="bg-white rounded-lg max-w-md w-full p-6"
                         >
                             <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                Confirm Action
+                                Confirm{" "}
+                                {actionType.charAt(0).toUpperCase() +
+                                    actionType.slice(1)}
                             </h3>
 
                             <p className="text-sm text-gray-600 mb-4">
                                 Are you sure you want to {actionType} the
-                                product "<strong>{selectedProduct.name}</strong>
-                                " by{" "}
-                                {selectedProduct.seller?.name || "the seller"}?
+                                product "
+                                <strong>{selectedProduct.product_name}</strong>"
+                                by{" "}
+                                {selectedProduct.seller?.seller_name ||
+                                    "the seller"}
+                                ?
                             </p>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Reason (optional)
+                                </label>
+                                <textarea
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                    rows="3"
+                                    placeholder="Enter reason for this action..."
+                                    onChange={(e) =>
+                                        setActionReason(e.target.value)
+                                    }
+                                />
+                            </div>
 
                             {actionType === "block" && (
                                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
@@ -764,8 +857,9 @@ export default function ProductManagement() {
                                         <div className="ml-3">
                                             <p className="text-sm text-yellow-800">
                                                 Blocking this product will hide
-                                                it from all users and prevent
-                                                future purchases.
+                                                it from all users, prevent
+                                                future purchases, and notify the
+                                                seller via email.
                                             </p>
                                         </div>
                                     </div>
@@ -784,6 +878,8 @@ export default function ProductManagement() {
                                     className={`px-4 py-2 text-sm font-medium text-white rounded-lg ${
                                         actionType === "block"
                                             ? "bg-red-600 hover:bg-red-700"
+                                            : actionType === "flag"
+                                            ? "bg-yellow-600 hover:bg-yellow-700"
                                             : "bg-green-600 hover:bg-green-700"
                                     }`}
                                 >

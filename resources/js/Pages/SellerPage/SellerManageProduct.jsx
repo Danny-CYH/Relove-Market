@@ -98,6 +98,19 @@ export default function SellerManageProduct({ list_categories }) {
         }
     };
 
+    // Add this function after your other handlers
+    const handlePageChange = (page) => {
+        const searchParams = {};
+
+        if (searchTerm.trim() !== "") searchParams.search = searchTerm;
+        if (statusFilter !== "all") searchParams.status = statusFilter;
+        if (categoryFilter !== "all") searchParams.category = categoryFilter;
+        if (sortBy !== "name") searchParams.sort = sortBy;
+
+        setCurrentPage(page);
+        get_ListProducts(page, searchParams);
+    };
+
     // Check if user can perform action
     const canPerformAction = (action) => {
         if (!subscription) return false;
@@ -489,7 +502,6 @@ export default function SellerManageProduct({ list_categories }) {
                 prevProducts.filter((p) => p.product_id !== product)
             );
 
-            // Refresh data to get updated pagination
             const searchParams = {};
             if (searchTerm.trim() !== "") searchParams.search = searchTerm;
             if (statusFilter !== "all") searchParams.status = statusFilter;
@@ -497,6 +509,13 @@ export default function SellerManageProduct({ list_categories }) {
                 searchParams.category = categoryFilter;
             if (sortBy !== "name") searchParams.sort = sortBy;
 
+            // If we're on page 1 or have more than 1 item, stay on current page
+            // Otherwise, go to previous page if the last item on current page was deleted
+            const shouldGoToPrevPage =
+                currentPage > 1 && realTimeProducts.length === 1;
+            const newPage = shouldGoToPrevPage ? currentPage - 1 : currentPage;
+
+            setCurrentPage(newPage);
             get_ListProducts(currentPage, searchParams);
 
             setTimeout(() => {
@@ -514,16 +533,32 @@ export default function SellerManageProduct({ list_categories }) {
     };
 
     // Get the product of the seller
+    // Get the product of the seller
     const get_ListProducts = async (page = 1, searchParams = {}) => {
         setLoading(true);
         try {
-            const params = new URLSearchParams({
+            // Use proper parameter format for axios
+            const params = {
                 page: page,
                 ...searchParams,
-            });
+            };
 
-            const response = await axios.get(route("product-data", params));
+            console.log("🔍 Making API request with params:", params);
+
+            const response = await axios.get(route("product-data"), { params });
             const data = response.data;
+
+            console.log("✅ API Response:", {
+                currentPage: data.list_product.current_page,
+                lastPage: data.list_product.last_page,
+                total: data.list_product.total,
+                dataCount: data.list_product.data
+                    ? data.list_product.data.length
+                    : 0,
+                hasMorePages:
+                    data.list_product.current_page <
+                    data.list_product.last_page,
+            });
 
             setRealTimeProducts(data.list_product.data || data.list_product);
 
@@ -541,13 +576,16 @@ export default function SellerManageProduct({ list_categories }) {
             // Fetch featured products after loading products
             await fetchFeaturedProducts();
         } catch (error) {
-            console.log("Error fetching products:", error);
+            console.error("❌ Error fetching products:", error);
+            if (error.response) {
+                console.error("Error response:", error.response.data);
+            }
         }
         setLoading(false);
     };
 
-    // Search handler that triggers API call
-    const handleSearchAndFilters = () => {
+    // Update your handleSearchAndFilters function:
+    const handleSearchAndFilters = (page = 1) => {
         const searchParams = {};
 
         if (searchTerm.trim() !== "") {
@@ -563,8 +601,8 @@ export default function SellerManageProduct({ list_categories }) {
             searchParams.sort = sortBy;
         }
 
-        setCurrentPage(1); // Reset to page 1 when searching
-        get_ListProducts(1, searchParams);
+        setCurrentPage(page);
+        get_ListProducts(page, searchParams);
     };
 
     // Real time update for product listing with Echo
@@ -643,26 +681,27 @@ export default function SellerManageProduct({ list_categories }) {
         }
     }, [errorField, modalToReopen]);
 
+    // Update your debounced search useEffect:
     useEffect(() => {
         // Debounced search - wait 500ms after user stops typing
         const timeoutId = setTimeout(() => {
-            if (
-                searchTerm.trim() !== "" ||
-                statusFilter !== "all" ||
-                categoryFilter !== "all"
-            ) {
-                handleSearchAndFilters();
-            } else {
-                // If no search/filters, load normal paginated data
-                get_ListProducts(currentPage);
-            }
+            const searchParams = {};
+
+            if (searchTerm.trim() !== "") searchParams.search = searchTerm;
+            if (statusFilter !== "all") searchParams.status = statusFilter;
+            if (categoryFilter !== "all")
+                searchParams.category = categoryFilter;
+            if (sortBy !== "name") searchParams.sort = sortBy;
+
+            // Always reset to page 1 when filters change
+            setCurrentPage(1);
+            get_ListProducts(1, searchParams);
         }, 500);
 
         return () => clearTimeout(timeoutId);
     }, [searchTerm, statusFilter, categoryFilter, sortBy]);
 
     useEffect(() => {
-        // Load data when page changes
         const searchParams = {};
 
         if (searchTerm.trim() !== "") searchParams.search = searchTerm;
@@ -671,7 +710,7 @@ export default function SellerManageProduct({ list_categories }) {
         if (sortBy !== "name") searchParams.sort = sortBy;
 
         get_ListProducts(currentPage, searchParams);
-    }, [currentPage]);
+    }, [currentPage, searchTerm, statusFilter, categoryFilter, sortBy]);
 
     // Count products by status
     const productCounts = {
@@ -1473,7 +1512,7 @@ export default function SellerManageProduct({ list_categories }) {
                                     <button
                                         className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         onClick={() =>
-                                            setCurrentPage(currentPage - 1)
+                                            handlePageChange(currentPage - 1)
                                         }
                                         disabled={loading}
                                     >
@@ -1508,7 +1547,7 @@ export default function SellerManageProduct({ list_categories }) {
                                                     ? "opacity-50 cursor-not-allowed"
                                                     : ""
                                             }`}
-                                            onClick={() => setCurrentPage(1)}
+                                            onClick={() => handlePageChange(1)}
                                             disabled={loading}
                                         >
                                             1
@@ -1535,7 +1574,9 @@ export default function SellerManageProduct({ list_categories }) {
                                                     : ""
                                             }`}
                                             onClick={() =>
-                                                setCurrentPage(currentPage - 1)
+                                                handlePageChange(
+                                                    currentPage - 1
+                                                )
                                             }
                                             disabled={loading}
                                         >
@@ -1564,7 +1605,9 @@ export default function SellerManageProduct({ list_categories }) {
                                                     : ""
                                             }`}
                                             onClick={() =>
-                                                setCurrentPage(currentPage + 1)
+                                                handlePageChange(
+                                                    currentPage + 1
+                                                )
                                             }
                                             disabled={loading}
                                         >
@@ -1592,7 +1635,7 @@ export default function SellerManageProduct({ list_categories }) {
                                                     : ""
                                             }`}
                                             onClick={() =>
-                                                setCurrentPage(lastPage)
+                                                handlePageChange(lastPage)
                                             }
                                             disabled={loading}
                                         >
@@ -1606,7 +1649,7 @@ export default function SellerManageProduct({ list_categories }) {
                                     <button
                                         className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                         onClick={() =>
-                                            setCurrentPage(currentPage + 1)
+                                            handlePageChange(currentPage + 1)
                                         }
                                         disabled={loading}
                                     >

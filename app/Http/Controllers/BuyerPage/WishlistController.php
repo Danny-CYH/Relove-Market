@@ -101,6 +101,28 @@ class WishlistController extends Controller
         }
     }
 
+    public function updateVariant(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,product_id',
+            'variant_data' => 'required|array'
+        ]);
+
+        $wishlistItem = Wishlist::where('user_id', $this->user_id)
+            ->where('product_id', $request->product_id)
+            ->first();
+
+        if ($wishlistItem) {
+            $wishlistItem->update([
+                'selected_variant' => json_encode($request->variant_data)
+            ]);
+
+            return response()->json(['success' => true]);
+        }
+
+        return response()->json(['success' => false], 404);
+    }
+
     // Code for removing the product from wishlist (Can removed more than 1 at one time)
     public function remove_wishlist(Request $request)
     {

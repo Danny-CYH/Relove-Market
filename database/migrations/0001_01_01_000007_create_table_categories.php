@@ -20,7 +20,7 @@ return new class extends Migration {
         Category::insert([
             [
                 "category_id" => "C001",
-                "category_name" => "Fashion & Accessories",
+                "category_name" => "Clothing & Accessories",
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -32,7 +32,7 @@ return new class extends Migration {
             ],
             [
                 "category_id" => "C003",
-                "category_name" => "Home & Living",
+                "category_name" => "Home & Furniture",
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -56,24 +56,36 @@ return new class extends Migration {
             ],
             [
                 "category_id" => "C007",
-                "category_name" => "Beauty & Personal Care",
+                "category_name" => "Beauty & Self-Care",
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 "category_id" => "C008",
-                "category_name" => "Collectibles & Hobbies",
+                "category_name" => "Art & Collectibles",
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 "category_id" => "C009",
-                "category_name" => "Vehicles",
+                "category_name" => "Jewelry & Watches",
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
                 "category_id" => "C010",
+                "category_name" => "Vehicles & Bikes",
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                "category_id" => "C011",
+                "category_name" => "Eco-Friendly Items",
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                "category_id" => "C012",
                 "category_name" => "Others",
                 'created_at' => now(),
                 'updated_at' => now(),

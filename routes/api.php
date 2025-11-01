@@ -28,12 +28,11 @@ Route::middleware(["is_buyer"])->group(function () {
     Route::get("/api/get-all-wishlist", [WishlistController::class, "get_allWishlist"])->name("all-wishlist");
     Route::get("/api/get-wishlist/{product_id}", [WishlistController::class, "get_wishlist"])->name("get-wishlist");
     Route::post('/api/store-wishlist', [WishlistController::class, 'store_wishlist'])->name("store-wishlist");
+    Route::post('/api/update-wishlist-variant', [WishlistController::class, 'updateVariant'])->name("update-wishlist-variant");
     Route::delete('/api/remove-wishlist', [WishlistController::class, 'remove_wishlist'])->name("remove-wishlist");
 
     // Code for register an a seller account on seller registration page
     Route::post('/api/seller-registration-process', [SellerRegistrationController::class, 'sellerRegistrationProcess'])->name("seller-registration-process");
-
-    Route::get('/api/shopping', [ProductManagementController::class, 'shoppingApi']);
 
     // Code for manage the reviews on product details page.
     Route::post("/api/make-reviews", [ProductManagementController::class, "make_review"])->name("make-review");
@@ -78,6 +77,10 @@ Route::middleware(["is_admin"])->group(function () {
     Route::get('/api/admin/products', [ProductManagementController::class, 'get_allProducts'])->name('get-all-products');
     Route::get('/api/admin/products/stats', [ProductManagementController::class, 'get_product_stats'])->name('get-product-stats');
     Route::post('/api/admin/products/{product}/{action}', [ProductManagementController::class, 'update_product_status'])->name('update-product-status');
+
+    Route::post('/products/{product}/block', [ProductManagementController::class, 'block_product']);
+    Route::post('/products/{product}/unblock', [ProductManagementController::class, 'unblock_product']);
+    Route::post('/products/{product}/flag', [ProductManagementController::class, 'flag_product']);
 
     // API for manage users.
     Route::get("/api/admin/user-management/list", [UserManagementController::class, "getUserList"])->name("list-user");

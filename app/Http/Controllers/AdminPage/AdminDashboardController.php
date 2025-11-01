@@ -3,14 +3,13 @@
 namespace App\Http\Controllers\AdminPage;
 
 use App\Http\Controllers\Controller;
+
 use App\Models\Order;
-use App\Models\OrderItem;
 use App\Models\SellerRegistration;
 use App\Models\User;
-use App\Models\Transaction;
-use App\Models\Product;
+
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+
 use Carbon\Carbon;
 
 class AdminDashboardController extends Controller

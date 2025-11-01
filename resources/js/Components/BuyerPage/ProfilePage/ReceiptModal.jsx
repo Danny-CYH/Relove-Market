@@ -17,7 +17,7 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
     const shippingFee = order.shipping_fee || 5.0;
     const platformTax = order.platform_tax || subtotal * 0.03;
     const serviceFee = order.service_fee || 1.5;
-    const totalAmount = subtotal + shippingFee + platformTax + serviceFee;
+    const totalAmount = order.amount;
 
     // Format currency
     const formatCurrency = (amount) => `RM ${parseFloat(amount).toFixed(2)}`;
@@ -303,7 +303,7 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                                 )}</td>
                             </tr>
                             <tr>
-                                <td>Platform Tax (3%):</td>
+                                <td>Platform Tax ${platformTax * 100}:</td>
                                 <td class="text-right">${formatCurrency(
                                     platformTax
                                 )}</td>
@@ -705,19 +705,10 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
 
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-600">
-                                        Platform Tax (3%):
+                                        Platform Tax ({platformTax * 100}%):
                                     </span>
                                     <span className="text-gray-900">
-                                        {formatCurrency(platformTax)}
-                                    </span>
-                                </div>
-
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">
-                                        Service Fee:
-                                    </span>
-                                    <span className="text-gray-900">
-                                        {formatCurrency(serviceFee)}
+                                        {formatCurrency(order.tax_amount)}
                                     </span>
                                 </div>
 
@@ -760,7 +751,7 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                                 <div className="flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-6 text-xs">
                                     <span>📧 support@relovemarket.com</span>
                                     <span>🌐 www.relovemarket.com</span>
-                                    <span>📱 +1 (555) 123-4567</span>
+                                    <span>📱 +60 126547653</span>
                                 </div>
                                 <p className="mt-3 text-xs text-gray-500">
                                     This is an computer-generated receipt. No

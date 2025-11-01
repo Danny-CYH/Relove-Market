@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\ProductOptionValue;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\ProductVariant;
@@ -75,33 +74,6 @@ class PaymentController extends Controller
                             'valid' => false,
                             'error' => "Not enough stock for selected variant. Available: {$variant->quantity}, Requested: {$quantity}"
                         ], 400);
-                    }
-                } elseif ($selectedOptions) {
-                    // Check option-based stock (backward compatibility)
-                    foreach ($selectedOptions as $optionName => $optionData) {
-                        $valueId = $optionData['value_id'] ?? null;
-
-                        if ($valueId) {
-                            $optionValue = ProductOptionValue::where('value_id', $valueId)
-                                ->lockForUpdate()
-                                ->first();
-
-                            if (!$optionValue) {
-                                DB::rollBack();
-                                return response()->json([
-                                    'valid' => false,
-                                    'error' => "Option value not found for {$valueId}"
-                                ], 404);
-                            }
-
-                            if ($optionValue->quantity < $quantity) {
-                                DB::rollBack();
-                                return response()->json([
-                                    'valid' => false,
-                                    'error' => "Not enough stock for {$optionName}. Available: {$optionValue->quantity}, Requested: {$quantity}"
-                                ], 400);
-                            }
-                        }
                     }
                 } else {
                     // Check main product stock

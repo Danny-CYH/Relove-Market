@@ -18,16 +18,21 @@ import {
 
 import {
     Shirt,
+    Watch,
     Laptop,
-    Home,
     Baby,
     Book,
     Dumbbell,
     Heart,
-    ToyBrick,
+    Palette,
     Car,
+    Recycle,
+    Sofa,
     Boxes,
+    Gem,
 } from "lucide-react";
+
+import { FaSpinner } from "react-icons/fa";
 
 import { useState, useEffect, useRef } from "react";
 
@@ -43,21 +48,23 @@ import { ProductCard } from "@/Components/BuyerPage/ProductCard";
 import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
 import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
 import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
+import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
+import { FeaturedProductCard } from "@/Components/BuyerPage/HomePage/FeaturedProductCard";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
-        "Fashion & Accessories": <Shirt className="w-6 h-6 text-green-600" />,
+        "Clothing & Accessories": <Shirt className="w-6 h-6 text-green-600" />,
         "Electronics & Gadgets": <Laptop className="w-6 h-6 text-blue-600" />,
-        "Home & Living": <Home className="w-6 h-6 text-yellow-600" />,
+        "Home & Furniture": <Sofa className="w-6 h-6 text-yellow-600" />,
         "Baby & Kids": <Baby className="w-6 h-6 text-pink-600" />,
         "Books & Stationery": <Book className="w-6 h-6 text-purple-600" />,
-        "Sports & Outdoors": <Dumbbell className="w-6 h-6 text-red-600" />,
-        "Beauty & Personal Care": <Heart className="w-6 h-6 text-pink-500" />,
-        "Collectibles & Hobbies": (
-            <ToyBrick className="w-6 h-6 text-orange-600" />
-        ),
-        Vehicles: <Car className="w-6 h-6 text-gray-600" />,
-        Others: <Boxes className="w-6 h-6 text-gray-400" />,
+        "Sports & Outdoors": <Dumbbell className="w-6 h-6 text-orange-600" />,
+        "Beauty & Self-Care": <Heart className="w-6 h-6 text-rose-500" />,
+        "Art & Collectibles": <Palette className="w-6 h-6 text-indigo-600" />,
+        "Jewelry & Watches": <Gem className="w-6 h-6 text-teal-600" />,
+        "Vehicles & Bikes": <Car className="w-6 h-6 text-gray-600" />,
+        "Eco-Friendly Items": <Recycle className="w-6 h-6 text-green-500" />,
+        Others: <Watch className="w-6 h-6 text-gray-400" />,
     };
 
     const [selectedCategory, setSelectedCategory] = useState("All");
@@ -72,8 +79,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [loadingFeatured, setLoadingFeatured] = useState(true);
     const [loadingFlashSale, setLoadingFlashSale] = useState(true);
 
-    const [preview, setPreview] = useState(null);
-    const [recommendations, setRecommendations] = useState([]);
+    // Add these new states for camera search
+    const [cameraSearchOpen, setCameraSearchOpen] = useState(false);
+    const [cameraSearchResults, setCameraSearchResults] = useState([]);
+    const [cameraSearchLoading, setCameraSearchLoading] = useState(false);
+    const [searchImage, setSearchImage] = useState(null);
 
     // Carousel state
     const [currentSlide, setCurrentSlide] = useState(0);
@@ -84,10 +94,17 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const fileInputRef = useRef(null);
 
-    // 🟢 Make this async so await works
+    // Updated camera search handler
     const handleImageChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        // Set the search image for preview
+        setSearchImage(file);
+
+        // Show loading modal
+        setCameraSearchLoading(true);
+        setCameraSearchOpen(true);
 
         const formData = new FormData();
         formData.append("image", file);
@@ -101,15 +118,32 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 }
             );
 
-            console.log("Camera search results:", response.data);
-            // You can update state here to show the products in UI
+            console.log("Camera search results:", response);
+
+            // Assuming the API returns an array of products
+            setCameraSearchResults(response.data || []);
         } catch (error) {
             console.error("Camera search failed:", error);
+            setCameraSearchResults([]);
+        } finally {
+            setCameraSearchLoading(false);
         }
     };
 
     const handleCameraClick = () => {
         fileInputRef.current.click();
+    };
+
+    const closeCameraSearch = () => {
+        setCameraSearchOpen(false);
+        setCameraSearchResults([]);
+        setCameraSearchLoading(false);
+        setSearchImage(null);
+
+        // Reset file input
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
     };
 
     // get the featured products data
@@ -211,6 +245,14 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
             {/* Modal for displaying the success register message for users */}
             <SellerRegisterSuccess isOpen={isOpen} setIsOpen={setIsOpen} />
+            <CameraSearchModal
+                isOpen={cameraSearchOpen}
+                onClose={closeCameraSearch}
+                searchResults={cameraSearchResults}
+                isLoading={cameraSearchLoading}
+                searchImage={searchImage}
+                save_wishlist={save_wishlist}
+            />
 
             <main className="flex-grow">
                 {/* Hero Section */}
@@ -326,9 +368,21 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 </div>
                                 <button
                                     onClick={handleCameraClick}
-                                    className="px-6 py-4 bg-gray-800 text-white rounded-full flex items-center justify-center gap-2 hover:bg-gray-900 transition-colors"
+                                    disabled={cameraSearchLoading}
+                                    className={`px-6 py-4 rounded-full flex items-center justify-center gap-2 transition-colors ${
+                                        cameraSearchLoading
+                                            ? "bg-gray-400 cursor-not-allowed text-white"
+                                            : "bg-gray-800 hover:bg-gray-900 text-white"
+                                    }`}
                                 >
-                                    <FaCamera /> Camera Search
+                                    {cameraSearchLoading ? (
+                                        <FaSpinner className="animate-spin" />
+                                    ) : (
+                                        <FaCamera />
+                                    )}
+                                    {cameraSearchLoading
+                                        ? "Searching..."
+                                        : "Camera Search"}
                                 </button>
 
                                 <input
@@ -538,7 +592,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 {/* Desktop Grid View */}
                                 <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                     {featured_products.map((product) => (
-                                        <ProductCard
+                                        <FeaturedProductCard
                                             key={product.product_id}
                                             product={product}
                                             isFlashSale={false}

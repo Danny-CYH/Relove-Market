@@ -28,7 +28,7 @@ export default function CheckoutPage({ list_product, platform_tax }) {
     const [paymentMethod, setPaymentMethod] = useState("credit");
     const [activeStep, setActiveStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
 
-    const [showSuccessModal, setShowSuccessModal] = useState(true);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [orderData, setOrderData] = useState(null);
 
     // Get products array for rendering
@@ -65,60 +65,49 @@ export default function CheckoutPage({ list_product, platform_tax }) {
         }
     };
 
-    // Parse selected options from the product data (for backward compatibility)
-    const parseSelectedOptions = (product) => {
-        if (!product.selected_options) return null;
-
-        try {
-            return typeof product.selected_options === "string"
-                ? JSON.parse(product.selected_options)
-                : product.selected_options;
-        } catch (error) {
-            console.error("Error parsing selected options:", error);
-            return null;
-        }
-    };
-
-    // Get variant display text
+    // Get variant display text - FIXED VERSION
     const getVariantDisplayText = (variant) => {
+        if (!variant) return null;
+
+        console.log("Variant data for display:", variant);
+
+        // Handle the variant_combination field from your data structure
         if (
-            !variant ||
-            !variant.combination ||
-            Object.keys(variant.combination).length === 0
+            variant.variant_combination &&
+            typeof variant.variant_combination === "object"
         ) {
-            return null;
+            return Object.entries(variant.variant_combination)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(", ");
         }
 
-        let combination = variant.combination;
+        // Fallback for combination field (if present)
+        if (variant.combination && typeof variant.combination === "object") {
+            return Object.entries(variant.combination)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(", ");
+        }
 
-        // ✅ Handle JSON string case safely
-        if (typeof combination === "string") {
+        // Handle string combination
+        if (
+            variant.variant_combination &&
+            typeof variant.variant_combination === "string"
+        ) {
             try {
-                combination = JSON.parse(combination);
+                const combination = JSON.parse(variant.variant_combination);
+                return Object.entries(combination)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join(", ");
             } catch (error) {
-                console.error("Invalid combination JSON:", combination);
+                console.error(
+                    "Error parsing variant combination string:",
+                    error
+                );
                 return null;
             }
         }
 
-        // ✅ Build readable text
-        return Object.entries(combination)
-            .map(([key, value]) => `${key}: ${value}`)
-            .join(", ");
-    };
-
-    // Get options display text (for backward compatibility)
-    const getOptionsDisplayText = (options) => {
-        if (!options || Object.keys(options).length === 0) {
-            return null;
-        }
-
-        return Object.entries(options)
-            .map(
-                ([optionType, optionData]) =>
-                    `${optionType}: ${optionData.value_name}`
-            )
-            .join(", ");
+        return null;
     };
 
     // Normalize product data structure to handle both single and multiple items
@@ -338,8 +327,8 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                             </div>
                         </div>
 
-                        {/* Voucher */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        {/* Voucher (Upcoming update) */}
+                        {/* <div className="bg-white rounded-lg border border-gray-200 p-6">
                             <h2 className="text-black text-xl font-semibold mb-4 flex items-center">
                                 <Gift
                                     className="text-blue-600 mr-2"
@@ -357,7 +346,7 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                                     Apply
                                 </button>
                             </div>
-                        </div>
+                        </div> */}
 
                         {/* Stripe Payment Form */}
                         <Elements stripe={stripePromise}>
@@ -394,13 +383,11 @@ export default function CheckoutPage({ list_product, platform_tax }) {
 
                         {/* Cart Items */}
                         <div className="space-y-4 max-h-72 overflow-y-auto pr-2 mb-6">
-                            {productsArray.map((product) => {
+                            {productsArray.map((product, index) => {
                                 const normalizedProduct =
                                     normalizeProductData(product);
                                 const selectedVariant =
                                     parseSelectedVariant(normalizedProduct);
-                                const selectedOptions =
-                                    parseSelectedOptions(normalizedProduct);
                                 const quantity =
                                     normalizedProduct.selected_quantity || 1;
                                 const productData =
@@ -418,8 +405,14 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                                 // Get variant or options display text
                                 const variantText =
                                     getVariantDisplayText(selectedVariant);
-                                const optionsText =
-                                    getOptionsDisplayText(selectedOptions);
+
+                                console.log(`Product ${index}:`, {
+                                    productData,
+                                    selectedVariant,
+                                    variantText,
+                                    displayPrice,
+                                    quantity,
+                                });
 
                                 return (
                                     <div
@@ -451,34 +444,33 @@ export default function CheckoutPage({ list_product, platform_tax }) {
 
                                             {/* Display Selected Variant */}
                                             {variantText && (
-                                                <div className="mt-1 space-y-1">
-                                                    <div className="flex items-center text-xs text-gray-600">
-                                                        <span>
+                                                <div className="mt-1">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
                                                             {variantText}
                                                         </span>
                                                     </div>
                                                 </div>
                                             )}
 
-                                            {/* Display Selected Options (backward compatibility) */}
-                                            {!variantText && optionsText && (
-                                                <div className="mt-1 space-y-1">
-                                                    <div className="flex items-center text-xs text-gray-600">
-                                                        <span className="font-medium">
-                                                            Options:
-                                                        </span>
-                                                        <span className="ml-1">
-                                                            {optionsText}
-                                                        </span>
+                                            {/* Debug info - remove in production */}
+                                            {!variantText &&
+                                                selectedVariant && (
+                                                    <div className="mt-1">
+                                                        <p className="text-xs text-gray-500">
+                                                            Variant data:{" "}
+                                                            {JSON.stringify(
+                                                                selectedVariant
+                                                            )}
+                                                        </p>
                                                     </div>
-                                                </div>
-                                            )}
+                                                )}
 
                                             <p className="text-xs text-gray-500 mt-1">
                                                 Price: RM {displayPrice} each
                                             </p>
                                         </div>
-                                        <p className="text-sm font-semibold text-gray-900">
+                                        <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">
                                             RM{" "}
                                             {(displayPrice * quantity).toFixed(
                                                 2

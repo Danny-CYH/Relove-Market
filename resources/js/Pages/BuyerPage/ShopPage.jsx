@@ -15,11 +15,10 @@ import {
 
 import { useState, useEffect, useCallback } from "react";
 
-import { Link } from "@inertiajs/react";
-
 import { Footer } from "@/Components/BuyerPage/Footer";
 import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { ProductCard } from "@/Components/BuyerPage/ProductCard";
+import { ShopProductCard } from "@/Components/BuyerPage/HomePage/ShopProductCard";
+import axios from "axios";
 
 export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -125,6 +124,72 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         ]
     );
 
+    // Function to get wishlist status
+    const get_wishlist = async (product_id) => {
+        try {
+            const response = await axios.get(route("get-wishlist", product_id));
+
+            return response.data; // Return the data so we can use it
+        } catch (error) {
+            console.error("Error fetching wishlist:", error);
+            return null;
+        }
+    };
+
+    // Function to save to wishlist
+    const save_wishlist = async (productId, selectedVariant = null) => {
+        try {
+            const csrfToken = document
+                .querySelector('meta[name="csrf-token"]')
+                .getAttribute("content");
+
+            // Prepare the request data according to your controller
+            const requestData = {
+                product_id: productId,
+            };
+
+            // If variant is selected, include the variant data
+            if (selectedVariant) {
+                requestData.selected_variant = {
+                    variant_id:
+                        selectedVariant.variant_id || selectedVariant.id,
+                    variant_combination:
+                        selectedVariant.variant_combination || selectedVariant,
+                    price:
+                        selectedVariant.variant_price || selectedVariant.price,
+                    quantity:
+                        selectedVariant.stock_quantity ||
+                        selectedVariant.quantity,
+                };
+            }
+
+            const response = await fetch(route("store-wishlist"), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-CSRF-TOKEN": csrfToken,
+                },
+                body: JSON.stringify(requestData),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log("Added to wishlist successfully:", result);
+                return true;
+            } else {
+                console.error(
+                    "Failed to add to wishlist",
+                    await response.text()
+                );
+                return false;
+            }
+        } catch (error) {
+            console.error("Error adding to wishlist:", error);
+            return false;
+        }
+    };
+
     // Debounced search function to avoid too many requests - FIXED
     const debouncedSearch = useCallback(
         debounce((query) => {
@@ -135,6 +200,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         [fetchProducts] // Add fetchProducts to dependencies
     );
 
+    // Toggle category filter
     const toggleCategory = (category) => {
         const newCategories = selectedCategories.includes(category)
             ? selectedCategories.filter((c) => c !== category)
@@ -143,6 +209,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         fetchProducts(1, { categories: newCategories });
     };
 
+    // Toggle condition filter
     const toggleCondition = (condition) => {
         const newConditions = selectedConditions.includes(condition)
             ? selectedConditions.filter((c) => c !== condition)
@@ -157,6 +224,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         fetchProducts(1);
     };
 
+    // Reset all filters
     const resetFilters = () => {
         setPriceRange([0, 1000]);
         setSelectedCategories([]);
@@ -172,10 +240,12 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         });
     };
 
+    // Scroll to top function
     const scrollToTop = () => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
+    // Toggle filter sections
     const toggleFilterSection = (section) => {
         setExpandedFilters((prev) => ({
             ...prev,
@@ -210,8 +280,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         fetchProducts(1, { price_range: newRange });
     };
 
+    // Determine if there are products to show
     const hasProducts = products.length > 0;
 
+    // Generate page numbers for pagination
     const generatePageNumbers = () => {
         const pages = [];
         const maxVisiblePages = 5;
@@ -605,19 +677,13 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                         {!loading && hasProducts ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                                 {products.map((product) => (
-                                    <Link
+                                    <ShopProductCard
                                         key={product.product_id}
-                                        href={route(
-                                            "product-details",
-                                            product.product_id
-                                        )}
-                                        className="block transition-transform hover:scale-[1.02]"
-                                    >
-                                        <ProductCard
-                                            product={product}
-                                            isFlashSale={false}
-                                        />
-                                    </Link>
+                                        product={product}
+                                        isFlashSale={false}
+                                        save_wishlist={save_wishlist}
+                                        get_wishlist={get_wishlist}
+                                    />
                                 ))}
                             </div>
                         ) : (

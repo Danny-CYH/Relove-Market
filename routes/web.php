@@ -44,6 +44,7 @@ Route::get('/seller-shop', [UserController::class, 'sellerShop'])->name('seller-
 Route::post("/api/recommend", [ProductManagementController::class, "getRecommendations"])->name("recommend");
 Route::post('/camera-search', [HomePageController::class, 'cameraSearch'])->name("camera-search");
 Route::get("/api/get-list-products", [ProductManagementController::class, "get_listProducts"]);
+Route::get('/api/shopping', [ProductManagementController::class, 'shoppingApi']);
 
 // Need to login account and is a buyer can access this all feature
 Route::middleware(["is_buyer"])->group(function () {

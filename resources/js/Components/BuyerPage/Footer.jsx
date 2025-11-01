@@ -14,6 +14,8 @@ import {
 } from "react-icons/fa";
 import { FiSend } from "react-icons/fi";
 
+import { Link } from "@inertiajs/react";
+
 import { TermsConditions } from "./TermsConditions";
 
 export function Footer() {
@@ -111,20 +113,20 @@ export function Footer() {
                         </h3>
                         <ul className="space-y-3">
                             <li>
-                                <a
-                                    href="#"
+                                <Link
+                                    href={route("shopping")}
                                     className="text-gray-400 hover:text-green-400 transition-colors"
                                 >
-                                    Browse Items
-                                </a>
+                                    Shopping
+                                </Link>
                             </li>
                             <li>
-                                <a
-                                    href="#"
+                                <Link
+                                    href={route("seller-manage-product")}
                                     className="text-gray-400 hover:text-green-400 transition-colors"
                                 >
                                     Sell an Item
-                                </a>
+                                </Link>
                             </li>
                             <li>
                                 <a
@@ -135,20 +137,20 @@ export function Footer() {
                                 </a>
                             </li>
                             <li>
-                                <a
-                                    href="#"
+                                <Link
+                                    href={route("seller-benefit")}
                                     className="text-gray-400 hover:text-green-400 transition-colors"
                                 >
-                                    Featured Sellers
-                                </a>
+                                    Seller Benefit
+                                </Link>
                             </li>
                             <li>
-                                <a
-                                    href="#"
+                                <Link
+                                    href={route("profile")}
                                     className="text-gray-400 hover:text-green-400 transition-colors"
                                 >
-                                    Seasonal Collections
-                                </a>
+                                    Order Management
+                                </Link>
                             </li>
                         </ul>
                     </div>

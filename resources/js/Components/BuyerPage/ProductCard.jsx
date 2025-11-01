@@ -1,3 +1,4 @@
+// Components/BuyerPage/ProductCard.jsx
 import {
     FaClock,
     FaShoppingCart,
@@ -5,39 +6,71 @@ import {
     FaHeart,
     FaTimes,
     FaInfo,
+    FaSearch,
 } from "react-icons/fa";
-
 import { useState } from "react";
-
 import { Link } from "@inertiajs/react";
+import { rating } from "@material-tailwind/react";
 
-export function ProductCard({ product, isFlashSale, save_wishlist }) {
+export function ProductCard({
+    product,
+    isFlashSale,
+    save_wishlist,
+    isAiResult = false,
+}) {
+    // console.log(product);
+
     const [isHovered, setIsHovered] = useState(false);
     const [isLiked, setIsLiked] = useState(false);
     const [showVariantModal, setShowVariantModal] = useState(false);
     const [selectedVariants, setSelectedVariants] = useState({});
     const [wishlistPending, setWishlistPending] = useState(false);
 
-    if (!product) return null;
+    if (!product) {
+        console.warn("ProductCard: No product data provided");
+        return null;
+    }
 
-    const { category, originalPrice, discount, timeLeft } = product;
-    const currentPrice = product.product_price;
-    const savedAmount = originalPrice
-        ? (originalPrice - currentPrice).toFixed(2)
-        : null;
-    const rating = product.ratings[0]?.rating || 0;
-    const reviewCount = product.ratings[0]?.review_count || 0;
+    // Safe data extraction with fallbacks
+    const productData = product.product || product;
+    console.log(productData);
+
+    const productName =
+        productData.product_name || productData.name || "Unnamed Product";
+    const productId =
+        product.product_id ||
+        productData.product_id ||
+        `unknown-${Math.random()}`;
+    const productPrice = productData.product_price || 0;
+    const productImages = productData.product_image || [];
+    const primaryImage =
+        productImages[0]?.image_path || "/default-product-image.jpg";
+    const category = productData.category ||
+        product.category || { category_name: "General" };
+    const ratings = productData.product_ratings || 0;
+    const rating = parseFloat(ratings[0]?.rating ?? ratings ?? 0);
+    const reviewCount =
+        ratings[0]?.review_count || productData.ratings || 0;
+    const seller = productData.seller || {
+        seller_store: { store_name: "Unknown Seller" },
+    };
+
+    // AI-specific data
+    const aiSimilarity = product.ai_similarity;
+    const aiConfidence = product.ai_confidence;
 
     // Check if product has variants
     const hasVariants =
-        product.product_variant && product.product_variant.length > 0;
+        productData.product_variant && productData.product_variant.length > 0;
     const variantGroups = {};
 
-    // Parse JSON variant combinations and group by variant type
     if (hasVariants) {
-        product.product_variant.forEach((variant) => {
+        productData.product_variant.forEach((variant) => {
             try {
-                const combination = JSON.parse(variant.variant_combination);
+                const combination =
+                    typeof variant.variant_combination === "string"
+                        ? JSON.parse(variant.variant_combination)
+                        : variant.variant_combination;
                 Object.entries(combination).forEach(([type, value]) => {
                     if (!variantGroups[type]) {
                         variantGroups[type] = new Set();
@@ -49,24 +82,24 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
             }
         });
 
-        // Convert Sets to Arrays for easier rendering
         Object.keys(variantGroups).forEach((type) => {
             variantGroups[type] = Array.from(variantGroups[type]);
         });
     }
 
-    // Check if all required variants are selected
     const allVariantsSelected = hasVariants
         ? Object.keys(variantGroups).every((type) => selectedVariants[type])
         : true;
 
-    // Find the matching variant based on selected combinations
     const findMatchingVariant = () => {
         if (!hasVariants || !allVariantsSelected) return null;
 
-        return product.product_variant.find((variant) => {
+        return productData.product_variant.find((variant) => {
             try {
-                const combination = JSON.parse(variant.variant_combination);
+                const combination =
+                    typeof variant.variant_combination === "string"
+                        ? JSON.parse(variant.variant_combination)
+                        : variant.variant_combination;
                 return Object.keys(selectedVariants).every(
                     (type) => combination[type] === selectedVariants[type]
                 );
@@ -78,9 +111,14 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
     };
 
     const selectedVariant = findMatchingVariant();
+    const displayPrice = selectedVariant?.price || productPrice;
+    const displayQuantity =
+        selectedVariant?.quantity || productData.product_quantity || 0;
+    const isInStock = displayQuantity > 0;
 
     const handleWishlistClick = (e) => {
         e.preventDefault();
+        e.stopPropagation();
 
         if (hasVariants && !allVariantsSelected) {
             setWishlistPending(true);
@@ -88,8 +126,7 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
             return;
         }
 
-        // If no variants or all variants selected, proceed with wishlist
-        save_wishlist(product.product_id, selectedVariant?.variant_id);
+        save_wishlist(productId, selectedVariant?.variant_id);
         setIsLiked(true);
     };
 
@@ -102,50 +139,57 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
 
     const confirmWishlist = () => {
         if (allVariantsSelected) {
-            save_wishlist(product.product_id, selectedVariant?.variant_id);
+            save_wishlist(productId, selectedVariant?.variant_id);
             setIsLiked(true);
             setShowVariantModal(false);
             setWishlistPending(false);
         }
     };
 
-    const getDisplayPrice = () => {
-        if (selectedVariant && selectedVariant.price) {
-            return selectedVariant.price;
-        }
-        return currentPrice;
-    };
-
-    const getDisplayQuantity = () => {
-        if (selectedVariant && selectedVariant.quantity !== undefined) {
-            return selectedVariant.quantity;
-        }
-        return product.product_quantity;
-    };
-
-    const displayPrice = getDisplayPrice();
-    const displayQuantity = getDisplayQuantity();
-
-    // Check if selected variant is in stock
-    const isInStock = displayQuantity > 0;
-
     return (
         <>
             <div
-                className="bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-500 h-full flex flex-col group border border-gray-100 overflow-hidden"
+                className="bg-white rounded-2xl shadow-sm hover:shadow-2xl transition-all duration-500 h-full flex flex-col group border border-gray-100 overflow-hidden relative"
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
+                {/* AI Result Badge */}
+                {isAiResult && (
+                    <div className="absolute top-3 right-3 z-10">
+                        <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center space-x-1">
+                            <FaSearch className="text-xs" />
+                            <span>AI Match</span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Similarity Indicator for AI Results */}
+                {isAiResult && aiSimilarity && (
+                    <div className="absolute top-12 right-3 z-10">
+                        <div
+                            className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                                aiSimilarity > 0.8
+                                    ? "bg-green-100 text-green-800"
+                                    : aiSimilarity > 0.6
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-blue-100 text-blue-800"
+                            }`}
+                        >
+                            {Math.round(aiSimilarity * 100)}% Match
+                        </div>
+                    </div>
+                )}
+
                 {/* Image Section */}
                 <div className="relative overflow-hidden bg-gray-50">
                     <div className="relative h-60 sm:h-56 md:h-52 lg:h-48 xl:h-56">
                         <img
-                            src={
-                                import.meta.env.VITE_BASE_URL +
-                                product.product_image[0].image_path
-                            }
-                            alt={product.product_name}
+                            src={import.meta.env.VITE_BASE_URL + primaryImage}
+                            alt={productName}
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                            onError={(e) => {
+                                e.target.src = "/default-product-image.jpg";
+                            }}
                         />
 
                         {/* Overlay with quick actions */}
@@ -157,13 +201,6 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
 
                         {/* Top badges */}
                         <div className="absolute top-3 left-3 flex flex-col space-y-2">
-                            {/* Flash sale badge */}
-                            {isFlashSale && discount && (
-                                <div className="bg-gradient-to-r from-red-600 to-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                                    {discount}% OFF
-                                </div>
-                            )}
-
                             {/* Category badge */}
                             <div className="bg-white bg-opacity-95 backdrop-blur-sm text-gray-700 text-xs font-medium px-2 py-1 rounded">
                                 {category.category_name}
@@ -176,23 +213,6 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
                                 </div>
                             )}
                         </div>
-
-                        {/* Flash sale countdown */}
-                        {isFlashSale && timeLeft && (
-                            <div className="absolute bottom-3 left-3 right-3">
-                                <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-lg p-2 shadow-lg">
-                                    <div className="flex items-center justify-between text-xs">
-                                        <div className="flex items-center text-red-600 font-semibold">
-                                            <FaClock className="mr-1.5" />
-                                            <span>Ends in</span>
-                                        </div>
-                                        <span className="font-mono text-gray-900 font-bold">
-                                            {timeLeft}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
 
@@ -200,7 +220,7 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
                 <div className="p-5 flex-grow flex flex-col">
                     {/* Product Name */}
                     <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 text-sm md:text-base leading-tight group-hover:text-gray-700 transition-colors duration-200">
-                        {product.product_name}
+                        {productName}
                     </h3>
 
                     {/* Selected Variant Display */}
@@ -252,43 +272,13 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
                             <span className="text-xl font-bold text-gray-900">
                                 RM {displayPrice}
                             </span>
-                            {originalPrice && (
-                                <>
-                                    <span className="text-sm text-gray-500 line-through">
-                                        RM {originalPrice}
-                                    </span>
-                                    <span className="text-xs font-semibold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
-                                        Save RM {savedAmount}
-                                    </span>
-                                </>
-                            )}
                         </div>
                     </div>
 
-                    {/* Progress bar for flash sale items */}
-                    {isFlashSale && (
-                        <div className="mb-4">
-                            <div className="flex justify-between text-xs text-gray-600 mb-2 font-medium">
-                                <span>Sold: 72%</span>
-                                <span>Available: 12/50</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                                <div
-                                    className="bg-gradient-to-r from-red-500 to-red-600 h-2 rounded-full transition-all duration-500"
-                                    style={{ width: "72%" }}
-                                ></div>
-                            </div>
-                        </div>
-                    )}
-
                     {/* Action Button */}
                     <div className="mt-auto">
-                        <Link
-                            href={route("product-details", product.product_id)}
-                            key={product.product_id}
-                        >
+                        <Link href={route("product-details", productId)}>
                             <button
-                                onClick={handleWishlistClick}
                                 className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
                                     isFlashSale
                                         ? "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
@@ -300,12 +290,13 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
                                 }`}
                                 disabled={!isInStock}
                             >
+                                <FaShoppingCart className="w-4 h-4" />
                                 <span>
                                     {!isInStock
                                         ? "Out of Stock"
                                         : isFlashSale
                                         ? "Buy Now"
-                                        : "Add to cart"}
+                                        : "View Details"}
                                 </span>
                             </button>
                         </Link>
@@ -313,17 +304,24 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
 
                     {/* Additional Info */}
                     <div className="mt-3 flex justify-between text-xs text-gray-500">
-                        <span>{product.seller.seller_store.store_name}</span>
-                        <span className="flex items-center">
-                            <Link
-                                href={route(
-                                    "product-details",
-                                    product.product_id
-                                )}
-                            >
-                                <span className="text-blue-500 text-xs font-bold">Learn More</span>
-                            </Link>
+                        <span>
+                            {seller.seller_store?.store_name ||
+                                seller.store_name ||
+                                "Unknown Store"}
                         </span>
+                        {isAiResult && aiConfidence && (
+                            <span
+                                className={`font-medium ${
+                                    aiConfidence === "high"
+                                        ? "text-green-600"
+                                        : aiConfidence === "medium"
+                                        ? "text-yellow-600"
+                                        : "text-blue-600"
+                                }`}
+                            >
+                                {aiConfidence} confidence
+                            </span>
+                        )}
                     </div>
                 </div>
 
@@ -359,14 +357,18 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
                                 <img
                                     src={
                                         import.meta.env.VITE_BASE_URL +
-                                        product.product_image[0].image_path
+                                        primaryImage
                                     }
-                                    alt={product.product_name}
+                                    alt={productName}
                                     className="w-16 h-16 object-cover rounded-lg"
+                                    onError={(e) => {
+                                        e.target.src =
+                                            "/default-product-image.jpg";
+                                    }}
                                 />
                                 <div>
                                     <h4 className="font-semibold text-gray-900 text-sm">
-                                        {product.product_name}
+                                        {productName}
                                     </h4>
                                     <p className="text-lg font-bold text-gray-900">
                                         RM {displayPrice}
@@ -383,15 +385,17 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
                                         </label>
                                         <div className="flex flex-wrap gap-2">
                                             {values.map((value) => {
-                                                // Check if this variant combination exists and get its details
                                                 const variantForValue =
-                                                    product.product_variant.find(
+                                                    productData.product_variant.find(
                                                         (v) => {
                                                             try {
                                                                 const combination =
-                                                                    JSON.parse(
-                                                                        v.variant_combination
-                                                                    );
+                                                                    typeof v.variant_combination ===
+                                                                    "string"
+                                                                        ? JSON.parse(
+                                                                              v.variant_combination
+                                                                          )
+                                                                        : v.variant_combination;
                                                                 return (
                                                                     combination[
                                                                         type
@@ -410,10 +414,10 @@ export function ProductCard({ product, isFlashSale, save_wishlist }) {
                                                 const priceDifference =
                                                     variantForValue &&
                                                     variantForValue.price !==
-                                                        currentPrice
+                                                        productPrice
                                                         ? (
                                                               variantForValue.price -
-                                                              currentPrice
+                                                              productPrice
                                                           ).toFixed(2)
                                                         : null;
 

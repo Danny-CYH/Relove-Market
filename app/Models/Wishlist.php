@@ -36,6 +36,6 @@ class Wishlist extends Model
 
     public function productVariant()
     {
-        return $this->belongsTo(ProductVariant::class, "product_id", "product_id");
+        return $this->hasMany(ProductVariant::class, "product_id", "product_id");
     }
 }

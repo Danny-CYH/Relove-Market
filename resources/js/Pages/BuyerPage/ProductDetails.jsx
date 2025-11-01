@@ -85,33 +85,21 @@ export default function ProductDetails({ product_info }) {
     const { auth } = usePage().props;
 
     const reviewCount = reviews.length;
-
+    const hasVariants = product_info[0]?.product_variant?.length > 0;
+    const variants = product_info[0]?.product_variant || [];
     const averageRating =
         reviews.length > 0
             ? reviews.reduce((acc, review) => acc + (review.rating || 0), 0) /
               reviews.length
             : 0;
 
-    // Check if product has variants
-    const hasVariants = product_info[0]?.product_variant?.length > 0;
-    const variants = product_info[0]?.product_variant || [];
+    const increaseQty = () => setQuantity((prev) => prev + 1);
+    const decreaseQty = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
 
     // Get available stock for selected variant or product
     const availableStock = selectedVariant
         ? selectedVariant.quantity
         : product_info[0]?.product_quantity || 0;
-
-    // Get price for selected variant or product
-    const displayPrice = selectedVariant
-        ? selectedVariant.price
-        : product_info[0]?.product_price;
-
-    // Auto-select first variant if none selected and variants exist
-    useEffect(() => {
-        if (hasVariants && !selectedVariant && variants.length > 0) {
-            setSelectedVariant(variants[0]);
-        }
-    }, [hasVariants, selectedVariant, variants]);
 
     // Validate variant before action
     const validateVariant = (action) => {
@@ -196,16 +184,6 @@ export default function ProductDetails({ product_info }) {
             loadAllReviews(currentReviewsPage + 1);
         }
     }, [hasMoreReviews, isLoadingReviews, currentReviewsPage, loadAllReviews]);
-
-    // Initialize data
-    useEffect(() => {
-        checkWishlistStatus();
-        setAllReviews(reviews);
-
-        if (reviews.length > 0) {
-            setHasMoreReviews(true);
-        }
-    }, [checkWishlistStatus, reviews]);
 
     // Variant selection handler
     const handleVariantSelect = (variant) => {
@@ -473,11 +451,29 @@ export default function ProductDetails({ product_info }) {
         }
     };
 
+    // Auto-select first variant if none selected and variants exist
+    useEffect(() => {
+        if (hasVariants && !selectedVariant && variants.length > 0) {
+            setSelectedVariant(variants[0]);
+        }
+    }, [hasVariants, selectedVariant, variants]);
+
+    // Initialize data
+    useEffect(() => {
+        checkWishlistStatus();
+        setAllReviews(reviews);
+
+        if (reviews.length > 0) {
+            setHasMoreReviews(true);
+        }
+    }, [checkWishlistStatus, reviews]);
+
     // WebSocket and other preserved effects
     useEffect(() => {
         getRecommendations();
     }, [product_info[0].product_id]);
 
+    // Code for always listening to new reviews via WebSocket
     useEffect(() => {
         if (!product_info[0]) return;
 
@@ -526,6 +522,7 @@ export default function ProductDetails({ product_info }) {
         };
     }, [product_info]);
 
+    // WebSocket connection status handlers
     useEffect(() => {
         if (typeof window.Echo === "undefined") {
             console.error(
@@ -557,9 +554,6 @@ export default function ProductDetails({ product_info }) {
             connection.unbind_all();
         };
     }, []);
-
-    const increaseQty = () => setQuantity((prev) => prev + 1);
-    const decreaseQty = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
 
     return (
         <div className="min-h-screen bg-gray-50">
@@ -688,7 +682,7 @@ export default function ProductDetails({ product_info }) {
                                             •
                                         </span>
                                         <span className="text-sm">
-                                            {product_info?.[0]?.order_item
+                                            {product_info?.[0]?.order_items
                                                 ?.length || 0}{" "}
                                             sold
                                         </span>
@@ -1383,84 +1377,102 @@ export default function ProductDetails({ product_info }) {
                 </div>
 
                 {/* Related Products */}
-                {recommendations.length > 0 && (
-                    <div className="mt-8 lg:mt-12">
-                        <h2 className="text-xl lg:text-2xl text-black font-bold mb-4 lg:mb-6">
-                            You Might Also Like
-                        </h2>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
-                            {recommendations.map((product) => (
-                                <Link
-                                    href={route(
-                                        "product-details",
-                                        product.product_id
-                                    )}
-                                    key={product.product_id}
-                                >
-                                    <div className="bg-white rounded-lg border overflow-hidden hover:shadow-md transition-shadow">
-                                        <img
-                                            src={
-                                                product?.product
-                                                    ?.product_image?.[0]
-                                                    ?.image_path
-                                                    ? import.meta.env
-                                                          .VITE_BASE_URL +
-                                                      product.product
-                                                          .product_image[0]
-                                                          .image_path
-                                                    : "/placeholder.png"
-                                            }
-                                            alt={
-                                                product.product?.product_name ||
-                                                ""
-                                            }
-                                            className="w-full h-24 sm:h-32 lg:h-32 object-cover"
-                                        />
-                                        <div className="p-2 lg:p-3">
-                                            <h3 className="font-medium text-xs lg:text-sm text-black line-clamp-2 mb-1 lg:mb-2">
-                                                {product.product?.product_name}
-                                            </h3>
-                                            <div className="flex items-center mb-3">
-                                                <div className="flex items-center">
-                                                    {[1, 2, 3, 4, 5].map(
-                                                        (star) => (
-                                                            <FaStar
-                                                                key={star}
-                                                                className={`w-3 h-3 ${
-                                                                    star <=
-                                                                    Math.round(
-                                                                        product
-                                                                            .product
-                                                                            ?.ratings[0]
-                                                                            ?.rating ||
-                                                                            0
-                                                                    )
-                                                                        ? "text-yellow-400"
-                                                                        : "text-gray-300"
-                                                                }`}
-                                                            />
+                {recommendations &&
+                    (recommendations.length > 0 ? (
+                        <div className="mt-8 lg:mt-12">
+                            <h2 className="text-xl lg:text-2xl text-black font-bold mb-4 lg:mb-6">
+                                You Might Also Like
+                            </h2>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+                                {recommendations.map((product) => (
+                                    <Link
+                                        href={route(
+                                            "product-details",
+                                            product.product_id
+                                        )}
+                                        key={product.product_id}
+                                    >
+                                        <div className="bg-white rounded-lg border overflow-hidden hover:shadow-md transition-shadow">
+                                            <img
+                                                src={
+                                                    product?.product
+                                                        ?.product_image?.[0]
+                                                        ?.image_path
+                                                        ? import.meta.env
+                                                              .VITE_BASE_URL +
+                                                          product.product
+                                                              .product_image[0]
+                                                              .image_path
+                                                        : "/placeholder.png"
+                                                }
+                                                alt={
+                                                    product.product
+                                                        ?.product_name || ""
+                                                }
+                                                className="w-full h-24 sm:h-32 lg:h-32 object-cover"
+                                            />
+                                            <div className="p-2 lg:p-3">
+                                                <h3 className="font-medium text-xs lg:text-sm text-black line-clamp-2 mb-1 lg:mb-2">
+                                                    {
+                                                        product.product
+                                                            ?.product_name
+                                                    }
+                                                </h3>
+                                                <div className="flex items-center mb-3">
+                                                    <div className="flex items-center">
+                                                        {[1, 2, 3, 4, 5].map(
+                                                            (star) => (
+                                                                <FaStar
+                                                                    key={star}
+                                                                    className={`w-3 h-3 ${
+                                                                        star <=
+                                                                        Math.round(
+                                                                            product
+                                                                                .product
+                                                                                ?.ratings[0]
+                                                                                ?.rating ||
+                                                                                0
+                                                                        )
+                                                                            ? "text-yellow-400"
+                                                                            : "text-gray-300"
+                                                                    }`}
+                                                                />
+                                                            )
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs text-gray-500 ml-1">
+                                                        ({" "}
+                                                        {product.product
+                                                            ?.ratings?.[0]
+                                                            ?.rating || 0}{" "}
                                                         )
-                                                    )}
+                                                    </span>
                                                 </div>
-                                                <span className="text-xs text-gray-500 ml-1">
-                                                    ({" "}
-                                                    {product.product
-                                                        ?.ratings?.[0]
-                                                        ?.rating || 0}{" "}
-                                                    )
-                                                </span>
+                                                <p className="text-blue-600 font-semibold text-sm lg:text-base">
+                                                    RM{" "}
+                                                    {
+                                                        product.product
+                                                            ?.product_price
+                                                    }
+                                                </p>
                                             </div>
-                                            <p className="text-blue-600 font-semibold text-sm lg:text-base">
-                                                RM{" "}
-                                                {product.product?.product_price}
-                                            </p>
                                         </div>
-                                    </div>
-                                </Link>
-                            ))}
+                                    </Link>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    ) : (
+                        <div className="mt-8 lg:mt-12 text-center py-8">
+                            <p className="text-gray-500 mb-4">
+                                No similar products available at the moment
+                            </p>
+                            <Link href={route("shopping")}>
+                                <button className="text-blue-600 hover:text-blue-800 font-medium">
+                                    Explore More Products →
+                                </button>
+                            </Link>
+                        </div>
+                    ))}
             </div>
 
             {/* Modals */}
@@ -1498,6 +1510,7 @@ export default function ProductDetails({ product_info }) {
                 <ShowZoomModal
                     product_info={product_info}
                     setShowZoomModal={setShowZoomModal}
+                    selectedImage={selectedImage}
                 />
             )}
 

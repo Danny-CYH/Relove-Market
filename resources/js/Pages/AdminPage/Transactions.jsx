@@ -58,10 +58,10 @@ export default function Transactions({ list_transactions }) {
     // Calculate total metrics
     const totalRevenue = transactions
         .filter((t) => t.order_status === "Delivered")
-        .reduce((transaction) => {
+        .reduce((total, transaction) => {
             const amount = parseFloat(transaction.tax_amount) || 0;
-            return amount;
-        });
+            return total + amount;
+        }, 0); // ✅ start from 0 so empty array won’t break
 
     const completedTransactions = transactions.filter(
         (t) => t.payment_status === "paid" && t.order_status === "Delivered"
