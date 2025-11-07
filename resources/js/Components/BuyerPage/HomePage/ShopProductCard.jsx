@@ -1,6 +1,14 @@
-// Components/BuyerPage/ShopProductCard.jsx
-import { FaStar, FaHeart, FaShoppingCart, FaTimes } from "react-icons/fa";
-import { useState, useEffect } from "react"; // Add useEffect import
+import {
+    FaStar,
+    FaHeart,
+    FaTimes,
+    FaStore,
+    FaUser,
+    FaShieldAlt,
+    FaClock,
+} from "react-icons/fa";
+
+import { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 
 export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
@@ -17,6 +25,18 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
     const rating = product.ratings[0]?.rating || 0;
     const reviewCount = product.ratings.length || 0;
 
+    // Enhanced product information
+    const productCondition = product.product_condition || "Like New";
+    const createdAt = product.created_at ? new Date(product.created_at) : null;
+    const productSoldCount = product.order_items.length || 0;
+
+    // Enhanced seller information
+    const sellerStore = product.seller?.seller_store?.store_name;
+    const sellerRating = product.seller?.average_rating || 0;
+    const sellerTotalSales = product.seller?.total_sales || 0;
+
+    const isVerifiedSeller = product.seller?.is_verified || false;
+
     // Check if product is in wishlist when component mounts
     useEffect(() => {
         const checkWishlistStatus = async () => {
@@ -26,8 +46,6 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
             try {
                 const wishlistData = await get_wishlist(product.product_id);
 
-                // Assuming your API returns data that indicates if product is in wishlist
-                // Adjust this condition based on your actual API response structure
                 if (wishlistData.is_wishlisted) {
                     setIsLiked(true);
                 }
@@ -105,10 +123,7 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
     const handleWishlistClick = async (e) => {
         e.preventDefault();
 
-        // If already liked, we might want to remove from wishlist
-        // Or you can keep it as toggle behavior
         if (isLiked) {
-            // Optional: Add remove from wishlist functionality
             console.log("Product is already in wishlist");
             return;
         }
@@ -210,6 +225,20 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
         setShowVariantModal(true);
     };
 
+    // Format date to relative time
+    const formatRelativeTime = (date) => {
+        const now = new Date();
+        const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
+
+        if (diffInHours < 24) {
+            return `${diffInHours}h ago`;
+        } else if (diffInHours < 168) {
+            return `${Math.floor(diffInHours / 24)}d ago`;
+        } else {
+            return date.toLocaleDateString();
+        }
+    };
+
     return (
         <>
             <div
@@ -258,11 +287,19 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                                     {Object.keys(variantGroups).length} Options
                                 </div>
                             )}
+
                             {isLiked && (
                                 <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-medium px-2 py-1 rounded">
                                     In Wishlist
                                 </div>
                             )}
+                        </div>
+
+                        {/* Condition Badge */}
+                        <div className="absolute bottom-3 left-3">
+                            <div className="bg-black bg-opacity-70 text-white text-xs font-medium px-2 py-1 rounded">
+                                {productCondition}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -272,6 +309,22 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                     <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 text-sm md:text-base leading-tight">
                         {product.product_name}
                     </h3>
+
+                    {/* Product Condition and Posted Date */}
+                    <div className="flex items-center justify-between mb-2 text-xs text-gray-500">
+                        <span className="flex items-center">
+                            <FaClock className="w-3 h-3 mr-1" />
+                            {createdAt
+                                ? formatRelativeTime(createdAt)
+                                : "Recently"}
+                        </span>
+                        <span className="text-black font-bold">
+                            Sold:{" "}
+                            <span className="text-red-600">
+                                {productSoldCount}
+                            </span>
+                        </span>
+                    </div>
 
                     {/* Selected Variants */}
                     {hasVariants && getVariantDisplayText() && (
@@ -296,7 +349,6 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                         </div>
                     )}
 
-                    {/* Rating */}
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center space-x-2">
                             <div className="flex items-center">
@@ -334,6 +386,13 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                                 </span>
                             )}
                     </div>
+                    {hasVariants &&
+                        selectedVariant &&
+                        selectedVariant.price !== parseFloat(currentPrice) && (
+                            <span className="text-sm text-gray-500 line-through">
+                                RM {currentPrice}
+                            </span>
+                        )}
 
                     {/* Stock Status */}
                     <div className="mb-4">
@@ -346,6 +405,35 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                                 ? `In Stock (${displayQuantity})`
                                 : "Out of Stock"}
                         </span>
+                    </div>
+
+                    {/* Seller Information */}
+                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                                <FaStore className="w-3 h-3 text-gray-600" />
+                                <span className="text-xs font-medium text-gray-900">
+                                    {sellerStore || "Individual Seller"}
+                                </span>
+                            </div>
+                            {isVerifiedSeller && (
+                                <FaShieldAlt
+                                    className="w-3 h-3 text-green-500"
+                                    title="Verified Seller"
+                                />
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                            <div className="flex items-center space-x-1">
+                                <FaStar className="w-3 h-3 text-yellow-400" />
+                                <span>{sellerRating.toFixed(1)}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                                <FaUser className="w-3 h-3 text-blue-500" />
+                                <span>{sellerTotalSales}+ sales</span>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Action Buttons */}

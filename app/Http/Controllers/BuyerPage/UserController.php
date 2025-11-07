@@ -48,7 +48,7 @@ class UserController extends Controller
         return Inertia::render('BuyerPage/AboutUs');
     }
 
-    // Code for returning the shopping page (some bug, product details cannot return back to shop page)
+    // Code for returning the shopping page
     public function shopping(Request $request)
     {
         $query = Product::with([
@@ -56,8 +56,11 @@ class UserController extends Controller
             'productVariant',
             'category',
             'ratings',
-            'seller.sellerStore'
-        ]);
+            'seller.sellerStore',
+            "orderItems"
+        ])
+            ->orderBy('featured', 'DESC')
+            ->orderBy('product_name', 'ASC');
 
         // Apply basic filters for initial load if any
         if ($request->has('search') && $request->search) {
@@ -167,21 +170,65 @@ class UserController extends Controller
     }
 
     // Code for returning the checkout page
-    public function checkout(Request $request)
+    public function checkoutPage(Request $request)
     {
+        // First, try to get data from session (for page refreshes)
+        $sessionCheckoutData = $request->session()->get('checkout_data');
+
+        // If we have session data, use it
+        if ($sessionCheckoutData) {
+            return Inertia::render('BuyerPage/Checkout', [
+                'list_product' => $sessionCheckoutData['items'],
+                'platform_tax' => $sessionCheckoutData['platform_tax'],
+            ]);
+        }
+
+        // Otherwise, try to get data from request (direct access)
         $list_product = $request->input('items');
         $single_checkoutData = $request->input('single_checkoutData');
 
         $platform_tax = 0.08;
 
         if ($single_checkoutData && !$list_product) {
-
             $list_product = $single_checkoutData;
+        }
+
+        // If no data found, redirect back to cart/wishlist
+        if (!$list_product) {
+            return redirect()->route('wishlist')->with('error', 'Please select items to checkout first.');
         }
 
         return Inertia::render('BuyerPage/Checkout', [
             'list_product' => $list_product,
             'platform_tax' => $platform_tax,
         ]);
+    }
+
+    public function checkoutProcess(Request $request)
+    {
+        $checkoutItems = $request->input('items');
+        $platform_tax = 0.08;
+
+        // Validate the checkout items
+        if (!$checkoutItems || !is_array($checkoutItems) || count($checkoutItems) === 0) {
+            return redirect()->back()->with('error', 'No items selected for checkout.');
+        }
+
+        // Store checkout data in session for page refresh handling
+        $request->session()->put('checkout_data', [
+            'items' => $checkoutItems,
+            'platform_tax' => $platform_tax,
+            'timestamp' => now()->timestamp
+        ]);
+
+        // Flash the session data for immediate use
+        $request->session()->flash('checkout_data', [
+            'items' => $checkoutItems,
+            'platform_tax' => $platform_tax,
+            'timestamp' => now()->timestamp
+        ]);
+
+        // Redirect to checkout page with GET request
+        return redirect()->route('checkout');
     }
 }

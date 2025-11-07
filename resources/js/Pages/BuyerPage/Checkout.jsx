@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
     CreditCard,
     Lock,
     Shield,
     ArrowLeft,
-    Gift,
     Clock,
     HelpCircle,
 } from "lucide-react";
@@ -22,28 +21,132 @@ import { Link, router } from "@inertiajs/react";
 // Initialize Stripe with your publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
 
-export default function CheckoutPage({ list_product, platform_tax }) {
-    console.log("Checkout products:", list_product);
-
+export default function CheckoutPage({
+    list_product,
+    platform_tax,
+    errors: initialErrors,
+}) {
     const [paymentMethod, setPaymentMethod] = useState("credit");
-    const [activeStep, setActiveStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
+    const [activeStep, setActiveStep] = useState(1);
 
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [orderData, setOrderData] = useState(null);
 
+    const [isPageLoaded, setIsPageLoaded] = useState(false);
+    const [hasProducts, setHasProducts] = useState(false);
+
+    const [hasValidData, setHasValidData] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const [checkoutErrors, setCheckoutErrors] = useState(initialErrors || []);
+
+    // Enhanced product validation
+    useEffect(() => {
+        const validateProducts = () => {
+            const productsArray = getProductsArray();
+
+            if (productsArray.length === 0) {
+                console.warn(
+                    "No checkout data found, redirecting to wishlist..."
+                );
+                router.visit(route("wishlist"), {
+                    data: {
+                        error: "Checkout session expired. Please select items again.",
+                    },
+                });
+                return false;
+            }
+
+            // Validate each product structure
+            const invalidProducts = productsArray.filter((product) => {
+                const productId =
+                    product.product_id || product.product?.product_id;
+                const quantity =
+                    product.selected_quantity || product.quantity || 1;
+
+                if (!productId || quantity < 1) {
+                    return true;
+                }
+
+                // Validate variant data if present
+                if (product.selected_variant) {
+                    try {
+                        const variant = parseSelectedVariant(product);
+                        if (!variant || !variant.variant_id) {
+                            return true;
+                        }
+                    } catch (error) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+
+            if (invalidProducts.length > 0) {
+                setCheckoutErrors([
+                    "Some products in your cart are invalid. Please review your selection.",
+                ]);
+                return false;
+            }
+
+            setHasValidData(true);
+            return true;
+        };
+
+        const isValid = validateProducts();
+        setIsLoading(false);
+
+        return () => {
+            // Cleanup if needed
+        };
+    }, []);
+
+    // Redirect if no products
+    useEffect(() => {
+        if (isPageLoaded && !hasProducts) {
+            console.warn("No products found, redirecting to cart...");
+            router.visit(route("wishlist")); // or your cart page route
+        }
+    }, [isPageLoaded, hasProducts]);
+
     // Get products array for rendering
     const getProductsArray = () => {
-        if (Array.isArray(list_product)) {
-            return list_product;
-        } else if (list_product && list_product.product_id) {
-            return [list_product];
+        if (!list_product) return [];
+
+        try {
+            if (Array.isArray(list_product)) {
+                return list_product.filter((item) => {
+                    if (!item) return false;
+
+                    const productId =
+                        item.product_id || item.product?.product_id;
+                    const quantity =
+                        item.selected_quantity || item.quantity || 1;
+
+                    return productId && quantity > 0;
+                });
+            } else if (
+                list_product &&
+                (list_product.product_id || list_product.product?.product_id)
+            ) {
+                return [list_product];
+            }
+            return [];
+        } catch (error) {
+            console.error("Error processing product array:", error);
+            return [];
         }
-        return [];
     };
 
     const handlePaymentSuccess = (orderInfo) => {
         setOrderData(orderInfo);
         setShowSuccessModal(true);
+
+        setCheckoutErrors([]);
+
+        // Remove the beforeunload listener after successful payment
+        window.removeEventListener("beforeunload", () => {});
 
         // Optional: Redirect to success page after a delay
         setTimeout(() => {
@@ -51,16 +154,35 @@ export default function CheckoutPage({ list_product, platform_tax }) {
         }, 7000);
     };
 
+    const handlePaymentError = (error) => {
+        setCheckoutErrors([error]);
+        // Scroll to top to show error
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
     // Parse selected variant from the product data
     const parseSelectedVariant = (product) => {
         if (!product.selected_variant) return null;
 
         try {
-            return typeof product.selected_variant === "string"
-                ? JSON.parse(product.selected_variant)
-                : product.selected_variant;
+            const variant =
+                typeof product.selected_variant === "string"
+                    ? JSON.parse(product.selected_variant)
+                    : product.selected_variant;
+
+            // Validate variant structure
+            if (!variant || typeof variant !== "object") {
+                console.warn("Invalid variant structure:", variant);
+                return null;
+            }
+
+            return variant;
         } catch (error) {
-            console.error("Error parsing selected variant:", error);
+            console.error(
+                "Error parsing selected variant:",
+                error,
+                product.selected_variant
+            );
             return null;
         }
     };
@@ -69,45 +191,122 @@ export default function CheckoutPage({ list_product, platform_tax }) {
     const getVariantDisplayText = (variant) => {
         if (!variant) return null;
 
-        console.log("Variant data for display:", variant);
+        // Helper function to process combination object/string
+        const processCombination = (combination) => {
+            if (!combination) return null;
 
-        // Handle the variant_combination field from your data structure
-        if (
-            variant.variant_combination &&
-            typeof variant.variant_combination === "object"
-        ) {
-            return Object.entries(variant.variant_combination)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ");
-        }
-
-        // Fallback for combination field (if present)
-        if (variant.combination && typeof variant.combination === "object") {
-            return Object.entries(variant.combination)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(", ");
-        }
-
-        // Handle string combination
-        if (
-            variant.variant_combination &&
-            typeof variant.variant_combination === "string"
-        ) {
-            try {
-                const combination = JSON.parse(variant.variant_combination);
+            // If it's already an object
+            if (typeof combination === "object") {
                 return Object.entries(combination)
                     .map(([key, value]) => `${key}: ${value}`)
                     .join(", ");
-            } catch (error) {
-                console.error(
-                    "Error parsing variant combination string:",
-                    error
-                );
-                return null;
+            }
+
+            // If it's a string
+            if (typeof combination === "string") {
+                // Try to parse as JSON first
+                try {
+                    const parsed = JSON.parse(combination);
+                    if (typeof parsed === "object") {
+                        return Object.entries(parsed)
+                            .map(([key, value]) => `${key}: ${value}`)
+                            .join(", ");
+                    }
+                    return combination; // Return as-is if not JSON object
+                } catch (error) {
+                    // If not JSON, check if it's a simple key-value string
+                    if (combination.includes(":")) {
+                        return combination; // Return as-is if it already contains colons
+                    }
+                    // If it's just a single value, format it nicely
+                    return combination;
+                }
+            }
+
+            return null;
+        };
+
+        // Check different possible fields in order of priority
+        let displayText = null;
+
+        // 1. Check variant_combination first
+        if (variant.variant_combination) {
+            displayText = processCombination(variant.variant_combination);
+        }
+
+        // 2. Check combination field
+        if (!displayText && variant.combination) {
+            displayText = processCombination(variant.combination);
+        }
+
+        // 3. Check if there are individual variant attributes
+        if (!displayText) {
+            const variantAttributes = [];
+
+            // Look for common variant attribute fields
+            const variantFields = [
+                "color",
+                "size",
+                "material",
+                "style",
+                "type",
+                "weight",
+                "length",
+                "width",
+                "height",
+            ];
+
+            variantFields.forEach((field) => {
+                if (variant[field]) {
+                    variantAttributes.push(`${field}: ${variant[field]}`);
+                }
+            });
+
+            if (variantAttributes.length > 0) {
+                displayText = variantAttributes.join(", ");
             }
         }
 
-        return null;
+        // 4. Check if variant itself has properties that could be displayed
+        if (!displayText && typeof variant === "object") {
+            // Exclude common non-variant fields
+            const excludeFields = [
+                "id",
+                "variant_id",
+                "price",
+                "variant_price",
+                "quantity",
+                "stock_quantity",
+                "sku",
+                "image",
+                "created_at",
+                "updated_at",
+            ];
+
+            const variantProps = Object.entries(variant)
+                .filter(
+                    ([key, value]) =>
+                        !excludeFields.includes(key) &&
+                        value &&
+                        typeof value !== "object" &&
+                        key !== "variant_combination" &&
+                        key !== "combination"
+                )
+                .map(([key, value]) => `${key}: ${value}`);
+
+            if (variantProps.length > 0) {
+                displayText = variantProps.join(", ");
+            }
+        }
+
+        // 5. Final fallback - check if variant has a name or title
+        if (!displayText) {
+            if (variant.name) return variant.name;
+            if (variant.title) return variant.title;
+            if (variant.variant_name) return variant.variant_name;
+        }
+
+        return displayText || "Variant";
     };
 
     // Normalize product data structure to handle both single and multiple items
@@ -168,9 +367,88 @@ export default function CheckoutPage({ list_product, platform_tax }) {
     const { subtotal, shipping, tax, total } = calculateTotals();
     const productsArray = getProductsArray();
 
+    // Show loading state
+    if (isLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading checkout...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Show error state if no valid data
+    if (!hasValidData) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg
+                            className="w-8 h-8 text-yellow-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                            />
+                        </svg>
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                        No Items to Checkout
+                    </h2>
+                    <p className="text-gray-600 mb-6">
+                        Your checkout session has expired or no items were
+                        selected.
+                    </p>
+                    <button
+                        onClick={() => router.visit(route("wishlist"))}
+                        className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        Return to Wishlist
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="bg-gray-50 min-h-screen flex flex-col">
             <Navbar />
+
+            {/* Error Display */}
+            {checkoutErrors.length > 0 && (
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-20">
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                        <div className="flex items-center">
+                            <svg
+                                className="w-5 h-5 text-red-400 mr-2"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                            >
+                                <path
+                                    fillRule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                    clipRule="evenodd"
+                                />
+                            </svg>
+                            <h3 className="text-red-800 font-medium">
+                                Checkout Issues
+                            </h3>
+                        </div>
+                        <ul className="mt-2 text-red-700 text-sm">
+                            {checkoutErrors.map((error, index) => (
+                                <li key={index}>• {error}</li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            )}
 
             {/* Main Container */}
             <div className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 my-16">
@@ -234,119 +512,8 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                                         </div>
                                     </label>
                                 </div>
-
-                                <div
-                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                        paymentMethod === "grabpay"
-                                            ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-300 hover:border-gray-400"
-                                    }`}
-                                    onClick={() => setPaymentMethod("grabpay")}
-                                >
-                                    <label className="flex items-center cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="payment"
-                                            checked={
-                                                paymentMethod === "grabpay"
-                                            }
-                                            onChange={() =>
-                                                setPaymentMethod("grabpay")
-                                            }
-                                            className="text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <div className="ml-3">
-                                            <span className="text-black font-medium">
-                                                GrabPay
-                                            </span>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Pay with your GrabPay wallet
-                                            </p>
-                                        </div>
-                                    </label>
-                                </div>
-
-                                <div
-                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                        paymentMethod === "paypal"
-                                            ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-300 hover:border-gray-400"
-                                    }`}
-                                    onClick={() => setPaymentMethod("paypal")}
-                                >
-                                    <label className="flex items-center cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="payment"
-                                            checked={paymentMethod === "paypal"}
-                                            onChange={() =>
-                                                setPaymentMethod("paypal")
-                                            }
-                                            className="text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <div className="ml-3">
-                                            <span className="text-black font-medium">
-                                                PayPal
-                                            </span>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Pay securely with your PayPal
-                                                account
-                                            </p>
-                                        </div>
-                                    </label>
-                                </div>
-
-                                <div
-                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                        paymentMethod === "cod"
-                                            ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-300 hover:border-gray-400"
-                                    }`}
-                                    onClick={() => setPaymentMethod("cod")}
-                                >
-                                    <label className="flex items-center cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="payment"
-                                            checked={paymentMethod === "cod"}
-                                            onChange={() =>
-                                                setPaymentMethod("cod")
-                                            }
-                                            className="text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <div className="ml-3">
-                                            <span className="text-black font-medium">
-                                                Cash on Delivery
-                                            </span>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Pay when you receive your order
-                                            </p>
-                                        </div>
-                                    </label>
-                                </div>
                             </div>
                         </div>
-
-                        {/* Voucher (Upcoming update) */}
-                        {/* <div className="bg-white rounded-lg border border-gray-200 p-6">
-                            <h2 className="text-black text-xl font-semibold mb-4 flex items-center">
-                                <Gift
-                                    className="text-blue-600 mr-2"
-                                    size={20}
-                                />
-                                Voucher & Promo Code
-                            </h2>
-                            <div className="flex gap-3">
-                                <input
-                                    type="text"
-                                    placeholder="Enter voucher code"
-                                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                />
-                                <button className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-5 py-3 rounded-lg font-medium transition-colors">
-                                    Apply
-                                </button>
-                            </div>
-                        </div> */}
 
                         {/* Stripe Payment Form */}
                         <Elements stripe={stripePromise}>
@@ -355,6 +522,7 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                                 setActiveStep={setActiveStep}
                                 paymentMethod={paymentMethod}
                                 onPaymentSuccess={handlePaymentSuccess}
+                                onPaymentError={handlePaymentError}
                                 list_product={productsArray}
                                 platform_tax={platform_tax} // Add this
                                 subtotal={subtotal} // Add this
@@ -405,14 +573,6 @@ export default function CheckoutPage({ list_product, platform_tax }) {
                                 // Get variant or options display text
                                 const variantText =
                                     getVariantDisplayText(selectedVariant);
-
-                                console.log(`Product ${index}:`, {
-                                    productData,
-                                    selectedVariant,
-                                    variantText,
-                                    displayPrice,
-                                    quantity,
-                                });
 
                                 return (
                                     <div

@@ -226,7 +226,7 @@ export function Navbar() {
                                                             }
                                                         >
                                                             <FaHeart className="mr-3 text-gray-400" />
-                                                            Favorites
+                                                            Wishlist
                                                         </Link>
                                                     </>
                                                 ) : (
@@ -257,7 +257,7 @@ export function Navbar() {
                                                             }
                                                         >
                                                             <FaHeart className="mr-3 text-gray-400" />
-                                                            Favorites
+                                                            Wishlist
                                                         </Link>
 
                                                         <Link
@@ -454,7 +454,7 @@ export function Navbar() {
                                     >
                                         <span className="text-xl mb-2">❤️</span>
                                         <span className="text-xs font-medium text-center">
-                                            Favorites
+                                            Wishlist
                                         </span>
                                     </Link>
 

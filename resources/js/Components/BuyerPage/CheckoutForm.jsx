@@ -37,6 +37,7 @@ export function CheckoutForm({
     setActiveStep,
     paymentMethod,
     onPaymentSuccess,
+    onPaymentError,
     list_product,
     platform_tax,
     subtotal,
@@ -52,6 +53,7 @@ export function CheckoutForm({
     const [clientSecret, setClientSecret] = useState("");
     const [paymentIntentId, setPaymentIntentId] = useState("");
     const [orderId, setOrderId] = useState("");
+    const [lastStockValidation, setLastStockValidation] = useState(null);
 
     useEffect(() => {
         if (paymentMethod === "credit" && total > 0) {
@@ -127,20 +129,32 @@ export function CheckoutForm({
         try {
             const orderItems = prepareOrderItems();
 
-            // Validate that we have at least one product
             if (orderItems.length === 0) {
-                setError("No products in cart");
+                setError("No valid products in cart");
                 return;
             }
 
-            // Validate stock for all items before creating payment intent
-            const stockValidation = await validateStock(orderItems);
+            // Enhanced stock validation with timeout
+            const stockValidation = await Promise.race([
+                validateStock(orderItems),
+                new Promise((_, reject) =>
+                    setTimeout(
+                        () => reject(new Error("Stock validation timeout")),
+                        10000
+                    )
+                ),
+            ]);
+
             if (!stockValidation.valid) {
                 setError(stockValidation.error);
+                if (onPaymentError) {
+                    onPaymentError(stockValidation.error);
+                }
                 return;
             }
 
-            // Get common user and seller info (assuming all products are from same seller)
+            setLastStockValidation(stockValidation);
+
             const firstProduct = list_product[0];
             const userId =
                 firstProduct?.user?.user_id || firstProduct?.user_id || "";
@@ -149,9 +163,12 @@ export function CheckoutForm({
                 firstProduct?.product?.seller_id ||
                 "";
 
-            // Validate required fields
             if (!userId || !sellerId) {
-                setError("Missing user or seller information");
+                const errorMsg = "Missing user or seller information";
+                setError(errorMsg);
+                if (onPaymentError) {
+                    onPaymentError(errorMsg);
+                }
                 return;
             }
 
@@ -174,7 +191,8 @@ export function CheckoutForm({
                     tax_amount: tax,
                     subtotal: subtotal,
                     shipping: shipping,
-                    payment_method: paymentMethod, // Include payment method
+                    payment_method: paymentMethod,
+                    stock_validation_id: lastStockValidation?.validation_id, // Link to validation
                 }),
             });
 
@@ -186,16 +204,24 @@ export function CheckoutForm({
                 setPaymentIntentId(data.id);
                 setOrderId(data.orderId);
             } else {
-                setError(data.error || "Failed to initialize payment");
+                const errorMsg = data.error || "Failed to initialize payment";
+                setError(errorMsg);
+                if (onPaymentError) {
+                    onPaymentError(errorMsg);
+                }
             }
         } catch (err) {
             console.error("Create Payment Intent Error:", err);
-            setError("Network error: " + err.message);
+            const errorMsg = err.message || "Network error occurred";
+            setError(errorMsg);
+            if (onPaymentError) {
+                onPaymentError(errorMsg);
+            }
         }
     };
 
     // Validate stock before payment
-    const validateStock = async (orderItems) => {
+    const validateStock = async (orderItems, retryCount = 0) => {
         try {
             const response = await fetch("/validate-stock", {
                 method: "POST",
@@ -207,14 +233,29 @@ export function CheckoutForm({
                 },
                 body: JSON.stringify({
                     order_items: orderItems,
+                    validation_timestamp: Date.now(), // Prevent caching
                 }),
             });
 
             const data = await response.json();
+
+            if (!data.valid && retryCount < 2) {
+                // Wait and retry (handles race conditions)
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                return validateStock(orderItems, retryCount + 1);
+            }
+
             return data;
         } catch (error) {
             console.error("Stock validation error:", error);
-            return { valid: false, error: "Failed to validate stock" };
+            if (retryCount < 2) {
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                return validateStock(orderItems, retryCount + 1);
+            }
+            return {
+                valid: false,
+                error: "Failed to validate stock availability",
+            };
         }
     };
 

@@ -17,12 +17,13 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+    return redirect()->route('homepage');
+    // return Inertia::render('Welcome', [
+    //     'canLogin' => Route::has('login'),
+    //     'canRegister' => Route::has('register'),
+    //     'laravelVersion' => Application::VERSION,
+    //     'phpVersion' => PHP_VERSION,
+    // ]);
 });
 
 Route::middleware('auth')->group(function () {
@@ -53,7 +54,8 @@ Route::middleware(["is_buyer"])->group(function () {
     Route::get('/wishlist', [UserController::class, 'wishlist'])->name('wishlist');
     Route::get('/buyer-chat', [UserController::class, 'buyerChat'])->name('buyer-chat');
 
-    Route::post('/checkout', [UserController::class, 'checkout'])->name('checkout');
+    Route::get('/checkout', [UserController::class, 'checkoutPage'])->name('checkout');
+    Route::post('/checkout-process', [UserController::class, 'checkoutProcess'])->name('checkout-process');
 
     Route::post("/validate-stock", [PaymentController::class, "validateStock"]);
     Route::post('/create-payment-intent', [PaymentController::class, 'createPaymentIntent']);
@@ -61,6 +63,10 @@ Route::middleware(["is_buyer"])->group(function () {
     Route::get('/order/{orderId}', [PaymentController::class, 'getOrder']);
     Route::get('/orders', [PaymentController::class, 'listOrders']);
     Route::get('/order-success', [PaymentController::class, "show_orderSuccess"]);
+
+    Route::post('/get-payment-intent-status', [PaymentController::class, 'getPaymentIntentStatus']);
+    Route::post('/create-order-direct', [PaymentController::class, 'createOrderDirect']);
+    Route::get('/payment-complete', [PaymentController::class, 'handlePaymentComplete']);
 });
 
 // need to login account and is a seller can access all this feature

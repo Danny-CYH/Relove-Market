@@ -14,7 +14,7 @@ export function RenderConversationsSidebar({
 }) {
     return (
         <div
-            className={`w-full md:w-1/3 border-r border-gray-200 flex flex-col ${
+            className={`w-full md:w-1/3 border-r border-gray-200 flex flex-col mt-16 md:mt-0 ${
                 isMobile && showChat ? "hidden" : "flex"
             }`}
         >

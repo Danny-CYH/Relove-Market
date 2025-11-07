@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 use Inertia\Inertia;
 
@@ -24,87 +26,138 @@ class PaymentController extends Controller
 {
     public function validateStock(Request $request)
     {
+        DB::beginTransaction();
+
         try {
             $validator = Validator::make($request->all(), [
                 'order_items' => 'required|array|min:1',
                 'order_items.*.product_id' => 'required|string',
                 'order_items.*.quantity' => 'required|integer|min:1',
                 'order_items.*.selected_variant' => 'sometimes|array',
+                'validation_timestamp' => 'sometimes|numeric',
             ]);
 
             if ($validator->fails()) {
+                DB::rollBack();
                 return response()->json([
                     'valid' => false,
                     'error' => $validator->errors()->first()
                 ], 400);
             }
 
-            DB::beginTransaction();
+            $validationResults = [];
+            $allValid = true;
+            $validationId = Str::uuid()->toString();
 
-            foreach ($request->order_items as $item) {
+            foreach ($request->order_items as $index => $item) {
                 $productId = $item['product_id'];
                 $quantity = $item['quantity'];
                 $selectedVariant = $item['selected_variant'] ?? null;
-                $selectedOptions = $item['selected_options'] ?? null;
 
                 // Create a unique lock key for this product/variant
-                $lockKey = "stock_check_{$productId}";
+                $lockKey = "stock_validation_{$productId}";
                 if ($selectedVariant && isset($selectedVariant['variant_id'])) {
                     $lockKey .= "_{$selectedVariant['variant_id']}";
                 }
 
-                // Use database lock for stock validation
-                if ($selectedVariant && isset($selectedVariant['variant_id'])) {
-                    // Check variant stock
-                    $variant = ProductVariant::where('variant_id', $selectedVariant['variant_id'])
-                        ->lockForUpdate()
-                        ->first();
+                // Use distributed lock to prevent race conditions
+                $lock = Cache::lock($lockKey, 10); // 10 second lock
 
-                    if (!$variant) {
-                        DB::rollBack();
-                        return response()->json([
-                            'valid' => false,
-                            'error' => "Variant not found for product {$productId}"
-                        ], 404);
-                    }
+                if (!$lock->get()) {
+                    DB::rollBack();
+                    return response()->json([
+                        'valid' => false,
+                        'error' => "Unable to validate stock for item. Please try again."
+                    ], 423); // Locked status code
+                }
 
-                    if ($variant->quantity < $quantity) {
-                        DB::rollBack();
-                        return response()->json([
-                            'valid' => false,
-                            'error' => "Not enough stock for selected variant. Available: {$variant->quantity}, Requested: {$quantity}"
-                        ], 400);
-                    }
-                } else {
-                    // Check main product stock
-                    $product = Product::where('product_id', $productId)
-                        ->lockForUpdate()
-                        ->first();
+                try {
+                    if ($selectedVariant && isset($selectedVariant['variant_id'])) {
+                        // Check variant stock with lock
+                        $variant = ProductVariant::where('variant_id', $selectedVariant['variant_id'])
+                            ->lockForUpdate()
+                            ->first();
 
-                    if (!$product) {
-                        DB::rollBack();
-                        return response()->json([
-                            'valid' => false,
-                            'error' => "Product not found: {$productId}"
-                        ], 404);
-                    }
+                        if (!$variant) {
+                            $validationResults[] = [
+                                'product_id' => $productId,
+                                'valid' => false,
+                                'error' => "Variant not found"
+                            ];
+                            $allValid = false;
+                            continue;
+                        }
 
-                    if ($product->product_quantity < $quantity) {
-                        DB::rollBack();
-                        return response()->json([
-                            'valid' => false,
-                            'error' => "Not enough stock for product. Available: {$product->product_quantity}, Requested: {$quantity}"
-                        ], 400);
+                        if ($variant->quantity < $quantity) {
+                            $validationResults[] = [
+                                'product_id' => $productId,
+                                'valid' => false,
+                                'error' => "Not enough stock for selected variant. Available: {$variant->quantity}, Requested: {$quantity}"
+                            ];
+                            $allValid = false;
+                        } else {
+                            $validationResults[] = [
+                                'product_id' => $productId,
+                                'variant_id' => $selectedVariant['variant_id'],
+                                'valid' => true,
+                                'available_quantity' => $variant->quantity
+                            ];
+                        }
+                    } else {
+                        // Check main product stock with lock
+                        $product = Product::where('product_id', $productId)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if (!$product) {
+                            $validationResults[] = [
+                                'product_id' => $productId,
+                                'valid' => false,
+                                'error' => "Product not found: {$productId}"
+                            ];
+                            $allValid = false;
+                            continue;
+                        }
+
+                        if ($product->product_quantity < $quantity) {
+                            $validationResults[] = [
+                                'product_id' => $productId,
+                                'valid' => false,
+                                'error' => "Not enough stock for product. Available: {$product->product_quantity}, Requested: {$quantity}"
+                            ];
+                            $allValid = false;
+                        } else {
+                            $validationResults[] = [
+                                'product_id' => $productId,
+                                'valid' => true,
+                                'available_quantity' => $product->product_quantity
+                            ];
+                        }
                     }
+                } finally {
+                    $lock->release();
                 }
             }
 
             DB::commit();
 
-            return response()->json([
-                'valid' => true,
-                'message' => 'Stock validation successful'
-            ]);
+            if ($allValid) {
+                // Store validation result temporarily to prevent race conditions
+                Cache::put("stock_validation_{$validationId}", $validationResults, 300); // 5 minutes
+
+                return response()->json([
+                    'valid' => true,
+                    'message' => 'Stock validation successful',
+                    'validation_id' => $validationId,
+                    'results' => $validationResults
+                ]);
+            } else {
+                return response()->json([
+                    'valid' => false,
+                    'error' => 'Some items are out of stock',
+                    'details' => $validationResults
+                ], 400);
+            }
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -115,8 +168,11 @@ class PaymentController extends Controller
             ], 500);
         }
     }
+
     public function createPaymentIntent(Request $request)
     {
+        DB::beginTransaction();
+
         try {
             Stripe::setApiKey(env('STRIPE_SECRET'));
 
@@ -136,11 +192,22 @@ class PaymentController extends Controller
                 'subtotal' => 'required|numeric|min:0',
                 'shipping' => 'required|numeric|min:0',
                 'payment_method' => 'required|string',
+                'stock_validation_id' => 'sometimes|string',
             ]);
 
             if ($validator->fails()) {
+                DB::rollBack();
                 Log::error('Validation failed in createPaymentIntent', $validator->errors()->toArray());
                 return response()->json(['error' => $validator->errors()->first()], 400);
+            }
+
+            // Verify stock validation if provided
+            if ($request->has('stock_validation_id')) {
+                $validationResults = Cache::get("stock_validation_{$request->stock_validation_id}");
+                if (!$validationResults) {
+                    DB::rollBack();
+                    return response()->json(['error' => 'Stock validation expired. Please validate your cart again.'], 400);
+                }
             }
 
             $amount = intval($request->amount);
@@ -148,33 +215,16 @@ class PaymentController extends Controller
             $paymentMethodTypes = $request->payment_method_types ?? ['card'];
 
             if ($amount < 50) {
+                DB::rollBack();
                 return response()->json(['error' => 'Amount too small'], 400);
             }
 
             $orderId = Order::generateOrderId();
 
-            // Prepare order items metadata
-            $orderItemsMetadata = [];
-            foreach ($request->order_items as $index => $item) {
-                $orderItemsMetadata[] = [
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                ];
-            }
-
-            Log::info('Creating payment intent with tax and payment method', [
+            Log::info('Creating payment intent with validation', [
                 'order_id' => $orderId,
                 'amount' => $amount,
-                'currency' => $currency,
-                'user_id' => $request->user_id,
-                'seller_id' => $request->seller_id,
-                'platform_tax' => $request->platform_tax,
-                'tax_amount' => $request->tax_amount,
-                'subtotal' => $request->subtotal,
-                'shipping' => $request->shipping,
-                'payment_method' => $request->payment_method,
-                'order_items_count' => count($request->order_items),
+                'validation_id' => $request->stock_validation_id,
             ]);
 
             $paymentIntent = PaymentIntent::create([
@@ -191,8 +241,11 @@ class PaymentController extends Controller
                     'shipping' => $request->shipping,
                     'payment_method' => $request->payment_method,
                     'order_items_count' => count($request->order_items),
+                    'stock_validation_id' => $request->stock_validation_id,
                 ],
             ]);
+
+            DB::commit();
 
             return response()->json([
                 'clientSecret' => $paymentIntent->client_secret,
@@ -202,9 +255,11 @@ class PaymentController extends Controller
             ]);
 
         } catch (ApiErrorException $e) {
+            DB::rollBack();
             Log::error('Stripe API error in createPaymentIntent: ' . $e->getMessage());
             return response()->json(['error' => 'Payment service error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Payment intent creation error: ' . $e->getMessage());
             return response()->json(['error' => 'Internal server error: ' . $e->getMessage()], 500);
         }

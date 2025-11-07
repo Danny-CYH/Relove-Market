@@ -4,8 +4,6 @@ import {
     FaRecycle,
     FaStore,
     FaShoppingBag,
-    FaHeart,
-    FaShoppingCart,
     FaArrowRight,
     FaLeaf,
     FaShieldAlt,
@@ -41,7 +39,7 @@ import { Link, usePage } from "@inertiajs/react";
 import axios from "axios";
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { Footer } from "@/Components/BuyerPage/footer";
+import { Footer } from "@/Components/BuyerPage/Footer";
 
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
 import { ProductCard } from "@/Components/BuyerPage/ProductCard";
@@ -388,41 +386,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 <input
                                     type="file"
                                     accept="image/*"
-                                    capture="environment" // opens camera directly on mobile
                                     ref={fileInputRef}
                                     onChange={handleImageChange}
                                     className="hidden"
                                 />
-                            </div>
-
-                            <div className="flex flex-wrap gap-4 pt-4">
-                                <span className="text-gray-500 text-sm">
-                                    Popular Searches:
-                                </span>
-                                <a
-                                    href="#"
-                                    className="text-sm text-gray-700 hover:text-green-600"
-                                >
-                                    Vintage jeans
-                                </a>
-                                <a
-                                    href="#"
-                                    className="text-sm text-gray-700 hover:text-green-600"
-                                >
-                                    Books
-                                </a>
-                                <a
-                                    href="#"
-                                    className="text-sm text-gray-700 hover:text-green-600"
-                                >
-                                    Electronics
-                                </a>
-                                <a
-                                    href="#"
-                                    className="text-sm text-gray-700 hover:text-green-600"
-                                >
-                                    Home decor
-                                </a>
                             </div>
                         </div>
 
@@ -861,19 +828,19 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     name: "Emma R.",
                                     role: "Seller & Buyer",
                                     text: "I've made over RM2,000 selling clothes I no longer wear. The process is so simple and the community is wonderful!",
-                                    avatar: "/image/shania_yan.png",
+                                    avatar: "/image/user1.jpg",
                                 },
                                 {
                                     name: "Alex T.",
                                     role: "Electronics Seller",
                                     text: "As a tech enthusiast, I love finding old gadgets new homes. This platform makes it easy to connect with buyers.",
-                                    avatar: "/image/shania_yan.png",
+                                    avatar: "/image/user2.jpg",
                                 },
                                 {
                                     name: "Sarah L.",
                                     role: "Home Decor Buyer",
                                     text: "I've furnished my entire apartment with unique finds from Relove. Sustainable, affordable, and stylish!",
-                                    avatar: "/image/shania_yan.png",
+                                    avatar: "/image/user3.jpg",
                                 },
                             ].map((testimonial, idx) => (
                                 <div

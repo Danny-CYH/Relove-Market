@@ -32,9 +32,26 @@ export function ShowAllReviewsModal({
                             >
                                 <div className="flex items-start gap-4">
                                     <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                                        {review.avatar ||
-                                            (review.user?.name?.charAt(0) ??
-                                                "U")}
+                                        {review.user?.profile_image ? (
+                                            <img
+                                                src={`${
+                                                    import.meta.env
+                                                        .VITE_BASE_URL
+                                                }${review.user.profile_image}`}
+                                                alt={
+                                                    review.user?.name || "User"
+                                                }
+                                                className="w-full h-full rounded-lg object-cover"
+                                            />
+                                        ) : (
+                                            <span>
+                                                {review.avatar ||
+                                                    (review.user?.name?.charAt(
+                                                        0
+                                                    ) ??
+                                                        "U")}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -66,12 +83,6 @@ export function ShowAllReviewsModal({
                                         <p className="text-gray-700 mb-3">
                                             {review.comment}
                                         </p>
-                                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                                            <button className="flex items-center gap-2 hover:text-gray-700">
-                                                <ThumbsUp size={14} />
-                                                Helpful ({review.helpful})
-                                            </button>
-                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -2,28 +2,33 @@ import {
     ShoppingCart,
     Truck,
     Heart,
-    Share2,
     Star,
     Check,
     Shield,
     Minus,
     Plus,
     RotateCcw,
-    ThumbsUp,
     ChevronRight,
     ArrowLeft,
     Loader2,
     AlertCircle,
     CheckCircle,
+    Play,
+    Pause,
+    Volume2,
+    VolumeX,
 } from "lucide-react";
 
 import { FaStar } from "react-icons/fa";
 
 import { Link, router, usePage } from "@inertiajs/react";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 
 import axios from "axios";
+
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
@@ -57,6 +62,12 @@ export default function ProductDetails({ product_info }) {
         addToCart: false,
         wishlist: false,
     });
+
+    // Video states
+    const [selectedVideo, setSelectedVideo] = useState(null);
+    const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+    const [isVideoMuted, setIsVideoMuted] = useState(true);
+    const videoRef = useRef(null);
 
     // Review and comment states
     const [reviewFilter, setReviewFilter] = useState("all");
@@ -92,6 +103,40 @@ export default function ProductDetails({ product_info }) {
             ? reviews.reduce((acc, review) => acc + (review.rating || 0), 0) /
               reviews.length
             : 0;
+
+    // Check if product has videos
+    const hasVideos = product_info[0]?.product_video?.length > 0;
+    const videos = product_info[0]?.product_video || [];
+
+    // Video controls
+    const toggleVideoPlay = () => {
+        if (videoRef.current) {
+            if (isVideoPlaying) {
+                videoRef.current.pause();
+            } else {
+                videoRef.current.play();
+            }
+            setIsVideoPlaying(!isVideoPlaying);
+        }
+    };
+
+    const toggleVideoMute = () => {
+        if (videoRef.current) {
+            videoRef.current.muted = !isVideoMuted;
+            setIsVideoMuted(!isVideoMuted);
+        }
+    };
+
+    const handleVideoSelect = (video) => {
+        setSelectedVideo(video);
+        setIsVideoPlaying(true);
+        // Auto-play when video is selected
+        setTimeout(() => {
+            if (videoRef.current) {
+                videoRef.current.play().catch(console.error);
+            }
+        }, 100);
+    };
 
     const increaseQty = () => setQuantity((prev) => prev + 1);
     const decreaseQty = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
@@ -248,16 +293,53 @@ export default function ProductDetails({ product_info }) {
 
     // UPDATED: Handle Buy Now - Send data in same structure as wishlist
     const handleBuyNow = () => {
+        // Check if user is authenticated
+        if (!auth.user) {
+            // Test with a simple alert first
+            if (typeof Swal !== "undefined") {
+                console.log("Using SweetAlert");
+                Swal.fire({
+                    title: "Login Required",
+                    text: "Please login to continue with your purchase",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Login Now",
+                    cancelButtonText: "Cancel",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const currentUrl = window.location.href;
+                        console.log("Redirecting to login...");
+                        router.visit(route("login"), {
+                            data: { redirect: currentUrl },
+                        });
+                    }
+                });
+            } else {
+                console.log("SweetAlert not available, using fallback");
+                // Fallback
+                if (
+                    window.confirm(
+                        "Please login to continue with your purchase."
+                    )
+                ) {
+                    const currentUrl = window.location.href;
+                    router.visit(route("login"), {
+                        data: { redirect: currentUrl },
+                    });
+                }
+            }
+            return;
+        }
+
         if (!validateVariant("buying")) {
             return;
         }
 
         const checkoutData = prepareCheckoutData();
-
-        console.log("Sending checkout data (same as wishlist):", checkoutData);
-
-        router.post(route("checkout"), {
-            items: checkoutData, // Same structure as wishlist
+        router.post(route("checkout-process"), {
+            items: checkoutData,
         });
     };
 
@@ -322,8 +404,33 @@ export default function ProductDetails({ product_info }) {
         }
     };
 
-    // UPDATED: Handle Add to Cart - Send data in same structure as wishlist
+    // Handle Add to Cart
     const handleAddToCart = async () => {
+        // Check if user is authenticated
+        if (!auth.user) {
+            if (typeof Swal !== "undefined") {
+                Swal.fire({
+                    title: "Login Required",
+                    text: "Please login to add items to your cart",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Login Now",
+                    cancelButtonText: "Cancel",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const currentUrl = window.location.href;
+                        console.log("Redirecting to login...");
+                        router.visit(route("login"), {
+                            data: { redirect: currentUrl },
+                        });
+                    }
+                });
+            }
+            return;
+        }
+
         if (!validateVariant("adding to cart")) {
             return;
         }
@@ -363,6 +470,27 @@ export default function ProductDetails({ product_info }) {
 
     // UPDATED: Handle Wishlist Toggle - Send data in same structure
     const handleWishlistToggle = async (product_id) => {
+        // Check if user is authenticated
+        if (!auth.user) {
+            if (typeof Swal !== "undefined") {
+                Swal.fire({
+                    title: "Login Required",
+                    text: "Please login to add items to your wishlist",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Login Now",
+                    cancelButtonText: "Cancel",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        router.visit(route("login"));
+                    }
+                });
+            }
+            return;
+        }
+
         if (!validateVariant("adding to wishlist")) {
             return;
         }
@@ -428,11 +556,45 @@ export default function ProductDetails({ product_info }) {
             });
             setShowConversationModal(false);
             setInitialMessage("");
-            alert("Conversation started successfully!");
-            router.visit("/buyer-chat");
+
+            // Check if user is authenticated
+            if (!auth.user) {
+                if (typeof Swal !== "undefined") {
+                    Swal.fire({
+                        title: "Conversation started",
+                        text: "You will be redirect to buyer chat",
+                        icon: "success",
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            router.visit(route("buyer-chat"));
+                        }
+                    });
+                }
+                return;
+            }
         } catch (error) {
-            console.error("Error starting conversation:", error);
-            alert("Failed to start conversation. Please try again.");
+            // Check if user is authenticated
+            if (!auth.user) {
+                if (typeof Swal !== "undefined") {
+                    Swal.fire({
+                        title: "Login Required",
+                        text: "Please login to chat with the seller",
+                        icon: "warning",
+                        showCancelButton: true,
+                        confirmButtonText: "Login Now",
+                        cancelButtonText: "Cancel",
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            router.visit(route("login"));
+                        }
+                    });
+                }
+                return;
+            }
         } finally {
             setIsStartingConversation(false);
         }
@@ -571,35 +733,104 @@ export default function ProductDetails({ product_info }) {
                     </Link>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8">
-                    {/* Image Gallery */}
+                    {/* Media Gallery - Updated with Video Support */}
                     <div className="lg:col-span-5">
                         <div className="lg:sticky lg:top-6 space-y-3 lg:space-y-4">
-                            {/* Main Image */}
-                            <div
-                                className="bg-white rounded-xl lg:rounded-2xl p-3 lg:p-4 cursor-zoom-in border"
-                                onClick={() => setShowZoomModal(true)}
-                            >
-                                <img
-                                    src={
-                                        import.meta.env.VITE_BASE_URL +
-                                        selectedImage
-                                    }
-                                    alt={product_info[0]?.product_name}
-                                    className="w-full h-48 sm:h-64 lg:h-80 object-contain transition-transform hover:scale-105"
-                                />
+                            {/* Main Media Display */}
+                            <div className="bg-white rounded-xl lg:rounded-2xl p-3 lg:p-4 border">
+                                {selectedVideo ? (
+                                    // Video Player
+                                    <div className="relative">
+                                        <video
+                                            ref={videoRef}
+                                            src={`${
+                                                import.meta.env.VITE_BASE_URL
+                                            }${selectedVideo.video_path}`}
+                                            className="w-full h-48 sm:h-64 lg:h-80 object-cover rounded-lg"
+                                            muted={isVideoMuted}
+                                            onPlay={() =>
+                                                setIsVideoPlaying(true)
+                                            }
+                                            onPause={() =>
+                                                setIsVideoPlaying(false)
+                                            }
+                                            onEnded={() =>
+                                                setIsVideoPlaying(false)
+                                            }
+                                        />
+                                        {/* Video Controls */}
+                                        <div className="absolute inset-0">
+                                            {/* Play/Pause button at bottom left */}
+                                            <div className="absolute bottom-4 left-4">
+                                                <button
+                                                    onClick={toggleVideoPlay}
+                                                    className="bg-black bg-opacity-70 text-white p-3 rounded-full hover:bg-opacity-90 transition-all shadow-lg"
+                                                >
+                                                    {isVideoPlaying ? (
+                                                        <Pause
+                                                            size={20}
+                                                            className="text-white"
+                                                        />
+                                                    ) : (
+                                                        <Play
+                                                            size={20}
+                                                            className="text-white ml-0.5"
+                                                        />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {/* Mute/Unmute Button */}
+                                        <button
+                                            onClick={toggleVideoMute}
+                                            className="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-all"
+                                        >
+                                            {isVideoMuted ? (
+                                                <VolumeX size={16} />
+                                            ) : (
+                                                <Volume2 size={16} />
+                                            )}
+                                        </button>
+                                        {/* Video Indicator */}
+                                        <div className="absolute top-4 left-4 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+                                            VIDEO
+                                        </div>
+                                    </div>
+                                ) : (
+                                    // Image Display
+                                    <div
+                                        className="cursor-zoom-in"
+                                        onClick={() => setShowZoomModal(true)}
+                                    >
+                                        <img
+                                            src={
+                                                import.meta.env.VITE_BASE_URL +
+                                                selectedImage
+                                            }
+                                            alt={product_info[0]?.product_name}
+                                            className="w-full h-48 sm:h-64 lg:h-80 object-contain transition-transform hover:scale-105"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Thumbnails */}
+                            {/* Media Thumbnails - Updated with Video Support */}
                             <div className="flex gap-2 overflow-x-auto pb-2">
+                                {/* Image Thumbnails */}
                                 {product_info[0]?.product_image.map(
                                     (img, idx) => (
                                         <button
-                                            key={idx}
-                                            onClick={() =>
-                                                setSelectedImage(img.image_path)
-                                            }
+                                            key={`img-${idx}`}
+                                            onClick={() => {
+                                                setSelectedImage(
+                                                    img.image_path
+                                                );
+                                                setSelectedVideo(null);
+                                            }}
                                             className={`flex-shrink-0 w-12 h-12 lg:w-16 lg:h-16 rounded-lg border-2 overflow-hidden transition-all ${
-                                                selectedImage === img.image_path
+                                                selectedImage ===
+                                                    img.image_path &&
+                                                !selectedVideo
                                                     ? "border-blue-500 ring-2 ring-blue-200"
                                                     : "border-gray-200 hover:border-gray-300"
                                             }`}
@@ -616,6 +847,49 @@ export default function ProductDetails({ product_info }) {
                                         </button>
                                     )
                                 )}
+
+                                {/* Video Thumbnails */}
+                                {hasVideos &&
+                                    videos.map((video, idx) => (
+                                        <button
+                                            key={`video-${idx}`}
+                                            onClick={() =>
+                                                handleVideoSelect(video)
+                                            }
+                                            className={`flex-shrink-0 w-12 h-12 lg:w-16 lg:h-16 rounded-lg border-2 overflow-hidden transition-all relative ${
+                                                selectedVideo?.video_id ===
+                                                video.video_id
+                                                    ? "border-blue-500 ring-2 ring-blue-200"
+                                                    : "border-gray-200 hover:border-gray-300"
+                                            }`}
+                                        >
+                                            <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                                                <Play
+                                                    size={16}
+                                                    className="text-white"
+                                                />
+                                            </div>
+                                            <div className="absolute bottom-1 right-1 bg-blue-500 text-white text-xs px-1 rounded">
+                                                VIDEO
+                                            </div>
+                                        </button>
+                                    ))}
+                            </div>
+
+                            {/* Media Type Indicator */}
+                            <div className="flex items-center justify-between text-sm text-gray-600">
+                                <div>
+                                    {product_info[0]?.product_image?.length ||
+                                        0}{" "}
+                                    images
+                                    {hasVideos && ` • ${videos.length} videos`}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    Click to{" "}
+                                    {selectedVideo
+                                        ? "watch video"
+                                        : "zoom image"}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -733,9 +1007,6 @@ export default function ProductDetails({ product_info }) {
                                             />
                                         )}
                                     </button>
-                                    <button className="p-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
-                                        <Share2 size={18} />
-                                    </button>
                                 </div>
                             </div>
 
@@ -769,7 +1040,7 @@ export default function ProductDetails({ product_info }) {
                                     )}
                                 </div>
                                 <p className="text-gray-600 text-sm">
-                                    Inclusive of all taxes
+                                    Price before tax
                                 </p>
                             </div>
 
@@ -983,7 +1254,10 @@ export default function ProductDetails({ product_info }) {
                                                 : "bg-orange-400 text-white hover:bg-orange-600"
                                         }`}
                                         title={
-                                            hasVariants && !selectedVariant
+                                            !auth.user
+                                                ? "Please login to purchase"
+                                                : hasVariants &&
+                                                  !selectedVariant
                                                 ? "Please select a variant first"
                                                 : availableStock === 0
                                                 ? "Out of stock"
@@ -1226,11 +1500,36 @@ export default function ProductDetails({ product_info }) {
                                                             >
                                                                 <div className="flex items-start gap-3 lg:gap-4">
                                                                     <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                                                                        {review.avatar ||
-                                                                            (review.user?.name?.charAt(
-                                                                                0
-                                                                            ) ??
-                                                                                "U")}
+                                                                        {review
+                                                                            .user
+                                                                            ?.profile_image ? (
+                                                                            <img
+                                                                                src={`${
+                                                                                    import.meta
+                                                                                        .env
+                                                                                        .VITE_BASE_URL
+                                                                                }${
+                                                                                    review
+                                                                                        .user
+                                                                                        .profile_image
+                                                                                }`}
+                                                                                alt={
+                                                                                    review
+                                                                                        .user
+                                                                                        ?.name ||
+                                                                                    "User"
+                                                                                }
+                                                                                className="w-full h-full rounded-lg object-cover"
+                                                                            />
+                                                                        ) : (
+                                                                            <span>
+                                                                                {review.avatar ||
+                                                                                    (review.user?.name?.charAt(
+                                                                                        0
+                                                                                    ) ??
+                                                                                        "U")}
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     <div className="flex-1">
                                                                         <div className="flex items-center gap-2 mb-2 flex-wrap">
@@ -1287,19 +1586,6 @@ export default function ProductDetails({ product_info }) {
                                                                                             "T"
                                                                                         )[0]}
                                                                             </span>
-                                                                            <button className="flex items-center gap-1 hover:text-gray-700">
-                                                                                <ThumbsUp
-                                                                                    size={
-                                                                                        12
-                                                                                    }
-                                                                                />
-                                                                                Helpful
-                                                                                (
-                                                                                {review.helpful ||
-                                                                                    0}
-
-                                                                                )
-                                                                            </button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1384,81 +1670,141 @@ export default function ProductDetails({ product_info }) {
                                 You Might Also Like
                             </h2>
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
-                                {recommendations.map((product) => (
-                                    <Link
-                                        href={route(
-                                            "product-details",
-                                            product.product_id
-                                        )}
-                                        key={product.product_id}
-                                    >
-                                        <div className="bg-white rounded-lg border overflow-hidden hover:shadow-md transition-shadow">
-                                            <img
-                                                src={
-                                                    product?.product
-                                                        ?.product_image?.[0]
-                                                        ?.image_path
-                                                        ? import.meta.env
-                                                              .VITE_BASE_URL +
-                                                          product.product
-                                                              .product_image[0]
-                                                              .image_path
-                                                        : "/placeholder.png"
-                                                }
-                                                alt={
-                                                    product.product
-                                                        ?.product_name || ""
-                                                }
-                                                className="w-full h-24 sm:h-32 lg:h-32 object-cover"
-                                            />
-                                            <div className="p-2 lg:p-3">
-                                                <h3 className="font-medium text-xs lg:text-sm text-black line-clamp-2 mb-1 lg:mb-2">
-                                                    {
-                                                        product.product
-                                                            ?.product_name
-                                                    }
-                                                </h3>
-                                                <div className="flex items-center mb-3">
-                                                    <div className="flex items-center">
-                                                        {[1, 2, 3, 4, 5].map(
-                                                            (star) => (
-                                                                <FaStar
-                                                                    key={star}
-                                                                    className={`w-3 h-3 ${
-                                                                        star <=
-                                                                        Math.round(
-                                                                            product
-                                                                                .product
-                                                                                ?.ratings[0]
-                                                                                ?.rating ||
-                                                                                0
-                                                                        )
-                                                                            ? "text-yellow-400"
-                                                                            : "text-gray-300"
-                                                                    }`}
-                                                                />
-                                                            )
+                                {recommendations.map((product) => {
+                                    const productData =
+                                        product.product || product;
+                                    const rating =
+                                        productData?.ratings?.[0]?.rating || 0;
+                                    const isInStock =
+                                        (productData?.product_quantity || 0) >
+                                        0;
+                                    const stockQuantity =
+                                        productData?.product_quantity || 0;
+                                    const isNewProduct =
+                                        productData?.created_at &&
+                                        Date.now() -
+                                            new Date(
+                                                productData.created_at
+                                            ).getTime() <
+                                            7 * 24 * 60 * 60 * 1000;
+
+                                    return (
+                                        <Link
+                                            href={route(
+                                                "product-details",
+                                                productData.product_id
+                                            )}
+                                            key={productData.product_id}
+                                            className="block"
+                                        >
+                                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 group">
+                                                {/* Image with Badges */}
+                                                <div className="relative">
+                                                    <img
+                                                        src={
+                                                            productData
+                                                                ?.product_image?.[0]
+                                                                ?.image_path
+                                                                ? import.meta
+                                                                      .env
+                                                                      .VITE_BASE_URL +
+                                                                  productData
+                                                                      .product_image[0]
+                                                                      .image_path
+                                                                : "/placeholder.png"
+                                                        }
+                                                        alt={
+                                                            productData?.product_name ||
+                                                            ""
+                                                        }
+                                                        className="w-full h-32 object-cover"
+                                                    />
+
+                                                    {/* Badges */}
+                                                    <div className="absolute top-2 left-2 flex gap-1">
+                                                        {isNewProduct && (
+                                                            <div className="bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                                                NEW
+                                                            </div>
+                                                        )}
+                                                        {!isInStock && (
+                                                            <div className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                                                SOLD
+                                                            </div>
                                                         )}
                                                     </div>
-                                                    <span className="text-xs text-gray-500 ml-1">
-                                                        ({" "}
-                                                        {product.product
-                                                            ?.ratings?.[0]
-                                                            ?.rating || 0}{" "}
-                                                        )
-                                                    </span>
                                                 </div>
-                                                <p className="text-blue-600 font-semibold text-sm lg:text-base">
-                                                    RM{" "}
-                                                    {
-                                                        product.product
-                                                            ?.product_price
-                                                    }
-                                                </p>
+
+                                                {/* Compact Info */}
+                                                <div className="p-3">
+                                                    <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-2 leading-tight">
+                                                        {
+                                                            productData?.product_name
+                                                        }
+                                                    </h3>
+
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <div className="flex items-center space-x-1">
+                                                            <div className="flex">
+                                                                {[
+                                                                    1, 2, 3, 4,
+                                                                    5,
+                                                                ].map(
+                                                                    (star) => (
+                                                                        <FaStar
+                                                                            key={
+                                                                                star
+                                                                            }
+                                                                            className={`w-3 h-3 ${
+                                                                                star <=
+                                                                                Math.round(
+                                                                                    rating
+                                                                                )
+                                                                                    ? "text-yellow-400"
+                                                                                    : "text-gray-300"
+                                                                            }`}
+                                                                        />
+                                                                    )
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs text-gray-600 font-medium">
+                                                                {rating.toFixed(
+                                                                    1
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                            {productData
+                                                                ?.category
+                                                                ?.category_name ||
+                                                                "General"}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-lg font-bold text-gray-900">
+                                                            RM{" "}
+                                                            {
+                                                                productData?.product_price
+                                                            }
+                                                        </span>
+                                                        <span
+                                                            className={`text-xs font-medium ${
+                                                                isInStock
+                                                                    ? "text-green-600"
+                                                                    : "text-red-600"
+                                                            }`}
+                                                        >
+                                                            {isInStock
+                                                                ? "Available"
+                                                                : "Sold Out"}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </Link>
-                                ))}
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         </div>
                     ) : (

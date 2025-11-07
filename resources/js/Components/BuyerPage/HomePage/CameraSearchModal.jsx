@@ -23,8 +23,6 @@ export function CameraSearchModal({
     const resultsPerPage = 8;
 
     const safeSearchResults = useMemo(() => {
-        console.log("🔍 Raw searchResults:", searchResults);
-
         // Handle the actual response structure from your backend
         const results = searchResults?.recommendations;
 
@@ -32,7 +30,6 @@ export function CameraSearchModal({
         const recommendations = results;
 
         if (!recommendations || !Array.isArray(recommendations)) {
-            console.log("❌ No recommendations array found");
             return [];
         }
 
@@ -139,7 +136,6 @@ export function CameraSearchModal({
             setPage(1);
             setHasMore(safeSearchResults.length > resultsPerPage);
         } else {
-            console.log("🔄 Resetting displayed results");
             setDisplayedResults([]);
             setPage(1);
             setHasMore(true);

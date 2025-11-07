@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->string("buyer_id");
             $table->boolean("is_active");
             $table->timestamp("last_read_at");
-            $table->timestamp("joined_at");
+            $table->timestamp("joined_at")->nullable();
             $table->timestamps();
         });
     }

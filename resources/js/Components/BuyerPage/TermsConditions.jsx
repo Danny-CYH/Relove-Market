@@ -242,39 +242,8 @@ export function TermsConditions({ isOpen, onClose, onAccept }) {
                     )}
                 </div>
 
-                {/* Download options */}
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <button className="flex items-center text-green-600 hover:text-green-700 font-medium">
-                        <FaDownload className="mr-2" />
-                        Download{" "}
-                        {activeTab === "terms"
-                            ? "Terms of Service"
-                            : "Privacy Policy"}{" "}
-                        as PDF
-                    </button>
-                </div>
-
                 {/* Acceptance section */}
                 <div className="p-6 border-t border-gray-200 bg-gray-50">
-                    <div className="flex items-start">
-                        <button
-                            onClick={() => setAccepted(!accepted)}
-                            className="mt-1 mr-3 text-green-600"
-                        >
-                            {accepted ? (
-                                <FaCheckSquare size={20} />
-                            ) : (
-                                <FaSquare size={20} />
-                            )}
-                        </button>
-                        <label className="text-gray-700">
-                            I have read and agree to the{" "}
-                            {activeTab === "terms"
-                                ? "Terms of Service"
-                                : "Privacy Policy"}
-                        </label>
-                    </div>
-
                     <div className="flex justify-end space-x-4 mt-4">
                         <button
                             onClick={onClose}
@@ -283,15 +252,12 @@ export function TermsConditions({ isOpen, onClose, onAccept }) {
                             Cancel
                         </button>
                         <button
-                            onClick={handleAccept}
-                            disabled={!accepted}
-                            className={`px-6 py-2 rounded-md text-white transition-colors ${
-                                accepted
-                                    ? "bg-green-600 hover:bg-green-700"
-                                    : "bg-gray-400 cursor-not-allowed"
-                            }`}
+                            onClick={onClose}
+                            className={
+                                "px-6 py-2 rounded-md text-white transition-colors bg-green-600 hover:bg-green-700 "
+                            }
                         >
-                            Accept & Continue
+                            I Understand and Accept
                         </button>
                     </div>
                 </div>

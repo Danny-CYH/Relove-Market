@@ -367,6 +367,12 @@ export default function Wishlist({ user_wishlist }) {
             return;
         }
 
+        // Validate selected items
+        if (!selectedItems || selectedItems.length === 0) {
+            alert("Please select at least one item to checkout.");
+            return;
+        }
+
         const checkoutItems = selectedItems.map((item) => {
             const variantData = parseVariantData(item.selected_variant);
 
@@ -386,7 +392,7 @@ export default function Wishlist({ user_wishlist }) {
             };
         });
 
-        router.post(route("checkout"), {
+        router.post(route("checkout-process"), {
             items: checkoutItems,
         });
     };
@@ -783,31 +789,8 @@ export default function Wishlist({ user_wishlist }) {
                                                 type="checkbox"
                                                 checked={selectAll}
                                                 onChange={toggleSelectAll}
-                                                className="sr-only"
+                                                className="w-6 h-6 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
                                             />
-                                            <div
-                                                className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-all duration-200 ${
-                                                    selectAll
-                                                        ? "bg-blue-500 border-blue-500"
-                                                        : "bg-white border-gray-300 hover:border-blue-400"
-                                                }`}
-                                            >
-                                                {selectAll && (
-                                                    <svg
-                                                        className="w-3 h-3 text-white"
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                            strokeWidth={3}
-                                                            d="M5 13l4 4L19 7"
-                                                        />
-                                                    </svg>
-                                                )}
-                                            </div>
                                             <span className="ml-3 text-sm font-medium text-gray-700">
                                                 Select all ({wishlist.length}{" "}
                                                 items)
@@ -898,37 +881,8 @@ export default function Wishlist({ user_wishlist }) {
                                                             disabled={
                                                                 isOutOfStock
                                                             }
-                                                            className="sr-only"
+                                                            className="w-5 h-5 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer disabled:bg-gray-100 disabled:border-gray-200 disabled:cursor-not-allowed"
                                                         />
-                                                        <div
-                                                            className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-all duration-200 ${
-                                                                isSelected
-                                                                    ? "bg-blue-500 border-blue-500"
-                                                                    : "bg-white border-gray-300 hover:border-blue-400"
-                                                            } ${
-                                                                isOutOfStock
-                                                                    ? "opacity-50"
-                                                                    : ""
-                                                            }`}
-                                                        >
-                                                            {isSelected && (
-                                                                <svg
-                                                                    className="w-3 h-3 text-white"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    viewBox="0 0 24 24"
-                                                                >
-                                                                    <path
-                                                                        strokeLinecap="round"
-                                                                        strokeLinejoin="round"
-                                                                        strokeWidth={
-                                                                            3
-                                                                        }
-                                                                        d="M5 13l4 4L19 7"
-                                                                    />
-                                                                </svg>
-                                                            )}
-                                                        </div>
                                                     </label>
                                                 </div>
 

@@ -20,7 +20,7 @@ import { Footer } from "@/Components/BuyerPage/Footer";
 
 import { OrdersTab } from "@/Components/BuyerPage/ProfilePage/OrdersTab";
 import { SecurityTab } from "@/Components/BuyerPage/ProfilePage/SecurityTab";
-import { ProfileTab } from "@/Components/BuyerPage/ProfilePage/Profiletab";
+import { ProfileTab } from "@/Components/BuyerPage/ProfilePage/ProfileTab";
 import { ReceiptModal } from "@/Components/BuyerPage/ProfilePage/ReceiptModal";
 
 export default function ProfilePage() {

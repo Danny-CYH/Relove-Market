@@ -31,71 +31,121 @@ class ProductManagementController extends Controller
     // Code for API/filter requests
     public function shoppingApi(Request $request)
     {
-        $query = Product::with([
-            'productImage',
-            'productVariant',
-            'category',
-            'ratings',
-            'seller.sellerStore'
-        ]);
+        try {
+            \Log::info('🛍️ SHOPPING API - Received request:', $request->all());
 
-        // Apply search filter
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('product_name', 'like', '%' . $search . '%')
-                    ->orWhereHas('category', function ($categoryQuery) use ($search) {
-                        $categoryQuery->where('category_name', 'like', '%' . $search . '%');
-                    });
-            });
-        }
+            $searchTerm = $request->get('search', '');
+            $categoriesFilter = $request->get('categories', []);
+            $priceRange = $request->get('price_range', [0, 1000]);
+            $conditionsFilter = $request->get('conditions', []);
 
-        // Apply category filter
-        if ($request->has('categories') && is_array($request->categories) && count($request->categories) > 0) {
-            $query->whereHas('category', function ($q) use ($request) {
-                $q->whereIn('category_name', $request->categories);
-            });
-        }
-
-        // Apply price range filter
-        if ($request->has('price_range') && is_array($request->price_range) && count($request->price_range) === 2) {
-            $query->whereBetween('product_price', $request->price_range);
-        }
-
-        // Apply condition filter
-        if ($request->has('conditions') && is_array($request->conditions) && count($request->conditions) > 0) {
-            $query->whereIn('product_condition', $request->conditions);
-        }
-
-        // Apply sorting
-        if ($request->has('sort_by')) {
-            switch ($request->sort_by) {
-                case 'newest':
-                    $query->orderBy('created_at', 'desc');
-                    break;
-                case 'price-low':
-                    $query->orderBy('product_price', 'asc');
-                    break;
-                case 'price-high':
-                    $query->orderBy('product_price', 'desc');
-                    break;
-                case 'rating':
-                    $query->orderBy('average_rating', 'desc');
-                    break;
-                default:
-                    $query->orderBy('created_at', 'desc');
+            // FIX: Handle categories whether they come as string or array
+            if (!is_array($categoriesFilter) && !empty($categoriesFilter)) {
+                $categoriesFilter = [$categoriesFilter]; // Convert string to array
             }
-        } else {
-            $query->orderBy('created_at', 'desc');
+
+            if (is_array($categoriesFilter)) {
+                $categoriesFilter = array_filter($categoriesFilter); // Remove empty values
+            }
+
+            \Log::info('🔍 Processed categories filter:', [
+                'raw_categories' => $request->get('categories'),
+                'processed_categories' => $categoriesFilter,
+                'is_array' => is_array($categoriesFilter),
+                'count' => is_array($categoriesFilter) ? count($categoriesFilter) : 0
+            ]);
+
+            $query = Product::with([
+                'productImage',
+                'productVariant',
+                'category',
+                'ratings',
+                'seller.sellerStore'
+            ])->where('product_status', 'available');
+
+            // Apply search filter
+            if (!empty($searchTerm)) {
+                $query->where('product_name', 'ILIKE', '%' . $searchTerm . '%');
+            }
+
+            // Apply category filter - NOW HANDLES STRING INPUT
+            if (!empty($categoriesFilter) && is_array($categoriesFilter)) {
+                \Log::info('🎯 Applying category filter:', $categoriesFilter);
+
+                // Convert category names to category IDs
+                $categoryIds = Category::whereIn('category_name', $categoriesFilter)
+                    ->pluck('category_id')
+                    ->toArray();
+
+                \Log::info('🔄 Converted category names to IDs:', [
+                    'category_names' => $categoriesFilter,
+                    'category_ids' => $categoryIds
+                ]);
+
+                if (!empty($categoryIds)) {
+                    // Filter by category_id
+                    $query->whereIn('category_id', $categoryIds);
+                    \Log::info('📊 Products matching category filter: ' . $query->count());
+                } else {
+                    \Log::info('❌ No category IDs found for: ' . implode(', ', $categoriesFilter));
+                    // Return no results if category doesn't exist
+                    $query->where('category_id', 0);
+                }
+            }
+
+            // Apply price range filter - FIX: Handle string input
+            if (is_string($priceRange)) {
+                $priceRange = explode(',', $priceRange);
+            }
+
+            if (is_array($priceRange) && count($priceRange) === 2) {
+                $minPrice = floatval($priceRange[0]);
+                $maxPrice = floatval($priceRange[1]);
+
+                if ($minPrice >= 0 && $maxPrice > 0 && $minPrice <= $maxPrice) {
+                    $query->whereBetween('product_price', [$minPrice, $maxPrice]);
+                }
+            }
+
+            // Apply condition filter - FIX: Handle string input
+            if (!is_array($conditionsFilter) && !empty($conditionsFilter)) {
+                $conditionsFilter = [$conditionsFilter];
+            }
+
+            if (!empty($conditionsFilter) && is_array($conditionsFilter)) {
+                $query->whereIn('product_condition', $conditionsFilter);
+            }
+
+            $list_shoppingItem = $query->paginate(6);
+            $list_categoryItem = Category::all();
+
+            \Log::info('📤 SHOPPING API - Sending response:', [
+                'current_page' => $list_shoppingItem->currentPage(),
+                'last_page' => $list_shoppingItem->lastPage(),
+                'total' => $list_shoppingItem->total(),
+                'per_page' => $list_shoppingItem->perPage(),
+                'search_term' => $searchTerm,
+                'categories_filter' => $categoriesFilter,
+                'results_count' => $list_shoppingItem->count()
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'list_shoppingItem' => $list_shoppingItem,
+                'list_categoryItem' => $list_categoryItem,
+                'search_query' => $searchTerm,
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('❌ SHOPPING API Error: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Error fetching products',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
         }
-
-        $list_shoppingItem = $query->paginate(6);
-        $list_categoryItem = Category::all();
-
-        return response()->json([
-            'list_shoppingItem' => $list_shoppingItem,
-            'list_categoryItem' => $list_categoryItem,
-        ]);
     }
 
     // Code for calling the similar product based on product image

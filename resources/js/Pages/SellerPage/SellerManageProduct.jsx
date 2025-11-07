@@ -533,7 +533,6 @@ export default function SellerManageProduct({ list_categories }) {
     };
 
     // Get the product of the seller
-    // Get the product of the seller
     const get_ListProducts = async (page = 1, searchParams = {}) => {
         setLoading(true);
         try {

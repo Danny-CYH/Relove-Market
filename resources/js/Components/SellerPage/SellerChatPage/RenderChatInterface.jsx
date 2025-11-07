@@ -32,7 +32,7 @@ export function RenderChatInterface({
 }) {
     return (
         <div
-            className={`flex flex-col flex-1 ${
+            className={`flex flex-col flex-1 mt-12 md:mt-0 ${
                 isMobile && !showChat ? "hidden" : "flex"
             }`}
         >

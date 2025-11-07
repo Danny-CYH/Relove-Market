@@ -23,9 +23,6 @@ export default function SubscriptionPage({
     list_subscription,
     billing_records,
 }) {
-    console.log("Subscription data:", list_subscription);
-    console.log("Billing records:", billing_records);
-
     const [billingCycle, setBillingCycle] = useState("monthly");
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [activeTab, setActiveTab] = useState("plans");
@@ -463,7 +460,7 @@ export default function SubscriptionPage({
         <div className="min-h-screen bg-gray-50 flex">
             <SellerSidebar shopName="Gemilang Berjaya" />
 
-            <main className="flex-1 p-4 md:p-6">
+            <main className="flex-1 p-4 mt-20 md:mt-0 md:p-6">
                 {/* Header */}
                 <div className="mb-6 md:mb-8">
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
@@ -940,28 +937,29 @@ export default function SubscriptionPage({
                                 </h2>
                             </div>
 
-                            <div className="overflow-x-auto -mx-4 md:mx-0">
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block overflow-x-auto -mx-4 md:mx-0">
                                 <div className="min-w-full inline-block align-middle">
                                     <div className="overflow-hidden">
                                         <table className="min-w-full text-sm">
                                             <thead className="bg-gray-50">
                                                 <tr>
-                                                    <th className="px-3 md:px-4 py-2 md:py-3 text-left font-medium text-gray-600 text-xs md:text-sm">
+                                                    <th className="px-4 py-3 text-left font-medium text-gray-600 text-sm">
                                                         Receipt ID
                                                     </th>
-                                                    <th className="px-3 md:px-4 py-2 md:py-3 text-left font-medium text-gray-600 text-xs md:text-sm">
+                                                    <th className="px-4 py-3 text-left font-medium text-gray-600 text-sm">
                                                         Date
                                                     </th>
-                                                    <th className="px-3 md:px-4 py-2 md:py-3 text-left font-medium text-gray-600 text-xs md:text-sm">
+                                                    <th className="px-4 py-3 text-left font-medium text-gray-600 text-sm">
                                                         Plan
                                                     </th>
-                                                    <th className="px-3 md:px-4 py-2 md:py-3 text-left font-medium text-gray-600 text-xs md:text-sm">
+                                                    <th className="px-4 py-3 text-left font-medium text-gray-600 text-sm">
                                                         Amount
                                                     </th>
-                                                    <th className="px-3 md:px-4 py-2 md:py-3 text-left font-medium text-gray-600 text-xs md:text-sm">
+                                                    <th className="px-4 py-3 text-left font-medium text-gray-600 text-sm">
                                                         Status
                                                     </th>
-                                                    <th className="px-3 md:px-4 py-2 md:py-3 text-left font-medium text-gray-600 text-xs md:text-sm">
+                                                    <th className="px-4 py-3 text-left font-medium text-gray-600 text-sm">
                                                         Actions
                                                     </th>
                                                 </tr>
@@ -978,23 +976,23 @@ export default function SubscriptionPage({
                                                                 }
                                                                 className="hover:bg-gray-50"
                                                             >
-                                                                <td className="px-3 md:px-4 py-2 md:py-3 font-medium text-gray-900 text-xs md:text-sm">
+                                                                <td className="px-4 py-3 font-medium text-gray-900 text-sm">
                                                                     {bill.receipt_id ||
                                                                         `INV-${bill.id}`}
                                                                 </td>
-                                                                <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm">
+                                                                <td className="px-4 py-3 text-gray-600 text-sm">
                                                                     {dayjs(
                                                                         bill.created_at
                                                                     ).format(
                                                                         "MMM YYYY"
                                                                     )}
                                                                 </td>
-                                                                <td className="px-3 md:px-4 py-2 md:py-3 text-gray-600 text-xs md:text-sm">
+                                                                <td className="px-4 py-3 text-gray-600 text-sm">
                                                                     {
                                                                         bill.subscription_plan_id
                                                                     }
                                                                 </td>
-                                                                <td className="px-3 md:px-4 py-2 md:py-3 font-medium text-gray-900 text-xs md:text-sm">
+                                                                <td className="px-4 py-3 font-medium text-gray-900 text-sm">
                                                                     RM{" "}
                                                                     {parseFloat(
                                                                         bill.amount ||
@@ -1003,7 +1001,7 @@ export default function SubscriptionPage({
                                                                         2
                                                                     )}
                                                                 </td>
-                                                                <td className="px-3 md:px-4 py-2 md:py-3">
+                                                                <td className="px-4 py-3">
                                                                     <span
                                                                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                                                             bill.payment_status ===
@@ -1022,24 +1020,22 @@ export default function SubscriptionPage({
                                                                         }
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-3 md:px-4 py-2 md:py-3">
-                                                                    <div className="flex gap-1 md:gap-2">
+                                                                <td className="px-4 py-3">
+                                                                    <div className="flex gap-2">
                                                                         <button
                                                                             onClick={() =>
                                                                                 handleViewReceipt(
                                                                                     bill
                                                                                 )
                                                                             }
-                                                                            className="flex items-center gap-1 px-2 md:px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
+                                                                            className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700"
                                                                         >
                                                                             <FileText
                                                                                 size={
-                                                                                    10
+                                                                                    12
                                                                                 }
                                                                             />
-                                                                            <span className="hidden xs:inline">
-                                                                                Receipt
-                                                                            </span>
+                                                                            Receipt
                                                                         </button>
                                                                         {bill.receipt_url && (
                                                                             <a
@@ -1048,16 +1044,14 @@ export default function SubscriptionPage({
                                                                                 }
                                                                                 target="_blank"
                                                                                 rel="noopener noreferrer"
-                                                                                className="flex items-center gap-1 px-2 md:px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50"
+                                                                                className="flex items-center gap-1 px-3 py-1 border border-gray-300 text-gray-700 rounded text-xs font-medium hover:bg-gray-50"
                                                                             >
                                                                                 <Download
                                                                                     size={
-                                                                                        10
+                                                                                        12
                                                                                     }
                                                                                 />
-                                                                                <span className="hidden xs:inline">
-                                                                                    Download
-                                                                                </span>
+                                                                                Download
                                                                             </a>
                                                                         )}
                                                                     </div>
@@ -1069,7 +1063,7 @@ export default function SubscriptionPage({
                                                     <tr>
                                                         <td
                                                             colSpan="6"
-                                                            className="px-3 md:px-4 py-2 md:py-3 text-center text-gray-500 italic text-xs md:text-sm"
+                                                            className="px-4 py-3 text-center text-gray-500 italic text-sm"
                                                         >
                                                             No billing records
                                                             found
@@ -1080,6 +1074,103 @@ export default function SubscriptionPage({
                                         </table>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Mobile Card View */}
+                            <div className="md:hidden space-y-3">
+                                {currentBillingItems.length > 0 ? (
+                                    currentBillingItems.map((bill, index) => (
+                                        <div
+                                            key={bill.id || index}
+                                            className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                                        >
+                                            {/* Header Row */}
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-900 text-sm">
+                                                        {bill.receipt_id ||
+                                                            `INV-${bill.id}`}
+                                                    </h3>
+                                                    <p className="text-xs text-gray-500 mt-1">
+                                                        {dayjs(
+                                                            bill.created_at
+                                                        ).format("MMM D, YYYY")}
+                                                    </p>
+                                                </div>
+                                                <span
+                                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                        bill.payment_status ===
+                                                            "paid" ||
+                                                        bill.payment_status ===
+                                                            "completed"
+                                                            ? "bg-green-100 text-green-800"
+                                                            : bill.payment_status ===
+                                                              "pending"
+                                                            ? "bg-yellow-100 text-yellow-800"
+                                                            : "bg-red-100 text-red-800"
+                                                    }`}
+                                                >
+                                                    {bill.payment_status}
+                                                </span>
+                                            </div>
+
+                                            {/* Details Grid */}
+                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <div>
+                                                    <p className="text-xs text-gray-500">
+                                                        Plan
+                                                    </p>
+                                                    <p className="text-sm font-medium text-gray-900">
+                                                        {
+                                                            bill.subscription_plan_id
+                                                        }
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-500">
+                                                        Amount
+                                                    </p>
+                                                    <p className="text-sm font-medium text-gray-900">
+                                                        RM{" "}
+                                                        {parseFloat(
+                                                            bill.amount || 0
+                                                        ).toFixed(2)}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="flex gap-2 pt-2 border-t border-gray-200">
+                                                <button
+                                                    onClick={() =>
+                                                        handleViewReceipt(bill)
+                                                    }
+                                                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700"
+                                                >
+                                                    <FileText size={12} />
+                                                    View Receipt
+                                                </button>
+                                                {bill.receipt_url && (
+                                                    <a
+                                                        href={bill.receipt_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 border border-gray-300 text-gray-700 rounded-lg text-xs font-medium hover:bg-gray-50"
+                                                    >
+                                                        <Download size={12} />
+                                                        Download
+                                                    </a>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <p className="text-gray-500 italic text-sm">
+                                            No billing records found
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

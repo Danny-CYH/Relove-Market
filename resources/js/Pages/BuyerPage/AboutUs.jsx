@@ -49,27 +49,27 @@ export default function AboutUs() {
 
     const teamMembers = [
         {
-            name: "Sarah Chen",
-            role: "Founder & CEO",
-            image: "/image/shania_yan.png",
+            name: "Michael Torres",
+            role: "Product Manager",
+            image: "/image/collaborator1.jpg",
             bio: "Passionate about sustainable fashion and reducing waste.",
         },
         {
-            name: "Michael Torres",
+            name: "Sarah Chen",
             role: "Head of Technology",
-            image: "/image/shania_yan.png",
+            image: "/image/collaborator2.jpg",
             bio: "Believes technology can drive positive environmental change.",
         },
         {
             name: "Priya Patel",
             role: "Community Manager",
-            image: "/image/shania_yan.png",
+            image: "/image/collaborator3.jpg",
             bio: "Loves connecting people through shared sustainable values.",
         },
         {
             name: "David Kim",
             role: "Product Designer",
-            image: "/image/shania_yan.png",
+            image: "/image/collaborator4.jpg",
             bio: "Creates experiences that make sustainable choices easy and enjoyable.",
         },
     ];
@@ -135,7 +135,7 @@ export default function AboutUs() {
                                 />
                                 <div className="absolute -bottom-6 -right-6 bg-green-600 text-white p-6 rounded-2xl shadow-lg hidden md:block">
                                     <div className="text-3xl font-bold">
-                                        2023
+                                        2025
                                     </div>
                                     <div className="text-sm">
                                         Founded with passion
@@ -151,7 +151,7 @@ export default function AboutUs() {
                             <p className="text-gray-600 mb-6 leading-relaxed">
                                 Relove Market was born from a simple idea: that
                                 one person's unused items could become another's
-                                treasure. We started in 2023 with a small
+                                treasure. We started in 2025 with a small
                                 community of enthusiasts passionate about
                                 sustainability and reducing waste.
                             </p>
@@ -167,14 +167,14 @@ export default function AboutUs() {
                             <div className="flex items-center gap-4">
                                 <div className="flex-shrink-0">
                                     <img
-                                        src="/image/shania_yan.png"
+                                        src="/image/ceo.jpg"
                                         alt="Founder signature"
                                         className="w-12 h-5 rounded-lg"
                                     />
                                 </div>
                                 <div>
                                     <div className="font-semibold text-gray-900">
-                                        Sarah Chen
+                                        Danny Cheng
                                     </div>
                                     <div className="text-sm text-gray-500">
                                         Founder & CEO
@@ -339,7 +339,7 @@ export default function AboutUs() {
                                         Jessica Lim
                                     </div>
                                     <div className="text-gray-500 text-sm">
-                                        Active member since 2023
+                                        Active member since 2025
                                     </div>
                                 </div>
                             </div>

@@ -14,8 +14,9 @@ return new class extends Migration {
             $table->id();
             $table->string("product_id")->unique();
             $table->string("name");
-            $table->vector("embedding");
-            $table->string("category");
+            // $table->vector("embedding");
+            $table->json("embedding");
+            $table->string("category")->nullable();
             $table->timestamps();
 
             $table->foreign('product_id')->references('product_id')->on('products')->onDelete('cascade');
