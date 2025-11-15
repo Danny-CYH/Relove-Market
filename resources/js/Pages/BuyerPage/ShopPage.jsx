@@ -12,6 +12,7 @@ import {
 import { useState, useEffect, useCallback, useRef } from "react";
 
 import axios from "axios";
+import Swal from "sweetalert2";
 
 import { Footer } from "@/Components/BuyerPage/Footer";
 import { Navbar } from "@/Components/BuyerPage/Navbar";
@@ -188,9 +189,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 .querySelector('meta[name="csrf-token"]')
                 .getAttribute("content");
 
-            const requestData = {
-                product_id: productId,
-            };
+            const requestData = { product_id: productId };
 
             if (selectedVariant) {
                 requestData.selected_variant = {
@@ -216,17 +215,13 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 body: JSON.stringify(requestData),
             });
 
-            // Get the response as text first to handle both JSON and HTML responses
             const responseText = await response.text();
 
-            // Check if response is HTML (indicating redirect to login page)
+            // Check if response is HTML (login redirect)
             if (
                 responseText.trim().startsWith("<!DOCTYPE") ||
                 responseText.trim().startsWith("<html")
             ) {
-                console.log(
-                    "🔄 Server returned HTML, likely redirecting to login"
-                );
                 const currentUrl = window.location.href;
                 window.location.href =
                     route("login") +
@@ -235,7 +230,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 return false;
             }
 
-            // Try to parse as JSON
+            // Parse JSON
             let result;
             try {
                 result = JSON.parse(responseText);
@@ -244,7 +239,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                     "❌ Failed to parse response as JSON:",
                     responseText
                 );
-                // If it's not JSON and not HTML, it might be an error message
                 if (response.status === 401 || response.status === 403) {
                     const currentUrl = window.location.href;
                     window.location.href =
@@ -257,12 +251,20 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             }
 
             if (response.ok) {
-                console.log("✅ Added to wishlist successfully:", result);
+                // ✅ SweetAlert popup on success
+                Swal.fire({
+                    title: "Added to Wishlist!",
+                    text: "This item has been successfully added to your wishlist.",
+                    icon: "success",
+                    confirmButtonText: "OK",
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+
                 return true;
             } else {
                 console.error("❌ Failed to add to wishlist", result);
 
-                // Check for authentication errors in the JSON response
                 if (
                     response.status === 401 ||
                     response.status === 403 ||

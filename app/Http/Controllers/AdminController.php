@@ -67,32 +67,6 @@ class AdminController extends Controller
         return $storeId;
     }
 
-    // Function for generate the feature ID for subscription features
-    private static function generateFeatureId($prefix = 'FTR-', $padLength = 5)
-    {
-        $latestFeature = SubscriptionFeatures::orderBy('feature_id', 'desc')->first();
-
-        $number = 1;
-        if ($latestFeature && preg_match("/{$prefix}(\d+)/", $latestFeature->feature_id, $matches)) {
-            $number = (int) $matches[1] + 1;
-        }
-
-        return $prefix . str_pad($number, $padLength, '0', STR_PAD_LEFT);
-    }
-
-    // Function for generate unique subscription plan ID like PLAN-00001
-    private static function generatePlanId($prefix = 'PLAN-', $padLength = 5)
-    {
-        $latestPlan = Subscription::orderBy('subscription_plan_id', 'desc')->first();
-
-        $number = 1;
-        if ($latestPlan && preg_match("/{$prefix}(\d+)/", $latestPlan->subscription_plan_id, $matches)) {
-            $number = (int) $matches[1] + 1;
-        }
-
-        return $prefix . str_pad($number, $padLength, '0', STR_PAD_LEFT);
-    }
-
     // Function for get the pending seller data on pending seller table page
     public function getSellerList(Request $request)
     {
@@ -123,272 +97,6 @@ class AdminController extends Controller
         return response()->json($list_sellerRegistration);
     }
 
-    // Function for retrieve the list subscriptions.
-    public function getSubscriptions()
-    {
-        try {
-            // Get all subscriptions with features
-            $subscriptions = Subscription::with('subscriptionFeatures')->paginate(6);
-
-            // Decode limits for each subscription in the collection
-            $subscriptions->getCollection()->transform(function ($item) {
-                if (is_string($item->limits)) {
-                    $item->limits = json_decode($item->limits, true);
-                }
-                return $item;
-            });
-
-            return response()->json([
-                'subscription' => $subscriptions
-            ]);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'error' => 'Subscription not found',
-                'details' => $e->getMessage(),
-            ], 404);
-        }
-    }
-
-    // Function for create new subscriptions
-    public function createSubscriptions(Request $request)
-    {
-        $validated = $request->validate([
-            'plan_name' => 'required|string|max:255',
-            'price' => 'required|numeric|min:0',
-            'description' => 'required|string',
-            'duration' => 'required|integer|min:1',
-            'status' => 'required|string|in:Active,Inactive',
-            'features' => 'nullable|array',
-            'features.*' => 'string',
-            'limits' => 'required|array' // Now we expect array
-        ]);
-
-        // ✅ Already array, no decoding needed
-        $limits = $validated['limits'];
-
-        // Validate limits structure
-        $limitsValidation = Validator::make($limits, [
-            'max_products' => 'required|integer|min:0',
-            'max_conversations' => 'required|integer|min:0',
-            'featured_listing' => 'required|boolean'
-        ]);
-
-        if ($limitsValidation->fails()) {
-            return response()->json([
-                'error' => 'Invalid limits data',
-                'details' => $limitsValidation->errors()
-            ], 422);
-        }
-
-        DB::beginTransaction();
-
-        $subscription_plan_id = $this->generatePlanId();
-
-        try {
-            $subscription = Subscription::create([
-                'subscription_plan_id' => $subscription_plan_id,
-                'plan_name' => $validated['plan_name'],
-                'description' => $validated['description'],
-                'price' => $validated['price'],
-                'duration' => $validated['duration'],
-                'status' => $validated['status'],
-                'limits' => json_encode($limits) // Store as JSON string in DB
-            ]);
-
-            // Create features
-            if (!empty($validated['features'])) {
-                foreach ($validated['features'] as $feature) {
-                    if (!empty(trim($feature))) {
-                        SubscriptionFeatures::create([
-                            'subscription_plan_id' => $subscription_plan_id,
-                            'feature_id' => $this->generateFeatureId(),
-                            'feature_text' => trim($feature),
-                        ]);
-                    }
-                }
-            }
-
-            $subscription->load('subscriptionFeatures');
-
-            DB::commit();
-
-            broadcast(new SubscriptionCreated($subscription));
-
-            return response()->json([
-                'message' => 'Subscription created successfully!',
-                'subscription' => $subscription
-            ]);
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'error' => 'Failed to create subscription',
-                'details' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    // Function for update the existing subscriptions
-    public function updateSubscriptions(Request $request, $subscription_plan_id)
-    {
-        // 🔹 Validate input
-        $validated = $request->validate([
-            'plan_name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
-            'duration' => 'required|integer|min:1',
-            'status' => 'required|string|in:Active,Inactive',
-            'features' => 'nullable|array',
-            'features.*' => 'string',
-            'limits' => 'required|array' // JSON string containing limits
-        ]);
-
-        // ✅ Already array, no decoding needed
-        $limits = $validated['limits'];
-
-        // Validate limits structure
-        $limitsValidation = Validator::make($limits, [
-            'max_products' => 'required|integer|min:0',
-            'max_conversations' => 'required|integer|min:0',
-            'featured_listing' => 'required|boolean'
-        ]);
-
-        if ($limitsValidation->fails()) {
-            return response()->json([
-                'error' => 'Invalid limits data',
-                'details' => $limitsValidation->errors()
-            ], 422);
-        }
-
-        DB::beginTransaction();
-
-        try {
-            // 🔹 Find subscription by its custom ID
-            $subscription = Subscription::where('subscription_plan_id', $subscription_plan_id)
-                ->first();
-
-            // 🔹 Update subscription record with limits
-            $subscription->update([
-                'plan_name' => $validated['plan_name'],
-                'description' => $validated['description'] ?? $subscription->description,
-                'price' => $validated['price'],
-                'duration' => $validated['duration'],
-                'status' => $validated['status'],
-                'limits' => json_encode($limits) // Update limits
-            ]);
-
-            // 🔹 Replace features
-            if (isset($validated['features'])) {
-                // 1. Delete old features
-                SubscriptionFeatures::where('subscription_plan_id', $subscription->subscription_plan_id)
-                    ->delete();
-
-                // 2. Insert new features
-                foreach ($validated['features'] as $featureText) {
-                    if (!empty(trim($featureText))) {
-                        \Log::info("Inserting feature: " . $featureText);   // debug log
-
-                        SubscriptionFeatures::create([
-                            'subscription_plan_id' => $subscription->subscription_plan_id,
-                            'feature_id' => $this->generateFeatureId(),
-                            'feature_text' => trim($featureText),
-                        ]);
-                    }
-                }
-            }
-
-            DB::commit();
-
-            // Broadcast event
-            broadcast(new SubscriptionUpdated($subscription));
-
-            return response()->json([
-                'message' => 'Subscription updated successfully!',
-                'subscription' => $subscription,
-            ], 200);
-
-        } catch (Exception $e) {
-            DB::rollBack();
-            return response()->json([
-                'error' => 'Failed to update subscription',
-                'details' => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    // Function for delete the existing subbscriptions
-    public function deleteSubscriptions($subscription_plan_id)
-    {
-        DB::beginTransaction();
-
-        try {
-            // Find subscription
-            $subscription = Subscription::with("subscriptionFeatures")
-                ->where("subscription_plan_id", $subscription_plan_id)
-                ->firstOrFail();
-
-            // ✅ FIRST: Delete all subscription features
-            SubscriptionFeatures::where('subscription_plan_id', $subscription_plan_id)
-                ->delete();
-
-            // Delete the subscription itself
-            $subscription->delete();
-
-            DB::commit();
-
-            // Broadcast event
-            broadcast(new SubscriptionDeleted($subscription_plan_id));
-
-            return response()->json([
-                "successMessage" => "Subscription deleted successfully"
-            ], 200);
-
-        } catch (Exception $e) {
-            DB::rollBack();
-
-            return response()->json([
-                "errorMessage" => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    // Functions for active or inactive the subscriptions
-    public function updateStatusSubscriptions(Request $request, $subscription_plan_id)
-    {
-        DB::beginTransaction();
-
-        try {
-            // 🔹 Validate input
-            $validated = $request->validate([
-                'status' => 'required|string|in:Active,Inactive',
-            ]);
-
-            // 🔹 Find subscription
-            $subscription = Subscription::where('subscription_plan_id', $subscription_plan_id)
-                ->firstOrFail();
-
-            // 🔹 Update status
-            $subscription->update([
-                'status' => $validated['status'],
-            ]);
-
-            DB::commit();
-
-            // Broadcast event
-            broadcast(new SubscriptionStatusUpdated($subscription));
-
-            return response()->json([
-                'successMessage' => "Subscription {$validated['status']} successfully!"
-            ], 200);
-
-        } catch (Exception $e) {
-            return response()->json([
-                'errorMessage' => $e->getMessage()
-            ], 500);
-        }
-    }
-
     // Function for approve or reject the incoming seller request
     public function handleAction(Request $request, $id)
     {
@@ -398,9 +106,6 @@ class AdminController extends Controller
 
         $sellerRegistered = SellerRegistration::where('registration_id', $id)
             ->firstOrFail();
-
-        $trial_mode = Subscription::where("subscription_plan_id", "PLAN-TRIAL")
-            ->first();
 
         $sellerRegistered->status = $request->action;
         $user_email = $sellerRegistered->email;
@@ -430,7 +135,6 @@ class AdminController extends Controller
                 "store_id" => $store_id,
                 "business_id" => $sellerRegistered->business_id,
                 "is_verified" => True,
-                "subscription_plan_id" => $trial_mode->subscription_plan_id
             ]);
 
             User::where('email', $user_email)
@@ -483,7 +187,8 @@ class AdminController extends Controller
         $list_transactions = Order::with([
             "user",
             "seller",
-            "orderItems.product"
+            "orderItems.product",
+            "sellerEarning"
         ])
             ->paginate(5);
 

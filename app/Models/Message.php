@@ -20,6 +20,16 @@ class Message extends Model
         return $this->belongsTo(Conversation::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class, "sender_id", "user_id");
+    }
+
+    public function seller()
+    {
+        return $this->belongsTo(User::class, "sender_id", "seller_id");
+    }
+
     public function sender()
     {
         if ($this->sender_type === 'buyer') {

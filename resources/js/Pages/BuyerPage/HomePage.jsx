@@ -405,7 +405,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 <div className="flex items-center">
                                     <div className="flex-shrink-0">
                                         <img
-                                            src="/image/shania_yan.png"
+                                            src="/image/user1.jpg"
                                             alt="User"
                                             className="h-10 w-10 rounded-full"
                                         />

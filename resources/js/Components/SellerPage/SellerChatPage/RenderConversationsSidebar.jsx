@@ -86,12 +86,29 @@ export function RenderConversationsSidebar({
                                 }
                             >
                                 <div className="flex items-start gap-3">
-                                    <div className="bg-gray-200 rounded-full h-12 w-12 flex items-center justify-center">
-                                        <User
-                                            size={20}
-                                            className="text-gray-600"
-                                        />
+                                    <div className="bg-gray-200 rounded-full h-12 w-12 flex items-center justify-center overflow-hidden">
+                                        {conversation.user?.profile_image ? (
+                                            <img
+                                                src={
+                                                    import.meta.env
+                                                        .VITE_BASE_URL +
+                                                    conversation.user
+                                                        .profile_image
+                                                }
+                                                alt={
+                                                    conversation.user?.name ||
+                                                    "User"
+                                                }
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <User
+                                                size={20}
+                                                className="text-gray-600"
+                                            />
+                                        )}
                                     </div>
+
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-start mb-1">
                                             <h3 className="font-semibold text-gray-900 truncate">

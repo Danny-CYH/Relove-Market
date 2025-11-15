@@ -1,16 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-    Plus,
-    Edit,
-    Trash,
-    Search,
-    Eye,
-    Lock,
-    Crown,
-    Star,
-    ToggleLeft,
-    ToggleRight,
-} from "lucide-react";
+import { Plus, Edit, Trash, Search, Eye } from "lucide-react";
 
 import { SellerSidebar } from "@/Components/SellerPage/SellerSidebar";
 import { SellerAddProduct_Modal } from "@/Components/SellerPage/SellerManageProduct/SellerAddProduct_Modal";
@@ -18,7 +7,6 @@ import { SellerDeleteProduct_Modal } from "@/Components/SellerPage/SellerManageP
 import { SellerEditProduct_Modal } from "@/Components/SellerPage/SellerManageProduct/SellerEditProduct_Modal";
 import { SellerViewProduct_Modal } from "@/Components/SellerPage/SellerManageProduct/SellerViewProduct_Modal";
 
-import { SubscriptionStatus } from "@/Components/SellerPage/SellerManageProduct/SubscriptionStatus";
 import { ListingToggleButton } from "@/Components/SellerPage/SellerManageProduct/ListingToggleButton";
 import { FeaturedToggleButton } from "@/Components/SellerPage/SellerManageProduct/FeaturedToggleButton";
 
@@ -32,7 +20,6 @@ export default function SellerManageProduct({ list_categories }) {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
     // Loading Progress
     const [loadingProgress, setLoadingProgress] = useState(false);
@@ -57,41 +44,14 @@ export default function SellerManageProduct({ list_categories }) {
 
     const [loading, setLoading] = useState(false);
 
-    // Subscription state
-    const [subscription, setSubscription] = useState(null);
-    const [subscriptionLimits, setSubscriptionLimits] = useState({});
-    const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-
     // Featured products state
     const [featuredProducts, setFeaturedProducts] = useState([]);
     const [togglingProduct, setTogglingProduct] = useState(null);
-
-    // Fetch subscription status
-    const fetchSubscriptionStatus = async () => {
-        try {
-            setSubscriptionLoading(true);
-            const response = await axios.get(route("seller-subscriptions"));
-
-            const sellerSubscription = response.data.seller.subscription;
-
-            // Set subscription data
-            setSubscription(sellerSubscription);
-            setSubscriptionLimits(sellerSubscription.limits || {});
-
-            // Fetch featured products when subscription loads
-            await fetchFeaturedProducts();
-        } catch (error) {
-            console.error("Error fetching subscription:", error);
-        } finally {
-            setSubscriptionLoading(false);
-        }
-    };
 
     // Fetch featured products
     const fetchFeaturedProducts = async () => {
         try {
             const response = await axios.get(route("featured-products"));
-
             setFeaturedProducts(response.data.featured_products || []);
         } catch (error) {
             console.error("Error fetching featured products:", error);
@@ -111,88 +71,7 @@ export default function SellerManageProduct({ list_categories }) {
         get_ListProducts(page, searchParams);
     };
 
-    // Check if user can perform action
-    const canPerformAction = (action) => {
-        if (!subscription) return false;
-
-        const { limits, subscription_plan_id } = subscription;
-
-        // ✅ FREE TRIAL USERS: No limitations for "PLAN-TRIAL"
-        if (subscription_plan_id === "PLAN-TRIAL") {
-            switch (action) {
-                case "addProduct":
-                    return true; // Unlimited products during trial
-                case "editProduct":
-                    return true;
-                case "deleteProduct":
-                    return true;
-                case "toggleListing":
-                    return true;
-                case "featureProduct":
-                    return true; // Allow featuring during trial
-                default:
-                    return true;
-            }
-        }
-
-        // ✅ For paid subscriptions, apply the normal limits
-        switch (action) {
-            case "addProduct":
-                return (
-                    limits.max_products === -1 ||
-                    realTimeProducts.length < parseInt(limits.max_products)
-                );
-            case "editProduct":
-                return true;
-            case "deleteProduct":
-                return true;
-            case "toggleListing":
-                return true;
-            case "featureProduct":
-                return limits.featured_listing === true;
-            default:
-                return false;
-        }
-    };
-
-    // Check if user has reached product limit
-    const hasReachedProductLimit = () => {
-        if (!subscription) return false;
-
-        const { limits, subscription_plan_id } = subscription;
-
-        // ✅ FREE TRIAL USERS: Never reach limit
-        if (subscription_plan_id === "PLAN-TRIAL") {
-            return false;
-        }
-
-        // ✅ For paid subscriptions, check the limits
-        return (
-            limits.max_products !== -1 &&
-            realTimeProducts.length >= parseInt(limits.max_products)
-        );
-    };
-
-    // Check if user can feature more products
-    const canFeatureMoreProducts = () => {
-        if (!subscription) return false;
-
-        const { limits, subscription_plan_id } = subscription;
-
-        // ✅ FREE TRIAL USERS: Can feature unlimited products
-        if (subscription_plan_id === "PLAN-TRIAL") {
-            return true;
-        }
-
-        // If no featured listing allowed
-        if (!limits.featured_listing) return false;
-
-        // Check if there's a limit on featured products
-        const maxFeatured = limits.max_featured_products || 5;
-        return featuredProducts.length < maxFeatured;
-    };
-
-    // Check if product is featured - FIXED: More reliable check
+    // Check if product is featured
     const isProductFeatured = (productId) => {
         const isFeatured = featuredProducts.some(
             (fp) => fp.product_id === productId
@@ -202,11 +81,6 @@ export default function SellerManageProduct({ list_categories }) {
 
     // Toggle product listing status
     const toggleProductListing = async (product) => {
-        if (!canPerformAction("toggleListing")) {
-            setIsUpgradeModalOpen(true);
-            return;
-        }
-
         try {
             setTogglingProduct(product.product_id);
 
@@ -256,24 +130,13 @@ export default function SellerManageProduct({ list_categories }) {
         }
     };
 
-    // Toggle product featured status - FIXED: Better state management
+    // Toggle product featured status
     const toggleProductFeatured = async (product) => {
-        if (!canPerformAction("featureProduct")) {
-            setIsUpgradeModalOpen(true);
-            return;
-        }
-
         try {
             setTogglingProduct(product.product_id);
 
             const currentFeaturedStatus = isProductFeatured(product.product_id);
             const newFeaturedStatus = !currentFeaturedStatus;
-
-            console.log("Toggling featured status:", {
-                productId: product.product_id,
-                current: currentFeaturedStatus,
-                new: newFeaturedStatus,
-            });
 
             const response = await axios.post(route("product-featured"), {
                 product_id: product.product_id,
@@ -332,56 +195,19 @@ export default function SellerManageProduct({ list_categories }) {
         }
     };
 
-    // Get upgrade required message
-    const getUpgradeMessage = (action) => {
-        if (!subscription) return "Please wait...";
-
-        const { limits, subscription_plan_id } = subscription;
-
-        // ✅ FREE TRIAL USERS: No upgrade messages during trial
-        if (subscription_plan_id === "PLAN-TRIAL") {
-            return "Enjoy your free trial! All features are available.";
-        }
-
-        if (hasReachedProductLimit()) {
-            return `Product limit reached (${limits.max_products}). Upgrade to add more products.`;
-        }
-
-        switch (action) {
-            case "addProduct":
-                return `Upgrade to add more than ${limits.max_products} products.`;
-            case "featureProduct":
-                return "Featured listings require a higher plan.";
-            default:
-                return "Upgrade your plan to access this feature.";
-        }
-    };
-
-    // Handle add product with subscription check
+    // Handle add product
     const handleAddProductClick = () => {
-        if (!canPerformAction("addProduct")) {
-            setIsUpgradeModalOpen(true);
-            return;
-        }
         setIsAddOpen(true);
     };
 
-    // Handle edit product with subscription check
+    // Handle edit product
     const handleEditProductClick = (product) => {
-        if (!canPerformAction("editProduct")) {
-            setIsUpgradeModalOpen(true);
-            return;
-        }
         setProductToEdit(product);
         setIsEditOpen(true);
     };
 
-    // Handle delete product with subscription check
+    // Handle delete product
     const handleDeleteProductClick = (product) => {
-        if (!canPerformAction("deleteProduct")) {
-            setIsUpgradeModalOpen(true);
-            return;
-        }
         setProductToDelete(product);
         setIsDeleteOpen(true);
     };
@@ -542,22 +368,8 @@ export default function SellerManageProduct({ list_categories }) {
                 ...searchParams,
             };
 
-            console.log("🔍 Making API request with params:", params);
-
             const response = await axios.get(route("product-data"), { params });
             const data = response.data;
-
-            console.log("✅ API Response:", {
-                currentPage: data.list_product.current_page,
-                lastPage: data.list_product.last_page,
-                total: data.list_product.total,
-                dataCount: data.list_product.data
-                    ? data.list_product.data.length
-                    : 0,
-                hasMorePages:
-                    data.list_product.current_page <
-                    data.list_product.last_page,
-            });
 
             setRealTimeProducts(data.list_product.data || data.list_product);
 
@@ -651,11 +463,6 @@ export default function SellerManageProduct({ list_categories }) {
         };
     }, []);
 
-    // Fetch subscription on component mount
-    useEffect(() => {
-        fetchSubscriptionStatus();
-    }, []);
-
     // Reset page to 1 whenever filters change
     useEffect(() => {
         setCurrentPage(1);
@@ -745,7 +552,6 @@ export default function SellerManageProduct({ list_categories }) {
                     }}
                     errorField={errorField}
                     onErrorFieldHandled={() => setErrorField(null)}
-                    subscription={subscription}
                 />
             )}
 
@@ -798,37 +604,12 @@ export default function SellerManageProduct({ list_categories }) {
                         </div>
                         <button
                             onClick={handleAddProductClick}
-                            disabled={hasReachedProductLimit()}
-                            className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 mt-3 md:mt-0 rounded-lg transition-colors shadow-sm text-sm md:text-base ${
-                                hasReachedProductLimit()
-                                    ? "bg-gray-400 text-gray-200 cursor-not-allowed"
-                                    : "bg-indigo-600 text-white hover:bg-indigo-700"
-                            }`}
+                            className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-2.5 mt-3 md:mt-0 rounded-lg transition-colors shadow-sm text-sm md:text-base bg-indigo-600 text-white hover:bg-indigo-700"
                         >
                             <Plus size={16} />
                             <span>Add Product</span>
-                            {hasReachedProductLimit() && (
-                                <Lock size={14} className="ml-1" />
-                            )}
-                            {/* ✅ Show trial badge for free trial users */}
-                            {subscription?.subscription_plan_id ===
-                                "PLAN-TRIAL" && (
-                                <span className="ml-1 px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
-                                    Free Trial
-                                </span>
-                            )}
                         </button>
                     </div>
-
-                    {/* Subscription Status */}
-                    <SubscriptionStatus
-                        subscription={subscription}
-                        subscriptionLoading={subscriptionLoading}
-                        hasReachedProductLimit={hasReachedProductLimit}
-                        pagination={pagination}
-                        setIsUpgradeModalOpen={setIsUpgradeModalOpen} // Add this
-                        realTimeProducts={realTimeProducts} // Add this
-                    />
 
                     {/* Stats summary - Improved responsiveness */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
@@ -856,27 +637,6 @@ export default function SellerManageProduct({ list_categories }) {
                                     </p>
                                     <p className="text-base md:text-lg font-semibold text-gray-900">
                                         {pagination.total}
-                                        {subscription?.subscription_plan_id !==
-                                            "PLAN-TRIAL" &&
-                                            subscription?.limits
-                                                ?.max_products &&
-                                            subscription.limits.max_products !==
-                                                -1 && (
-                                                <span className="text-xs text-gray-500 ml-1">
-                                                    /{" "}
-                                                    {
-                                                        subscription.limits
-                                                            .max_products
-                                                    }
-                                                </span>
-                                            )}
-                                        {/* ✅ Show unlimited for trial users */}
-                                        {subscription?.subscription_plan_id ===
-                                            "PLAN-TRIAL" && (
-                                            <span className="text-xs text-green-600 ml-1">
-                                                • Unlimited
-                                            </span>
-                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -1187,12 +947,6 @@ export default function SellerManageProduct({ list_categories }) {
                                                 <td className="px-4 md:px-6 py-4">
                                                     <FeaturedToggleButton
                                                         product={product}
-                                                        subscription={
-                                                            subscription
-                                                        }
-                                                        canPerformAction={
-                                                            canPerformAction
-                                                        }
                                                         isProductFeatured={
                                                             isProductFeatured
                                                         }
@@ -1226,25 +980,8 @@ export default function SellerManageProduct({ list_categories }) {
                                                                     product
                                                                 )
                                                             }
-                                                            className={`p-1.5 md:p-2 transition-colors ${
-                                                                canPerformAction(
-                                                                    "editProduct"
-                                                                )
-                                                                    ? "text-gray-400 hover:text-green-600"
-                                                                    : "text-gray-300 cursor-not-allowed"
-                                                            }`}
-                                                            title={
-                                                                canPerformAction(
-                                                                    "editProduct"
-                                                                )
-                                                                    ? "Edit product"
-                                                                    : "Upgrade to edit"
-                                                            }
-                                                            disabled={
-                                                                !canPerformAction(
-                                                                    "editProduct"
-                                                                )
-                                                            }
+                                                            className="p-1.5 md:p-2 text-gray-400 hover:text-green-600 transition-colors"
+                                                            title="Edit product"
                                                         >
                                                             <Edit size={16} />
                                                         </button>
@@ -1254,25 +991,8 @@ export default function SellerManageProduct({ list_categories }) {
                                                                     product
                                                                 )
                                                             }
-                                                            className={`p-1.5 md:p-2 transition-colors ${
-                                                                canPerformAction(
-                                                                    "deleteProduct"
-                                                                )
-                                                                    ? "text-gray-400 hover:text-red-600"
-                                                                    : "text-gray-300 cursor-not-allowed"
-                                                            }`}
-                                                            title={
-                                                                canPerformAction(
-                                                                    "deleteProduct"
-                                                                )
-                                                                    ? "Delete product"
-                                                                    : "Upgrade to delete"
-                                                            }
-                                                            disabled={
-                                                                !canPerformAction(
-                                                                    "deleteProduct"
-                                                                )
-                                                            }
+                                                            className="p-1.5 md:p-2 text-gray-400 hover:text-red-600 transition-colors"
+                                                            title="Delete product"
                                                         >
                                                             <Trash size={16} />
                                                         </button>
@@ -1386,10 +1106,6 @@ export default function SellerManageProduct({ list_categories }) {
                                             />
                                             <FeaturedToggleButton
                                                 product={product}
-                                                subscription={subscription}
-                                                canPerformAction={
-                                                    canPerformAction
-                                                }
                                                 isProductFeatured={
                                                     isProductFeatured
                                                 }
@@ -1431,19 +1147,8 @@ export default function SellerManageProduct({ list_categories }) {
                                             onClick={() =>
                                                 handleEditProductClick(product)
                                             }
-                                            className={`p-1.5 transition-colors ${
-                                                canPerformAction("editProduct")
-                                                    ? "text-gray-400 hover:text-green-600"
-                                                    : "text-gray-300 cursor-not-allowed"
-                                            }`}
-                                            title={
-                                                canPerformAction("editProduct")
-                                                    ? "Edit product"
-                                                    : "Upgrade to edit"
-                                            }
-                                            disabled={
-                                                !canPerformAction("editProduct")
-                                            }
+                                            className="p-1.5 text-gray-400 hover:text-green-600 transition-colors"
+                                            title="Edit product"
                                         >
                                             <Edit size={16} />
                                         </button>
@@ -1453,25 +1158,8 @@ export default function SellerManageProduct({ list_categories }) {
                                                     product
                                                 )
                                             }
-                                            className={`p-1.5 transition-colors ${
-                                                canPerformAction(
-                                                    "deleteProduct"
-                                                )
-                                                    ? "text-gray-400 hover:text-red-600"
-                                                    : "text-gray-300 cursor-not-allowed"
-                                            }`}
-                                            title={
-                                                canPerformAction(
-                                                    "deleteProduct"
-                                                )
-                                                    ? "Delete product"
-                                                    : "Upgrade to delete"
-                                            }
-                                            disabled={
-                                                !canPerformAction(
-                                                    "deleteProduct"
-                                                )
-                                            }
+                                            className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                                            title="Delete product"
                                         >
                                             <Trash size={16} />
                                         </button>

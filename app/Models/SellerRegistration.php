@@ -20,12 +20,13 @@ class SellerRegistration extends Model
         "email",
         "phone_number",
         "store_name",
-        "store_license",
         "store_description",
         "store_address",
         "store_city",
         "store_state",
         "business_id",
+        "verification_type",
+        "verification_image",
         "status",
     ];
 

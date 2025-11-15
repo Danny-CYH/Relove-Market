@@ -13,10 +13,9 @@ import {
     faCartShopping,
     faMoneyBillTrendUp,
     faBell,
-    faTags,
-    faCreditCard,
     faMoneyCheck,
     faCalendarAlt,
+    faTruck,
 } from "@fortawesome/free-solid-svg-icons";
 
 import axios from "axios";
@@ -29,105 +28,85 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SellerSidebar } from "@/Components/SellerPage/SellerSidebar";
 import { StatCard } from "@/Components/SellerPage/SellerDashboard/StatCard";
-import { TrialModal } from "@/Components/SellerPage/SellerDashboard/TrialModal";
 import { OrderStatusBadge } from "@/Components/SellerPage/SellerDashboard/OrderStatusBadge";
 import { Badge } from "@/Components/SellerPage/SellerDashboard/Badge";
 import { Money } from "@/Components/SellerPage/SellerDashboard/Money";
-import { TrialBanner } from "@/Components/SellerPage/SellerDashboard/TrialBanner";
-import { NotificationDropdown } from "@/Components/SellerPage/SellerDashboard/NotificationDropdown";
-import { Star } from "lucide-react";
+import { NotificationModal } from "@/Components/SellerPage/SellerDashboard/NotificationModal";
 
 export default function SellerDashboard() {
     const [sellerData, setSellerData] = useState([]);
     const [shop, setShop] = useState(null);
-    const [trialDaysLeft, setTrialDaysLeft] = useState(0);
     const [loading, setLoading] = useState(true);
     const [kpis, setKpis] = useState({});
     const [realTimeOrders, setRealTimeOrders] = useState([]);
     const [orderData, setOrderData] = useState([]);
-    const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-    const [showTrialModal, setShowTrialModal] = useState(false);
-    const [notificationCount, setNotificationCount] = useState(0);
     const [newOrders, setNewOrders] = useState(new Set());
     const [showNewOrderBadge, setShowNewOrderBadge] = useState(false);
-    const [notifications, setNotifications] = useState([]);
-    const [showNotificationDropdown, setShowNotificationDropdown] =
-        useState(false);
-    const [subscriptionStatus, setSubscriptionStatus] = useState(null);
     const [listedProducts, setListedProducts] = useState([]);
     const [timeFilter, setTimeFilter] = useState("daily"); // 'daily', 'monthly', 'yearly'
     const [featuredProducts, setFeaturedProducts] = useState([]);
 
+    const [notificationCount, setNotificationCount] = useState(0);
+    const [notifications, setNotifications] = useState([]);
+    const [showNotificationModal, setShowNotificationModal] = useState(false);
+    const [readNotifications, setReadNotifications] = useState(new Set());
+
     const { auth } = usePage().props;
 
-    // Function to show notification - FIXED: Use useCallback to prevent recreation
-    const showNotification = useCallback((message, type = "info") => {
-        const newNotification = {
-            id: Date.now(),
-            message,
-            type,
-            timestamp: new Date(),
-        };
+    // Function to show notification
+    const showNotification = useCallback(
+        (message, type = "info", data = null) => {
+            const newNotification = {
+                id: Date.now(),
+                message,
+                type,
+                data,
+                timestamp: new Date(),
+                read: false,
+            };
 
-        setNotifications((prev) => [newNotification, ...prev].slice(0, 20));
-        setNotificationCount((prev) => prev + 1);
+            setNotifications((prev) => [newNotification, ...prev].slice(0, 50)); // Keep last 50 notifications
+            setNotificationCount((prev) => prev + 1);
 
-        // Auto-remove notification after 8 seconds
-        setTimeout(() => {
-            setNotifications((prev) =>
-                prev.filter((n) => n.id !== newNotification.id)
-            );
-            setNotificationCount((prev) => Math.max(0, prev - 1));
-        }, 8000);
-    }, []);
-
-    // Fetch subscription status
-    const fetchSubscriptionStatus = async () => {
-        try {
-            setSubscriptionLoading(true);
-            const response = await axios.get(route("seller-subscriptions"));
-
-            const sellerSubscription = response.data.seller;
-            const sellerSubscription_status = response.data.seller.status;
-
-            setSubscriptionStatus(sellerSubscription);
-
-            if (
-                sellerSubscription.subscription_plan_id === "PLAN-TRIAL" &&
-                sellerSubscription_status !== "active"
-            ) {
-                setTimeout(() => {
-                    setShowTrialModal(true);
-                }, 1500);
-            }
-
-            // Calculate trial days left
-            if (sellerSubscription?.end_date) {
-                const today = new Date();
-                const trialEnd = new Date(sellerSubscription.end_date);
-                const diffTime = trialEnd - today;
-                const daysLeft = Math.max(
-                    0,
-                    Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+            // Auto-remove notification after 8 seconds if unread
+            const notificationId = newNotification.id;
+            setTimeout(() => {
+                setNotifications((prev) =>
+                    prev.filter((n) => n.id !== notificationId || n.read)
                 );
-                setTrialDaysLeft(daysLeft);
-            }
-        } catch (error) {
-            console.error("Error fetching subscription:", error);
-        } finally {
-            setSubscriptionLoading(false);
+                setNotificationCount((prev) =>
+                    Math.max(0, prev - (prev > 0 ? 1 : 0))
+                );
+            }, 8000);
+        },
+        []
+    );
+
+    const handleOpenNotificationModal = () => {
+        setShowNotificationModal(true);
+
+        // Mark all current notifications as read
+        const unreadNotifications = notifications.filter((n) => !n.read);
+        if (unreadNotifications.length > 0) {
+            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+            setNotificationCount(0);
+            setReadNotifications(
+                (prev) =>
+                    new Set([...prev, ...unreadNotifications.map((n) => n.id)])
+            );
         }
     };
 
-    // Check if seller has active subscription (not trial)
-    const hasActiveSubscription = useMemo(() => {
-        if (!subscriptionStatus) return false;
+    // Close notification modal
+    const handleCloseNotificationModal = () => {
+        setShowNotificationModal(false);
+    };
 
-        return (
-            subscriptionStatus.subscription_plan_id !== "PLAN-TRIAL" &&
-            subscriptionStatus.status === "active"
-        );
-    }, [subscriptionStatus]);
+    // Remove individual notification
+    const removeNotification = (notificationId) => {
+        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+        setNotificationCount((prev) => Math.max(0, prev - 1));
+    };
 
     // CALCULATE EARNINGS BASED ON TIME FILTER
     const calculateEarnings = useCallback((orders, filterType) => {
@@ -136,7 +115,14 @@ export default function SellerDashboard() {
         const currentDate = new Date();
 
         const filteredOrders = orders.filter((order) => {
-            if (!order.created_at || !order.amount) return false;
+            if (!order.created_at || !order?.seller_earning[0]?.payout_amount)
+                return false;
+
+            // Only include completed order
+            if (order.order_status !== "Completed") return false;
+
+            // Must be released payout
+            if (order?.seller_earning[0]?.status != "Released") return false;
 
             const orderDate = new Date(order.created_at);
 
@@ -162,7 +148,8 @@ export default function SellerDashboard() {
         });
 
         return filteredOrders.reduce((sum, order) => {
-            const orderAmount = parseFloat(order.amount) || 0;
+            const orderAmount =
+                parseFloat(order?.seller_earning[0]?.payout_amount) || 0;
             return sum + orderAmount;
         }, 0);
     }, []);
@@ -202,22 +189,6 @@ export default function SellerDashboard() {
         return filteredOrders.length;
     }, []);
 
-    // CALCULATE STORE TRAFFIC
-    const calculateStoreTraffic = useCallback((orders, products) => {
-        const totalOrders = orders?.length || 0;
-        const estimatedConversionRate = 0.02;
-        const estimatedTraffic = Math.round(
-            totalOrders / estimatedConversionRate
-        );
-
-        const totalProductViews =
-            products?.reduce((sum, product) => {
-                return sum + (product.views || 0);
-            }, 0) || 0;
-
-        return totalProductViews > 0 ? totalProductViews : estimatedTraffic;
-    }, []);
-
     // CALCULATE CONVERSION RATE
     const calculateConversionRate = useCallback((orders, traffic) => {
         if (!traffic || traffic === 0) return 0;
@@ -232,23 +203,18 @@ export default function SellerDashboard() {
         return orders?.length || 0;
     }, []);
 
-    // CALCULATE ALL KPIs - FIXED: Use useCallback
+    // CALCULATE ALL KPIs
     const calculateAllKPIs = useCallback(
         (orders, products, filterType = "monthly") => {
             const earnings = calculateEarnings(orders, filterType);
             const ordersCount = calculateOrders(orders, filterType);
-            const storeTraffic = calculateStoreTraffic(orders, products);
             const totalOrders = calculateTotalOrders(orders);
-            const conversionRate = calculateConversionRate(
-                orders,
-                storeTraffic
-            );
+            const conversionRate = calculateConversionRate(orders);
             const totalProducts = products?.length || 0;
 
             return {
                 earnings,
                 ordersCount,
-                storeTraffic,
                 totalOrders,
                 conversionRate,
                 totalProducts,
@@ -257,7 +223,6 @@ export default function SellerDashboard() {
         [
             calculateEarnings,
             calculateOrders,
-            calculateStoreTraffic,
             calculateConversionRate,
             calculateTotalOrders,
         ]
@@ -269,11 +234,7 @@ export default function SellerDashboard() {
         setNewOrders(new Set());
     };
 
-    useEffect(() => {
-        fetchSubscriptionStatus();
-    }, []);
-
-    // Real-time order updates with Echo - COMPLETELY FIXED VERSION
+    // Real-time order updates with Echo
     useEffect(() => {
         if (!auth?.user?.seller_id || !window.Echo) {
             console.log("Echo not available or seller_id missing");
@@ -284,7 +245,7 @@ export default function SellerDashboard() {
             `seller.orders.${auth.user.seller_id}`
         );
 
-        // FIXED: Consistent event names - use WITH dot prefix for both
+        // New order created
         channel.listen(".new.order.created", (e) => {
             console.log("✅ Real-time new order received:", e);
 
@@ -303,16 +264,22 @@ export default function SellerDashboard() {
 
             // Create detailed notification message
             const productName =
-                newOrder.product?.product_name || "Unknown Product";
+                newOrder.order_items.product?.product_name || "Unknown Product";
             const customerName = newOrder.user?.name || "Unknown Customer";
             const orderAmount = newOrder.amount
                 ? `RM ${newOrder.amount}`
                 : "N/A";
 
-            const notificationMessage = `🆕 New Order #${orderId}\n${productName}\nFrom: ${customerName}\nAmount: ${orderAmount}`;
+            const notificationMessage = `🆕 New Order Received \nFrom: ${customerName}\nAmount: ${orderAmount}`;
 
             // Add notification
-            showNotification(notificationMessage, "success");
+            showNotification(notificationMessage, "success", {
+                type: "new_order",
+                orderId,
+                productName,
+                customerName,
+                amount: orderAmount,
+            });
 
             // Update recent orders by prepending the new order
             setRealTimeOrders((prev) => {
@@ -320,20 +287,18 @@ export default function SellerDashboard() {
                 return updatedOrders.slice(0, 5);
             });
 
-            // Update order data for charts - FIXED: Use functional update
+            // Update order data for charts
             setOrderData((prev) => [newOrder, ...prev]);
 
-            // Update KPIs - FIXED: Calculate from updated state
+            // Update KPIs
             setKpis((prev) => {
                 const updatedOrders = [newOrder, ...orderData];
                 const products = sellerData?.product || [];
                 return calculateAllKPIs(updatedOrders, products, timeFilter);
             });
-
-            console.log("📊 Charts updated with new order data");
         });
 
-        // Listen for order updates - FIXED: Use dot prefix
+        // Order status updates
         channel.listen(".order.updated", (e) => {
             console.log("🔄 Order updated:", e);
 
@@ -365,13 +330,59 @@ export default function SellerDashboard() {
 
             showNotification(
                 `📦 Order #${updatedOrder.order_id} status updated to ${updatedOrder.order_status}`,
-                "info"
+                "info",
+                {
+                    type: "order_update",
+                    orderId: updatedOrder.order_id,
+                    status: updatedOrder.order_status,
+                }
+            );
+        });
+
+        // Payment released notification
+        channel.listen(".payment.released", (e) => {
+            console.log("💰 Payment released:", e);
+
+            const { order_id, amount, released_at } = e.payment;
+
+            showNotification(
+                `💰 Payment Released!\nOrder #${order_id}\nAmount: RM ${amount}`,
+                "success",
+                {
+                    type: "payment_released",
+                    orderId: order_id,
+                    amount: amount,
+                    releasedAt: released_at,
+                }
+            );
+
+            refreshDashboardData();
+        });
+
+        // Order cancellation
+        channel.listen(".order.cancelled", (e) => {
+            console.log("❌ Order cancelled:", e);
+
+            const { order_id, reason } = e.order;
+
+            showNotification(
+                `❌ Order #${order_id} Cancelled\nReason: ${
+                    reason || "Not specified"
+                }`,
+                "warning",
+                {
+                    type: "order_cancelled",
+                    orderId: order_id,
+                    reason: reason,
+                }
             );
         });
 
         return () => {
             channel.stopListening(".new.order.created");
             channel.stopListening(".order.updated");
+            channel.stopListening(".payment.released");
+            channel.stopListening(".order.cancelled");
             window.Echo.leaveChannel(`seller.orders.${auth.user.seller_id}`);
         };
     }, [
@@ -380,17 +391,16 @@ export default function SellerDashboard() {
         showNotification,
         calculateAllKPIs,
         timeFilter,
-    ]); // FIXED: Removed orderData dependency
+    ]);
 
-    // Fetch listed products for subscribed sellers
+    // Fetch listed products
     useEffect(() => {
-        if (hasActiveSubscription && sellerData?.seller_store?.store_id) {
+        if (sellerData?.seller_store?.store_id) {
             const fetchListedProducts = async () => {
                 try {
                     const response = await axios.get(
                         route("featured-products")
                     );
-
                     setListedProducts(response.data.featured_products || []);
                 } catch (error) {
                     console.error("Error fetching listed products:", error);
@@ -400,7 +410,35 @@ export default function SellerDashboard() {
 
             fetchListedProducts();
         }
-    }, [hasActiveSubscription, sellerData?.seller_store?.store_id]);
+    }, [sellerData?.seller_store?.store_id]);
+
+    // Function to refresh dashboard data
+    const refreshDashboardData = useCallback(async () => {
+        try {
+            const { data } = await axios.get(route("dashboard-data"));
+            const featured_products = await axios.get(
+                route("featured-products")
+            );
+
+            setSellerData(data.seller_storeInfo[0]);
+            setShop(data);
+            setFeaturedProducts(featured_products.data.featured_products);
+
+            const orders = data.order_data || [];
+            const products = data.seller_storeInfo[0]?.product || [];
+
+            const calculatedKPIs = calculateAllKPIs(
+                orders,
+                products,
+                timeFilter
+            );
+            setKpis(calculatedKPIs);
+            setRealTimeOrders(orders);
+            setOrderData(orders);
+        } catch (error) {
+            console.error("Error refreshing dashboard data:", error);
+        }
+    }, [calculateAllKPIs, timeFilter]);
 
     // GENERATE EARNINGS CHART DATA BASED ON TIME FILTER
     const generateEarningsChartData = useCallback((orders, filterType) => {
@@ -429,7 +467,10 @@ export default function SellerDashboard() {
                 return days.map((day) => {
                     const dayOrders =
                         orders?.filter((order) => {
-                            if (!order.created_at || !order.amount)
+                            if (
+                                !order.created_at ||
+                                !order?.seller_earning[0]?.payout_amount
+                            )
                                 return false;
                             const orderDate = new Date(order.created_at);
                             return (
@@ -441,7 +482,10 @@ export default function SellerDashboard() {
                         }) || [];
 
                     const earnings = dayOrders.reduce((sum, order) => {
-                        const orderAmount = parseFloat(order.amount) || 0;
+                        const orderAmount =
+                            parseFloat(
+                                order?.seller_earning[0]?.payout_amount
+                            ) || 0;
                         return sum + orderAmount;
                     }, 0);
 
@@ -487,7 +531,10 @@ export default function SellerDashboard() {
                         }) || [];
 
                     const earnings = monthOrders.reduce((sum, order) => {
-                        const orderAmount = parseFloat(order.amount) || 0;
+                        const orderAmount =
+                            parseFloat(
+                                order.seller_earning[0]?.payout_amount
+                            ) || 0;
                         return sum + orderAmount;
                     }, 0);
 
@@ -523,7 +570,10 @@ export default function SellerDashboard() {
                         }) || [];
 
                     const earnings = yearOrders.reduce((sum, order) => {
-                        const orderAmount = parseFloat(order.amount) || 0;
+                        const orderAmount =
+                            parseFloat(
+                                order?.seller_earning[0]?.payout_amount
+                            ) || 0;
                         return sum + orderAmount;
                     }, 0);
 
@@ -566,8 +616,6 @@ export default function SellerDashboard() {
                     route("featured-products")
                 );
 
-                console.log(featured_products);
-
                 if (!mounted) return;
 
                 setSellerData(data.seller_storeInfo[0]);
@@ -585,17 +633,6 @@ export default function SellerDashboard() {
                 setKpis(calculatedKPIs);
                 setRealTimeOrders(orders);
                 setOrderData(orders);
-
-                if (data.trial_ends_at) {
-                    const today = new Date();
-                    const trialEnd = new Date(data.trial_ends_at);
-                    const diffTime = trialEnd - today;
-                    const daysLeft = Math.max(
-                        0,
-                        Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-                    );
-                    setTrialDaysLeft(daysLeft);
-                }
             } catch (e) {
                 console.error("Error fetching dashboard data:", e);
             } finally {
@@ -607,47 +644,6 @@ export default function SellerDashboard() {
             mounted = false;
         };
     }, [calculateAllKPIs, timeFilter]);
-
-    // Code for starting the free trial
-    const handleStartTrial = async () => {
-        const startDate = new Date();
-        const endDate = new Date();
-        endDate.setDate(startDate.getDate() + 7);
-
-        const startDateISO = startDate.toISOString();
-        const endDateISO = endDate.toISOString();
-
-        const trialData = {
-            status: "active",
-            start_date: startDateISO,
-            end_date: endDateISO,
-        };
-
-        try {
-            const response = await axios.post(route("start-trial"), trialData);
-
-            setShowTrialModal(false);
-            // Refresh subscription status
-            await fetchSubscriptionStatus();
-
-            // Show success notification
-            showNotification(
-                "🎉 Free trial started successfully! Enjoy your 7-day trial period.",
-                "success"
-            );
-        } catch (error) {
-            console.error("Failed to start trial:", error);
-            showNotification(
-                "❌ Failed to start free trial. Please try again.",
-                "error"
-            );
-            throw error; // Re-throw to handle in the modal
-        }
-    };
-
-    const handleSubscribe = (url) => {
-        window.location.href = url || "/seller-manage-subscription";
-    };
 
     // Generate chart data with real order data and time filter
     const earningsChartData = useMemo(() => {
@@ -729,59 +725,49 @@ export default function SellerDashboard() {
                             Here's what's happening today.
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 w-full md:w-auto relative">
-                        {/* Notification Bell with Dropdown */}
-                        <div className="relative">
+                    <div className="flex items-center gap-2 w-full md:w-auto md:relative">
+                        {/* Notification Bell with Modal */}
+                        <div className="md:relative">
                             <button
-                                className="relative p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors"
-                                onClick={() =>
-                                    setShowNotificationDropdown(
-                                        !showNotificationDropdown
-                                    )
-                                }
+                                className="md:relative p-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition-colors shadow-sm"
+                                onClick={handleOpenNotificationModal}
                             >
                                 <FontAwesomeIcon
                                     icon={faBell}
-                                    className="text-gray-600"
+                                    className="text-gray-600 h-5 w-5"
                                 />
                                 {notificationCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center">
-                                        {notificationCount}
+                                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-600 text-white text-xs flex items-center justify-center font-medium shadow-lg animate-pulse">
+                                        {notificationCount > 9
+                                            ? "9+"
+                                            : notificationCount}
                                     </span>
                                 )}
                             </button>
-
-                            {/* Notification dropdown components */}
-                            <NotificationDropdown
-                                notifications={notifications}
-                                showNotificationDropdown={
-                                    showNotificationDropdown
-                                }
-                                setNotifications={setNotifications}
-                                setShowNotificationDropdown={
-                                    setShowNotificationDropdown
-                                }
-                            />
                         </div>
 
+                        {/* Add Product Button */}
                         <Link
-                            href={route("seller-manage-subscription")}
-                            className="px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm whitespace-nowrap"
+                            href={route("seller-manage-product")}
+                            className="px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm whitespace-nowrap font-medium shadow-sm transition-colors flex items-center gap-2"
                         >
                             <FontAwesomeIcon
-                                icon={faCreditCard}
-                                className="mr-2"
+                                icon={faBoxOpen}
+                                className="h-4 w-4"
                             />
-                            Upgrade
+                            Add Product
                         </Link>
+
+                        {/* Notification Modal */}
+                        <NotificationModal
+                            notifications={notifications}
+                            showNotificationModal={showNotificationModal}
+                            setShowNotificationModal={setShowNotificationModal}
+                            setNotifications={setNotifications}
+                            removeNotification={removeNotification}
+                        />
                     </div>
                 </div>
-
-                {/* Trial banner */}
-                <TrialBanner
-                    seller={auth.seller}
-                    trialDaysLeft={trialDaysLeft}
-                />
 
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -954,11 +940,11 @@ export default function SellerDashboard() {
                             icon: faMoneyCheck,
                         },
                         {
-                            title: "Create Discount",
-                            desc: "Run a promotion",
-                            href: "/seller-manage-discount",
+                            title: "Order Management",
+                            desc: "Checks and manage orders",
+                            href: "/seller-manage-order",
                             color: "emerald",
-                            icon: faTags,
+                            icon: faTruck,
                         },
                     ].map((a) => (
                         <a
@@ -1111,139 +1097,80 @@ export default function SellerDashboard() {
                         </div>
                     </div>
 
-                    {/* Products Section - Dynamic based on subscription */}
+                    {/* Products Section */}
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">
                         <div className="flex items-center justify-between mb-3">
                             <div className="font-semibold text-gray-800">
                                 Featured Products
                             </div>
                             <Badge color="gray">
-                                {hasActiveSubscription
-                                    ? `${listedProducts.length} listed`
-                                    : `${featuredProducts.length || 0} items`}
+                                {listedProducts.length} listed
                             </Badge>
                         </div>
 
-                        {hasActiveSubscription ? (
-                            // Show listed products for subscribed sellers with scrollbar
-                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
-                                {listedProducts.length > 0 ? (
-                                    listedProducts.map((product) => (
-                                        <div
-                                            key={product.product_id}
-                                            className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50 transition-colors"
-                                        >
-                                            <div className="truncate flex-1 min-w-0">
-                                                <div className="font-medium text-gray-800 truncate">
-                                                    {product.product_name}
-                                                </div>
-                                                <div className="text-xs text-gray-500 flex gap-4 flex-wrap">
-                                                    <span>
-                                                        Stock:{" "}
-                                                        {product.product_quantity ||
-                                                            0}
-                                                    </span>
-                                                    <span>
-                                                        Price:{" "}
-                                                        <Money>
-                                                            {
-                                                                product.product_price
-                                                            }
-                                                        </Money>
-                                                    </span>
-                                                </div>
+                        {/* Show listed products with scrollbar */}
+                        <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                            {listedProducts.length > 0 ? (
+                                listedProducts.map((product) => (
+                                    <div
+                                        key={product.product_id}
+                                        className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                                    >
+                                        <div className="truncate flex-1 min-w-0">
+                                            <div className="font-medium text-gray-800 truncate">
+                                                {product.product_name}
                                             </div>
-                                            <div
-                                                className={`text-xs px-2 py-1 rounded flex-shrink-0 ml-2 ${
-                                                    product.product_status ===
-                                                    "available"
-                                                        ? "bg-green-100 text-green-800"
-                                                        : "bg-gray-100 text-gray-800"
-                                                }`}
-                                            >
-                                                {product.product_status ||
-                                                    "draft"}
+                                            <div className="text-xs text-gray-500 flex gap-4 flex-wrap">
+                                                <span>
+                                                    Stock:{" "}
+                                                    {product.product_quantity ||
+                                                        0}
+                                                </span>
+                                                <span>
+                                                    Price:{" "}
+                                                    <Money>
+                                                        {product.product_price}
+                                                    </Money>
+                                                </span>
                                             </div>
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <FontAwesomeIcon
-                                            icon={faBoxOpen}
-                                            className="text-gray-300 h-12 w-12 mb-3 mx-auto"
-                                        />
-                                        <p className="text-sm font-medium text-gray-900 mb-1">
-                                            No products listed yet
-                                        </p>
-                                        <p className="text-xs text-gray-500 mb-3">
-                                            Start adding products to showcase in
-                                            your store
-                                        </p>
-                                        <Link
-                                            href="/seller-manage-product"
-                                            className="text-xs bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-block"
-                                        >
-                                            Add Your First Product
-                                        </Link>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            // Show top products for trial/non-subscribed sellers
-                            <div className="space-y-3">
-                                {featuredProducts &&
-                                featuredProducts.length > 0 ? (
-                                    featuredProducts.map((f_products) => (
                                         <div
-                                            key={f_products.product_id}
-                                            className="flex items-center justify-between border rounded-lg p-3 hover:bg-gray-50 transition-colors"
+                                            className={`text-xs px-2 py-1 rounded flex-shrink-0 ml-2 ${
+                                                product.product_status ===
+                                                "available"
+                                                    ? "bg-green-100 text-green-800"
+                                                    : "bg-gray-100 text-gray-800"
+                                            }`}
                                         >
-                                            <div className="truncate flex-1">
-                                                <div className="font-medium text-gray-800 truncate">
-                                                    {f_products.product_name}
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {
-                                                        f_products.product_quantity
-                                                    }{" "}
-                                                    units
-                                                </div>
-                                            </div>
-                                            <div className="text-sm text-gray-700 whitespace-nowrap ml-2">
-                                                <Star>
-                                                    {f_products.total_ratings}
-                                                </Star>
-                                            </div>
+                                            {product.product_status || "draft"}
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <FontAwesomeIcon
-                                            icon={faBoxOpen}
-                                            className="text-gray-300 h-12 w-12 mb-3 mx-auto"
-                                        />
-                                        <p className="text-sm font-medium text-gray-900 mb-1">
-                                            No product data available
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {subscriptionStatus
-                                                ? "Subscribe to start listing your products"
-                                                : "Start your trial to begin selling"}
-                                        </p>
                                     </div>
-                                )}
-                            </div>
-                        )}
+                                ))
+                            ) : (
+                                <div className="text-center py-8">
+                                    <FontAwesomeIcon
+                                        icon={faBoxOpen}
+                                        className="text-gray-300 h-12 w-12 mb-3 mx-auto"
+                                    />
+                                    <p className="text-sm font-medium text-gray-900 mb-1">
+                                        No products listed yet
+                                    </p>
+                                    <p className="text-xs text-gray-500 mb-3">
+                                        Start adding products to showcase in
+                                        your store
+                                    </p>
+                                    <Link
+                                        href="/seller-manage-product"
+                                        className="text-xs bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-block"
+                                    >
+                                        Add Your First Product
+                                    </Link>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </main>
-
-            {/* Trial Modal */}
-            <TrialModal
-                isOpen={showTrialModal}
-                onStartTrial={handleStartTrial}
-                onSubscribe={handleSubscribe}
-            />
         </div>
     );
 }

@@ -407,35 +407,6 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                         </span>
                     </div>
 
-                    {/* Seller Information */}
-                    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center space-x-2">
-                                <FaStore className="w-3 h-3 text-gray-600" />
-                                <span className="text-xs font-medium text-gray-900">
-                                    {sellerStore || "Individual Seller"}
-                                </span>
-                            </div>
-                            {isVerifiedSeller && (
-                                <FaShieldAlt
-                                    className="w-3 h-3 text-green-500"
-                                    title="Verified Seller"
-                                />
-                            )}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                            <div className="flex items-center space-x-1">
-                                <FaStar className="w-3 h-3 text-yellow-400" />
-                                <span>{sellerRating.toFixed(1)}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                                <FaUser className="w-3 h-3 text-blue-500" />
-                                <span>{sellerTotalSales}+ sales</span>
-                            </div>
-                        </div>
-                    </div>
-
                     {/* Action Buttons */}
                     <div className="mt-auto space-y-2">
                         <Link

@@ -2,17 +2,23 @@
 
 namespace App\Http\Controllers\BuyerPage;
 
+use App\Events\OrderCompleted;
 use App\Http\Controllers\Controller;
 
 use App\Models\Order;
+use App\Models\SellerEarning;
 use App\Models\User;
 
 use Exception;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class ProfileManagementController extends Controller
 {
@@ -39,6 +45,72 @@ class ProfileManagementController extends Controller
         return response()->json($list_order);
     }
 
+    public function checkAddress(Request $request)
+    {
+        try {
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'hasValidAddress' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            // Based on your HandleInertiaRequests structure, the address fields are:
+            // 'address', 'city', 'zip_code'
+            $requiredFields = [
+                'address',
+                'city',
+                'zip_code'
+            ];
+
+            $hasValidAddress = true;
+            $missingFields = [];
+
+            foreach ($requiredFields as $field) {
+                if (empty($user->$field)) {
+                    $hasValidAddress = false;
+                    $missingFields[] = $field;
+                }
+            }
+
+            // Additional validation: check if address fields are not just empty strings
+            if ($hasValidAddress) {
+                foreach ($requiredFields as $field) {
+                    if (trim($user->$field) === '') {
+                        $hasValidAddress = false;
+                        $missingFields[] = $field;
+                        break;
+                    }
+                }
+            }
+
+            return response()->json([
+                'hasValidAddress' => $hasValidAddress,
+                'missingFields' => $missingFields,
+                'userAddress' => $hasValidAddress ? [
+                    'address' => $user->address,
+                    'city' => $user->city,
+                    'zip_code' => $user->zip_code,
+                    // Note: Based on your structure, there's no state or country field
+                    // If you need these, you might want to add them to your users table
+                ] : null,
+                'message' => $hasValidAddress
+                    ? 'Address is complete and valid'
+                    : 'Please complete your shipping address'
+            ]);
+
+        } catch (Exception $e) {
+            \Log::error('Error checking user address: ' . $e->getMessage());
+
+            return response()->json([
+                'hasValidAddress' => false,
+                'error' => 'Unable to verify address',
+                'message' => 'Error checking address information'
+            ], 500);
+        }
+    }
 
     // Code for updating the information and image on profile page.
     public function updateProfile(Request $request)
@@ -138,8 +210,6 @@ class ProfileManagementController extends Controller
             Log::info('🔄 Updating user data', $validated);
             $user->update($validated);
 
-            Log::info('✅ User updated successfully');
-
             // Refresh user data
             $user->refresh();
 
@@ -176,5 +246,122 @@ class ProfileManagementController extends Controller
                 'message' => 'Error updating profile: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function updatePassword(Request $request)
+    {
+        // Validate the request
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = Auth::user();
+
+        // Check if current password matches
+        if (!Hash::check($request->current_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+
+        // Check if new password is different from current password
+        if (Hash::check($request->new_password, $user->password)) {
+            throw ValidationException::withMessages([
+                'new_password' => ['The new password must be different from your current password.'],
+            ]);
+        }
+
+        // Update the password
+        $user->update([
+            'password' => Hash::make($request->new_password),
+        ]);
+
+        // Optional: Update password_changed_at timestamp if you have that column
+        // $user->update([
+        //     'password' => Hash::make($request->new_password),
+        //     'password_changed_at' => now(),
+        // ]);
+
+        return response()->json([
+            'message' => 'Password updated successfully!',
+        ]);
+    }
+
+    public function confirmDelivery($orderId)
+    {
+        try {
+            $order = Order::with('orderItems.product.seller')->findOrFail($orderId);
+
+            // Verify the order belongs to the authenticated buyer
+            if ($order->user_id !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access to this order'
+                ], 403);
+            }
+
+            // Check if order is in Delivered status
+            if ($order->order_status !== 'Delivered') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order is not in delivered status'
+                ], 400);
+            }
+
+            // Start database transaction
+            DB::beginTransaction();
+
+            // Update order status to Completed
+            $order->update([
+                'order_status' => 'Completed',
+                'completed_at' => now()
+            ]);
+
+            // Calculate and process commission
+            $this->processCommission($order);
+
+            DB::commit();
+
+            // Notify seller about completed order and commission
+            event(new OrderCompleted($order));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Delivery confirmed successfully. Commission processed and funds released to seller.',
+                'order' => $order
+            ]);
+
+        } catch (Exception $e) {
+            DB::rollBack();
+            \Log::error('Delivery confirmation failed: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to confirm delivery. Please try again.'
+            ], 500);
+        }
+    }
+
+    protected function processCommission($order)
+    {
+        $commissionRate = 0.08; // 8%
+        $totalAmount = floatval($order->amount);
+        $commissionAmount = $totalAmount * $commissionRate;
+        $payoutAmount = $totalAmount - $commissionAmount;
+
+        $seller = $order->orderItems->first()->product->seller;
+
+        // Create earnings record
+        SellerEarning::create([
+            'seller_id' => $seller->seller_id,
+            'order_id' => $order->order_id,
+            'amount' => $totalAmount,
+            'commission_rate' => $commissionRate,
+            'commission_deducted' => $commissionAmount,
+            'payout_amount' => $payoutAmount,
+            'status' => 'Pending',
+            'processed_at' => now()
+        ]);
     }
 }

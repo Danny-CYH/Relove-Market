@@ -6,6 +6,7 @@ import {
     CardExpiryElement,
     CardCvcElement,
 } from "@stripe/react-stripe-js";
+import Swal from "sweetalert2";
 
 import { router } from "@inertiajs/react";
 
@@ -32,6 +33,42 @@ const useOptions = () => {
     return options;
 };
 
+// SweetAlert configuration
+const showAlert = (icon, title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showLoadingAlert = (title, text = "") => {
+    return Swal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+};
+
+// Function to redirect to wishlist
+const redirectToWishlist = () => {
+    router.visit(route("wishlist"), {
+        method: "get",
+        preserveState: true,
+        preserveScroll: true,
+    });
+};
+
 export function CheckoutForm({
     total,
     setActiveStep,
@@ -39,10 +76,8 @@ export function CheckoutForm({
     onPaymentSuccess,
     onPaymentError,
     list_product,
-    platform_tax,
     subtotal,
     shipping,
-    tax,
 }) {
     const stripe = useStripe();
     const elements = useElements();
@@ -130,7 +165,18 @@ export function CheckoutForm({
             const orderItems = prepareOrderItems();
 
             if (orderItems.length === 0) {
-                setError("No valid products in cart");
+                const errorMsg = "No valid products in cart";
+                setError(errorMsg);
+                await showAlert(
+                    "error",
+                    "Cart Empty",
+                    "There are no valid products in your cart. Please add items to proceed.",
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
                 return;
             }
 
@@ -147,6 +193,17 @@ export function CheckoutForm({
 
             if (!stockValidation.valid) {
                 setError(stockValidation.error);
+                await showAlert(
+                    "error",
+                    "Stock Issue",
+                    stockValidation.error ||
+                        "Some items in your cart are no longer available in the requested quantity. Please review your cart.",
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
                 if (onPaymentError) {
                     onPaymentError(stockValidation.error);
                 }
@@ -166,11 +223,26 @@ export function CheckoutForm({
             if (!userId || !sellerId) {
                 const errorMsg = "Missing user or seller information";
                 setError(errorMsg);
+                await showAlert(
+                    "error",
+                    "Information Missing",
+                    "Required user or seller information is missing. Please try refreshing the page.",
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
                 if (onPaymentError) {
                     onPaymentError(errorMsg);
                 }
                 return;
             }
+
+            const loadingAlert = showLoadingAlert(
+                "Initializing Payment",
+                "Setting up your payment session..."
+            );
 
             const response = await fetch("/create-payment-intent", {
                 method: "POST",
@@ -187,25 +259,39 @@ export function CheckoutForm({
                     user_id: userId,
                     seller_id: sellerId,
                     order_items: orderItems,
-                    platform_tax: platform_tax,
-                    tax_amount: tax,
                     subtotal: subtotal,
                     shipping: shipping,
                     payment_method: paymentMethod,
-                    stock_validation_id: lastStockValidation?.validation_id, // Link to validation
+                    stock_validation_id: lastStockValidation?.validation_id,
                 }),
             });
 
             const data = await response.json();
-            console.log("Payment Intent Response:", data);
+            loadingAlert.close();
 
             if (data.clientSecret) {
                 setClientSecret(data.clientSecret);
                 setPaymentIntentId(data.id);
                 setOrderId(data.orderId);
+                await showAlert(
+                    "success",
+                    "Payment Ready",
+                    "Your payment session has been initialized successfully. You can now proceed with the payment.",
+                    "Continue"
+                );
             } else {
                 const errorMsg = data.error || "Failed to initialize payment";
                 setError(errorMsg);
+                await showAlert(
+                    "error",
+                    "Payment Error",
+                    errorMsg,
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
                 if (onPaymentError) {
                     onPaymentError(errorMsg);
                 }
@@ -214,6 +300,16 @@ export function CheckoutForm({
             console.error("Create Payment Intent Error:", err);
             const errorMsg = err.message || "Network error occurred";
             setError(errorMsg);
+            await showAlert(
+                "error",
+                "Connection Error",
+                "Unable to connect to payment service. Please check your internet connection and try again.",
+                "Back to Wishlist"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    redirectToWishlist();
+                }
+            });
             if (onPaymentError) {
                 onPaymentError(errorMsg);
             }
@@ -233,14 +329,13 @@ export function CheckoutForm({
                 },
                 body: JSON.stringify({
                     order_items: orderItems,
-                    validation_timestamp: Date.now(), // Prevent caching
+                    validation_timestamp: Date.now(),
                 }),
             });
 
             const data = await response.json();
 
             if (!data.valid && retryCount < 2) {
-                // Wait and retry (handles race conditions)
                 await new Promise((resolve) => setTimeout(resolve, 1000));
                 return validateStock(orderItems, retryCount + 1);
             }
@@ -273,11 +368,9 @@ export function CheckoutForm({
             amount: Math.round(total * 100),
             currency: "myr",
             order_items: orderItems,
-            platform_tax: platform_tax,
-            tax_amount: tax,
             subtotal: subtotal,
             shipping: shipping,
-            payment_method: paymentMethod, // Include payment method
+            payment_method: paymentMethod,
         };
     };
 
@@ -285,7 +378,18 @@ export function CheckoutForm({
         event.preventDefault();
 
         if (!stripe || !elements) {
-            setError("Payment system not ready. Please try again.");
+            const errorMsg = "Payment system not ready. Please try again.";
+            setError(errorMsg);
+            await showAlert(
+                "warning",
+                "System Not Ready",
+                "The payment system is still initializing. Please wait a moment and try again.",
+                "Back to Wishlist"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    redirectToWishlist();
+                }
+            });
             return;
         }
 
@@ -300,11 +404,10 @@ export function CheckoutForm({
         const cardElement = elements.getElement(CardNumberElement);
 
         try {
-            console.log("Confirming payment with:", {
-                clientSecret,
-                orderId,
-                paymentIntentId,
-            });
+            const loadingAlert = showLoadingAlert(
+                "Processing Payment",
+                "Please wait while we process your payment..."
+            );
 
             const { error: stripeError, paymentIntent } =
                 await stripe.confirmCardPayment(clientSecret, {
@@ -317,21 +420,78 @@ export function CheckoutForm({
                     },
                 });
 
+            loadingAlert.close();
+
             if (stripeError) {
                 console.error("Stripe Error:", stripeError);
                 setError(stripeError.message);
+
+                let alertTitle = "Payment Failed";
+                let alertText = stripeError.message;
+
+                // Custom messages for common Stripe errors
+                if (stripeError.code === "card_declined") {
+                    alertTitle = "Card Declined";
+                    alertText =
+                        "Your card was declined. Please try a different card or contact your bank.";
+                } else if (stripeError.code === "insufficient_funds") {
+                    alertTitle = "Insufficient Funds";
+                    alertText =
+                        "Your card has insufficient funds. Please try a different payment method.";
+                } else if (stripeError.code === "expired_card") {
+                    alertTitle = "Expired Card";
+                    alertText =
+                        "Your card has expired. Please use a different card.";
+                } else if (stripeError.code === "incorrect_cvc") {
+                    alertTitle = "Invalid CVC";
+                    alertText =
+                        "The CVC number you entered is incorrect. Please check and try again.";
+                }
+
+                await showAlert(
+                    "error",
+                    alertTitle,
+                    alertText,
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
                 setIsLoading(false);
             } else if (paymentIntent.status === "succeeded") {
-                console.log("Payment succeeded:", paymentIntent);
                 await handleSuccessfulPayment(paymentIntent.id, orderId);
             } else {
                 console.log("Payment not succeeded:", paymentIntent);
-                setError("Payment failed with status: " + paymentIntent.status);
+                const errorMsg =
+                    "Payment failed with status: " + paymentIntent.status;
+                setError(errorMsg);
+                await showAlert(
+                    "error",
+                    "Payment Issue",
+                    "Your payment could not be completed. Please try again or contact support.",
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
                 setIsLoading(false);
             }
         } catch (err) {
             console.error("Payment Error:", err);
-            setError("Payment failed: " + err.message);
+            const errorMsg = "Payment failed: " + err.message;
+            setError(errorMsg);
+            await showAlert(
+                "error",
+                "Payment Error",
+                "An unexpected error occurred during payment processing. Please try again.",
+                "Back to Wishlist"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    redirectToWishlist();
+                }
+            });
             setIsLoading(false);
         }
     };
@@ -345,6 +505,17 @@ export function CheckoutForm({
             const stockValidation = await validateStock(orderData.order_items);
             if (!stockValidation.valid) {
                 setError(stockValidation.error);
+                await showAlert(
+                    "error",
+                    "Stock Issue",
+                    stockValidation.error ||
+                        "Some items are no longer available. Please review your cart.",
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
                 setIsLoading(false);
                 return;
             }
@@ -357,11 +528,16 @@ export function CheckoutForm({
                     case "paypal":
                         return ["paypal"];
                     case "cod":
-                        return ["cash_on_delivery"]; // You'll need to handle this differently
+                        return ["cash_on_delivery"];
                     default:
                         return ["card"];
                 }
             };
+
+            const loadingAlert = showLoadingAlert(
+                "Processing Order",
+                `Setting up your ${paymentMethod.toUpperCase()} payment...`
+            );
 
             const response = await fetch("/create-payment-intent", {
                 method: "POST",
@@ -380,6 +556,7 @@ export function CheckoutForm({
             });
 
             const data = await response.json();
+            loadingAlert.close();
             console.log("Non-card Payment Intent:", data);
 
             if (data.orderId) {
@@ -400,14 +577,35 @@ export function CheckoutForm({
                     );
                 }
             } else {
-                setError(
-                    data.error || "Failed to create order for non-card payment"
-                );
+                const errorMsg =
+                    data.error || "Failed to create order for non-card payment";
+                setError(errorMsg);
+                await showAlert(
+                    "error",
+                    "Order Failed",
+                    errorMsg,
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
                 setIsLoading(false);
             }
         } catch (err) {
             console.error("Non-card Payment Error:", err);
-            setError("Payment processing failed: " + err.message);
+            const errorMsg = "Payment processing failed: " + err.message;
+            setError(errorMsg);
+            await showAlert(
+                "error",
+                "Payment Error",
+                "Failed to process your payment. Please try again.",
+                "Back to Wishlist"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    redirectToWishlist();
+                }
+            });
             setIsLoading(false);
         }
     };
@@ -419,12 +617,10 @@ export function CheckoutForm({
     ) => {
         try {
             const orderData = customOrderData || prepareOrderData();
-
-            console.log("Sending confirmation with:", {
-                paymentIntentId,
-                orderId,
-                orderData,
-            });
+            const loadingAlert = showLoadingAlert(
+                "Confirming Payment",
+                "Finalizing your order..."
+            );
 
             const response = await fetch("/confirm-payment", {
                 method: "POST",
@@ -442,19 +638,37 @@ export function CheckoutForm({
                     user_id: orderData.user_id,
                     seller_id: orderData.seller_id,
                     order_items: orderData.order_items,
-                    platform_tax: platform_tax,
-                    tax_amount: tax,
                     subtotal: subtotal,
                     shipping: shipping,
-                    payment_method: paymentMethod, // Include payment method
+                    payment_method: paymentMethod,
                 }),
             });
 
             const data = await response.json();
-            console.log("Confirmation Response:", data);
+            loadingAlert.close();
 
             if (data.success) {
                 setActiveStep(3);
+
+                // Show success message based on payment method
+                let successMessage = `Your payment of RM ${total.toFixed(
+                    2
+                )} has been processed successfully!`;
+                let orderMessage = `Order #${orderId} has been confirmed.`;
+
+                if (paymentMethod === "cod") {
+                    successMessage = `Your Cash on Delivery order has been placed successfully!`;
+                    orderMessage = `Order #${orderId} will be delivered to your address. Please prepare RM ${total.toFixed(
+                        2
+                    )} for payment upon delivery.`;
+                }
+
+                await showAlert(
+                    "success",
+                    "Payment Successful!",
+                    `${successMessage} ${orderMessage}`,
+                    "View Order"
+                );
 
                 if (onPaymentSuccess) {
                     onPaymentSuccess({
@@ -463,21 +677,7 @@ export function CheckoutForm({
                         amount: total,
                         orderData: data.order || data,
                         order_items: data.order_items || orderData.order_items,
-                        tax_amount: tax,
-                        platform_tax: platform_tax,
                         payment_method: paymentMethod,
-                    });
-                } else {
-                    router.visit("/order-success", {
-                        data: {
-                            order_id: orderId,
-                            payment_intent_id: paymentIntentId,
-                            amount: total,
-                            tax_amount: tax,
-                            platform_tax: platform_tax,
-                            payment_method: paymentMethod,
-                            order_items: JSON.stringify(orderData.order_items),
-                        },
                     });
                 }
             } else {
@@ -485,16 +685,36 @@ export function CheckoutForm({
                     data.error || data.message || "Unknown error occurred";
                 console.error("Confirmation Failed:", errorMsg);
                 setError("Payment confirmation failed: " + errorMsg);
+                await showAlert(
+                    "error",
+                    "Confirmation Failed",
+                    "Your payment was processed but we encountered an issue confirming your order. Please contact support.",
+                    "Back to Wishlist"
+                ).then((result) => {
+                    if (result.isConfirmed) {
+                        redirectToWishlist();
+                    }
+                });
             }
         } catch (err) {
             console.error("Confirmation Error:", err);
-            setError("Confirmation error: " + err.message);
+            const errorMsg = "Confirmation error: " + err.message;
+            setError(errorMsg);
+            await showAlert(
+                "error",
+                "Confirmation Error",
+                "We encountered an issue while confirming your payment. Please check your email for order confirmation.",
+                "Back to Wishlist"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    redirectToWishlist();
+                }
+            });
         } finally {
             setIsLoading(false);
         }
     };
 
-    // ... rest of your component (renderSelectedVariant, renderSelectedOptions, etc.) remains the same
     // Render selected variant for display
     const renderSelectedVariant = (product) => {
         const selectedVariant = parseSelectedVariant(product);
@@ -557,11 +777,6 @@ export function CheckoutForm({
         );
     };
 
-    // Calculate total quantity for display
-    const totalQuantity = list_product.reduce((total, product) => {
-        return total + (product.selected_quantity || product.quantity || 1);
-    }, 0);
-
     return (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h2 className="text-black text-xl font-semibold mb-6">
@@ -571,10 +786,16 @@ export function CheckoutForm({
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
                     <strong>Error:</strong> {error}
+                    <button
+                        onClick={redirectToWishlist}
+                        className="ml-4 text-sm text-blue-600 hover:text-blue-800 underline"
+                    >
+                        Back to Wishlist
+                    </button>
                 </div>
             )}
 
-            {/* Display Order Summary with Tax Breakdown */}
+            {/* Display Order Summary */}
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <h3 className="font-semibold text-gray-900 mb-3">
                     Order Summary ({list_product.length}{" "}
@@ -615,7 +836,7 @@ export function CheckoutForm({
                     );
                 })}
 
-                {/* Tax Breakdown */}
+                {/* Price Breakdown */}
                 <div className="border-t border-gray-200 mt-3 pt-3 space-y-2">
                     <div className="flex justify-between items-center">
                         <p className="text-gray-600">Subtotal</p>
@@ -628,12 +849,6 @@ export function CheckoutForm({
                         <p className="text-gray-600">
                             RM {shipping.toFixed(2)}
                         </p>
-                    </div>
-                    <div className="flex justify-between items-center">
-                        <p className="text-gray-600">
-                            Tax ({(platform_tax * 100).toFixed(1)}%)
-                        </p>
-                        <p className="text-gray-600">RM {tax.toFixed(2)}</p>
                     </div>
                     <div className="flex justify-between items-center border-t border-gray-300 pt-2">
                         <p className="text-gray-900 font-semibold">
@@ -711,24 +926,26 @@ export function CheckoutForm({
                     </div>
                 )}
 
-                <button
-                    type="submit"
-                    disabled={
-                        !stripe ||
-                        isLoading ||
-                        (paymentMethod === "credit" && !clientSecret)
-                    }
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center"
-                >
-                    {isLoading ? (
-                        <>
-                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                            Processing...
-                        </>
-                    ) : (
-                        `Pay RM ${total.toFixed(2)}`
-                    )}
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        type="submit"
+                        disabled={
+                            !stripe ||
+                            isLoading ||
+                            (paymentMethod === "credit" && !clientSecret)
+                        }
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-4 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                    >
+                        {isLoading ? (
+                            <>
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                                Processing...
+                            </>
+                        ) : (
+                            `Pay RM ${total.toFixed(2)}`
+                        )}
+                    </button>
+                </div>
 
                 <p className="text-xs text-gray-500 text-center">
                     By clicking "Pay Now", you agree to our Terms of Service and

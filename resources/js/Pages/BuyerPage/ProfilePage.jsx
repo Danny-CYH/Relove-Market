@@ -11,8 +11,8 @@ import {
     CheckCircle2,
 } from "lucide-react";
 
-import { usePage } from "@inertiajs/react";
-
+import { usePage, Link } from "@inertiajs/react";
+import axios from "axios";
 import dayjs from "dayjs";
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
@@ -60,6 +60,7 @@ export default function ProfilePage() {
     const [showReceiptModal, setShowReceiptModal] = useState(false);
 
     const [orderHistory, setOrderHistory] = useState([]);
+    const [confirmingOrderId, setConfirmingOrderId] = useState(null);
 
     // Fetch data on component mount
     useEffect(() => {
@@ -108,6 +109,58 @@ export default function ProfilePage() {
             console.error("Error fetching order history:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // NEW: Order Confirmation Function
+    const confirmOrderDelivery = async (orderId) => {
+        if (
+            !confirm(
+                "Are you sure you have received your order in good condition? This will release payment to the seller."
+            )
+        ) {
+            return;
+        }
+
+        try {
+            setConfirmingOrderId(orderId);
+
+            const response = await axios.post(
+                route("confirm-delivery", orderId)
+            );
+
+            if (response.data.success) {
+                // Update the order in local state
+                setOrderHistory((prevOrders) =>
+                    prevOrders.map((order) =>
+                        order.order_id === orderId
+                            ? {
+                                  ...order,
+                                  order_status: "Completed",
+                                  commission_amount:
+                                      response.data.order?.commission_amount,
+                                  seller_amount:
+                                      response.data.order?.seller_amount,
+                                  completed_at:
+                                      response.data.order?.completed_at,
+                              }
+                            : order
+                    )
+                );
+
+                alert(
+                    "Delivery confirmed! Payment has been released to the seller."
+                );
+            }
+        } catch (error) {
+            console.error("Error confirming delivery:", error);
+            if (error.response?.data?.message) {
+                alert(`Error: ${error.response.data.message}`);
+            } else {
+                alert("Failed to confirm delivery. Please try again.");
+            }
+        } finally {
+            setConfirmingOrderId(null);
         }
     };
 
@@ -187,15 +240,7 @@ export default function ProfilePage() {
 
             const response = await axios.post(
                 route("update-profile"),
-                formDataToSend,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                        "X-CSRF-TOKEN": document
-                            .querySelector('meta[name="csrf-token"]')
-                            .getAttribute("content"),
-                    },
-                }
+                formDataToSend
             );
 
             console.log("✅ Response:", response.data);
@@ -266,12 +311,14 @@ export default function ProfilePage() {
     };
 
     const handlePasswordChange = (e) => {
-        setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setPasswordData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
     };
 
     const handleSavePassword = () => {
-        // Add password change logic here
-        console.log("Password change requested", passwordData);
         setShowChangePassword(false);
         setPasswordData({
             currentPassword: "",
@@ -523,13 +570,15 @@ export default function ProfilePage() {
                                     </button>
                                 ))}
 
-                                <button className="w-full flex items-center px-4 py-3.5 rounded-xl text-left text-red-600 hover:bg-red-50 transition-all mt-4 group">
-                                    <LogOut
-                                        size={20}
-                                        className="mr-3 flex-shrink-0"
-                                    />
-                                    <span className="flex-1">Logout</span>
-                                </button>
+                                <Link href={route("logout")} method="POST">
+                                    <button className="w-full flex items-center px-4 py-3.5 rounded-xl text-left text-red-600 hover:bg-red-50 transition-all mt-4 group">
+                                        <LogOut
+                                            size={20}
+                                            className="mr-3 flex-shrink-0"
+                                        />
+                                        <span className="flex-1">Logout</span>
+                                    </button>
+                                </Link>
                             </nav>
                         </div>
                     </div>
@@ -562,6 +611,9 @@ export default function ProfilePage() {
                                 viewReceipt={viewReceipt}
                                 printReceipt={printReceipt}
                                 loading={loading}
+                                // NEW: Pass confirmation function
+                                confirmOrderDelivery={confirmOrderDelivery}
+                                confirmingOrderId={confirmingOrderId}
                             />
                         )}
 
@@ -571,8 +623,8 @@ export default function ProfilePage() {
                                 showChangePassword={showChangePassword}
                                 setShowChangePassword={setShowChangePassword}
                                 passwordData={passwordData}
+                                setPasswordData={setPasswordData}
                                 handlePasswordChange={handlePasswordChange}
-                                handleSavePassword={handleSavePassword}
                                 showPassword={showPassword}
                                 setShowPassword={setShowPassword}
                             />

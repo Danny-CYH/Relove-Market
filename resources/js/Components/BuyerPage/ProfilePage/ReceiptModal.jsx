@@ -1,12 +1,24 @@
-import { X, Printer, Truck, CreditCard, Shield, Package } from "lucide-react";
+import {
+    X,
+    Printer,
+    Truck,
+    CreditCard,
+    Shield,
+    Package,
+    CheckCircle,
+} from "lucide-react";
 import { useRef } from "react";
 
-export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
+export function ReceiptModal({
+    order,
+    isOpen,
+    onClose,
+    confirmOrderDelivery,
+    confirmingOrderId,
+}) {
     const receiptRef = useRef(null);
 
     if (!isOpen) return null;
-
-    console.log(order);
 
     // Calculate additional fees
     const subtotal =
@@ -15,12 +27,17 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
             0
         ) || 0;
     const shippingFee = order.shipping_fee || 5.0;
-    const platformTax = order.platform_tax || subtotal * 0.03;
-    const serviceFee = order.service_fee || 1.5;
     const totalAmount = order.amount;
 
     // Format currency
     const formatCurrency = (amount) => `RM ${parseFloat(amount).toFixed(2)}`;
+
+    // NEW: Handle delivery confirmation
+    const handleConfirmDelivery = () => {
+        if (confirmOrderDelivery) {
+            confirmOrderDelivery(order.order_id);
+        }
+    };
 
     // Print function
     const handlePrint = () => {
@@ -189,11 +206,6 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                             <div>
                                 <h2>Order Information</h2>
                                 <div class="info-item">
-                                    <span class="info-label">Order ID:</span> ${
-                                        order.order_id
-                                    }
-                                </div>
-                                <div class="info-item">
                                     <span class="info-label">Payment Method:</span> ${
                                         order.payment_method || "Credit Card"
                                     }
@@ -302,18 +314,6 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                                     shippingFee
                                 )}</td>
                             </tr>
-                            <tr>
-                                <td>Platform Tax ${platformTax * 100}:</td>
-                                <td class="text-right">${formatCurrency(
-                                    platformTax
-                                )}</td>
-                            </tr>
-                            <tr>
-                                <td>Service Fee:</td>
-                                <td class="text-right">${formatCurrency(
-                                    serviceFee
-                                )}</td>
-                            </tr>
                             <tr class="total-row">
                                 <td>Total Amount:</td>
                                 <td class="text-right">${formatCurrency(
@@ -348,30 +348,103 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
         printWindow.document.close();
     };
 
+    // NEW: Render delivery confirmation section
+    const renderDeliveryConfirmation = () => {
+        if (order.order_status === "Delivered") {
+            return (
+                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Package className="h-5 w-5 text-green-600" />
+                            <div>
+                                <p className="font-semibold text-green-800 text-sm">
+                                    Order Delivered!
+                                </p>
+                                <p className="text-green-700 text-xs">
+                                    Confirm receipt to release payment to seller
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleConfirmDelivery}
+                            disabled={confirmingOrderId === order.order_id}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
+                        >
+                            {confirmingOrderId === order.order_id
+                                ? "Confirming..."
+                                : "Confirm Delivery"}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    // NEW: Render commission information
+    const renderCommissionInfo = () => {
+        if (order.order_status === "Completed" && order.commission_amount) {
+            return (
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-blue-800">
+                            Platform Commission (8%):
+                        </span>
+                        <span className="font-semibold text-blue-900">
+                            RM {parseFloat(order.commission_amount).toFixed(2)}
+                        </span>
+                    </div>
+                    {order.seller_amount && (
+                        <div className="flex justify-between text-sm mt-1">
+                            <span className="text-blue-800">
+                                Amount to Seller:
+                            </span>
+                            <span className="font-semibold text-blue-900">
+                                RM {parseFloat(order.seller_amount).toFixed(2)}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[95vh] overflow-hidden">
                 {/* Header */}
-                <div className="flex justify-between items-center border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-                    <div>
-                        <h3 className="text-lg font-semibold">Order Receipt</h3>
-                        <p className="text-blue-100 text-sm">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-4 border-b border-blue-500 border-opacity-30 px-4 sm:px-6 py-3 sm:py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
+                    {/* Left Section - Order Info */}
+                    <div className="flex-1 min-w-0">
+                        <h3 className="text-base sm:text-lg font-semibold truncate">
+                            Order Receipt
+                        </h3>
+                        <p className="text-blue-100 text-xs sm:text-sm truncate mt-0.5">
                             {order.order_id}
                         </p>
                     </div>
-                    <div className="flex space-x-2">
+
+                    {/* Right Section - Actions */}
+                    <div className="flex items-center justify-between sm:justify-end gap-2 sm:space-x-2">
+                        {/* Print Button - Full width on mobile, auto width on desktop */}
                         <button
                             onClick={handlePrint}
-                            className="flex items-center bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+                            className="flex-1 sm:flex-none flex items-center justify-center bg-white text-blue-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium text-sm sm:text-base min-w-0"
                         >
-                            <Printer size={18} className="mr-2" />
-                            Print
+                            <Printer
+                                size={16}
+                                className="sm:size-[18px] mr-1.5 sm:mr-2 flex-shrink-0"
+                            />
+                            <span className="truncate">Print</span>
                         </button>
+
+                        {/* Close Button */}
                         <button
                             onClick={onClose}
-                            className="p-2 text-white hover:bg-white hover:bg-opacity-20 transition-colors rounded-full"
+                            className="flex-shrink-0 p-1.5 sm:p-2 text-white hover:bg-white hover:bg-opacity-20 transition-colors rounded-full"
                         >
-                            <X size={24} />
+                            <X size={20} className="sm:size-6" />
                         </button>
                     </div>
                 </div>
@@ -380,6 +453,9 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                     className="p-6 overflow-y-auto max-h-[calc(95vh-120px)]"
                     ref={receiptRef}
                 >
+                    {/* NEW: Delivery Confirmation Section */}
+                    {renderDeliveryConfirmation()}
+
                     {/* Receipt Content */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                         {/* Receipt Header */}
@@ -428,14 +504,6 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">
-                                            Order ID:
-                                        </span>
-                                        <span className="font-medium text-black">
-                                            {order.order_id}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">
                                             Payment Method:
                                         </span>
                                         <span className="font-medium capitalize text-black">
@@ -458,7 +526,10 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                                                     : order.order_status ===
                                                       "shipped"
                                                     ? "bg-purple-100 text-purple-800"
-                                                    : "bg-yellow-100 text-yellow-800"
+                                                    : order.order_status ===
+                                                      "delivered"
+                                                    ? "bg-yellow-100 text-yellow-800"
+                                                    : "bg-gray-100 text-gray-800"
                                             }`}
                                         >
                                             {order.order_status}
@@ -703,15 +774,6 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                                     </span>
                                 </div>
 
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-gray-600">
-                                        Platform Tax ({platformTax * 100}%):
-                                    </span>
-                                    <span className="text-gray-900">
-                                        {formatCurrency(order.tax_amount)}
-                                    </span>
-                                </div>
-
                                 <div className="border-t border-gray-200 pt-3 mt-3">
                                     <div className="flex justify-between text-lg font-bold">
                                         <span className="text-gray-900">
@@ -741,6 +803,9 @@ export function ReceiptModal({ order, isOpen, onClose, onPrint }) {
                                 </div>
                             </div>
                         </div>
+
+                        {/* NEW: Commission Information */}
+                        {renderCommissionInfo()}
 
                         {/* Footer */}
                         <div className="bg-gray-50 p-6 border-t border-gray-200">

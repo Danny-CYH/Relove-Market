@@ -11,6 +11,7 @@ class SellerStore extends Model
     protected $primaryKey = "store_id";
 
     public $incrementing = false;
+    
     protected $keyType = 'string';
 
     protected $fillable = [
@@ -18,6 +19,8 @@ class SellerStore extends Model
         "store_name",
         "store_description",
         "store_address",
+        "store_phone",
+        "store_image"
     ];
 
     public function seller()

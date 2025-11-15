@@ -1,16 +1,17 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { usePage, useForm } from "@inertiajs/react";
 import {
     FaCheckCircle,
     FaExclamationTriangle,
     FaInfoCircle,
     FaUpload,
+    FaIdCard,
+    FaCamera,
+    FaLock,
 } from "react-icons/fa";
 
 import ReactCountryFlag from "react-country-flag";
-
 import malaysiaLocations from "./malaysia-location.json";
-
 import { MalaysiaStateModal } from "./MalaysiaStateModal";
 import { MalaysiaCityModal } from "./MalaysiaCityModal";
 import { BusinessTypeModal } from "./BusinessTypeModal";
@@ -24,7 +25,8 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
         // Step 2
         storeName: 2,
-        storeLicense: 2,
+        verificationType: 2,
+        verificationImage: 2,
         storeDescription: 2,
         storeAddress: 2,
         storeCity: 2,
@@ -46,12 +48,36 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
     const [errorMessage, setErrorMessage] = useState("");
     const [selectedFileName, setSelectedFileName] = useState("");
     const [cities, setCities] = useState([]);
+    const [imagePreview, setImagePreview] = useState(null);
 
     // Modal states
     const [showStateModal, setShowStateModal] = useState(false);
     const [showCityModal, setShowCityModal] = useState(false);
     const [showBusinessModal, setShowBusinessModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+
+    // File input ref
+    const fileInputRef = useRef(null);
+
+    // Malaysian verification ID types
+    const verificationTypes = [
+        {
+            id: "nric",
+            name: "Malaysian NRIC",
+        },
+        {
+            id: "passport",
+            name: "Passport",
+        },
+        {
+            id: "business_registration",
+            name: "Business Registration Number",
+        },
+        {
+            id: "driving_license",
+            name: "Driving License",
+        },
+    ];
 
     const {
         data: formData,
@@ -63,7 +89,8 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
         email: "",
         phoneNumber: "",
         storeName: "",
-        storeLicense: null,
+        verificationType: "",
+        verificationImage: null,
         storeDescription: "",
         storeAddress: "",
         storeCity: "",
@@ -93,7 +120,8 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
             1: ["name", "email", "phoneNumber"],
             2: [
                 "storeName",
-                "storeLicense",
+                "verificationType",
+                "verificationImage",
                 "storeDescription",
                 "storeAddress",
                 "storeCity",
@@ -149,7 +177,6 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
         // Updated validation for Malaysian phone number
         if (step === 1 && formData.phoneNumber) {
-            // Malaysian phone number regex: accepts +60, 60, 0 followed by 8-11 digits
             const malaysiaPhoneRegex = /^(\+?60|0)?[1-9][0-9]{7,9}$/;
             const cleanedPhone = formData.phoneNumber.replace(/\D/g, "");
 
@@ -158,6 +185,34 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
                 setErrorMessage(
                     "Please enter a valid Malaysian phone number (e.g., 123456789, 0123456789)"
                 );
+                setShowErrorToast(true);
+                return false;
+            }
+        }
+
+        // Validation for image file
+        if (step === 2 && formData.verificationImage) {
+            const file = formData.verificationImage;
+            const validTypes = [
+                "image/jpeg",
+                "image/jpg",
+                "image/png",
+                "image/webp",
+            ];
+            const maxSize = 5 * 1024 * 1024; // 5MB
+
+            if (!validTypes.includes(file.type)) {
+                setHighlightedField("verificationImage");
+                setErrorMessage(
+                    "Please upload a valid image (JPEG, JPG, PNG, WEBP)"
+                );
+                setShowErrorToast(true);
+                return false;
+            }
+
+            if (file.size > maxSize) {
+                setHighlightedField("verificationImage");
+                setErrorMessage("Image size should be less than 5MB");
                 setShowErrorToast(true);
                 return false;
             }
@@ -172,7 +227,8 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
             email: "Email Address",
             phoneNumber: "Phone Number",
             storeName: "Store Name",
-            storeLicense: "Store License",
+            verificationType: "Verification Type",
+            verificationImage: "Verification Image",
             storeDescription: "Store Description",
             storeAddress: "Store Address",
             storeState: "Store State",
@@ -187,8 +243,19 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
         if (type === "file") {
             const file = files[0];
-            setFormData({ ...formData, [name]: file });
-            setSelectedFileName(file ? file.name : "");
+            if (file) {
+                setFormData({ ...formData, [name]: file });
+                setSelectedFileName(file.name);
+
+                // Create preview for image
+                if (name === "verificationImage") {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        setImagePreview(e.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
         } else {
             setFormData({ ...formData, [name]: value });
         }
@@ -201,13 +268,45 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
         }
     };
 
+    // Handle image capture/upload
+    const handleImageUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setFormData({ ...formData, verificationImage: file });
+            setSelectedFileName(file.name);
+
+            // Create preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                setImagePreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Clear error if corrected
+        if (highlightedField === "verificationImage" && file) {
+            setHighlightedField("");
+            setShowErrorToast(false);
+            setErrorMessage("");
+        }
+    };
+
+    // Remove image
+    const handleRemoveImage = () => {
+        setFormData({ ...formData, verificationImage: null });
+        setImagePreview(null);
+        setSelectedFileName("");
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
+
     // Format phone number as user types and ensure it starts with 0 when stored
     const handlePhoneChange = (e) => {
-        const value = e.target.value.replace(/\D/g, ""); // Remove non-digits
+        const value = e.target.value.replace(/\D/g, "");
         let formattedValue = value;
         let storedValue = value;
 
-        // If starts with 60, remove it to add the 0 prefix
         if (value.startsWith("60")) {
             storedValue = "0" + value.substring(2);
             formattedValue = "+60 " + value.substring(2);
@@ -219,7 +318,6 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
             formattedValue = "+60 " + value.substring(1);
         }
 
-        // Add spacing for readability for longer numbers
         if (formattedValue.length > 6) {
             formattedValue = formattedValue
                 .replace(/(\+60\s)(\d{2,4})(\d{3})(\d{0,4})/, "$1$2 $3 $4")
@@ -228,7 +326,6 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
         setFormData({ ...formData, phoneNumber: storedValue });
 
-        // Clear error if corrected
         if (highlightedField === "phoneNumber" && value !== "") {
             setHighlightedField("");
             setShowErrorToast(false);
@@ -286,7 +383,17 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        const submitFormData = new FormData();
+        Object.keys(formData).forEach((key) => {
+            if (formData[key] !== null) {
+                submitFormData.append(key, formData[key]);
+            }
+        });
+
         postRegistration(route("seller-registration-process"), {
+            data: submitFormData,
+            forceFormData: true,
             onSuccess: () => {
                 setShowSuccessToast(true);
             },
@@ -501,6 +608,135 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
                             Tell us about your business
                         </p>
 
+                        {/* Verification Type Selection */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Verification Type *
+                            </label>
+                            <select
+                                name="verificationType"
+                                value={formData.verificationType}
+                                onChange={handleChange}
+                                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                                    highlightedField === "verificationType"
+                                        ? "border-red-500 ring-2 ring-red-100"
+                                        : "border-gray-300"
+                                }`}
+                                required
+                            >
+                                <option value="">
+                                    Select Verification Type
+                                </option>
+                                {verificationTypes.map((type) => (
+                                    <option key={type.id} value={type.id}>
+                                        {type.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Choose the type of identification you'll provide
+                            </p>
+                        </div>
+
+                        {/* Verification Image Upload */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Upload Verification Document *
+                            </label>
+                            <div
+                                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                                    highlightedField === "verificationImage"
+                                        ? "border-red-500 bg-red-50 ring-2 ring-red-100"
+                                        : formData.verificationType
+                                        ? "border-gray-300 hover:border-gray-400"
+                                        : "border-gray-300 bg-gray-50"
+                                }`}
+                            >
+                                <input
+                                    type="file"
+                                    name="verificationImage"
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                    id="verificationImage"
+                                    accept="image/*"
+                                    capture="environment"
+                                    ref={fileInputRef}
+                                    disabled={!formData.verificationType}
+                                    required
+                                />
+
+                                {imagePreview ? (
+                                    <div className="space-y-4">
+                                        <div className="relative inline-block">
+                                            <img
+                                                src={imagePreview}
+                                                alt="Verification document preview"
+                                                className="max-h-48 rounded-lg border border-gray-300"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveImage}
+                                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                        <p className="text-sm text-gray-600">
+                                            {selectedFileName}
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                fileInputRef.current?.click()
+                                            }
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                                        >
+                                            Take New Photo
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <label
+                                        htmlFor="verificationImage"
+                                        className={`cursor-pointer block ${
+                                            !formData.verificationType
+                                                ? "cursor-not-allowed opacity-50"
+                                                : ""
+                                        }`}
+                                    >
+                                        {!formData.verificationType ? (
+                                            <FaLock className="mx-auto text-gray-400 text-2xl mb-3" />
+                                        ) : (
+                                            <FaCamera className="mx-auto text-gray-400 text-2xl mb-3" />
+                                        )}
+                                        <p className="text-sm text-gray-600 mb-2">
+                                            {!formData.verificationType
+                                                ? "Please select verification type first"
+                                                : "Click to take a photo of your verification document"}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            {formData.verificationType
+                                                ? `Take a clear photo of your ${verificationTypes
+                                                      .find(
+                                                          (t) =>
+                                                              t.id ===
+                                                              formData.verificationType
+                                                      )
+                                                      ?.name.toLowerCase()} document`
+                                                : "Select verification type to enable upload"}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Supported: JPG, PNG, WEBP (Max 5MB)
+                                        </p>
+                                    </label>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {formData.verificationType
+                                    ? "Ensure the document is clearly visible and all details are readable"
+                                    : "Select verification type first to upload document"}
+                            </p>
+                        </div>
+
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Store Name *
@@ -519,45 +755,6 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
                                 }`}
                                 required
                             />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Business License *
-                            </label>
-                            <div
-                                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                                    highlightedField === "storeLicense"
-                                        ? "border-red-500 bg-red-50 ring-2 ring-red-100"
-                                        : "border-gray-300 hover:border-gray-400"
-                                }`}
-                            >
-                                <input
-                                    type="file"
-                                    name="storeLicense"
-                                    onChange={handleChange}
-                                    className="hidden"
-                                    id="storeLicense"
-                                    accept=".pdf,.doc,.docx,image/*"
-                                    required
-                                />
-                                <label
-                                    htmlFor="storeLicense"
-                                    className="cursor-pointer"
-                                >
-                                    <FaUpload className="mx-auto text-gray-400 text-2xl mb-3" />
-                                    <p className="block truncate max-w-full md:max-w-none text-ellipsis overflow-hidden whitespace-nowrap text-sm text-gray-600 mb-2">
-                                        {selectedFileName ||
-                                            "Click to upload business license"}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        PDF, DOC, or images (Max 5MB)
-                                    </p>
-                                </label>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                                Please provide your business license
-                            </p>
                         </div>
 
                         <div>
@@ -690,135 +887,226 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
                     </div>
                 )}
 
-                {/* Step 3: Confirmation */}
+                {/* Step 3: Review & Confirmation */}
                 {step === 3 && (
                     <div className="space-y-6">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <div className="flex items-start">
-                                <FaInfoCircle className="text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
-                                <div>
-                                    <h3 className="font-semibold text-blue-900 mb-1">
-                                        Review Your Information
-                                    </h3>
-                                    <p className="text-blue-700 text-sm">
-                                        Please verify that all information is
-                                        correct before submitting your
-                                        application.
-                                    </p>
+                        {/* Information Cards */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Personal Information Card */}
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+                                    <div className="flex items-center">
+                                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                                            <FaIdCard className="text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900">
+                                                Personal Information
+                                            </h3>
+                                            <p className="text-sm text-gray-600">
+                                                Your contact details
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="flex items-start">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                        <div className="flex-1">
+                                            <label className="text-sm font-medium text-gray-500">
+                                                Full Name
+                                            </label>
+                                            <p className="text-gray-900 font-medium">
+                                                {formData.name || "-"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                        <div className="flex-1">
+                                            <label className="text-sm font-medium text-gray-500">
+                                                Email Address
+                                            </label>
+                                            <p className="text-gray-900 font-medium">
+                                                {formData.email || "-"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                        <div className="flex-1">
+                                            <label className="text-sm font-medium text-gray-500">
+                                                Phone Number
+                                            </label>
+                                            <p className="text-gray-900 font-medium">
+                                                {formData.phoneNumber
+                                                    ? formatPhoneForDisplay(
+                                                          formData.phoneNumber
+                                                      )
+                                                    : "-"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Store Information Card */}
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200">
+                                    <div className="flex items-center">
+                                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center mr-3">
+                                            <FaUpload className="text-green-600" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900">
+                                                Store Information
+                                            </h3>
+                                            <p className="text-sm text-gray-600">
+                                                Business details
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="p-6 space-y-4">
+                                    <div className="flex items-start">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                        <div className="flex-1">
+                                            <label className="text-sm font-medium text-gray-500">
+                                                Store Name
+                                            </label>
+                                            <p className="text-gray-900 font-medium">
+                                                {formData.storeName || "-"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                        <div className="flex-1">
+                                            <label className="text-sm font-medium text-gray-500">
+                                                Business Type
+                                            </label>
+                                            <p className="text-gray-900 font-medium">
+                                                {formData.businessType
+                                                    ? list_business.find(
+                                                          (b) =>
+                                                              b.business_id ===
+                                                              formData.businessType
+                                                      )?.business_type
+                                                    : "-"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-start">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                        <div className="flex-1">
+                                            <label className="text-sm font-medium text-gray-500">
+                                                Store Address
+                                            </label>
+                                            <p className="text-gray-900 font-medium whitespace-pre-line">
+                                                {formData.storeAddress +
+                                                    ", " +
+                                                    formData.storeCity +
+                                                    ", " +
+                                                    formData.storeState || "-"}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-gray-50 rounded-lg p-6 space-y-4">
-                            <h4 className="font-semibold text-gray-900 border-b pb-2">
-                                Personal Information
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        Full Name
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.name || "-"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        Email
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.email || "-"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        Phone Number
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.phoneNumber || "-"}
-                                    </p>
+                        {/* Verification Information Card */}
+                        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-200">
+                                <div className="flex items-center">
+                                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                                        <FaCamera className="text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-gray-900">
+                                            Verification Details
+                                        </h3>
+                                        <p className="text-sm text-gray-600">
+                                            Identity verification
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-
-                            <h4 className="font-semibold text-gray-900 border-b pb-2 mt-6">
-                                Store Information
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        Store Name
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.storeName || "-"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        Business License
-                                    </label>
-                                    <p className="block truncate max-w-full md:max-w-none text-ellipsis overflow-hidden whitespace-nowrap font-medium">
-                                        {formData.storeLicense
-                                            ? formData.storeLicense.name
-                                            : "Not uploaded"}
-                                    </p>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="text-sm text-gray-600">
-                                        Description
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.storeDescription || "-"}
-                                    </p>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="text-sm text-gray-600">
-                                        Address
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.storeAddress || "-"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        City
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.storeCity || "-"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        State
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.storeState || "-"}
-                                    </p>
-                                </div>
-                                <div>
-                                    <label className="text-sm text-gray-600">
-                                        Business Type
-                                    </label>
-                                    <p className="font-medium">
-                                        {formData.businessType
-                                            ? list_business.find(
-                                                  (b) =>
-                                                      b.business_id ===
-                                                      formData.businessType
-                                              )?.business_type
-                                            : "-"}
-                                    </p>
+                            <div className="p-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <div className="flex items-start">
+                                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                            <div className="flex-1">
+                                                <label className="text-sm font-medium text-gray-500">
+                                                    Verification Type
+                                                </label>
+                                                <p className="text-gray-900 font-medium">
+                                                    {formData.verificationType
+                                                        ? verificationTypes.find(
+                                                              (t) =>
+                                                                  t.id ===
+                                                                  formData.verificationType
+                                                          )?.name
+                                                        : "-"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-start">
+                                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                                            <div className="flex-1">
+                                                <label className="text-sm font-medium text-gray-500">
+                                                    Document
+                                                </label>
+                                                <p className="text-gray-900 font-medium mb-2">
+                                                    {formData.verificationImage
+                                                        ? formData
+                                                              .verificationImage
+                                                              .name
+                                                        : "No document uploaded"}
+                                                </p>
+                                                {imagePreview && (
+                                                    <div className="mt-2">
+                                                        <img
+                                                            src={imagePreview}
+                                                            alt="Verification document"
+                                                            className="max-h-32 rounded-lg border border-gray-300 shadow-sm"
+                                                        />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <div className="flex items-start">
-                                <FaExclamationTriangle className="text-yellow-600 mt-0.5 mr-3 flex-shrink-0" />
-                                <p className="text-yellow-800 text-sm">
-                                    By submitting this form, you agree to our
-                                    Terms of Service and confirm that all
-                                    information provided is accurate.
-                                </p>
+                        {/* Action Cards */}
+                        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+                            {/* Edit Information Card */}
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
+                                <div className="flex items-start">
+                                    <FaExclamationTriangle className="text-blue-600 mt-1 mr-3 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="font-semibold text-blue-900 mb-2">
+                                            Need to make changes?
+                                        </h4>
+                                        <p className="text-blue-700 text-sm mb-4">
+                                            If any information is incorrect, you
+                                            can go back to previous steps to
+                                            edit your details.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={prevStep}
+                                            className="px-4 py-2 bg-white text-blue-600 border border-blue-300 rounded-lg font-medium hover:bg-blue-50 transition-colors text-sm"
+                                        >
+                                            Edit Information
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -158,7 +158,7 @@ export function SellerDetails_Modal({
                             </section>
 
                             {/* Documents Section */}
-                            {selectedSeller?.store_license && (
+                            {selectedSeller?.verification_image && (
                                 <section>
                                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                         <svg
@@ -174,7 +174,7 @@ export function SellerDetails_Modal({
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                                             />
                                         </svg>
-                                        Store License Document
+                                        Verification Document
                                     </h3>
                                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -196,18 +196,19 @@ export function SellerDetails_Modal({
                                                 </div>
                                                 <div>
                                                     <p className="font-medium text-gray-900">
-                                                        Store License
+                                                        Verification Document
                                                     </p>
                                                     <p className="text-sm text-gray-500 mt-1">
-                                                        PDF Document
+                                                        Image Format Document
                                                     </p>
                                                 </div>
                                             </div>
                                             <a
                                                 href={`${
-                                                    import.meta.env.VITE_APP_URL
-                                                }/storage/${
-                                                    selectedSeller.store_license
+                                                    import.meta.env
+                                                        .VITE_BASE_URL
+                                                }${
+                                                    selectedSeller.verification_image
                                                 }`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
@@ -306,55 +307,119 @@ export function SellerDetails_Modal({
                         </div>
                     </div>
 
-                    {/* Footer with Actions */}
-                    <div className="border-t border-gray-200 bg-gray-50 p-6">
-                        <div className="flex flex-col sm:flex-row gap-3 justify-end">
-                            <button
-                                onClick={() => {
-                                    onReject();
-                                    onClose();
-                                }}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-red-300 text-red-700 bg-white hover:bg-red-50 rounded-lg transition-colors duration-200 font-medium w-full sm:w-auto"
-                            >
-                                <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
+                    {/* Footer with Actions - Only show for Pending status */}
+                    {selectedSeller?.status === "Pending" && (
+                        <div className="border-t border-gray-200 bg-gray-50 p-6">
+                            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                                <button
+                                    onClick={() => {
+                                        onReject();
+                                        onClose();
+                                    }}
+                                    className="inline-flex items-center justify-center gap-2 px-6 py-3 border border-red-300 text-red-700 bg-white hover:bg-red-50 rounded-lg transition-colors duration-200 font-medium w-full sm:w-auto"
                                 >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                                Reject Application
-                            </button>
-                            <button
-                                onClick={() => {
-                                    onApprove();
-                                    onClose();
-                                }}
-                                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 font-medium w-full sm:w-auto"
-                            >
-                                <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
+                                    <svg
+                                        className="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                    Reject Application
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        onApprove();
+                                        onClose();
+                                    }}
+                                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors duration-200 font-medium w-full sm:w-auto"
                                 >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                    />
-                                </svg>
-                                Approve Seller
-                            </button>
+                                    <svg
+                                        className="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                    Approve Seller
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    )}
+
+                    {/* Status Message for Approved/Rejected Applications */}
+                    {selectedSeller?.status !== "Pending" && (
+                        <div className="border-t border-gray-200 bg-gray-50 p-6">
+                            <div className="text-center">
+                                <div
+                                    className={`inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg ${
+                                        selectedSeller?.status === "Approved"
+                                            ? "bg-green-50 text-green-700 border border-green-200"
+                                            : "bg-red-50 text-red-700 border border-red-200"
+                                    }`}
+                                >
+                                    {selectedSeller?.status === "Approved" ? (
+                                        <>
+                                            <svg
+                                                className="w-5 h-5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M5 13l4 4L19 7"
+                                                />
+                                            </svg>
+                                            <span className="font-medium">
+                                                This application has been
+                                                approved
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg
+                                                className="w-5 h-5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M6 18L18 6M6 6l12 12"
+                                                />
+                                            </svg>
+                                            <span className="font-medium">
+                                                This application has been
+                                                rejected
+                                            </span>
+                                        </>
+                                    )}
+                                </div>
+                                <p className="text-sm text-gray-600 mt-2">
+                                    {selectedSeller?.status === "Approved"
+                                        ? "The seller has been approved and can now access the seller dashboard."
+                                        : "This application has been rejected and cannot be processed further."}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </>

@@ -76,8 +76,6 @@ Route::middleware(['is_seller'])->group(function () {
     Route::get("/seller-manage-order", [SellerController::class, "sellerOrderPage"])->name("seller-manage-order");
     Route::get("/seller-manage-earning", [SellerController::class, "sellerEarningPage"])->name("seller-manage-earning");
     Route::get("/seller-manage-promotion", [SellerController::class, "sellerPromotionPage"])->name("seller-manage-promotion");
-    Route::get('/seller-manage-subscription', [SellerController::class, 'sellerSubscriptionPage'])->name("seller-manage-subscription");
-    Route::get("/seller-purchase-subscription/{subscription_plan_id}", [SellerController::class, "sellerPurchaseSubscription"])->name("seller-purchase-subscription");
     Route::get("/seller-help-support", [SellerController::class, "sellerHelpSupportPage"])->name("seller-help-support");
     Route::get('/seller-manage-profile', [SellerController::class, 'getProfile'])->name("seller-manage-profile");
     Route::get('/seller-chat', [ChatController::class, "sellerChat"])->name('seller-chat');
@@ -104,13 +102,6 @@ Route::middleware(["is_admin"])->group(function () {
 
     Route::get('/admin/dashboard/pending-seller-list', [AdminController::class, 'getSellerList']);
     Route::post('/admin/pending-seller/{id}/action', [AdminController::class, 'handleAction']);
-
-    // API request for managing the subscription on manage subscriptions page
-    Route::get("/api/admin/get-subscriptions", [AdminController::class, "getSubscriptions"]);
-    Route::post("/api/admin/create-subscriptions", [AdminController::class, "createSubscriptions"]);
-    Route::put("/api/admin/update-subscriptions/{subscription_plan_id}", [AdminController::class, "updateSubscriptions"]);
-    Route::delete("/api/admin/delete-subscriptions/{subscription_plan_id}", [AdminController::class, "deleteSubscriptions"]);
-    Route::patch("/api/admin/change-subscriptions/{subscriptions_plan_id}/status", [AdminController::class, "updateStatusSubscriptions"]);
 });
 
 // code for calling and setting the chat communication between buyer and seller

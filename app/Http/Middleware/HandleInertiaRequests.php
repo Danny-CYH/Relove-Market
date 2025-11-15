@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                             'seller_store_name' => $user->seller?->sellerStore?->store_name ?? "",
                             'created_at' => $user->created_at,
                             'updated_at' => $user->updated_at,
+                            'last_login_at' => $user->last_login_at
                         ];
                     }
 
@@ -67,14 +68,15 @@ class HandleInertiaRequests extends Middleware
 
                     if ($user && $user->seller) {
                         $seller = $user->seller;
-                        $seller->load("subscription", "sellerStore");
+                        $seller->load("user", "sellerStore");
 
                         return [
+                            'user_id' => $seller->user->user_id,
                             'seller_id' => $seller->seller_id,
                             'seller_store' => $seller->sellerStore,
                             'name' => $seller->seller_name,
                             'email' => $seller->seller_email,
-                            'subscription' => $seller->subscription,
+                            'last_login_at' => $user->last_login_at
                         ];
                     }
 

@@ -1,18 +1,16 @@
-// Components/BuyerPage/HomePage/MobileProductCard.jsx
 import {
     FaStar,
     FaHeart,
     FaShoppingCart,
-    FaStore,
     FaShieldAlt as FaShield,
-    FaShippingFast,
     FaClock,
     FaCheckCircle,
-    FaMapMarkerAlt,
-    FaUser,
 } from "react-icons/fa";
+
 import { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
+
+import Swal from "sweetalert2";
 
 export function MobileProductCard({ product, save_wishlist, get_wishlist }) {
     const [isLiked, setIsLiked] = useState(false);
@@ -33,17 +31,9 @@ export function MobileProductCard({ product, save_wishlist, get_wishlist }) {
     const stockQuantity = product.product_quantity || 0;
     const isInStock = stockQuantity > 0;
 
-    // Enhanced seller information
-    const sellerStore = seller?.seller_store;
-    const sellerRating = seller?.average_rating || 0;
-    const sellerTotalSales = seller?.total_sales || 0;
-    const isVerifiedSeller = seller?.is_verified || false;
     const sellerJoinDate = seller?.created_at
         ? new Date(seller.created_at)
         : null;
-    const sellerMemberYears = sellerJoinDate
-        ? new Date().getFullYear() - sellerJoinDate.getFullYear()
-        : 0;
 
     // Calculate discount percentage
     const originalPrice =
@@ -74,13 +64,29 @@ export function MobileProductCard({ product, save_wishlist, get_wishlist }) {
 
     const handleWishlistClick = async (e) => {
         e.preventDefault();
+
+        // Block if product is out of stock
+        if (product.product_quantity <= 0) {
+            Swal.fire(
+                "Out of Stock",
+                "This product is currently out of stock.",
+                "warning"
+            );
+            return;
+        }
+
+        // Prevent double click if already liked
         if (isLiked) return;
 
         setLoadingWishlist(true);
+
         const success = await save_wishlist(product.product_id);
+
         if (success) {
             setIsLiked(true);
+            Swal.fire("Added!", "Product added to your wishlist.", "success");
         }
+
         setLoadingWishlist(false);
     };
 
@@ -225,46 +231,6 @@ export function MobileProductCard({ product, save_wishlist, get_wishlist }) {
                             {stockQuantity} unit{stockQuantity !== 1 ? "s" : ""}{" "}
                         </span>
                     )}
-                </div>
-
-                {/* Seller Information */}
-                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                            <FaStore className="w-4 h-4 text-blue-600" />
-                            <span className="font-semibold text-gray-900">
-                                {sellerStore?.store_name || "Individual Seller"}
-                            </span>
-                        </div>
-                        {isVerifiedSeller && (
-                            <div className="flex items-center space-x-1 bg-blue-100 px-2 py-1 rounded-full">
-                                <FaShield className="w-3 h-3 text-blue-600" />
-                                <span className="text-xs text-blue-700 font-semibold">
-                                    Verified
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
-                        <div className="flex items-center space-x-2">
-                            <FaStar className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                            <span>{sellerRating.toFixed(1)} Seller Rating</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <FaUser className="w-3 h-3 text-green-500" />
-                            <span>{sellerTotalSales}+ Sales</span>
-                        </div>
-                        {sellerMemberYears > 0 && (
-                            <div className="col-span-2 flex items-center space-x-2">
-                                <FaMapMarkerAlt className="w-3 h-3 text-gray-400" />
-                                <span>
-                                    Member for {sellerMemberYears} year
-                                    {sellerMemberYears > 1 ? "s" : ""}
-                                </span>
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 {/* Action Buttons */}

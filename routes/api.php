@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminPage\AdminDashboardController;
+use App\Http\Controllers\AdminPage\TransactionManagementController;
 use App\Http\Controllers\AdminPage\UserManagementController;
 
 use App\Http\Controllers\BuyerPage\HomePageController;
@@ -9,11 +10,12 @@ use App\Http\Controllers\BuyerPage\WishlistController;
 use App\Http\Controllers\BuyerPage\SellerRegistrationController;
 use App\Http\Controllers\BuyerPage\ProductManagementController;
 
+
+use App\Http\Controllers\SellerPage\SellerManageProfileController;
 use App\Http\Controllers\SellerPage\SellerDashboardController;
 use App\Http\Controllers\SellerPage\SellerManageEarningController;
 use App\Http\Controllers\SellerPage\SellerManageOrderController;
 use App\Http\Controllers\SellerPage\SellerManageProductController;
-use App\Http\Controllers\SellerPage\SubscriptionPaymentController;
 
 Route::middleware(["is_buyer"])->group(function () {
     // Code for calling the featured and flash sale products on the home page
@@ -23,6 +25,9 @@ Route::middleware(["is_buyer"])->group(function () {
     // COde for manage the profile on the profile page
     Route::get("/api/orders-history", [ProfileManagementController::class, "orderHistory"])->name("order-history");
     Route::post("/api/profile-update", [ProfileManagementController::class, "updateProfile"])->name("update-profile");
+    Route::post('/api/update-password', [ProfileManagementController::class, 'updatePassword'])->name('update-password');
+    Route::get('/api/check-address', [ProfileManagementController::class, 'checkAddress'])->name('check-address');
+    Route::post('/orders/{orderId}/confirm-delivery', [ProfileManagementController::class, 'confirmDelivery'])->name('confirm-delivery');
 
     // Code for manage the wishlist operations on wishlist and product details page
     Route::get("/api/get-all-wishlist", [WishlistController::class, "get_allWishlist"])->name("all-wishlist");
@@ -41,8 +46,6 @@ Route::middleware(["is_buyer"])->group(function () {
 // API functions for seller page
 Route::middleware(["is_seller"])->group(function () {
     // API for the seller dashboard
-    Route::get("/api/seller-subscriptions", [SellerDashboardController::class, "getSubscriptionStatus"])->name("seller-subscriptions");
-    Route::post("/api/start-trial", [SellerDashboardController::class, "startTrial"])->name("start-trial");
     Route::get("/api/dashboard-data", [SellerDashboardController::class, "getData_dashboard"])->name("dashboard-data");
     Route::get("/api/featured-products", [SellerDashboardController::class, 'get_FeaturedProducts'])->name("featured-products");
 
@@ -62,9 +65,12 @@ Route::middleware(["is_seller"])->group(function () {
     Route::get('/api/seller-earnings', [SellerManageEarningController::class, 'getEarnings'])->name("earnings");
     Route::post('/api/generate-income-report', [SellerManageEarningController::class, 'generateIncomeReport'])->name("generate-report");
 
-    // API for seller manage subscriptions.
-    Route::post('/api/subscriptions/create-payment-intent', [SubscriptionPaymentController::class, 'createSubscriptionPaymentIntent']);
-    Route::post('/api/subscriptions/confirm-payment', [SubscriptionPaymentController::class, 'confirmSubscriptionPayment']);
+    Route::get('/seller/profile', [SellerManageProfileController::class, 'getProfile']);
+    Route::post('/seller/profile/user/update', [SellerManageProfileController::class, 'updateUserProfile']);
+    Route::post('/seller/profile/store/update', [SellerManageProfileController::class, 'updateStoreProfile']);
+    Route::post('/seller/profile/password/update', [SellerManageProfileController::class, 'updatePassword']);
+    Route::delete('/seller/profile/image', [SellerManageProfileController::class, 'deleteProfileImage']);
+    Route::delete('/seller/store/image', [SellerManageProfileController::class, 'deleteStoreImage']);
 });
 
 // API function for admin page
@@ -81,6 +87,12 @@ Route::middleware(["is_admin"])->group(function () {
     Route::post('/products/{product}/block', [ProductManagementController::class, 'block_product']);
     Route::post('/products/{product}/unblock', [ProductManagementController::class, 'unblock_product']);
     Route::post('/products/{product}/flag', [ProductManagementController::class, 'flag_product']);
+
+    Route::post('/api/transactions/{orderId}/release-payment', [TransactionManagementController::class, 'releasePayment'])->name('release-payment');
+    Route::put('/api/transactions{orderId}/status', [TransactionManagementController::class, 'updateOrderStatus'])->name('update-order-status');
+    Route::get('/{orderId}/tracking', [TransactionManagementController::class, 'getOrderTracking']);
+    Route::post('/{orderId}/manual-release', [TransactionManagementController::class, 'manualReleasePayment']);
+    Route::get('/stats', [TransactionManagementController::class, 'getTransactionStats']);
 
     // API for manage users.
     Route::get("/api/admin/user-management/list", [UserManagementController::class, "getUserList"])->name("list-user");

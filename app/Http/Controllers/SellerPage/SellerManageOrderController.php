@@ -85,7 +85,7 @@ class SellerManageOrderController extends Controller
                 ->findOrFail($orderId);
 
             $validated = $request->validate([
-                'status' => 'required|in:Processing,Shipped,Delivered,Cancelled'
+                'status' => 'required|in:Pending,Processing,Shipped,Delivered,Completed,Cancelled'
             ]);
 
             $order->update(['order_status' => $validated['status']]);

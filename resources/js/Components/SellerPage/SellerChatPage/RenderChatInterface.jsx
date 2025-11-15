@@ -29,6 +29,8 @@ export function RenderChatInterface({
     messagesEndRef,
     formatConversationTimeForDisplay,
     imageLoading,
+    handleImageLoad,
+    handleImageError,
 }) {
     return (
         <div
@@ -61,7 +63,22 @@ export function RenderChatInterface({
                                 <ChevronLeft size={20} />
                             </button>
                             <div className="bg-gray-200 rounded-full h-10 w-10 flex items-center justify-center">
-                                <User size={20} className="text-gray-600" />
+                                {activeConversation.user?.profile_image ? (
+                                    <img
+                                        src={
+                                            import.meta.env.VITE_BASE_URL +
+                                            activeConversation.user
+                                                .profile_image
+                                        }
+                                        alt={
+                                            activeConversation.user?.name ||
+                                            "User"
+                                        }
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <User size={20} className="text-gray-600" />
+                                )}
                             </div>
                             <div>
                                 <h2 className="font-semibold text-gray-900">
@@ -72,14 +89,6 @@ export function RenderChatInterface({
                                     Customer • {activeConversation.product}
                                 </p>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full"
-                                title="Conversation info"
-                            >
-                                <Info size={18} />
-                            </button>
                         </div>
                     </div>
 
@@ -114,6 +123,8 @@ export function RenderChatInterface({
                                             formatConversationTimeForDisplay
                                         }
                                         imageLoading={imageLoading}
+                                        handleImageLoad={handleImageLoad}
+                                        handleImageError={handleImageError}
                                     />
                                 ))}
                                 <div ref={messagesEndRef} />

@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\Seller;
 use App\Models\Promotions;
-use App\Models\Subscription;
-use App\Models\SubscriptionPurchaseRecords;
 
 use Exception;
 
@@ -75,38 +73,6 @@ class SellerController extends Controller
         );
     }
 
-    public function sellerSubscriptionPage()
-    {
-        $list_subscription = Subscription::with([
-            "subscriptionFeatures",
-            "seller"
-        ])
-            ->paginate(3);
-
-        $billing_records = SubscriptionPurchaseRecords::with([
-            "user",
-            "subscription"
-        ])
-            ->where("seller_id", $this->seller_id)
-            ->paginate(5);
-
-        // Loop through each subscription and decode its limits
-        $list_subscription->transform(function ($subscription) {
-            if (is_string($subscription->limits)) {
-                $subscription->limits = json_decode($subscription->limits, true);
-            }
-            return $subscription;
-        });
-
-        return Inertia::render(
-            "SellerPage/SellerSubscriptionPage",
-            [
-                "list_subscription" => $list_subscription,
-                "billing_records" => $billing_records,
-            ]
-        );
-    }
-
     public function sellerHelpSupportPage()
     {
         return Inertia::render("SellerPage/SellerHelpSupportPage");
@@ -160,19 +126,6 @@ class SellerController extends Controller
     public function sellerViewPromotion(Request $request)
     {
 
-    }
-
-    public function sellerPurchaseSubscription($subscription_plan_id)
-    {
-
-        $subscription_plan = Subscription::with("subscriptionFeatures")
-            ->where("subscription_plan_id", $subscription_plan_id)
-            ->first();
-
-        return Inertia::render(
-            "SellerPage/SellerSubscriptionPurchasePage",
-            ["subscription_plan" => $subscription_plan]
-        );
     }
 
     public function getProfile()

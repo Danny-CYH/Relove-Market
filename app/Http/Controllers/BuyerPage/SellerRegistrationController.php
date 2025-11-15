@@ -25,11 +25,13 @@ class SellerRegistrationController extends Controller
 
             // Step 2: Store Info
             'storeName' => ['required', 'string'],
-            'storeLicense' => ['required', 'file', 'mimes:pdf', 'max:5120'],
+            'verificationType' => ['required', 'string', 'in:nric,passport,business_registration,driving_license'],
+            'verificationImage' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'], // 5MB max
             'storeDescription' => ['required', 'string'],
             'storeAddress' => ['required', 'string'],
             'storeCity' => ['required', 'string'],
             'storeState' => ['required', 'string'],
+            'businessType' => ['required', 'string'],
         ]);
 
         if ($validator->fails()) {
@@ -42,17 +44,14 @@ class SellerRegistrationController extends Controller
         $nextId = $lastId + 1;
         $registrationId = 'SELLER' . str_pad($nextId, 5, '0', STR_PAD_LEFT);
 
+        // ✅ Store verification image
+        $verificationImagePath = null;
+        if ($request->hasFile('verificationImage')) {
+            $file = $request->file('verificationImage');
+            $filename = 'verification_' . $registrationId . '.' . $file->getClientOriginalExtension();
 
-        // ✅ Store license file under folder named by user_id
-        if ($request->hasFile('storeLicense')) {
-            $file = $request->file('storeLicense');
-
-            // Example: store_licenses/{user_id}/license.pdf
-            $filename = 'license_' . $request->storeName . '.' . $file->getClientOriginalExtension();
-
-            // Path will be: storage/app/public/store_licenses/{user_id}/license_timestamp.pdf
-            $path = $file->storeAs(
-                "store_licenses/{$registrationId}",
+            $verificationImagePath = $file->storeAs(
+                "verification_documents/{$registrationId}",
                 $filename,
                 'public'
             );
@@ -64,12 +63,13 @@ class SellerRegistrationController extends Controller
             'email' => $request->email,
             'phone_number' => $request->phoneNumber,
             'store_name' => $request->storeName,
-            'store_license' => $path,
             'store_description' => $request->storeDescription,
             'store_address' => $request->storeAddress,
             'store_city' => $request->storeCity,
             'store_state' => $request->storeState,
             'business_id' => $request->businessType,
+            'verification_type' => $request->verificationType,
+            'verification_image' => $verificationImagePath, // Store image path
             'status' => "Pending",
         ]);
 
@@ -77,6 +77,6 @@ class SellerRegistrationController extends Controller
         broadcast(new SellerRegistered($SellerRegistered, "Registered"));
 
         return redirect(route("homepage"))
-            ->with("successMessage", "Registration sucess...Please wait for the approvement");
+            ->with("successMessage", "Registration successful! Please wait for approval.");
     }
 }

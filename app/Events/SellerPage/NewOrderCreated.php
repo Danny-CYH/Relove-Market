@@ -5,7 +5,6 @@ namespace App\Events\SellerPage;
 use App\Models\Order;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -18,7 +17,7 @@ class NewOrderCreated implements ShouldBroadcastNow
 
     public function __construct(Order $order)
     {
-        $this->order = $order->load(['user', 'orderItems']);
+        $this->order = $order->load(['user', 'orderItems.product', 'sellerEarning']);
     }
 
     public function broadcastOn(): array

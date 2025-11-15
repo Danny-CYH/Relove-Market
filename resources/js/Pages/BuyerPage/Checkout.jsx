@@ -21,11 +21,7 @@ import { Link, router } from "@inertiajs/react";
 // Initialize Stripe with your publishable key
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
 
-export default function CheckoutPage({
-    list_product,
-    platform_tax,
-    errors: initialErrors,
-}) {
+export default function CheckoutPage({ list_product, errors: initialErrors }) {
     const [paymentMethod, setPaymentMethod] = useState("credit");
     const [activeStep, setActiveStep] = useState(1);
 
@@ -326,14 +322,10 @@ export default function CheckoutPage({
                 selected_variant: product.selected_variant || null,
                 selected_options: product.selected_options || null,
                 product_image: product.product_image || product.productImage,
-                platform_tax: platform_tax,
             };
         }
         // If it's already in the correct structure (from cart)
-        return {
-            ...product,
-            platform_tax: platform_tax, // Ensure tax is included
-        };
+        return product;
     };
 
     // Calculate totals - handle both single item and multiple items
@@ -358,13 +350,12 @@ export default function CheckoutPage({
         }, 0);
 
         const shipping = 5.0;
-        const tax = subtotal * platform_tax;
-        const total = subtotal + shipping + tax;
+        const total = subtotal + shipping;
 
-        return { subtotal, shipping, tax, total };
+        return { subtotal, shipping, total };
     };
 
-    const { subtotal, shipping, tax, total } = calculateTotals();
+    const { subtotal, shipping, total } = calculateTotals();
     const productsArray = getProductsArray();
 
     // Show loading state
@@ -524,10 +515,8 @@ export default function CheckoutPage({
                                 onPaymentSuccess={handlePaymentSuccess}
                                 onPaymentError={handlePaymentError}
                                 list_product={productsArray}
-                                platform_tax={platform_tax} // Add this
-                                subtotal={subtotal} // Add this
-                                shipping={shipping} // Add this
-                                tax={tax} // Add this
+                                subtotal={subtotal}
+                                shipping={shipping}
                             />
                         </Elements>
 
@@ -669,14 +658,6 @@ export default function CheckoutPage({
                                 <span className="text-gray-600">Shipping</span>
                                 <span className="text-gray-900">
                                     RM {shipping.toFixed(2)}
-                                </span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">
-                                    Tax ({(platform_tax * 100).toFixed(1)}%)
-                                </span>
-                                <span className="text-gray-900">
-                                    RM {tax.toFixed(2)}
                                 </span>
                             </div>
                             <div className="flex justify-between text-lg font-semibold border-t border-gray-200 pt-3">

@@ -4,17 +4,14 @@ import {
     Paperclip,
     Send,
     MoreVertical,
-    ChevronLeft,
     MessageCircle,
     AlertCircle,
-    Wifi,
-    WifiOff,
+    User,
     Menu,
     X,
-    Image,
-    Smile,
     Mic,
     Clock,
+    ChevronLeft,
 } from "lucide-react";
 
 import { Footer } from "@/Components/BuyerPage/Footer";
@@ -60,8 +57,6 @@ export default function BuyerChatPage() {
 
     const handleNewMessage = useCallback(
         (newMessageData) => {
-            console.log("🔄 Handling new message:", newMessageData);
-
             const isFromCurrentBuyer =
                 newMessageData.sender_type === "buyer" &&
                 newMessageData.sender_id === auth.user.user_id;
@@ -212,9 +207,6 @@ export default function BuyerChatPage() {
                     `private-user.${userId}.${roleSuffix}`
                 );
 
-                console.log("Subscribed to:", userChannel.name);
-                console.log("Is subscribed:", userChannel.subscribed);
-
                 userChannel.bind("MessageSent", (data) => {
                     // If this message is for the currently active conversation, add it to messages
                     if (
@@ -274,10 +266,9 @@ export default function BuyerChatPage() {
     const loadConversations = async () => {
         if ((!conversations || conversations.length === 0) && auth.user) {
             try {
-                console.log("Loading conversations from API...");
-                setLoading(true); // Show loading for conversations
+                setLoading(true);
                 const response = await axios.get("/conversations");
-                console.log("API response:", response.data);
+
                 setConversations(response.data);
             } catch (error) {
                 console.error("Error loading conversations:", error);
@@ -291,7 +282,6 @@ export default function BuyerChatPage() {
     // Initialize component with proper data handling
     useEffect(() => {
         if (conversations && conversations.length > 0) {
-            console.log("Setting conversations from props:", conversations);
             setConversations(conversations);
 
             // Set active conversation if provided
@@ -374,7 +364,6 @@ export default function BuyerChatPage() {
         setLoading(true);
         try {
             const response = await axios.get(`/messages/${conversationId}`);
-            console.log("Messages API Response:", response.data);
 
             // Handle both response structures
             const messagesData =
@@ -526,49 +515,6 @@ export default function BuyerChatPage() {
         }));
     };
 
-    // Connection Status Component
-    const ConnectionStatusIndicator = () => {
-        const statusConfig = {
-            connecting: {
-                color: "text-amber-500",
-                bg: "bg-amber-50",
-                text: "Connecting...",
-                icon: Wifi,
-            },
-            connected: {
-                color: "text-emerald-500",
-                bg: "bg-emerald-50",
-                text: "Connected",
-                icon: Wifi,
-            },
-            disconnected: {
-                color: "text-red-500",
-                bg: "bg-red-50",
-                text: "Disconnected",
-                icon: WifiOff,
-            },
-            failed: {
-                color: "text-red-500",
-                bg: "bg-red-50",
-                text: "Connection Failed",
-                icon: AlertCircle,
-            },
-        };
-
-        const config =
-            statusConfig[connectionStatus] || statusConfig.connecting;
-        const StatusIcon = config.icon;
-
-        return (
-            <div
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs ${config.bg} ${config.color}`}
-            >
-                <StatusIcon size={12} />
-                <span>{config.text}</span>
-            </div>
-        );
-    };
-
     // Format time function
     const formatMessageTime = (timestamp) => {
         if (!timestamp) return "";
@@ -589,22 +535,48 @@ export default function BuyerChatPage() {
 
     // User Avatar Component with loading state
     const UserAvatar = ({ user, size = 8, className = "" }) => {
-        // console.log(user);
         const avatarId = `avatar-${user?.id || "default"}`;
         const isLoading = imageLoading[avatarId] !== false;
 
         return (
             <div className={`relative w-${size} h-${size} ${className}`}>
-                {user?.avatar ? (
+                {user.user?.profile_image ? (
+                    // ✅ Buyer profile image
                     <>
                         {isLoading && (
                             <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
                             </div>
                         )}
+
                         <img
-                            src={user.avatar}
-                            alt={user.name}
+                            src={
+                                import.meta.env.VITE_BASE_URL +
+                                user.user.profile_image
+                            }
+                            alt={user.user?.name}
+                            className={`w-full h-full rounded-full object-cover ${
+                                isLoading ? "opacity-0" : "opacity-100"
+                            } transition-opacity`}
+                            onLoad={() => handleImageLoad(avatarId)}
+                            onError={() => handleImageError(avatarId)}
+                        />
+                    </>
+                ) : user.seller?.profile_image ? (
+                    // ✅ Seller profile image (fallback)
+                    <>
+                        {isLoading && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent"></div>
+                            </div>
+                        )}
+
+                        <img
+                            src={
+                                import.meta.env.VITE_BASE_URL +
+                                user.seller.profile_image
+                            }
+                            alt={user.seller?.name}
                             className={`w-full h-full rounded-full object-cover ${
                                 isLoading ? "opacity-0" : "opacity-100"
                             } transition-opacity`}
@@ -613,9 +585,10 @@ export default function BuyerChatPage() {
                         />
                     </>
                 ) : (
-                    <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    // ❌ Default avatar
+                    <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center">
                         <span className="text-white text-xs font-semibold">
-                            U
+                            <User size={20} className="text-gray-600" />
                         </span>
                     </div>
                 )}
@@ -636,7 +609,7 @@ export default function BuyerChatPage() {
             >
                 {!isBuyer && (
                     <UserAvatar
-                        user={message.sender}
+                        user={message}
                         size={8}
                         className="flex-shrink-0"
                     />
@@ -695,7 +668,7 @@ export default function BuyerChatPage() {
 
                 {isBuyer && (
                     <UserAvatar
-                        user={message.sender}
+                        user={message}
                         size={8}
                         className="flex-shrink-0"
                     />
@@ -718,10 +691,19 @@ export default function BuyerChatPage() {
                 onClick={() => handleConversationClick(conversation)}
             >
                 <div className="relative">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                        <span className="text-white font-semibold text-sm">
-                            {conversation.seller_name?.charAt(0) || "S"}
-                        </span>
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center">
+                        {conversation.seller?.profile_image ? (
+                            <img
+                                src={
+                                    import.meta.env.VITE_BASE_URL +
+                                    conversation.seller.profile_image
+                                }
+                                alt={conversation.seller?.name || "User"}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <User size={20} className="text-gray-600" />
+                        )}
                     </div>
                     {conversation.unread_count > 0 && (
                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
@@ -840,7 +822,6 @@ export default function BuyerChatPage() {
                                                 <h2 className="text-lg font-semibold text-gray-900">
                                                     Conversations
                                                 </h2>
-                                                <ConnectionStatusIndicator />
                                             </div>
                                         </div>
                                         {!isMobile && (
@@ -947,7 +928,6 @@ export default function BuyerChatPage() {
                                             )}
                                     </div>
                                 ) : (
-                                    // Active Chat
                                     <>
                                         {/* Chat Header */}
                                         <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-blue-50/50">
@@ -960,15 +940,38 @@ export default function BuyerChatPage() {
                                                             }
                                                             className="p-2 rounded-lg text-black hover:bg-white transition-colors"
                                                         >
-                                                            <Menu size={20} />
+                                                            <ChevronLeft
+                                                                size={20}
+                                                            />
                                                         </button>
                                                     )}
-                                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                                                        <span className="text-white font-semibold text-sm">
-                                                            {activeConversation.seller_name?.charAt(
-                                                                0
-                                                            ) || "S"}
-                                                        </span>
+                                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-200 to-gray-100 flex items-center justify-center">
+                                                        {activeConversation
+                                                            .seller
+                                                            ?.profile_image ? (
+                                                            <img
+                                                                src={
+                                                                    import.meta
+                                                                        .env
+                                                                        .VITE_BASE_URL +
+                                                                    activeConversation
+                                                                        .seller
+                                                                        .profile_image
+                                                                }
+                                                                alt={
+                                                                    activeConversation
+                                                                        .seller
+                                                                        ?.name ||
+                                                                    "User"
+                                                                }
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <User
+                                                                size={20}
+                                                                className="text-gray-600"
+                                                            />
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <h2 className="font-semibold text-gray-900">
@@ -986,13 +989,6 @@ export default function BuyerChatPage() {
                                                             </span>
                                                         </p>
                                                     </div>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-white rounded-xl transition-all">
-                                                        <MoreVertical
-                                                            size={18}
-                                                        />
-                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1056,15 +1052,9 @@ export default function BuyerChatPage() {
                                                                 )
                                                             }
                                                             placeholder="Type your message..."
-                                                            className="text-black w-full pl-4 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                                            className="text-black w-full py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
                                                             disabled={isSending}
                                                         />
-                                                        <button
-                                                            type="button"
-                                                            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 rounded-lg"
-                                                        >
-                                                            <Mic size={18} />
-                                                        </button>
                                                     </div>
                                                 </div>
                                                 <button

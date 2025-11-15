@@ -2,13 +2,18 @@ import {
     Search,
     ChevronLeft,
     ChevronRight,
-    Download,
+    Clock,
+    XCircle,
     ShoppingBag,
     FileText,
-    Printer,
     Filter,
     Calendar,
     ArrowUpDown,
+    Package,
+    CheckCircle,
+    Truck,
+    ThumbsUp,
+    ShieldCheck,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -25,8 +30,9 @@ export function OrdersTab({
     itemsPerPage,
     paginate,
     viewReceipt,
-    printReceipt,
     loading,
+    confirmOrderDelivery,
+    confirmingOrderId,
 }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
@@ -34,6 +40,8 @@ export function OrdersTab({
     const [sortBy, setSortBy] = useState("date");
     const [sortOrder, setSortOrder] = useState("desc");
     const [expandedOrder, setExpandedOrder] = useState(null);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [confirmedOrder, setConfirmedOrder] = useState(null);
 
     // Use orderHistory directly without transformation
     const orders = orderHistory || [];
@@ -114,7 +122,7 @@ export function OrdersTab({
 
     const getStatusBadge = (status) => {
         const baseClasses =
-            "px-3 py-1.5 rounded-full text-xs font-medium flex items-center w-fit transition-all";
+            "px-3 py-1.5 mt-1 md:mt-0 rounded-full text-xs font-medium flex items-center w-fit transition-all";
         return `${baseClasses} ${getStatusColor(status)}`;
     };
 
@@ -174,6 +182,223 @@ export function OrdersTab({
         return order.selected_options;
     };
 
+    // NEW: Enhanced order confirmation handler with modal
+    const handleOrderConfirmation = async (order) => {
+        if (confirmOrderDelivery) {
+            const success = await confirmOrderDelivery(order.order_id);
+            if (success) {
+                setConfirmedOrder(order);
+                setShowSuccessModal(true);
+            }
+        }
+    };
+
+    // NEW: Success Confirmation Modal
+    const SuccessConfirmationModal = () => {
+        if (!showSuccessModal || !confirmedOrder) return null;
+
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+                    <div className="text-center">
+                        {/* Success Icon */}
+                        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                            <ThumbsUp className="h-8 w-8 text-green-600" />
+                        </div>
+
+                        {/* Success Message */}
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">
+                            Order Confirmed!
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                            Thank you for confirming your order #
+                            {confirmedOrder.order_id}. Your feedback helps us
+                            maintain quality service.
+                        </p>
+
+                        {/* Additional Info */}
+                        <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                            <p className="text-sm text-gray-700">
+                                <strong>Payment Status:</strong> Released to
+                                seller
+                            </p>
+                            {confirmedOrder.commission_amount && (
+                                <p className="text-sm text-gray-700 mt-1">
+                                    <strong>Platform Commission:</strong> RM{" "}
+                                    {parseFloat(
+                                        confirmedOrder.commission_amount
+                                    ).toFixed(2)}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Close Button */}
+                        <button
+                            onClick={() => {
+                                setShowSuccessModal(false);
+                                setConfirmedOrder(null);
+                            }}
+                            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                        >
+                            Continue Shopping
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // NEW: Enhanced status badge with delivery tracking
+    const renderEnhancedStatus = (order) => {
+        const statusConfig = {
+            Pending: {
+                color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+                icon: Package,
+                message: "Awaiting seller confirmation",
+            },
+            Processing: {
+                color: "bg-blue-100 text-blue-800 border-blue-200",
+                icon: Clock,
+                message: "Order is being processed",
+            },
+            Cancelled: {
+                color: "bg-red-100 text-red-800 border-red-200",
+                icon: XCircle,
+                message: "Order has been cancelled",
+            },
+            Delivered: {
+                color: "bg-yellow-100 text-yellow-800 border-yellow-200",
+                icon: Package,
+                message: "Ready for confirmation",
+            },
+            Completed: {
+                color: order.buyer_confirmed
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                    : "bg-green-100 text-green-800 border-green-200",
+                icon: order.buyer_confirmed ? ThumbsUp : CheckCircle,
+                message: order.buyer_confirmed
+                    ? "Order confirmed by buyer"
+                    : "Awaiting buyer confirmation",
+            },
+            Shipped: {
+                color: "bg-purple-100 text-purple-800 border-purple-200",
+                icon: Truck,
+                message: "On the way",
+            },
+        };
+
+        const config = statusConfig[order.order_status];
+        if (!config) return null;
+
+        const IconComponent = config.icon;
+
+        return (
+            <div className="space-y-2">
+                <span className={getStatusBadge(order.order_status)}>
+                    <IconComponent size={14} />
+                    <span className="ml-1 capitalize">
+                        {order.order_status}
+                    </span>
+                </span>
+                {config.message && (
+                    <p className="text-xs text-gray-500">{config.message}</p>
+                )}
+            </div>
+        );
+    };
+
+    // NEW: Render action buttons for desktop view
+    const renderActionButtons = (order) => {
+        return (
+            <div className="flex flex-col gap-2">
+                {/* Receipt Button - Always visible */}
+                <button
+                    onClick={() => viewReceipt(order)}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    title="View Receipt"
+                >
+                    <FileText size={16} />
+                    Receipt
+                </button>
+
+                {/* Order Completion Confirmation Button */}
+                {order.order_status === "Delivered" && (
+                    <button
+                        onClick={() => handleOrderConfirmation(order)}
+                        disabled={confirmingOrderId === order.order_id}
+                        className="w-36 flex items-center gap-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                        title="Confirm Order Completion"
+                    >
+                        {confirmingOrderId === order.order_id ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                Confirming...
+                            </>
+                        ) : (
+                            <>
+                                <ThumbsUp size={16} />
+                                Confirm Order
+                            </>
+                        )}
+                    </button>
+                )}
+
+                {/* Confirmed Status Badge */}
+                {order.order_status === "Completed" && (
+                    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 px-3 py-2 rounded-lg text-sm font-medium border border-emerald-200">
+                        <ThumbsUp size={16} />
+                        Confirmed
+                    </span>
+                )}
+            </div>
+        );
+    };
+
+    // NEW: Render action buttons for mobile view
+    const renderMobileActionButtons = (order) => {
+        return (
+            <div className="flex gap-2 pt-3 border-t border-gray-100">
+                {/* Receipt Button */}
+                <button
+                    onClick={() => viewReceipt(order)}
+                    className="w-full flex flex-row items-center justify-center gap-2 bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                    <FileText size={16} />
+                    View Receipt
+                </button>
+
+                {/* Delivery Confirmation Button */}
+                {order.order_status === "Delivered" && (
+                    <button
+                        onClick={() => confirmOrderDelivery(order.order_id)}
+                        disabled={confirmingOrderId === order.order_id}
+                        className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-2 px-3 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm font-medium"
+                    >
+                        {confirmingOrderId === order.order_id ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                Confirming...
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircle size={16} />
+                                Confirm
+                            </>
+                        )}
+                    </button>
+                )}
+
+                {/* Confirmed Status Badge */}
+                {order.order_status === "Completed" && (
+                    <span className="flex-1 flex items-center justify-center gap-1 bg-emerald-100 text-emerald-800 py-2 px-3 rounded-lg text-sm font-medium border border-emerald-200">
+                        <ThumbsUp size={16} />
+                        Confirmed
+                    </span>
+                )}
+            </div>
+        );
+    };
+
     if (loading) {
         return (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -186,21 +411,37 @@ export function OrdersTab({
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Success Modal */}
+            <SuccessConfirmationModal />
+
             {/* Enhanced Header */}
             <div className="border-b border-gray-100 px-6 py-6">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                            <ShoppingBag className="text-white" size={24} />
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 lg:gap-6">
+                    <div className="flex items-center gap-3 lg:gap-4">
+                        {/* Icon - Same size on all devices */}
+                        <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <ShoppingBag className="text-white w-5 h-5 lg:w-6 lg:h-6" />
                         </div>
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-900">
+
+                        {/* Content - Responsive layout */}
+                        <div className="flex flex-col md:flex-row md:gap-20 min-w-0">
+                            {/* Title - Responsive sizing */}
+                            <h2 className="text-xl lg:text-2xl font-bold text-gray-900 truncate">
                                 Order History
                             </h2>
-                            <p className="text-gray-600 mt-1 flex items-center gap-2">
-                                <span>{orders.length} orders placed</span>
-                                <span className="text-gray-300">•</span>
-                                <span>
+
+                            {/* Stats - Stack on mobile, row on desktop */}
+                            <div className="flex flex-col md:flex-row xs:flex-row xs:items-center gap-1 xs:gap-2 md:gap-10 mt-1">
+                                <span className="text-sm lg:text-base text-gray-600 whitespace-nowrap">
+                                    {orders.length} orders placed
+                                </span>
+
+                                {/* Separator - Hidden on mobile, visible on small tablets and up */}
+                                <span className="hidden xs:inline text-gray-300">
+                                    •
+                                </span>
+
+                                <span className="text-sm lg:text-base text-gray-600 whitespace-nowrap">
                                     RM{" "}
                                     {orders
                                         .reduce(
@@ -211,7 +452,7 @@ export function OrdersTab({
                                         .toFixed(2)}{" "}
                                     total spent
                                 </span>
-                            </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -245,13 +486,13 @@ export function OrdersTab({
                             className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 appearance-none"
                         >
                             <option value="all">All Status</option>
-                            <option value="pending">Pending</option>
-                            <option value="processing">Processing</option>
-                            <option value="shipped">Shipped</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="completed">Completed</option>
-                            <option value="cancelled">Cancelled</option>
-                            <option value="refunded">Refunded</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Processing">Processing</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Delivered">Delivered</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Refunded">Refunded</option>
                         </select>
                     </div>
 
@@ -290,15 +531,15 @@ export function OrdersTab({
                             {currentFilteredOrders.map((order) => (
                                 <div
                                     key={order.order_id}
-                                    className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                                    className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow bg-white"
                                 >
                                     {/* Order Header */}
-                                    <div className="flex justify-between items-start mb-3">
+                                    <div className="flex flex-col md:flex-row justify-between items-start mb-3">
                                         <div>
                                             <p className="font-bold text-gray-900">
                                                 {order.order_id}
                                             </p>
-                                            <p className="text-sm text-gray-500">
+                                            <p className="text-sm text-gray-500 mt-1 md:mt-0">
                                                 {new Date(
                                                     order.created_at
                                                 ).toLocaleDateString("en-US", {
@@ -391,16 +632,8 @@ export function OrdersTab({
                                         </span>
                                     </div>
 
-                                    {/* Actions */}
-                                    <div className="flex gap-2 pt-3 border-t border-gray-100">
-                                        <button
-                                            onClick={() => viewReceipt(order)}
-                                            className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-3 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                                        >
-                                            <FileText size={16} />
-                                            Receipt
-                                        </button>
-                                    </div>
+                                    {/* Mobile Action Buttons */}
+                                    {renderMobileActionButtons(order)}
                                 </div>
                             ))}
                         </div>
@@ -526,20 +759,8 @@ export function OrdersTab({
                                             </td>
 
                                             <td className="px-6 py-4">
-                                                <div className="space-y-2">
-                                                    <span
-                                                        className={getStatusBadge(
-                                                            order.order_status
-                                                        )}
-                                                    >
-                                                        {getStatusIcon(
-                                                            order.order_status
-                                                        )}
-                                                        <span className="ml-1 capitalize">
-                                                            {order.order_status}
-                                                        </span>
-                                                    </span>
-                                                </div>
+                                                {/* Enhanced Status */}
+                                                {renderEnhancedStatus(order)}
                                             </td>
 
                                             <td className="px-6 py-4">
@@ -564,18 +785,8 @@ export function OrdersTab({
                                             </td>
 
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={() =>
-                                                            viewReceipt(order)
-                                                        }
-                                                        className="flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                                                        title="View Receipt"
-                                                    >
-                                                        <FileText size={16} />
-                                                        Receipt
-                                                    </button>
-                                                </div>
+                                                {/* Action Buttons */}
+                                                {renderActionButtons(order)}
                                             </td>
                                         </tr>
                                     ))}

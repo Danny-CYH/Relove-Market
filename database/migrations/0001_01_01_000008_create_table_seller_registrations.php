@@ -16,12 +16,13 @@ return new class extends Migration {
             $table->string("email");
             $table->string("phone_number");
             $table->string("store_name");
-            $table->string("store_license");
             $table->string("store_description");
             $table->string("store_address");
             $table->string("store_city");
             $table->string("store_state");
             $table->string('business_id');
+            $table->string('verification_type');
+            $table->string('verification_image');
             $table->string("status");
             $table->timestamps();
         });

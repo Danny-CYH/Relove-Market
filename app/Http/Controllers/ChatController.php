@@ -37,7 +37,7 @@ class ChatController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
-        $messages = Message::with('sender')
+        $messages = Message::with('sender', 'user', "seller")
             ->where('conversation_id', $conversationId)
             ->orderBy('created_at', 'asc')
             ->get()
@@ -45,6 +45,8 @@ class ChatController extends Controller
                 return [
                     'id' => $message->id,
                     'conversation_id' => $message->conversation_id,
+                    'user' => $message->user,
+                    'seller' => $message->seller,
                     'sender_id' => $message->sender_id,
                     'sender_type' => $message->sender_type,
                     'message' => $message->message,
@@ -189,6 +191,8 @@ class ChatController extends Controller
             ->map(function ($conversation) use ($user) {
                 return [
                     'id' => $conversation->id,
+                    'user' => $conversation->buyer,
+                    'seller' => $conversation->seller,
                     'seller_name' => $conversation->seller->name ?? 'Unknown Seller',
                     'buyer_name' => $conversation->buyer->name ?? 'Unknown Buyer',
                     'product' => $conversation->product->product_name ?? 'Unknown Product',

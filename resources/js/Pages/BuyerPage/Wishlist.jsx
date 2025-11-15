@@ -37,6 +37,109 @@ export default function Wishlist({ user_wishlist }) {
         }
     }, [auth.user]);
 
+    // Enhanced rating calculation function
+    const calculateProductRating = (product) => {
+        const ratings = [];
+        if (product.product?.total_ratings) {
+            const total = parseFloat(product.product.total_ratings);
+            if (!isNaN(total) && total > 0) {
+                ratings.push({ rating: total });
+            }
+        } else if (product.ratings && product.ratings.length > 0) {
+            ratings.push(...product.ratings);
+        }
+
+        if (!ratings || ratings.length === 0) {
+            return {
+                average: 0,
+                total: 0,
+                breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 },
+            };
+        }
+
+        // Calculate average rating
+        const totalRating = ratings.reduce(
+            (sum, rating) => sum + (rating.rating || 0),
+            0
+        );
+        const averageRating = totalRating / ratings.length;
+
+        // Calculate rating breakdown
+        const breakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+        ratings.forEach((rating) => {
+            const star = Math.round(rating.rating);
+            if (breakdown[star] !== undefined) {
+                breakdown[star]++;
+            }
+        });
+
+        return {
+            average: parseFloat(averageRating.toFixed(1)),
+            total: ratings.length,
+            breakdown,
+        };
+    };
+
+    // Star rating display component
+    const StarRating = ({
+        rating,
+        size = 14,
+        showNumber = false,
+        className = "",
+    }) => {
+        const fullStars = Math.floor(rating);
+        const hasHalfStar = rating % 1 >= 0.5;
+
+        return (
+            <div className={`flex items-center gap-1 ${className}`}>
+                <div className="flex items-center">
+                    {[...Array(5)].map((_, index) => {
+                        if (index < fullStars) {
+                            return (
+                                <Star
+                                    key={index}
+                                    size={size}
+                                    className="text-yellow-400 fill-current"
+                                />
+                            );
+                        } else if (index === fullStars && hasHalfStar) {
+                            return (
+                                <div key={index} className="relative">
+                                    <Star
+                                        size={size}
+                                        className="text-gray-300 fill-current"
+                                    />
+                                    <div
+                                        className="absolute inset-0 overflow-hidden"
+                                        style={{ width: "50%" }}
+                                    >
+                                        <Star
+                                            size={size}
+                                            className="text-yellow-400 fill-current"
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        } else {
+                            return (
+                                <Star
+                                    key={index}
+                                    size={size}
+                                    className="text-gray-300 fill-current"
+                                />
+                            );
+                        }
+                    })}
+                </div>
+                {showNumber && (
+                    <span className="text-sm text-gray-600 ml-1">
+                        ({rating})
+                    </span>
+                )}
+            </div>
+        );
+    };
+
     // Enhanced variant parsing function
     const parseVariantData = (variantData) => {
         if (!variantData) return null;
@@ -609,22 +712,6 @@ export default function Wishlist({ user_wishlist }) {
                                 </div>
                             )}
 
-                            {/* Debug info - remove in production */}
-                            <div className="mb-4 p-2 bg-gray-100 rounded text-xs text-gray-600">
-                                <div>
-                                    Available Attributes:{" "}
-                                    {variantAttributes.length}
-                                </div>
-                                <div>
-                                    Available Variants:{" "}
-                                    {availableVariants.length}
-                                </div>
-                                <div>
-                                    Selected Options:{" "}
-                                    {JSON.stringify(selectedOptions)}
-                                </div>
-                            </div>
-
                             {/* Variant Selection Options */}
                             {variantAttributes.map((attribute) => {
                                 const availableOptions =
@@ -853,6 +940,10 @@ export default function Wishlist({ user_wishlist }) {
                                     const productHasVariants =
                                         hasVariants(product);
 
+                                    // Calculate product rating
+                                    const ratingInfo =
+                                        calculateProductRating(product);
+
                                     return (
                                         <div
                                             key={`${product.product_id}-${
@@ -894,7 +985,7 @@ export default function Wishlist({ user_wishlist }) {
                                                     )}
                                                     className="flex-shrink-0 w-full sm:w-32 h-48 sm:h-32 p-4 sm:p-0 sm:pr-4"
                                                 >
-                                                    <div className="w-full h-full md:mt-8 bg-gray-100 rounded-xl overflow-hidden">
+                                                    <div className="w-full h-full md:mt-8 bg-gray-100 rounded-xl overflow-hidden relative">
                                                         <img
                                                             src={
                                                                 import.meta.env
@@ -916,6 +1007,21 @@ export default function Wishlist({ user_wishlist }) {
                                                             }
                                                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                                                         />
+                                                        {/* Rating Badge on Image */}
+                                                        {ratingInfo.total >
+                                                            0 && (
+                                                            <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-full flex items-center gap-1">
+                                                                <Star
+                                                                    size={12}
+                                                                    className="text-yellow-400 fill-current"
+                                                                />
+                                                                <span className="text-xs font-medium">
+                                                                    {
+                                                                        ratingInfo.average
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </Link>
 
@@ -935,6 +1041,34 @@ export default function Wishlist({ user_wishlist }) {
                                                                         "Unnamed Product"}
                                                                 </h2>
                                                             </Link>
+
+                                                            {/* Enhanced Rating Display */}
+                                                            <div className="mt-2 flex items-center gap-3">
+                                                                <StarRating
+                                                                    rating={
+                                                                        ratingInfo.average
+                                                                    }
+                                                                    size={16}
+                                                                    showNumber={
+                                                                        true
+                                                                    }
+                                                                />
+                                                                {ratingInfo.total >
+                                                                    0 && (
+                                                                    <span className="text-sm text-gray-500">
+                                                                        (
+                                                                        {
+                                                                            ratingInfo.total
+                                                                        }{" "}
+                                                                        review
+                                                                        {ratingInfo.total !==
+                                                                        1
+                                                                            ? "s"
+                                                                            : ""}
+                                                                        )
+                                                                    </span>
+                                                                )}
+                                                            </div>
 
                                                             {/* Variant Information with Reselect Option */}
                                                             <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -1017,30 +1151,8 @@ export default function Wishlist({ user_wishlist }) {
                                                                     </div>
                                                                 )}
 
-                                                            {/* Rating and Stock Status */}
+                                                            {/* Stock Status */}
                                                             <div className="flex items-center gap-4 mt-2">
-                                                                <div className="flex items-center gap-1">
-                                                                    {[
-                                                                        ...Array(
-                                                                            5
-                                                                        ),
-                                                                    ].map(
-                                                                        (
-                                                                            _,
-                                                                            i
-                                                                        ) => (
-                                                                            <Star
-                                                                                key={
-                                                                                    i
-                                                                                }
-                                                                                size={
-                                                                                    14
-                                                                                }
-                                                                                className="text-yellow-400 fill-current"
-                                                                            />
-                                                                        )
-                                                                    )}
-                                                                </div>
                                                                 <span
                                                                     className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                                                         !isOutOfStock

@@ -209,11 +209,7 @@ export function CameraSearchModal({
                             </h2>
                             <p className="text-sm text-gray-600">
                                 {safeSearchResults.length > 0
-                                    ? `Found ${
-                                          safeSearchResults.length
-                                      } similar items (≥${Math.round(
-                                          similarityThreshold * 100
-                                      )}% match)`
+                                    ? `Found ${safeSearchResults.length} similar items`
                                     : searchResults?.data?.error
                                     ? "No similar products found"
                                     : isLoading
@@ -277,12 +273,6 @@ export function CameraSearchModal({
                                     )}
                                 </span>
                             )}
-                            <span>
-                                Similarity Threshold:{" "}
-                                <strong>
-                                    {Math.round(similarityThreshold * 100)}%
-                                </strong>
-                            </span>
                             {topSimilarity && (
                                 <span>
                                     Best Match:{" "}
@@ -393,16 +383,7 @@ export function CameraSearchModal({
                         // ✅ RESULTS GRID - This should now display your products
                         <div className="p-6">
                             {/* Results Info */}
-                            <div className="mb-6 flex justify-between items-center">
-                                <p className="text-sm text-gray-600">
-                                    Showing {displayedResults.length} of{" "}
-                                    {safeSearchResults.length} results
-                                    <span className="ml-2 text-green-600">
-                                        (≥
-                                        {Math.round(similarityThreshold * 100)}%
-                                        match)
-                                    </span>
-                                </p>
+                            <div className="mb-6 flex flex-col md:flex-row justify-between items-center gap-y-3">
                                 <div className="flex items-center space-x-2 text-sm text-gray-500">
                                     <FaSearch className="text-xs" />
                                     <span>Sorted by AI similarity</span>
@@ -446,16 +427,8 @@ export function CameraSearchModal({
 
                 {/* Footer */}
                 <div className="p-4 border-t border-gray-200 bg-gray-50">
-                    <div className="flex justify-between items-center text-sm text-gray-600">
+                    <div className="flex justify-center items-center text-sm text-gray-600">
                         <span>Powered by AI Visual Search</span>
-                        <div className="flex space-x-4">
-                            <button className="hover:text-green-600 transition-colors">
-                                Feedback
-                            </button>
-                            <button className="hover:text-green-600 transition-colors">
-                                Help
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>

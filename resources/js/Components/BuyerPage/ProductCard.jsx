@@ -7,6 +7,7 @@ import {
     FaTimes,
     FaInfo,
     FaSearch,
+    FaProductHunt,
 } from "react-icons/fa";
 import { useState } from "react";
 import { Link } from "@inertiajs/react";
@@ -49,8 +50,7 @@ export function ProductCard({
         product.category || { category_name: "General" };
     const ratings = productData.product_ratings || 0;
     const rating = parseFloat(ratings[0]?.rating ?? ratings ?? 0);
-    const reviewCount =
-        ratings[0]?.review_count || productData.ratings || 0;
+    const reviewCount = ratings[0]?.review_count || productData.ratings || 0;
     const seller = productData.seller || {
         seller_store: { store_name: "Unknown Seller" },
     };
@@ -153,33 +153,6 @@ export function ProductCard({
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                {/* AI Result Badge */}
-                {isAiResult && (
-                    <div className="absolute top-3 right-3 z-10">
-                        <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center space-x-1">
-                            <FaSearch className="text-xs" />
-                            <span>AI Match</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* Similarity Indicator for AI Results */}
-                {isAiResult && aiSimilarity && (
-                    <div className="absolute top-12 right-3 z-10">
-                        <div
-                            className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                                aiSimilarity > 0.8
-                                    ? "bg-green-100 text-green-800"
-                                    : aiSimilarity > 0.6
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-blue-100 text-blue-800"
-                            }`}
-                        >
-                            {Math.round(aiSimilarity * 100)}% Match
-                        </div>
-                    </div>
-                )}
-
                 {/* Image Section */}
                 <div className="relative overflow-hidden bg-gray-50">
                     <div className="relative h-60 sm:h-56 md:h-52 lg:h-48 xl:h-56">
@@ -282,7 +255,7 @@ export function ProductCard({
                                 className={`w-full flex items-center justify-center space-x-2 py-3 px-4 rounded-xl font-semibold transition-all duration-300 ${
                                     isFlashSale
                                         ? "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                                        : "bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-800 hover:to-gray-700 text-white shadow-md hover:shadow-lg"
+                                        : "bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-800 hover:to-blue-700 text-white shadow-md hover:shadow-lg"
                                 } ${
                                     !isInStock
                                         ? "opacity-50 cursor-not-allowed"
@@ -290,7 +263,6 @@ export function ProductCard({
                                 }`}
                                 disabled={!isInStock}
                             >
-                                <FaShoppingCart className="w-4 h-4" />
                                 <span>
                                     {!isInStock
                                         ? "Out of Stock"
@@ -309,19 +281,6 @@ export function ProductCard({
                                 seller.store_name ||
                                 "Unknown Store"}
                         </span>
-                        {isAiResult && aiConfidence && (
-                            <span
-                                className={`font-medium ${
-                                    aiConfidence === "high"
-                                        ? "text-green-600"
-                                        : aiConfidence === "medium"
-                                        ? "text-yellow-600"
-                                        : "text-blue-600"
-                                }`}
-                            >
-                                {aiConfidence} confidence
-                            </span>
-                        )}
                     </div>
                 </div>
 

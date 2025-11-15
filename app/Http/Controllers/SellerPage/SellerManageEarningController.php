@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 
 use App\Models\Order;
 
+use App\Models\SellerEarning;
 use Exception;
 
 use Illuminate\Http\Request;
@@ -33,34 +34,33 @@ class SellerManageEarningController extends Controller
             $perPage = 5;
 
             // Total earnings from completed/delivered orders
-            $totalEarnings = Order::where('seller_id', $sellerId)
-                ->whereIn('order_status', ['Delivered', 'completed'])
-                ->sum('amount');
+            $totalEarnings = SellerEarning::where('seller_id', $sellerId)
+                ->where("status", "Released")
+                ->sum('payout_amount');
 
             // Pending payouts (orders that are delivered but not paid out yet)
-            $pendingPayouts = Order::where('seller_id', $sellerId)
-                ->where('order_status', 'Delivered')
-                ->sum('amount');
+            $pendingPayouts = SellerEarning::where('seller_id', $sellerId)
+                ->where('status', 'Pending')
+                ->sum('payout_amount');
 
             // This month earnings
-            $thisMonth = Order::where('seller_id', $sellerId)
-                ->whereIn('order_status', ['Delivered', 'completed'])
+            $thisMonth = SellerEarning::where('seller_id', $sellerId)
+                ->where("status", "Released")
                 ->whereYear('created_at', now()->year)
                 ->whereMonth('created_at', now()->month)
-                ->sum('amount');
+                ->sum('payout_amount');
 
             // Last month earnings
-            $lastMonth = Order::where('seller_id', $sellerId)
-                ->whereIn('order_status', ['Delivered', 'completed'])
+            $lastMonth = SellerEarning::where('seller_id', $sellerId)
+                ->where("status", "Released")
                 ->whereYear('created_at', now()->subMonth()->year)
                 ->whereMonth('created_at', now()->subMonth()->month)
-                ->sum('amount');
+                ->sum('payout_amount');
 
             // Today's earnings
-            $today = Order::where('seller_id', $sellerId)
-                ->whereIn('order_status', ['Delivered', 'completed'])
+            $today = SellerEarning::where('seller_id', $sellerId)
                 ->whereDate('created_at', today())
-                ->sum('amount');
+                ->sum('payout_amount');
 
             // Chart data based on filter
             $chartData = [];
@@ -71,10 +71,10 @@ class SellerManageEarningController extends Controller
                     // Last 7 days
                     for ($i = 6; $i >= 0; $i--) {
                         $date = now()->subDays($i);
-                        $dailyEarnings = Order::where('seller_id', $sellerId)
-                            ->whereIn('order_status', ['Delivered', 'completed'])
+                        $dailyEarnings = SellerEarning::where('seller_id', $sellerId)
+                            ->where("status", "Released")
                             ->whereDate('created_at', $date->format('Y-m-d'))
-                            ->sum('amount');
+                            ->sum('payout_amount');
 
                         $chartData[] = $dailyEarnings;
                         $chartLabels[] = $date->format('D, M d');
@@ -85,11 +85,11 @@ class SellerManageEarningController extends Controller
                     // Last 6 months
                     for ($i = 5; $i >= 0; $i--) {
                         $date = now()->startOfMonth()->subMonths($i);
-                        $monthlyEarnings = Order::where('seller_id', $sellerId)
-                            ->whereIn('order_status', ['Delivered', 'completed'])
+                        $monthlyEarnings = SellerEarning::where('seller_id', $sellerId)
+                            ->where("status", "Released")
                             ->whereYear('created_at', $date->year)
                             ->whereMonth('created_at', $date->month)
-                            ->sum('amount');
+                            ->sum('payout_amount');
 
                         $chartData[] = $monthlyEarnings;
                         $chartLabels[] = $date->format('M');
@@ -100,10 +100,10 @@ class SellerManageEarningController extends Controller
                     // Last 5 years
                     for ($i = 4; $i >= 0; $i--) {
                         $year = now()->subYears($i)->year;
-                        $yearlyEarnings = Order::where('seller_id', $sellerId)
-                            ->whereIn('order_status', ['Delivered', 'completed'])
+                        $yearlyEarnings = SellerEarning::where('seller_id', $sellerId)
+                            ->where("status", "Released")
                             ->whereYear('created_at', $year)
-                            ->sum('amount');
+                            ->sum('payout_amount');
 
                         $chartData[] = $yearlyEarnings;
                         $chartLabels[] = $year;
@@ -114,7 +114,7 @@ class SellerManageEarningController extends Controller
             // Recent transactions with pagination
             $transactionsQuery = Order::with(["orderItems.product"])
                 ->where('seller_id', $sellerId)
-                ->whereIn('order_status', ['Delivered', 'completed'])
+                ->whereIn('order_status', ['Delivered', 'Completed'])
                 ->orderBy('created_at', 'desc');
 
             $paginatedTransactions = $transactionsQuery->paginate($perPage, ['*'], 'page', $page);
@@ -199,11 +199,11 @@ class SellerManageEarningController extends Controller
             // Fetch earnings data for the period
             $query = Order::with(['user', 'orderItems.product'])
                 ->where('seller_id', $sellerId)
-                ->whereIn('order_status', ['Delivered', 'completed'])
+                ->whereIn('order_status', ['Delivered', 'Completed'])
                 ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
             $transactions = $query->get();
-            $totalEarnings = $transactions->sum('amount');
+            $totalEarnings = $transactions->sum('seller_amount');
             $transactionCount = $transactions->count();
 
             // Prepare report data

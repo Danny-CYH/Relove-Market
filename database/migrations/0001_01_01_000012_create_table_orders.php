@@ -20,8 +20,6 @@ return new class extends Migration {
             $table->string("payment_method");
             $table->string("payment_status");
             $table->string("order_status");
-            $table->string("platform_tax");
-            $table->double("tax_amount");
             $table->text('notes')->nullable();
             $table->timestamps();
         });

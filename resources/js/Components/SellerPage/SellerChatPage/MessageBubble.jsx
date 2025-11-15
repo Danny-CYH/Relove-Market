@@ -7,6 +7,8 @@ export function MessageBubble({
     message,
     formatConversationTimeForDisplay,
     imageLoading,
+    handleImageLoad,
+    handleImageError,
 }) {
     const isBuyer = message.sender_type === "seller";
     const isOptimistic = message.isOptimistic;
@@ -21,10 +23,12 @@ export function MessageBubble({
         >
             {!isBuyer && (
                 <UserAvatar
-                    user={message.sender}
+                    user={message}
                     size={8}
                     className="flex-shrink-0"
                     imageLoading={imageLoading}
+                    handleImageLoad={handleImageLoad}
+                    handleImageError={handleImageError}
                 />
             )}
 
@@ -88,6 +92,8 @@ export function MessageBubble({
                     size={8}
                     className="flex-shrink-0"
                     imageLoading={imageLoading}
+                    handleImageLoad={handleImageLoad}
+                    handleImageError={handleImageError}
                 />
             )}
         </div>

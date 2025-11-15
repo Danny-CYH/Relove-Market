@@ -187,8 +187,6 @@ class PaymentController extends Controller
                 'order_items.*.quantity' => 'required|integer|min:1',
                 'order_items.*.price' => 'required|numeric|min:0',
                 'order_items.*.selected_variant' => 'sometimes|array',
-                'platform_tax' => 'required|numeric|min:0',
-                'tax_amount' => 'required|numeric|min:0',
                 'subtotal' => 'required|numeric|min:0',
                 'shipping' => 'required|numeric|min:0',
                 'payment_method' => 'required|string',
@@ -235,8 +233,6 @@ class PaymentController extends Controller
                     'order_id' => $orderId,
                     'user_id' => $request->user_id,
                     'seller_id' => $request->seller_id,
-                    'platform_tax' => $request->platform_tax,
-                    'tax_amount' => $request->tax_amount,
                     'subtotal' => $request->subtotal,
                     'shipping' => $request->shipping,
                     'payment_method' => $request->payment_method,
@@ -281,8 +277,6 @@ class PaymentController extends Controller
             'order_items.*.quantity' => 'required|integer|min:1',
             'order_items.*.price' => 'required|numeric|min:0',
             'order_items.*.selected_variant' => 'sometimes|array',
-            'platform_tax' => 'required|numeric|min:0',
-            'tax_amount' => 'required|numeric|min:0',
             'subtotal' => 'required|numeric|min:0',
             'shipping' => 'required|numeric|min:0',
             'payment_method' => 'required|string',
@@ -299,15 +293,15 @@ class PaymentController extends Controller
         try {
             // For Cash on Delivery, we don't need to check Stripe
             if ($request->payment_method === 'cod') {
-                $paymentStatus = 'pending';
-                $orderStatus = 'pending';
+                $paymentStatus = 'Pending';
+                $orderStatus = 'Pending';
             } else {
                 Stripe::setApiKey(env('STRIPE_SECRET'));
                 Log::info('Retrieving payment intent: ' . $request->payment_intent_id);
                 $paymentIntent = PaymentIntent::retrieve($request->payment_intent_id);
                 Log::info('Payment intent status: ' . $paymentIntent->status);
                 $paymentStatus = $paymentIntent->status === 'succeeded' ? 'paid' : 'failed';
-                $orderStatus = $paymentIntent->status === 'succeeded' ? 'pending' : 'incomplete';
+                $orderStatus = $paymentIntent->status === 'succeeded' ? 'Pending' : 'incomplete';
             }
 
             // For successful payments or COD
@@ -393,8 +387,6 @@ class PaymentController extends Controller
                     'order_status' => $orderStatus,
                     'user_id' => $request->user_id,
                     'seller_id' => $request->seller_id,
-                    'platform_tax' => $request->platform_tax,
-                    'tax_amount' => $request->tax_amount,
                     'payment_method' => $request->payment_method, // Store payment method
                     'notes' => $request->notes ?? null,
                 ]);
@@ -415,8 +407,6 @@ class PaymentController extends Controller
                     'payment_intent_id' => $order->payment_intent_id,
                     'seller_id' => $order->seller_id,
                     'payment_method' => $order->payment_method,
-                    'platform_tax' => $order->platform_tax,
-                    'tax_amount' => $order->tax_amount,
                     'items_count' => count($request->order_items),
                 ]);
 
@@ -447,8 +437,6 @@ class PaymentController extends Controller
                     'order_status' => "incomplete",
                     'user_id' => $request->user_id,
                     'seller_id' => $request->seller_id,
-                    'platform_tax' => $request->platform_tax,
-                    'tax_amount' => $request->tax_amount,
                     'payment_method' => $request->payment_method,
                     'notes' => 'Payment failed: ' . ($paymentIntent->status ?? 'unknown'),
                 ]);

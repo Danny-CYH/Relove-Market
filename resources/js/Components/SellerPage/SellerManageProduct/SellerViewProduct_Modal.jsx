@@ -1,19 +1,15 @@
 import {
     X,
     Package,
-    Weight,
     CheckCircle,
-    Truck,
     Star,
     Box,
-    List,
     ImageIcon,
     Video,
     Info,
     Calendar,
     Edit,
     Eye,
-    Layers,
     Tag,
     ShoppingCart,
     BarChart3,
@@ -38,7 +34,6 @@ export function SellerViewProduct_Modal({ product, onClose }) {
     const getConditionStyle = (condition) => {
         const styles = {
             new: "bg-green-100 text-green-800 border-green-200",
-            like_new: "bg-blue-100 text-blue-800 border-blue-200",
             excellent: "bg-emerald-100 text-emerald-800 border-emerald-200",
             good: "bg-amber-100 text-amber-800 border-amber-200",
             fair: "bg-orange-100 text-orange-800 border-orange-200",
@@ -50,7 +45,6 @@ export function SellerViewProduct_Modal({ product, onClose }) {
     const getConditionLabel = (condition) => {
         const labels = {
             new: "Brand New",
-            like_new: "Like New",
             excellent: "Excellent",
             good: "Good",
             fair: "Fair",
@@ -92,10 +86,6 @@ export function SellerViewProduct_Modal({ product, onClose }) {
         return "In Stock";
     };
 
-    const hasOptions = product?.product_option?.some(
-        (option) => option.product_option_value?.length > 0
-    );
-
     const hasFeatures = product?.product_feature?.length > 0;
     const hasIncludedItems = product?.product_include_item?.length > 0;
     const hasImages = product?.product_image?.length > 0;
@@ -107,8 +97,6 @@ export function SellerViewProduct_Modal({ product, onClose }) {
             year: "numeric",
             month: "short",
             day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
         });
     };
 
@@ -177,21 +165,21 @@ export function SellerViewProduct_Modal({ product, onClose }) {
     return (
         <>
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-2 sm:p-4">
-                <div className="bg-white rounded-lg sm:rounded-2xl shadow-xl sm:shadow-2xl w-full max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col mx-2 sm:mx-0">
+                <div className="bg-white rounded-lg sm:rounded-xl shadow-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col mx-2 sm:mx-0">
                     {/* Header */}
-                    <div className="flex justify-between items-start sm:items-center p-4 sm:p-6 border-b bg-gradient-to-r from-gray-50 to-white sticky top-0 z-10">
-                        <div className="flex items-start sm:items-center space-x-3 sm:space-x-4 max-w-[70%]">
-                            <div className="bg-indigo-100 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                    <div className="flex justify-between items-start sm:items-center p-4 sm:p-5 border-b bg-white sticky top-0 z-10">
+                        <div className="flex items-start sm:items-center space-x-3 max-w-[70%]">
+                            <div className="bg-indigo-100 p-2 rounded-lg flex-shrink-0">
                                 <Package
                                     className="text-indigo-600"
                                     size={20}
                                 />
                             </div>
                             <div className="min-w-0">
-                                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 line-clamp-2 sm:line-clamp-1 break-words">
+                                <h2 className="text-lg sm:text-xl font-bold text-gray-900 line-clamp-2 break-words">
                                     {product?.product_name}
                                 </h2>
-                                <p className="text-xs sm:text-sm text-gray-600 flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
+                                <p className="text-xs text-gray-600 flex flex-wrap items-center gap-1 sm:gap-2 mt-1">
                                     <span>ID: {product?.product_id}</span>
                                     <span className="hidden sm:inline">•</span>
                                     <span
@@ -208,7 +196,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                             <span className="hidden sm:inline">
                                                 •
                                             </span>
-                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 border border-purple-200">
+                                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                                 {variantStats.totalVariants}{" "}
                                                 Variants
                                             </span>
@@ -227,7 +215,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
 
                     {/* Navigation Tabs */}
                     <div className="border-b bg-white sticky top-[72px] sm:top-[84px] z-10">
-                        <nav className="flex space-x-2 sm:space-x-4 md:space-x-8 px-3 sm:px-6 overflow-x-auto">
+                        <nav className="flex space-x-1 sm:space-x-4 px-3 sm:px-5 overflow-x-auto">
                             {[
                                 {
                                     id: "overview",
@@ -237,7 +225,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                 {
                                     id: "features",
                                     label: "Features",
-                                    icon: List,
+                                    icon: Star,
                                 },
                                 {
                                     id: "variants",
@@ -250,16 +238,12 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                     label: "Media",
                                     icon: ImageIcon,
                                 },
-                                {
-                                    id: "stats",
-                                    label: "Stats",
-                                    icon: BarChart3,
-                                },
+                                { id: "details", label: "Details", icon: Info },
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`py-3 sm:py-4 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex items-center ${
+                                    className={`py-3 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex items-center ${
                                         activeTab === tab.id
                                             ? "border-indigo-500 text-indigo-600"
                                             : "border-transparent text-gray-500 hover:text-gray-700"
@@ -269,17 +253,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                         size={16}
                                         className="mr-1 sm:mr-2"
                                     />
-                                    <span className="hidden xs:inline">
-                                        {tab.label}
-                                    </span>
-                                    <span className="xs:hidden">
-                                        {tab.label === "Overview" && "View"}
-                                        {tab.label === "Variants" && "Var"}
-                                        {tab.label === "Features" && "Feat"}
-                                        {tab.label === "Options" && "Opt"}
-                                        {tab.label === "Media" && "Media"}
-                                        {tab.label === "Stats" && "Stats"}
-                                    </span>
+                                    <span>{tab.label}</span>
                                 </button>
                             ))}
                         </nav>
@@ -288,11 +262,11 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                     <div className="flex-1 overflow-y-auto">
                         {/* Overview Tab */}
                         {activeTab === "overview" && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 p-4 sm:p-5">
                                 {/* Media Section */}
-                                <div className="space-y-3 sm:space-y-4">
+                                <div className="space-y-3">
                                     {/* Main Image */}
-                                    <div className="bg-gray-50 rounded-lg sm:rounded-xl p-3 sm:p-4 aspect-square flex items-center justify-center relative">
+                                    <div className="bg-gray-50 rounded-lg p-3 aspect-square flex items-center justify-center relative">
                                         {hasImages ? (
                                             <img
                                                 src={`${BASE_URL}${product.product_image[0].image_path}`}
@@ -305,7 +279,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                         ) : (
                                             <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                                                 <ImageIcon size={32} />
-                                                <span className="mt-2 text-xs sm:text-sm">
+                                                <span className="mt-2 text-sm">
                                                     No image available
                                                 </span>
                                             </div>
@@ -339,7 +313,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                     ))}
                                                 {product.product_image.length >
                                                     4 && (
-                                                    <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 text-xs sm:text-sm">
+                                                    <div className="aspect-square bg-gray-100 rounded-lg flex items-center justify-center text-gray-600 text-sm">
                                                         +
                                                         {product.product_image
                                                             .length - 4}
@@ -350,9 +324,9 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                 </div>
 
                                 {/* Product Details */}
-                                <div className="space-y-4 sm:space-y-6">
+                                <div className="space-y-4">
                                     {/* Price and Condition */}
-                                    <div className="flex flex-col xs:flex-row xs:justify-between xs:items-start gap-3 sm:gap-0">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                                         <div>
                                             <p className="text-2xl sm:text-3xl font-bold text-gray-900">
                                                 {hasVariants &&
@@ -377,7 +351,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                     </>
                                                 )}
                                             </p>
-                                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                                            <p className="text-sm text-gray-600 mt-1">
                                                 {hasVariants &&
                                                 variantStats.hasPriceRange
                                                     ? "Price Range"
@@ -386,9 +360,9 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                     ` (${variantStats.totalVariants} variants)`}
                                             </p>
                                         </div>
-                                        <div className="xs:text-right">
+                                        <div className="sm:text-right">
                                             <span
-                                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getConditionStyle(
+                                                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getConditionStyle(
                                                     product?.product_condition
                                                 )}`}
                                             >
@@ -396,94 +370,77 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                     product?.product_condition
                                                 )}
                                             </span>
-                                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                                            <p className="text-sm text-gray-600 mt-1">
                                                 Condition
                                             </p>
                                         </div>
                                     </div>
 
                                     {/* Quick Stats Grid */}
-                                    <div className="grid grid-cols-2 gap-2 sm:gap-3 p-3 sm:p-4 bg-gray-50 rounded-lg sm:rounded-xl">
-                                        <div className="text-center p-2 sm:p-3 bg-white rounded-lg">
+                                    <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg">
+                                        <div className="text-center p-3 bg-white rounded-lg">
                                             <div className="flex items-center justify-center space-x-1">
                                                 <ShoppingCart
                                                     size={16}
                                                     className="text-gray-400"
                                                 />
-                                                <span className="text-base sm:text-lg font-semibold text-gray-900">
+                                                <span className="text-lg font-semibold text-gray-900">
                                                     {hasVariants
                                                         ? variantStats.totalStock
                                                         : product?.product_quantity ||
                                                           0}
                                                 </span>
                                             </div>
-                                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                                            <p className="text-sm text-gray-600 mt-1">
                                                 Total Stock
                                             </p>
                                         </div>
-                                        <div className="text-center p-2 sm:p-3 bg-white rounded-lg">
+                                        <div className="text-center p-3 bg-white rounded-lg">
                                             <div className="flex items-center justify-center space-x-1">
                                                 <PackageOpen
                                                     size={16}
                                                     className="text-gray-400"
                                                 />
-                                                <span className="text-base sm:text-lg font-semibold text-gray-900">
+                                                <span className="text-lg font-semibold text-gray-900">
                                                     {hasVariants
                                                         ? variantStats.totalVariants
                                                         : 1}
                                                 </span>
                                             </div>
-                                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                                            <p className="text-sm text-gray-600 mt-1">
                                                 {hasVariants
                                                     ? "Variants"
                                                     : "Variant"}
                                             </p>
                                         </div>
-                                        <div className="text-center p-2 sm:p-3 bg-white rounded-lg">
-                                            <div className="flex items-center justify-center space-x-1">
-                                                <Weight
-                                                    size={16}
-                                                    className="text-gray-400"
-                                                />
-                                                <span className="text-base sm:text-lg font-semibold text-gray-900">
-                                                    {product?.product_weight ||
-                                                        "N/A"}{" "}
-                                                    kg
-                                                </span>
-                                            </div>
-                                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                                                Weight
-                                            </p>
-                                        </div>
-                                        <div className="text-center p-2 sm:p-3 bg-white rounded-lg">
-                                            <div className="flex items-center justify-center space-x-1">
-                                                <Layers
-                                                    size={16}
-                                                    className="text-gray-400"
-                                                />
-                                                <span className="text-base sm:text-lg font-semibold text-gray-900 capitalize">
-                                                    {product?.category
-                                                        ?.category_name ||
-                                                        "N/A"}
-                                                </span>
-                                            </div>
-                                            <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                                                Category
-                                            </p>
-                                        </div>
+                                    </div>
+
+                                    {/* Description */}
+                                    <div className="bg-white rounded-lg border p-4">
+                                        <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                                            <Info
+                                                size={16}
+                                                className="mr-2 text-indigo-500"
+                                            />
+                                            Description
+                                        </h3>
+                                        <p className="text-gray-700 leading-relaxed text-sm">
+                                            {product?.product_description ||
+                                                "No description provided."}
+                                        </p>
                                     </div>
 
                                     {/* Variant Quick Stats */}
                                     {hasVariants && (
-                                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-purple-200">
-                                            <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center text-sm sm:text-base">
+                                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
+                                            <h3 className="font-semibold text-gray-900 mb-3 flex items-center text-sm">
                                                 <TrendingUp
                                                     size={16}
                                                     className="mr-2 text-purple-500"
                                                 />
                                                 Variant Summary
                                             </h3>
-                                            <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
                                                 <div className="flex justify-between">
                                                     <span className="text-gray-600">
                                                         In Stock:
@@ -532,82 +489,17 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                             </div>
                                         </div>
                                     )}
-
-                                    {/* Description */}
-                                    <div className="bg-white rounded-lg border p-3 sm:p-4">
-                                        <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center text-sm sm:text-base">
-                                            <Info
-                                                size={16}
-                                                className="mr-2 text-indigo-500"
-                                            />
-                                            Description
-                                        </h3>
-                                        <p className="text-gray-700 leading-relaxed text-sm sm:text-base">
-                                            {product?.product_description ||
-                                                "No description provided."}
-                                        </p>
-                                    </div>
-
-                                    {/* Specifications */}
-                                    <div className="bg-white rounded-lg border p-3 sm:p-4">
-                                        <h3 className="font-semibold text-gray-900 mb-2 sm:mb-3 flex items-center text-sm sm:text-base">
-                                            <Tag
-                                                size={16}
-                                                className="mr-2 text-indigo-500"
-                                            />
-                                            Specifications
-                                        </h3>
-                                        <div className="grid grid-cols-1 gap-2 sm:gap-3 text-xs sm:text-sm">
-                                            <div className="flex justify-between py-2 border-b">
-                                                <span className="text-gray-600">
-                                                    Brand:
-                                                </span>
-                                                <span className="font-medium text-gray-900 text-right">
-                                                    {product?.product_brand ||
-                                                        "Not specified"}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between py-2 border-b">
-                                                <span className="text-gray-600">
-                                                    Material:
-                                                </span>
-                                                <span className="font-medium text-gray-900 text-right">
-                                                    {product?.product_material ||
-                                                        "Not specified"}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between py-2 border-b">
-                                                <span className="text-gray-600">
-                                                    Manufacturer:
-                                                </span>
-                                                <span className="font-medium text-gray-900 text-right">
-                                                    {product?.product_manufacturer ||
-                                                        "Not specified"}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between py-2 border-b">
-                                                <span className="text-gray-600">
-                                                    Category:
-                                                </span>
-                                                <span className="font-medium text-gray-900 text-right">
-                                                    {product?.category
-                                                        ?.category_name ||
-                                                        "Not specified"}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {/* Features Tab */}
                         {activeTab === "features" && (
-                            <div className="p-3 sm:p-4 md:p-6">
+                            <div className="p-4 sm:p-5">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                     {/* Key Features */}
-                                    <div className="bg-white rounded-lg sm:rounded-xl border p-4 sm:p-6">
-                                        <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                                    <div className="bg-white rounded-lg border p-4 sm:p-5">
+                                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                                             <Star
                                                 size={18}
                                                 className="text-yellow-500 mr-2"
@@ -615,18 +507,18 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                             Key Features
                                         </h3>
                                         {hasFeatures ? (
-                                            <div className="space-y-2 sm:space-y-3">
+                                            <div className="space-y-3">
                                                 {product.product_feature.map(
                                                     (feature, index) => (
                                                         <div
                                                             key={index}
-                                                            className="flex items-start p-2 sm:p-3 bg-blue-50 rounded-lg"
+                                                            className="flex items-start p-3 bg-blue-50 rounded-lg"
                                                         >
                                                             <CheckCircle
                                                                 size={16}
-                                                                className="text-blue-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0"
+                                                                className="text-blue-500 mt-0.5 mr-3 flex-shrink-0"
                                                             />
-                                                            <span className="text-gray-700 text-sm sm:text-base">
+                                                            <span className="text-gray-700 text-sm">
                                                                 {
                                                                     feature.feature_text
                                                                 }
@@ -636,12 +528,12 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className="text-center py-6 sm:py-8 text-gray-500">
+                                            <div className="text-center py-8 text-gray-500">
                                                 <Star
                                                     size={28}
                                                     className="mx-auto text-gray-300 mb-2"
                                                 />
-                                                <p className="text-sm sm:text-base">
+                                                <p className="text-sm">
                                                     No key features specified
                                                 </p>
                                             </div>
@@ -649,8 +541,8 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                     </div>
 
                                     {/* Included Items */}
-                                    <div className="bg-white rounded-lg sm:rounded-xl border p-4 sm:p-6">
-                                        <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                                    <div className="bg-white rounded-lg border p-4 sm:p-5">
+                                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                                             <Box
                                                 size={18}
                                                 className="text-green-500 mr-2"
@@ -658,18 +550,18 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                             What's Included
                                         </h3>
                                         {hasIncludedItems ? (
-                                            <div className="space-y-2 sm:space-y-3">
+                                            <div className="space-y-3">
                                                 {product.product_include_item.map(
                                                     (item, index) => (
                                                         <div
                                                             key={index}
-                                                            className="flex items-start p-2 sm:p-3 bg-green-50 rounded-lg"
+                                                            className="flex items-start p-3 bg-green-50 rounded-lg"
                                                         >
-                                                            <Truck
+                                                            <CheckCircle
                                                                 size={16}
-                                                                className="text-green-500 mt-0.5 mr-2 sm:mr-3 flex-shrink-0"
+                                                                className="text-green-500 mt-0.5 mr-3 flex-shrink-0"
                                                             />
-                                                            <span className="text-gray-700 text-sm sm:text-base">
+                                                            <span className="text-gray-700 text-sm">
                                                                 {item.item_name}
                                                             </span>
                                                         </div>
@@ -677,12 +569,12 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className="text-center py-6 sm:py-8 text-gray-500">
+                                            <div className="text-center py-8 text-gray-500">
                                                 <Box
                                                     size={28}
                                                     className="mx-auto text-gray-300 mb-2"
                                                 />
-                                                <p className="text-sm sm:text-base">
+                                                <p className="text-sm">
                                                     No items included
                                                 </p>
                                             </div>
@@ -692,13 +584,13 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                             </div>
                         )}
 
-                        {/* Options Tab */}
+                        {/* Variants Tab */}
                         {activeTab === "variants" && hasVariants && (
-                            <div className="p-3 sm:p-4 md:p-6">
-                                <div className="bg-white rounded-lg sm:rounded-xl border">
+                            <div className="p-4 sm:p-5">
+                                <div className="bg-white rounded-lg border">
                                     {/* Variants Header */}
-                                    <div className="p-4 sm:p-6 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
-                                        <h3 className="font-semibold text-gray-900 mb-2 flex items-center text-lg sm:text-xl">
+                                    <div className="p-4 sm:p-5 border-b bg-gradient-to-r from-purple-50 to-indigo-50">
+                                        <h3 className="font-semibold text-gray-900 mb-2 flex items-center">
                                             <Palette
                                                 size={20}
                                                 className="mr-2 text-purple-500"
@@ -746,164 +638,22 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                     </strong>
                                                 </span>
                                             </div>
-                                            <div className="flex items-center gap-1">
-                                                <X
-                                                    size={16}
-                                                    className="text-red-500"
-                                                />
-                                                <span>
-                                                    Out of Stock:{" "}
-                                                    <strong>
-                                                        {
-                                                            variantStats.outOfStockVariants
-                                                        }
-                                                    </strong>
-                                                </span>
-                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Variants Table */}
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full">
-                                            <thead className="bg-gray-50">
-                                                <tr className="text-left text-xs sm:text-sm text-gray-700">
-                                                    <th className="px-4 py-3 font-medium">
-                                                        Variant ID
-                                                    </th>
-                                                    <th className="px-4 py-3 font-medium">
-                                                        Combination
-                                                    </th>
-                                                    <th className="px-4 py-3 font-medium text-right">
-                                                        Price (RM)
-                                                    </th>
-                                                    <th className="px-4 py-3 font-medium text-right">
-                                                        Quantity
-                                                    </th>
-                                                    <th className="px-4 py-3 font-medium text-center">
-                                                        Status
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-200">
-                                                {product.product_variant.map(
-                                                    (variant, index) => {
-                                                        const combination =
-                                                            typeof variant.variant_combination ===
-                                                            "string"
-                                                                ? JSON.parse(
-                                                                      variant.variant_combination ||
-                                                                          "{}"
-                                                                  )
-                                                                : variant.variant_combination ||
-                                                                  {};
-
-                                                        return (
-                                                            <tr
-                                                                key={
-                                                                    variant.variant_id
-                                                                }
-                                                                className="hover:bg-gray-50 transition-colors"
-                                                            >
-                                                                <td className="px-4 py-3 text-xs sm:text-sm font-mono text-gray-600">
-                                                                    {
-                                                                        variant.variant_id
-                                                                    }
-                                                                </td>
-                                                                <td className="px-4 py-3">
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {Object.entries(
-                                                                            combination
-                                                                        ).map(
-                                                                            ([
-                                                                                key,
-                                                                                value,
-                                                                            ]) => (
-                                                                                <span
-                                                                                    key={
-                                                                                        key
-                                                                                    }
-                                                                                    className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium"
-                                                                                >
-                                                                                    {
-                                                                                        key
-                                                                                    }
-
-                                                                                    :{" "}
-                                                                                    {
-                                                                                        value
-                                                                                    }
-                                                                                </span>
-                                                                            )
-                                                                        )}
-                                                                        {Object.keys(
-                                                                            combination
-                                                                        )
-                                                                            .length ===
-                                                                            0 && (
-                                                                            <span className="text-gray-400 text-xs">
-                                                                                Default
-                                                                                variant
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-4 py-3 text-right text-sm sm:text-base font-semibold text-gray-900">
-                                                                    {parseFloat(
-                                                                        variant.price ||
-                                                                            0
-                                                                    ).toFixed(
-                                                                        2
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-4 py-3 text-right">
-                                                                    <span
-                                                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                                                            variant.quantity ===
-                                                                            0
-                                                                                ? "bg-red-100 text-red-800"
-                                                                                : variant.quantity <=
-                                                                                  5
-                                                                                ? "bg-yellow-100 text-yellow-800"
-                                                                                : "bg-green-100 text-green-800"
-                                                                        }`}
-                                                                    >
-                                                                        {variant.quantity ||
-                                                                            0}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-4 py-3 text-center">
-                                                                    <span
-                                                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getVariantStatusStyle(
-                                                                            variant.quantity
-                                                                        )}`}
-                                                                    >
-                                                                        {getVariantStatusLabel(
-                                                                            variant.quantity
-                                                                        )}
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    }
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-
                                     {/* Mobile Variants View */}
-                                    <div className="md:hidden p-4">
+                                    <div className="p-4">
                                         <div className="space-y-3">
                                             {product.product_variant.map(
                                                 (variant, index) => {
                                                     const combination =
-                                                        typeof variant.combination ===
+                                                        typeof variant.variant_combination ===
                                                         "string"
                                                             ? JSON.parse(
-                                                                  variant.combination ||
+                                                                  variant.variant_combination ||
                                                                       "{}"
                                                               )
-                                                            : variant.combination ||
+                                                            : variant.variant_combination ||
                                                               {};
 
                                                     return (
@@ -948,7 +698,6 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                                                 {
                                                                                     key
                                                                                 }
-
                                                                                 :{" "}
                                                                                 {
                                                                                     value
@@ -1003,11 +752,11 @@ export function SellerViewProduct_Modal({ product, onClose }) {
 
                         {/* Media Tab */}
                         {activeTab === "media" && (
-                            <div className="p-3 sm:p-4 md:p-6">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
+                            <div className="p-4 sm:p-5">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                                     {/* Images Section */}
                                     <div>
-                                        <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                                             <ImageIcon
                                                 size={18}
                                                 className="text-indigo-500 mr-2"
@@ -1019,7 +768,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                             )
                                         </h3>
                                         {hasImages ? (
-                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4">
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                                 {product.product_image.map(
                                                     (img, index) => (
                                                         <div
@@ -1049,12 +798,12 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className="text-center py-8 sm:py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                                            <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                                                 <ImageIcon
                                                     size={40}
-                                                    className="mx-auto text-gray-300 mb-3 sm:mb-4"
+                                                    className="mx-auto text-gray-300 mb-3"
                                                 />
-                                                <p className="text-gray-500 text-sm sm:text-base">
+                                                <p className="text-gray-500 text-sm">
                                                     No images available
                                                 </p>
                                             </div>
@@ -1063,7 +812,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
 
                                     {/* Videos Section */}
                                     <div>
-                                        <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+                                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                                             <Video
                                                 size={18}
                                                 className="text-red-500 mr-2"
@@ -1075,19 +824,19 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                             )
                                         </h3>
                                         {hasVideos ? (
-                                            <div className="space-y-3 sm:space-y-4">
+                                            <div className="space-y-4">
                                                 {product.product_video.map(
                                                     (vid, index) => (
                                                         <div
                                                             key={index}
-                                                            className="bg-gray-100 rounded-lg p-2 sm:p-3"
+                                                            className="bg-gray-100 rounded-lg p-3"
                                                         >
                                                             <video
                                                                 src={`${BASE_URL}${vid.video_path}`}
                                                                 controls
                                                                 className="w-full rounded-lg"
                                                             />
-                                                            <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">
+                                                            <p className="text-sm text-gray-600 mt-2 text-center">
                                                                 Video{" "}
                                                                 {index + 1}
                                                             </p>
@@ -1096,12 +845,12 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                 )}
                                             </div>
                                         ) : (
-                                            <div className="text-center py-8 sm:py-12 border-2 border-dashed border-gray-300 rounded-lg">
+                                            <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
                                                 <Video
                                                     size={40}
-                                                    className="mx-auto text-gray-300 mb-3 sm:mb-4"
+                                                    className="mx-auto text-gray-300 mb-3"
                                                 />
-                                                <p className="text-gray-500 text-sm sm:text-base">
+                                                <p className="text-gray-500 text-sm">
                                                     No videos available
                                                 </p>
                                             </div>
@@ -1111,80 +860,102 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                             </div>
                         )}
 
-                        {/* Statistics Tab */}
-                        {activeTab === "stats" && (
-                            <div className="p-3 sm:p-4 md:p-6">
-                                <div className="bg-white rounded-lg sm:rounded-xl border p-4 sm:p-6">
-                                    <h3 className="font-semibold text-gray-900 mb-4 sm:mb-6 flex items-center text-sm sm:text-base">
-                                        <BarChart3
-                                            size={18}
-                                            className="text-indigo-500 mr-2"
-                                        />
-                                        Product Statistics
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                                        <div className="space-y-3 sm:space-y-4">
-                                            <div className="flex justify-between items-center p-3 sm:p-4 bg-gray-50 rounded-lg">
-                                                <div>
-                                                    <p className="text-xs sm:text-sm text-gray-600">
-                                                        Created Date
-                                                    </p>
-                                                    <p className="font-semibold text-gray-900 text-sm sm:text-base">
-                                                        {product?.created_at
-                                                            ? formatDate(
-                                                                  product.created_at
-                                                              )
-                                                            : "N/A"}
-                                                    </p>
-                                                </div>
-                                                <Calendar
-                                                    className="text-gray-400"
-                                                    size={18}
-                                                />
+                        {/* Details Tab */}
+                        {activeTab === "details" && (
+                            <div className="p-4 sm:p-5">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                                    {/* Product Information */}
+                                    <div className="bg-white rounded-lg border p-4 sm:p-5">
+                                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                                            <Info
+                                                size={18}
+                                                className="text-indigo-500 mr-2"
+                                            />
+                                            Product Information
+                                        </h3>
+                                        <div className="space-y-3 text-sm">
+                                            <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600">
+                                                    Product ID:
+                                                </span>
+                                                <span className="font-medium text-gray-900">
+                                                    {product?.product_id}
+                                                </span>
                                             </div>
-                                            <div className="flex justify-between items-center p-3 sm:p-4 bg-gray-50 rounded-lg">
-                                                <div>
-                                                    <p className="text-xs sm:text-sm text-gray-600">
-                                                        Last Updated
-                                                    </p>
-                                                    <p className="font-semibold text-gray-900 text-sm sm:text-base">
-                                                        {product?.updated_at
-                                                            ? formatDate(
-                                                                  product.updated_at
-                                                              )
-                                                            : "N/A"}
-                                                    </p>
-                                                </div>
-                                                <Edit
-                                                    className="text-gray-400"
-                                                    size={18}
-                                                />
+                                            <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600">
+                                                    Category:
+                                                </span>
+                                                <span className="font-medium text-gray-900">
+                                                    {product?.category
+                                                        ?.category_name ||
+                                                        "Not specified"}
+                                                </span>
                                             </div>
-                                        </div>
-                                        <div className="space-y-3 sm:space-y-4">
-                                            <div className="p-3 sm:p-4 bg-blue-50 rounded-lg">
-                                                <p className="text-xs sm:text-sm text-blue-600 font-medium">
-                                                    Product Status
-                                                </p>
-                                                <p
-                                                    className={`inline-block px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium mt-2 ${getStatusStyle(
+                                            <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600">
+                                                    Status:
+                                                </span>
+                                                <span
+                                                    className={`font-medium ${getStatusStyle(
                                                         product?.product_status
-                                                    )}`}
+                                                    )} px-2 py-1 rounded-full text-xs`}
                                                 >
                                                     {getStatusLabel(
                                                         product?.product_status
                                                     )}
-                                                </p>
+                                                </span>
                                             </div>
-                                            <div className="p-3 sm:p-4 bg-green-50 rounded-lg">
-                                                <p className="text-xs sm:text-sm text-green-600 font-medium">
-                                                    Stock Level
-                                                </p>
-                                                <p className="text-xl sm:text-2xl font-bold text-green-800 mt-2">
-                                                    {product?.product_quantity ||
-                                                        0}{" "}
-                                                    units
-                                                </p>
+                                            <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600">
+                                                    Condition:
+                                                </span>
+                                                <span
+                                                    className={`font-medium ${getConditionStyle(
+                                                        product?.product_condition
+                                                    )} px-2 py-1 rounded-full text-xs`}
+                                                >
+                                                    {getConditionLabel(
+                                                        product?.product_condition
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Timeline */}
+                                    <div className="bg-white rounded-lg border p-4 sm:p-5">
+                                        <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                                            <Calendar
+                                                size={18}
+                                                className="text-indigo-500 mr-2"
+                                            />
+                                            Timeline
+                                        </h3>
+                                        <div className="space-y-3 text-sm">
+                                            <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600">
+                                                    Created:
+                                                </span>
+                                                <span className="font-medium text-gray-900">
+                                                    {product?.created_at
+                                                        ? formatDate(
+                                                              product.created_at
+                                                          )
+                                                        : "N/A"}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between py-2 border-b">
+                                                <span className="text-gray-600">
+                                                    Last Updated:
+                                                </span>
+                                                <span className="font-medium text-gray-900">
+                                                    {product?.updated_at
+                                                        ? formatDate(
+                                                              product.updated_at
+                                                          )
+                                                        : "N/A"}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
@@ -1194,32 +965,10 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                     </div>
 
                     {/* Footer */}
-                    <div className="md:hidden p-3 sm:p-4 md:p-6 border-t bg-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                        <div className="text-xs sm:text-sm text-gray-600 flex flex-col md:flex-row xs:flex-row xs:items-center gap-2 sm:gap-4">
-                            <div className="flex items-center">
-                                <Calendar size={14} className="mr-1" />
-                                <span>
-                                    Created:{" "}
-                                    {product?.created_at
-                                        ? formatDate(product.created_at)
-                                        : "N/A"}
-                                </span>
-                            </div>
-                            {product?.updated_at !== product?.created_at && (
-                                <div className="flex items-center">
-                                    <Edit size={14} className="mr-1" />
-                                    <span>
-                                        Updated:{" "}
-                                        {product?.updated_at
-                                            ? formatDate(product.updated_at)
-                                            : "N/A"}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                    <div className="p-4 border-t bg-gray-50">
                         <button
                             onClick={onClose}
-                            className="px-4 sm:px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm sm:text-base w-full xs:w-auto"
+                            className="w-full px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium text-sm"
                         >
                             Close Preview
                         </button>
@@ -1229,11 +978,11 @@ export function SellerViewProduct_Modal({ product, onClose }) {
 
             {/* Image Modal */}
             {isImageModalOpen && hasImages && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-2 sm:p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4">
                     <div className="relative max-w-4xl w-full">
                         <button
                             onClick={() => setIsImageModalOpen(false)}
-                            className="absolute top-2 sm:top-4 right-2 sm:right-4 z-10 bg-white/20 text-white p-1 sm:p-2 rounded-full hover:bg-white/30 transition-colors"
+                            className="absolute top-4 right-4 z-10 bg-white/20 text-white p-2 rounded-full hover:bg-white/30 transition-colors"
                         >
                             <X size={20} />
                         </button>
@@ -1242,20 +991,20 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                             <img
                                 src={`${BASE_URL}${product.product_image[selectedImageIndex].image_path}`}
                                 alt={`Product image ${selectedImageIndex + 1}`}
-                                className="w-full h-auto max-h-[70vh] sm:max-h-[80vh] object-contain rounded-lg"
+                                className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
                             />
 
                             {product.product_image.length > 1 && (
                                 <>
                                     <button
                                         onClick={prevImage}
-                                        className="absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2 bg-white/20 text-white p-1 sm:p-2 rounded-full hover:bg-white/30 transition-colors"
+                                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30 transition-colors"
                                     >
                                         <ChevronLeft size={20} />
                                     </button>
                                     <button
                                         onClick={nextImage}
-                                        className="absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2 bg-white/20 text-white p-1 sm:p-2 rounded-full hover:bg-white/30 transition-colors"
+                                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30 transition-colors"
                                     >
                                         <ChevronRight size={20} />
                                     </button>
@@ -1263,7 +1012,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                             )}
                         </div>
 
-                        <div className="text-center text-white mt-3 sm:mt-4 text-sm sm:text-base">
+                        <div className="text-center text-white mt-4 text-sm">
                             Image {selectedImageIndex + 1} of{" "}
                             {product.product_image.length}
                         </div>

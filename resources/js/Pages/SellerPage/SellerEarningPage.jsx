@@ -21,7 +21,7 @@ import dayjs from "dayjs";
 import { usePage } from "@inertiajs/react";
 
 export default function EarningsPage() {
-    const [filter, setFilter] = useState("monthly");
+    const [filter, setFilter] = useState("daily");
     const [isLoading, setIsLoading] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(new Date());
@@ -740,9 +740,7 @@ export default function EarningsPage() {
                                                         <span
                                                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                                                                 tx.order_status ===
-                                                                    "Delivered" ||
-                                                                tx.payment_status ===
-                                                                    "Paid"
+                                                                    "Completed"
                                                                     ? "bg-green-100 text-green-700"
                                                                     : "bg-yellow-100 text-yellow-700"
                                                             }`}

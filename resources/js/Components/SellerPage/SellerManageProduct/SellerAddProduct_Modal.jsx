@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
     X,
-    Weight,
     Info,
     Plus,
     Minus,
@@ -24,17 +23,14 @@ export function SellerAddProduct_Modal({
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Product fields
+    // Product fields - removed weight, manufacturer, brand, material, status
     const [productName, setProductName] = useState("");
     const [productDescription, setProductDescription] = useState("");
     const [productPrice, setProductPrice] = useState("");
     const [productStatus, setProductStatus] = useState("available");
     const [productCondition, setProductCondition] = useState("");
     const [productCategories, setProductCategories] = useState("");
-    const [productBrand, setProductBrand] = useState("");
-    const [productMaterial, setProductMaterial] = useState("");
-    const [productManufacturer, setProductManufacturer] = useState("");
-    const [productWeight, setProductWeight] = useState("");
+
     const [productOptions, setProductOptions] = useState([
         {
             option_name: "",
@@ -44,7 +40,6 @@ export function SellerAddProduct_Modal({
     ]);
 
     const [productVariants, setProductVariants] = useState([]);
-
     const [productImages, setProductImages] = useState([]);
     const [productVideos, setProductVideos] = useState([]);
 
@@ -55,20 +50,12 @@ export function SellerAddProduct_Modal({
     const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-    const [isVideoPreviewOpen, setIsVideoPreviewOpen] = useState(false);
-    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
-
     // Refs for error field focusing
     const productNameRef = useRef(null);
     const productDescriptionRef = useRef(null);
     const productPriceRef = useRef(null);
-    const productQuantityRef = useRef(null);
     const productConditionRef = useRef(null);
     const productCategoriesRef = useRef(null);
-    const productBrandRef = useRef(null);
-    const productMaterialRef = useRef(null);
-    const productManufacturerRef = useRef(null);
-    const productWeightRef = useRef(null);
     const keyFeaturesRefs = useRef([]);
     const includedItemsRefs = useRef([]);
 
@@ -77,13 +64,8 @@ export function SellerAddProduct_Modal({
         product_name: productNameRef,
         product_description: productDescriptionRef,
         product_price: productPriceRef,
-        product_quantity: productQuantityRef,
         product_condition: productConditionRef,
         category_id: productCategoriesRef,
-        product_brand: productBrandRef,
-        product_material: productMaterialRef,
-        product_manufacturer: productManufacturerRef,
-        product_weight: productWeightRef,
     };
 
     useEffect(() => {
@@ -123,11 +105,10 @@ export function SellerAddProduct_Modal({
         }
     }, [errorField, onErrorFieldHandled]);
 
-    // Add this function to generate variants when options change
+    // Generate variants when options change
     const generateVariants = (options) => {
         if (options.length === 0) return [];
 
-        // Get all option values grouped by option name
         const optionGroups = options
             .filter((opt) => opt.option_name && opt.option_values.length > 0)
             .map((opt) => ({
@@ -137,7 +118,6 @@ export function SellerAddProduct_Modal({
 
         if (optionGroups.length === 0) return [];
 
-        // Generate all combinations
         const generateCombinations = (groups, index = 0, current = {}) => {
             if (index === groups.length) {
                 return [current];
@@ -161,7 +141,6 @@ export function SellerAddProduct_Modal({
 
         const combinations = generateCombinations(optionGroups);
 
-        // Map to variant format and preserve existing quantities
         return combinations.map((combination) => {
             const variantKey = Object.values(combination).join("|");
             const existingVariant = productVariants.find(
@@ -179,7 +158,6 @@ export function SellerAddProduct_Modal({
         });
     };
 
-    // Update this useEffect to generate variants when options change
     useEffect(() => {
         const newVariants = generateVariants(productOptions);
         setProductVariants(newVariants);
@@ -192,18 +170,14 @@ export function SellerAddProduct_Modal({
 
             const formData = new FormData();
 
-            // Basic product info (without quantity)
+            // Basic product info
             formData.append("product_name", productName);
             formData.append("product_description", productDescription);
             formData.append("product_price", productPrice);
-            // Remove: formData.append("product_quantity", productQuantity);
             formData.append("product_status", productStatus);
             formData.append("product_condition", productCondition);
             formData.append("category_id", productCategories);
-            formData.append("product_brand", productBrand);
-            formData.append("product_material", productMaterial);
-            formData.append("product_manufacturer", productManufacturer);
-            formData.append("product_weight", productWeight);
+            formData.append("product_status", "available"); // Default status
 
             // Add key features
             keyFeatures.forEach((feature, index) => {
@@ -297,10 +271,17 @@ export function SellerAddProduct_Modal({
         },
     ];
 
+    const statusOptions = [
+        { value: "available", label: "Available", color: "green" },
+        { value: "reserved", label: "Reserved", color: "yellow" },
+        { value: "sold", label: "Sold", color: "red" },
+        { value: "draft", label: "Draft", color: "gray" },
+    ];
+
     const steps = [
-        { number: 1, title: "Basic Info", icon: "📝" },
+        { number: 1, title: "Basic", icon: "📝" },
         { number: 2, title: "Details", icon: "🔍" },
-        { number: 3, title: "Specifications", icon: "📋" },
+        { number: 3, title: "Features", icon: "⭐" },
         { number: 4, title: "Options", icon: "⚙️" },
         { number: 5, title: "Media", icon: "🖼️" },
         { number: 6, title: "Review", icon: "👀" },
@@ -426,10 +407,10 @@ export function SellerAddProduct_Modal({
         }));
         setProductImages((prev) => [...prev, ...newImages]);
     };
+
     const handleVideoChange = (e) => {
         const files = Array.from(e.target.files);
 
-        // Check if adding these videos would exceed the limit
         if (productVideos.length + files.length > 5) {
             alert("Maximum 5 videos allowed");
             return;
@@ -437,7 +418,6 @@ export function SellerAddProduct_Modal({
 
         const newVideos = files
             .map((file) => {
-                // Check file size (50MB limit)
                 if (file.size > 50 * 1024 * 1024) {
                     alert(
                         `File ${file.name} is too large. Maximum size is 50MB.`
@@ -452,15 +432,9 @@ export function SellerAddProduct_Modal({
                     size: file.size,
                 };
             })
-            .filter((video) => video !== null); // Remove null entries (failed validations)
+            .filter((video) => video !== null);
 
         setProductVideos((prev) => [...prev, ...newVideos]);
-    };
-
-    // Add function to preview video
-    const previewVideo = (index) => {
-        setCurrentVideoIndex(index);
-        setIsVideoPreviewOpen(true);
     };
 
     const removeImage = (index) => {
@@ -483,36 +457,36 @@ export function SellerAddProduct_Modal({
 
     return (
         <>
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4">
+                <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
                     {/* Header */}
-                    <div className="sticky top-0 z-10 px-6 py-4 border-b bg-gradient-to-r from-indigo-600 to-indigo-700">
+                    <div className="sticky top-0 z-10 px-4 sm:px-6 py-3 sm:py-4 border-b bg-gradient-to-r from-indigo-600 to-indigo-700">
                         <div className="flex justify-between items-center">
                             <div>
-                                <h2 className="text-xl font-semibold text-white">
+                                <h2 className="text-lg sm:text-xl font-semibold text-white">
                                     Add New Product
                                 </h2>
-                                <p className="text-indigo-100 text-sm mt-1">
-                                    Sell your preloved items easily
+                                <p className="text-indigo-100 text-xs sm:text-sm mt-1">
+                                    Sell your items easily
                                 </p>
                             </div>
                             <button
                                 onClick={onClose}
                                 className="text-white/80 hover:text-white transition p-1 rounded-lg hover:bg-indigo-600"
                             >
-                                <X size={24} />
+                                <X size={20} />
                             </button>
                         </div>
 
-                        {/* Stepper */}
-                        <div className="flex items-center justify-between mt-4 overflow-x-auto">
+                        {/* Mobile Stepper */}
+                        <div className="flex items-center justify-between mt-3 overflow-x-auto">
                             {steps.map((stepItem, i) => (
                                 <div
                                     key={i}
-                                    className="flex-1 min-w-[80px] text-center"
+                                    className="flex-1 min-w-[60px] text-center"
                                 >
                                     <div
-                                        className={`flex items-center justify-center w-10 h-10 mx-auto rounded-full border-2 ${
+                                        className={`flex items-center justify-center w-8 h-8 mx-auto rounded-full border-2 text-sm ${
                                             step === stepItem.number
                                                 ? "bg-white border-white text-indigo-600"
                                                 : step > stepItem.number
@@ -521,15 +495,13 @@ export function SellerAddProduct_Modal({
                                         }`}
                                     >
                                         {step > stepItem.number ? (
-                                            <CheckCircle size={20} />
+                                            <CheckCircle size={16} />
                                         ) : (
-                                            <span className="text-sm font-semibold">
-                                                {stepItem.icon}
-                                            </span>
+                                            <span>{stepItem.icon}</span>
                                         )}
                                     </div>
                                     <p
-                                        className={`text-xs mt-2 ${
+                                        className={`text-xs mt-1 ${
                                             step === stepItem.number
                                                 ? "text-white font-medium"
                                                 : "text-indigo-100"
@@ -543,11 +515,14 @@ export function SellerAddProduct_Modal({
                     </div>
 
                     {/* Form Content */}
-                    <div className="flex-1 overflow-y-auto p-6">
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                        <form
+                            onSubmit={handleSubmit}
+                            className="space-y-4 sm:space-y-6"
+                        >
                             {/* Step 1: Basic Info */}
                             {step === 1 && (
-                                <div className="space-y-6">
+                                <div className="space-y-4 sm:space-y-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Product Name *
@@ -560,7 +535,7 @@ export function SellerAddProduct_Modal({
                                                 setProductName(e.target.value)
                                             }
                                             placeholder="e.g., Vintage Leather Jacket"
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            className="text-black w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
                                             required
                                         />
                                         <p className="text-xs text-gray-500 mt-1">
@@ -574,7 +549,7 @@ export function SellerAddProduct_Modal({
                                         </label>
                                         <textarea
                                             ref={productDescriptionRef}
-                                            rows={4}
+                                            rows={3}
                                             value={productDescription}
                                             onChange={(e) =>
                                                 setProductDescription(
@@ -582,7 +557,7 @@ export function SellerAddProduct_Modal({
                                                 )
                                             }
                                             placeholder="Describe your product in detail including condition, features, and any imperfections..."
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            className="text-black w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
                                             required
                                         />
                                         <p className="text-xs text-gray-500 mt-1">
@@ -595,7 +570,7 @@ export function SellerAddProduct_Modal({
 
                             {/* Step 2: Product Details */}
                             {step === 2 && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Category *
@@ -608,7 +583,7 @@ export function SellerAddProduct_Modal({
                                                     e.target.value
                                                 )
                                             }
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            className="text-black w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
                                             required
                                         >
                                             <option value="">
@@ -637,7 +612,7 @@ export function SellerAddProduct_Modal({
                                                     e.target.value
                                                 )
                                             }
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            className="text-black w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
                                             required
                                         >
                                             <option value="">
@@ -677,123 +652,47 @@ export function SellerAddProduct_Modal({
                                                 setProductPrice(e.target.value)
                                             }
                                             placeholder="0.00"
-                                            step="0.01"
-                                            min="0"
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            className="text-black w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
                                             required
                                         />
                                     </div>
 
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Brand
-                                        </label>
-                                        <input
-                                            ref={productBrandRef}
-                                            type="text"
-                                            value={productBrand}
-                                            onChange={(e) =>
-                                                setProductBrand(e.target.value)
-                                            }
-                                            placeholder="e.g., Nike, Apple, IKEA"
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Weight (kg)
-                                        </label>
-                                        <div className="relative">
-                                            <Weight
-                                                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                                                size={20}
-                                            />
-                                            <input
-                                                ref={productWeightRef}
-                                                type="text"
-                                                value={productWeight}
-                                                onChange={(e) =>
-                                                    setProductWeight(
-                                                        e.target.value
-                                                    )
-                                                }
-                                                placeholder="0.5"
-                                                step="0.1"
-                                                min="0"
-                                                className="text-black w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Material
-                                        </label>
-                                        <input
-                                            ref={productMaterialRef}
-                                            type="text"
-                                            value={productMaterial}
-                                            onChange={(e) =>
-                                                setProductMaterial(
-                                                    e.target.value
-                                                )
-                                            }
-                                            placeholder="e.g., Cotton, Leather, Plastic"
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Manufacturer
-                                        </label>
-                                        <input
-                                            ref={productManufacturerRef}
-                                            type="text"
-                                            value={productManufacturer}
-                                            onChange={(e) =>
-                                                setProductManufacturer(
-                                                    e.target.value
-                                                )
-                                            }
-                                            placeholder="e.g., Malaysia, China"
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Status
+                                            Status *
                                         </label>
                                         <select
                                             value={productStatus}
                                             onChange={(e) =>
                                                 setProductStatus(e.target.value)
                                             }
-                                            className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                            className="text-black w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
                                         >
-                                            <option value="available">
-                                                Available
-                                            </option>
-                                            <option value="reserved">
-                                                Reserved
-                                            </option>
-                                            <option value="sold">Sold</option>
-                                            <option value="draft">Draft</option>
+                                            {statusOptions.map((option) => (
+                                                <option
+                                                    key={option.value}
+                                                    value={option.value}
+                                                >
+                                                    {option.label}
+                                                </option>
+                                            ))}
                                         </select>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Set the availability status of your
+                                            product
+                                        </p>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Step 3: Specifications */}
+                            {/* Step 3: Features */}
                             {step === 3 && (
-                                <div className="space-y-6">
-                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <div className="space-y-4 sm:space-y-6">
+                                    <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
                                         <div className="flex items-start">
                                             <Info
-                                                className="text-blue-500 mt-0.5 mr-3 flex-shrink-0"
-                                                size={20}
+                                                className="text-blue-500 mt-0.5 mr-2 flex-shrink-0"
+                                                size={18}
                                             />
                                             <p className="text-sm text-blue-700">
                                                 Add detailed specifications to
@@ -812,7 +711,7 @@ export function SellerAddProduct_Modal({
                                                 (feature, index) => (
                                                     <div
                                                         key={index}
-                                                        className="flex items-center gap-3"
+                                                        className="flex items-center gap-2"
                                                     >
                                                         <div className="w-6 text-sm text-gray-500 font-medium">
                                                             {index + 1}.
@@ -830,7 +729,7 @@ export function SellerAddProduct_Modal({
                                                             placeholder={`Feature ${
                                                                 index + 1
                                                             }`}
-                                                            className="text-black flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                            className="text-black flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                                                             ref={(el) =>
                                                                 (keyFeaturesRefs.current[
                                                                     index
@@ -846,10 +745,10 @@ export function SellerAddProduct_Modal({
                                                                         index
                                                                     )
                                                                 }
-                                                                className="p-2 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
+                                                                className="p-1 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
                                                             >
                                                                 <Minus
-                                                                    size={20}
+                                                                    size={16}
                                                                 />
                                                             </button>
                                                         )}
@@ -861,13 +760,13 @@ export function SellerAddProduct_Modal({
                                             <button
                                                 type="button"
                                                 onClick={addFeature}
-                                                className="mt-3 flex items-center text-indigo-600 hover:text-indigo-700 font-medium"
+                                                className="mt-3 flex items-center text-indigo-600 hover:text-indigo-700 font-medium text-sm"
                                             >
                                                 <Plus
-                                                    size={20}
-                                                    className="mr-2"
+                                                    size={16}
+                                                    className="mr-1"
                                                 />
-                                                Add Another Feature
+                                                Add Feature
                                             </button>
                                         )}
                                     </div>
@@ -881,7 +780,7 @@ export function SellerAddProduct_Modal({
                                                 (item, index) => (
                                                     <div
                                                         key={index}
-                                                        className="flex items-center gap-3"
+                                                        className="flex items-center gap-2"
                                                     >
                                                         <div className="w-6 text-sm text-gray-500">
                                                             •
@@ -899,7 +798,7 @@ export function SellerAddProduct_Modal({
                                                             placeholder={`Included item ${
                                                                 index + 1
                                                             }`}
-                                                            className="text-black flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                            className="text-black flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                                                             ref={(el) =>
                                                                 (includedItemsRefs.current[
                                                                     index
@@ -915,10 +814,10 @@ export function SellerAddProduct_Modal({
                                                                         index
                                                                     )
                                                                 }
-                                                                className="p-2 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
+                                                                className="p-1 text-red-500 hover:text-red-700 rounded-lg hover:bg-red-50"
                                                             >
                                                                 <Minus
-                                                                    size={20}
+                                                                    size={16}
                                                                 />
                                                             </button>
                                                         )}
@@ -930,13 +829,13 @@ export function SellerAddProduct_Modal({
                                             <button
                                                 type="button"
                                                 onClick={addIncludedItem}
-                                                className="mt-3 flex items-center text-gray-600 hover:text-gray-700 font-medium"
+                                                className="mt-3 flex items-center text-gray-600 hover:text-gray-700 font-medium text-sm"
                                             >
                                                 <Plus
-                                                    size={20}
-                                                    className="mr-2"
+                                                    size={16}
+                                                    className="mr-1"
                                                 />
-                                                Add Another Item
+                                                Add Item
                                             </button>
                                         )}
                                     </div>
@@ -944,24 +843,21 @@ export function SellerAddProduct_Modal({
                             )}
 
                             {/* Step 4: Options */}
-                            {/* Step 4: Options */}
                             {step === 4 && (
-                                <div className="space-y-6">
-                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <div className="space-y-4 sm:space-y-6">
+                                    <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
                                         <div className="flex items-start">
                                             <Sliders
-                                                className="text-blue-500 mt-0.5 mr-3 flex-shrink-0"
-                                                size={20}
+                                                className="text-blue-500 mt-0.5 mr-2 flex-shrink-0"
+                                                size={18}
                                             />
                                             <div>
                                                 <p className="text-sm text-blue-700 font-medium mb-1">
-                                                    Product Variants System
+                                                    Product Variants
                                                 </p>
                                                 <p className="text-xs text-blue-600">
                                                     Add options like Color,
-                                                    Size, etc. The system will
-                                                    automatically generate all
-                                                    combinations. Set individual
+                                                    Size, etc. Set individual
                                                     quantities and prices for
                                                     each variant.
                                                 </p>
@@ -970,15 +866,15 @@ export function SellerAddProduct_Modal({
                                     </div>
 
                                     {/* Options Configuration */}
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         {productOptions.map(
                                             (option, optionIndex) => (
                                                 <div
                                                     key={optionIndex}
-                                                    className="border rounded-lg p-5 bg-gray-50"
+                                                    className="border rounded-lg p-3 sm:p-4 bg-gray-50"
                                                 >
-                                                    <div className="flex justify-between items-center mb-4">
-                                                        <h4 className="font-semibold text-gray-800">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <h4 className="font-semibold text-gray-800 text-sm">
                                                             Option{" "}
                                                             {optionIndex + 1}
                                                         </h4>
@@ -991,15 +887,15 @@ export function SellerAddProduct_Modal({
                                                                         optionIndex
                                                                     )
                                                                 }
-                                                                className="text-red-600 hover:text-red-800 font-medium text-sm"
+                                                                className="text-red-600 hover:text-red-800 font-medium text-xs"
                                                             >
-                                                                Remove Option
+                                                                Remove
                                                             </button>
                                                         )}
                                                     </div>
 
-                                                    <div className="mb-4">
-                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    <div className="mb-3">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
                                                             Option Name *
                                                         </label>
                                                         <input
@@ -1014,19 +910,19 @@ export function SellerAddProduct_Modal({
                                                                         .value
                                                                 )
                                                             }
-                                                            placeholder="e.g., Size, Color, Material"
-                                                            className="text-black w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                            placeholder="e.g., Size, Color"
+                                                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                                                             required
                                                         />
                                                     </div>
 
                                                     <div>
-                                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
                                                             Option Values *
                                                         </label>
 
                                                         {/* Display existing option values */}
-                                                        <div className="space-y-2 mb-3">
+                                                        <div className="space-y-2 mb-2">
                                                             {option.option_values.map(
                                                                 (
                                                                     value,
@@ -1036,7 +932,7 @@ export function SellerAddProduct_Modal({
                                                                         key={
                                                                             valueIndex
                                                                         }
-                                                                        className="flex items-center gap-2 bg-white p-3 rounded-lg border"
+                                                                        className="flex items-center gap-2 bg-white p-2 rounded-lg border text-sm"
                                                                     >
                                                                         <div className="flex-1">
                                                                             <span className="font-medium text-gray-700">
@@ -1057,7 +953,7 @@ export function SellerAddProduct_Modal({
                                                                         >
                                                                             <Trash2
                                                                                 size={
-                                                                                    16
+                                                                                    14
                                                                                 }
                                                                             />
                                                                         </button>
@@ -1096,8 +992,8 @@ export function SellerAddProduct_Modal({
                                                                         optionIndex
                                                                     )
                                                                 }
-                                                                placeholder="Option value (e.g., Small, Red)"
-                                                                className="text-black flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                                placeholder="Option value"
+                                                                className="text-black flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                                                             />
                                                             <button
                                                                 type="button"
@@ -1106,7 +1002,7 @@ export function SellerAddProduct_Modal({
                                                                         optionIndex
                                                                     )
                                                                 }
-                                                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                                                                className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm"
                                                             >
                                                                 Add
                                                             </button>
@@ -1121,66 +1017,55 @@ export function SellerAddProduct_Modal({
                                         <button
                                             type="button"
                                             onClick={addProductOption}
-                                            className="w-full py-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:text-indigo-600 hover:border-indigo-400 flex items-center justify-center"
+                                            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:text-indigo-600 hover:border-indigo-400 flex items-center justify-center text-sm"
                                         >
-                                            <Plus size={20} className="mr-2" />
+                                            <Plus size={16} className="mr-2" />
                                             Add Another Option
                                         </button>
                                     )}
 
                                     {/* Variants Display */}
                                     {productVariants.length > 0 && (
-                                        <div className="mt-8">
-                                            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                                        <div className="mt-6">
+                                            <h3 className="text-base font-semibold text-gray-800 mb-3">
                                                 Product Variants (
-                                                {productVariants.length}{" "}
-                                                combinations)
+                                                {productVariants.length})
                                             </h3>
 
-                                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                                            <div className="space-y-3 max-h-64 overflow-y-auto">
                                                 {productVariants.map(
                                                     (variant, index) => (
                                                         <div
                                                             key={
                                                                 variant.variant_key
                                                             }
-                                                            className="border rounded-lg p-4 bg-white"
+                                                            className="border rounded-lg p-3 bg-white"
                                                         >
-                                                            <div className="flex items-center justify-between mb-3">
-                                                                <div>
-                                                                    <span className="font-medium text-gray-700">
-                                                                        Variant{" "}
-                                                                        {index +
-                                                                            1}
-                                                                        :
-                                                                    </span>
-                                                                    <span className="ml-2 text-gray-600">
-                                                                        {Object.entries(
-                                                                            variant.combination
+                                                            <div className="mb-2">
+                                                                <span className="font-medium text-gray-700 text-sm">
+                                                                    Variant{" "}
+                                                                    {index + 1}:
+                                                                </span>
+                                                                <span className="ml-1 text-gray-600 text-sm">
+                                                                    {Object.entries(
+                                                                        variant.combination
+                                                                    )
+                                                                        .map(
+                                                                            ([
+                                                                                key,
+                                                                                value,
+                                                                            ]) =>
+                                                                                `${key}: ${value}`
                                                                         )
-                                                                            .map(
-                                                                                ([
-                                                                                    key,
-                                                                                    value,
-                                                                                ]) =>
-                                                                                    `${key}: ${value}`
-                                                                            )
-                                                                            .join(
-                                                                                ", "
-                                                                            )}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="text-sm text-gray-500">
-                                                                    SKU:{" "}
-                                                                    {
-                                                                        variant.variant_key
-                                                                    }
-                                                                </div>
+                                                                        .join(
+                                                                            ", "
+                                                                        )}
+                                                                </span>
                                                             </div>
 
-                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="grid grid-cols-2 gap-3">
                                                                 <div>
-                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
                                                                         Quantity
                                                                         *
                                                                     </label>
@@ -1199,13 +1084,13 @@ export function SellerAddProduct_Modal({
                                                                                     .value
                                                                             )
                                                                         }
-                                                                        className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                                        className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-transparent text-sm"
                                                                         placeholder="0"
                                                                         required
                                                                     />
                                                                 </div>
                                                                 <div>
-                                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
                                                                         Price
                                                                         (RM) *
                                                                     </label>
@@ -1224,7 +1109,7 @@ export function SellerAddProduct_Modal({
                                                                                     .value
                                                                             )
                                                                         }
-                                                                        className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                                                        className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-transparent text-sm"
                                                                         placeholder="0.00"
                                                                         required
                                                                     />
@@ -1235,8 +1120,8 @@ export function SellerAddProduct_Modal({
                                                 )}
                                             </div>
 
-                                            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                                                <p className="text-sm text-gray-600">
+                                            <div className="mt-3 p-2 bg-gray-50 rounded text-sm">
+                                                <p className="text-gray-600">
                                                     Total Stock:{" "}
                                                     {productVariants.reduce(
                                                         (sum, variant) =>
@@ -1256,14 +1141,13 @@ export function SellerAddProduct_Modal({
                             )}
 
                             {/* Step 5: Media */}
-                            {/* Step 5: Media */}
                             {step === 5 && (
-                                <div className="space-y-6">
-                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <div className="space-y-4 sm:space-y-6">
+                                    <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
                                         <div className="flex items-start">
                                             <Camera
-                                                className="text-blue-500 mt-0.5 mr-3 flex-shrink-0"
-                                                size={20}
+                                                className="text-blue-500 mt-0.5 mr-2 flex-shrink-0"
+                                                size={18}
                                             />
                                             <div>
                                                 <p className="text-sm text-blue-700 font-medium mb-1">
@@ -1272,8 +1156,7 @@ export function SellerAddProduct_Modal({
                                                 <p className="text-xs text-blue-600">
                                                     Upload clear photos from all
                                                     angles. Include any
-                                                    imperfections. First image
-                                                    will be the main thumbnail.
+                                                    imperfections.
                                                 </p>
                                             </div>
                                         </div>
@@ -1281,19 +1164,19 @@ export function SellerAddProduct_Modal({
 
                                     {/* Image Upload */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Product Images *
                                         </label>
-                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
+                                        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-3">
                                             {productImages.map((img, index) => (
                                                 <div
                                                     key={index}
-                                                    className="relative group"
+                                                    className="relative group aspect-square"
                                                 >
                                                     <img
                                                         src={img.preview}
                                                         alt=""
-                                                        className="w-full h-24 object-cover rounded-lg border cursor-pointer"
+                                                        className="w-full h-full object-cover rounded border cursor-pointer"
                                                         onClick={() => {
                                                             setCurrentImageIndex(
                                                                 index
@@ -1308,24 +1191,24 @@ export function SellerAddProduct_Modal({
                                                         onClick={() =>
                                                             removeImage(index)
                                                         }
-                                                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                                                        className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition text-xs"
                                                     >
-                                                        <X size={14} />
+                                                        <X size={12} />
                                                     </button>
                                                     {index === 0 && (
-                                                        <span className="absolute top-1 left-1 bg-green-500 text-white px-2 py-1 rounded text-xs">
+                                                        <span className="absolute top-1 left-1 bg-green-500 text-white px-1 py-0.5 rounded text-xs">
                                                             Main
                                                         </span>
                                                     )}
                                                 </div>
                                             ))}
                                             {productImages.length < 12 && (
-                                                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 cursor-pointer p-4">
+                                                <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded hover:border-indigo-400 cursor-pointer p-2 aspect-square">
                                                     <Camera
-                                                        className="text-gray-400 mb-2"
-                                                        size={24}
+                                                        className="text-gray-400 mb-1"
+                                                        size={20}
                                                     />
-                                                    <span className="text-sm text-gray-600 text-center">
+                                                    <span className="text-xs text-gray-600 text-center">
                                                         Add Photos
                                                     </span>
                                                     <input
@@ -1341,30 +1224,28 @@ export function SellerAddProduct_Modal({
                                             )}
                                         </div>
                                         <p className="text-xs text-gray-500">
-                                            {productImages.length}/12 photos
-                                            uploaded • PNG, JPG up to 10MB each
+                                            {productImages.length}/12 photos •
+                                            PNG, JPG up to 10MB
                                         </p>
                                     </div>
 
                                     {/* Video Upload */}
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Product Videos (Optional)
                                         </label>
 
-                                        {/* Video Upload Area */}
                                         {productVideos.length === 0 ? (
-                                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 cursor-pointer p-6">
+                                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded hover:border-indigo-400 cursor-pointer p-4">
                                                 <Video
-                                                    className="text-gray-400 mb-2"
-                                                    size={32}
+                                                    className="text-gray-400 mb-1"
+                                                    size={24}
                                                 />
                                                 <span className="text-sm text-gray-600 mb-1">
                                                     Add Videos
                                                 </span>
-                                                <span className="text-xs text-gray-500">
-                                                    MP4, MOV, AVI, WMV, MKV up
-                                                    to 50MB each
+                                                <span className="text-xs text-gray-500 text-center">
+                                                    Up to 50MB each
                                                 </span>
                                                 <input
                                                     type="file"
@@ -1375,20 +1256,19 @@ export function SellerAddProduct_Modal({
                                                 />
                                             </label>
                                         ) : (
-                                            <div className="space-y-4">
-                                                {/* Video Grid */}
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-3">
+                                                <div className="grid grid-cols-1 gap-3">
                                                     {productVideos.map(
                                                         (video, index) => (
                                                             <div
                                                                 key={index}
-                                                                className="relative group border rounded-lg overflow-hidden bg-black"
+                                                                className="relative group border rounded overflow-hidden bg-black"
                                                             >
                                                                 <video
                                                                     src={
                                                                         video.preview
                                                                     }
-                                                                    className="w-full h-40 object-cover"
+                                                                    className="w-full h-32 object-cover"
                                                                     controls
                                                                 />
                                                                 <button
@@ -1398,28 +1278,23 @@ export function SellerAddProduct_Modal({
                                                                             index
                                                                         )
                                                                     }
-                                                                    className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition"
+                                                                    className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
                                                                 >
                                                                     <X
                                                                         size={
-                                                                            16
+                                                                            12
                                                                         }
                                                                     />
                                                                 </button>
-                                                                <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                                                                    Video{" "}
-                                                                    {index + 1}
-                                                                </div>
                                                             </div>
                                                         )
                                                     )}
                                                 </div>
 
-                                                {/* Add More Videos Button */}
                                                 {productVideos.length < 5 && (
-                                                    <label className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-lg hover:border-indigo-400 cursor-pointer p-4">
+                                                    <label className="flex items-center justify-center border-2 border-dashed border-gray-300 rounded hover:border-indigo-400 cursor-pointer p-3">
                                                         <Plus
-                                                            size={20}
+                                                            size={16}
                                                             className="text-gray-400 mr-2"
                                                         />
                                                         <span className="text-sm text-gray-600">
@@ -1442,29 +1317,24 @@ export function SellerAddProduct_Modal({
                                                 )}
                                             </div>
                                         )}
-
-                                        <p className="text-xs text-gray-500 mt-2">
-                                            {productVideos.length}/5 videos
-                                            allowed • Up to 50MB each
-                                        </p>
                                     </div>
                                 </div>
                             )}
 
                             {/* Step 6: Review */}
                             {step === 6 && (
-                                <div className="space-y-6">
-                                    <h3 className="text-xl font-semibold text-gray-800 border-b pb-3">
+                                <div className="space-y-4 sm:space-y-6">
+                                    <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">
                                         Review Your Product
                                     </h3>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="space-y-4">
+                                    <div className="grid grid-cols-1 gap-4 sm:gap-6">
+                                        <div className="space-y-3">
                                             <div>
-                                                <h4 className="font-medium text-gray-700 mb-2">
+                                                <h4 className="font-medium text-gray-700 mb-1 text-sm">
                                                     Basic Information
                                                 </h4>
-                                                <div className="space-y-2 text-sm">
+                                                <div className="space-y-1 text-sm">
                                                     <p className="text-black">
                                                         <span className="text-gray-500">
                                                             Name:
@@ -1495,49 +1365,45 @@ export function SellerAddProduct_Modal({
                                                     </p>
                                                     <p className="text-black">
                                                         <span className="text-gray-500">
-                                                            Brand:
-                                                        </span>{" "}
-                                                        {productBrand ||
-                                                            "Not specified"}
-                                                    </p>
-                                                    <p className="text-black">
-                                                        <span className="text-gray-500">
-                                                            Manufacturer:
-                                                        </span>{" "}
-                                                        {productManufacturer ||
-                                                            "Not specified"}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <h4 className="font-medium text-gray-700 mb-2">
-                                                    Pricing & Stock
-                                                </h4>
-                                                <div className="space-y-2 text-sm">
-                                                    <p className="text-black">
-                                                        <span className="text-gray-500">
                                                             Price:
                                                         </span>{" "}
                                                         RM {productPrice}
                                                     </p>
-
                                                     <p className="text-black">
                                                         <span className="text-gray-500">
                                                             Status:
                                                         </span>{" "}
-                                                        {productStatus}
+                                                        <span
+                                                            className={`font-medium ${
+                                                                productStatus ===
+                                                                "available"
+                                                                    ? "text-green-600"
+                                                                    : productStatus ===
+                                                                      "reserved"
+                                                                    ? "text-yellow-600"
+                                                                    : productStatus ===
+                                                                      "sold"
+                                                                    ? "text-red-600"
+                                                                    : "text-gray-600"
+                                                            }`}
+                                                        >
+                                                            {
+                                                                statusOptions.find(
+                                                                    (s) =>
+                                                                        s.value ===
+                                                                        productStatus
+                                                                )?.label
+                                                            }
+                                                        </span>
                                                     </p>
                                                 </div>
                                             </div>
-                                        </div>
 
-                                        <div className="space-y-4">
                                             {keyFeatures.some(
                                                 (f) => f.trim() !== ""
                                             ) && (
                                                 <div>
-                                                    <h4 className="font-medium text-gray-700 mb-2">
+                                                    <h4 className="font-medium text-gray-700 mb-1 text-sm">
                                                         Key Features
                                                     </h4>
                                                     <ul className="list-disc list-inside text-sm space-y-1">
@@ -1568,10 +1434,12 @@ export function SellerAddProduct_Modal({
 
                                             {productImages.length > 0 && (
                                                 <div>
-                                                    <h4 className="font-medium text-gray-700 mb-2">
-                                                        Media
+                                                    <h4 className="font-medium text-gray-700 mb-1 text-sm">
+                                                        Media (
+                                                        {productImages.length}{" "}
+                                                        photos)
                                                     </h4>
-                                                    <div className="flex gap-2">
+                                                    <div className="flex gap-1">
                                                         {productImages
                                                             .slice(0, 3)
                                                             .map((img, i) => (
@@ -1581,12 +1449,12 @@ export function SellerAddProduct_Modal({
                                                                         img.preview
                                                                     }
                                                                     alt=""
-                                                                    className="w-16 h-16 object-cover rounded border"
+                                                                    className="w-12 h-12 object-cover rounded border"
                                                                 />
                                                             ))}
                                                         {productImages.length >
                                                             3 && (
-                                                            <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center text-xs text-gray-500">
+                                                            <div className="w-12 h-12 bg-gray-100 rounded border flex items-center justify-center text-xs text-gray-500">
                                                                 +
                                                                 {productImages.length -
                                                                     3}
@@ -1598,11 +1466,11 @@ export function SellerAddProduct_Modal({
                                         </div>
                                     </div>
 
-                                    <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                                    <div className="bg-green-50 p-3 rounded border border-green-200">
                                         <div className="flex items-start">
                                             <CheckCircle
-                                                className="text-green-500 mt-0.5 mr-3 flex-shrink-0"
-                                                size={20}
+                                                className="text-green-500 mt-0.5 mr-2 flex-shrink-0"
+                                                size={16}
                                             />
                                             <p className="text-sm text-green-700">
                                                 Your product is ready to be
@@ -1618,7 +1486,7 @@ export function SellerAddProduct_Modal({
                     </div>
 
                     {/* Navigation */}
-                    <div className="sticky bottom-0 bg-white border-t p-4">
+                    <div className="sticky bottom-0 bg-white border-t p-3">
                         <div className="flex justify-between items-center">
                             <div>
                                 {step > 1 && (
@@ -1627,30 +1495,30 @@ export function SellerAddProduct_Modal({
                                         onClick={() =>
                                             setStep((prev) => prev - 1)
                                         }
-                                        className="px-6 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium"
+                                        className="px-4 py-2 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium text-sm"
                                     >
                                         <ChevronLeft
-                                            size={20}
-                                            className="inline mr-2"
+                                            size={16}
+                                            className="inline mr-1"
                                         />
                                         Back
                                     </button>
                                 )}
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
                                 {step < 6 ? (
                                     <button
                                         type="button"
                                         onClick={() =>
                                             setStep((prev) => prev + 1)
                                         }
-                                        className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium"
+                                        className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 font-medium text-sm"
                                     >
                                         Continue
                                         <ChevronRight
-                                            size={20}
-                                            className="inline ml-2"
+                                            size={16}
+                                            className="inline ml-1"
                                         />
                                     </button>
                                 ) : (
@@ -1658,11 +1526,11 @@ export function SellerAddProduct_Modal({
                                         type="button"
                                         onClick={handleSubmit}
                                         disabled={isSubmitting}
-                                        className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium"
+                                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 font-medium text-sm"
                                     >
                                         {isSubmitting ? (
                                             <>
-                                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white inline-block mr-2"></div>
+                                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white inline-block mr-1"></div>
                                                 Publishing...
                                             </>
                                         ) : (
@@ -1678,70 +1546,43 @@ export function SellerAddProduct_Modal({
 
             {/* Image Preview Modal */}
             {isImagePreviewOpen && productImages.length > 0 && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-4">
-                    <div className="relative w-full max-w-4xl">
+                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-2">
+                    <div className="relative w-full max-w-md">
                         <button
                             onClick={() => setIsImagePreviewOpen(false)}
-                            className="absolute top-4 right-4 z-10 bg-white/20 text-white p-2 rounded-full hover:bg-white/30"
+                            className="absolute top-2 right-2 z-10 bg-white/20 text-white p-1 rounded-full hover:bg-white/30"
                         >
-                            <X size={24} />
+                            <X size={20} />
                         </button>
 
                         <div className="relative">
                             <img
                                 src={productImages[currentImageIndex].preview}
                                 alt=""
-                                className="w-full h-auto max-h-[80vh] object-contain rounded-lg"
+                                className="w-full h-auto max-h-[70vh] object-contain rounded"
                             />
 
                             {productImages.length > 1 && (
                                 <>
                                     <button
                                         onClick={prevImage}
-                                        className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30"
+                                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/20 text-white p-1 rounded-full hover:bg-white/30"
                                     >
-                                        <ChevronLeft size={24} />
+                                        <ChevronLeft size={20} />
                                     </button>
                                     <button
                                         onClick={nextImage}
-                                        className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30"
+                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/20 text-white p-1 rounded-full hover:bg-white/30"
                                     >
-                                        <ChevronRight size={24} />
+                                        <ChevronRight size={20} />
                                     </button>
                                 </>
                             )}
                         </div>
 
-                        <div className="mt-4 text-center text-white">
+                        <div className="mt-3 text-center text-white text-sm">
                             Image {currentImageIndex + 1} of{" "}
                             {productImages.length}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Video Preview Modal */}
-            {isVideoPreviewOpen && productVideos.length > 0 && (
-                <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-4">
-                    <div className="relative w-full max-w-4xl">
-                        <button
-                            onClick={() => setIsVideoPreviewOpen(false)}
-                            className="absolute top-4 right-4 z-10 bg-white/20 text-white p-2 rounded-full hover:bg-white/30"
-                        >
-                            <X size={24} />
-                        </button>
-
-                        <div className="relative">
-                            <video
-                                src={productVideos[0].preview}
-                                className="w-full h-auto max-h-[80vh] rounded-lg"
-                                controls
-                                autoPlay
-                            />
-                        </div>
-
-                        <div className="mt-4 text-center text-white">
-                            Video 1 of {productVideos.length}
                         </div>
                     </div>
                 </div>

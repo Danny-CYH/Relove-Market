@@ -17,6 +17,7 @@ import {
     Pause,
     Volume2,
     VolumeX,
+    MapPin,
 } from "lucide-react";
 
 import { FaStar } from "react-icons/fa";
@@ -63,6 +64,10 @@ export default function ProductDetails({ product_info }) {
         wishlist: false,
     });
 
+    // NEW: Address validation state
+    const [hasValidAddress, setHasValidAddress] = useState(true);
+    const [isCheckingAddress, setIsCheckingAddress] = useState(false);
+
     // Video states
     const [selectedVideo, setSelectedVideo] = useState(null);
     const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -107,6 +112,70 @@ export default function ProductDetails({ product_info }) {
     // Check if product has videos
     const hasVideos = product_info[0]?.product_video?.length > 0;
     const videos = product_info[0]?.product_video || [];
+
+    // NEW: Function to check if user has a valid address
+    const checkUserAddress = useCallback(async () => {
+        if (!auth.user) {
+            setHasValidAddress(false);
+            return;
+        }
+
+        setIsCheckingAddress(true);
+        try {
+            const response = await axios.get(route("check-address"));
+            setHasValidAddress(response.data.hasValidAddress);
+        } catch (error) {
+            console.error("Error checking user address:", error);
+            setHasValidAddress(false);
+        } finally {
+            setIsCheckingAddress(false);
+        }
+    }, [auth.user]);
+
+    // NEW: Function to handle address update prompt
+    const promptAddressUpdate = () => {
+        if (typeof Swal !== "undefined") {
+            Swal.fire({
+                title: "Address Required",
+                html: `
+                    <div class="text-left">
+                        <p class="mb-4">Please update your shipping address before making a purchase.</p>
+                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                            <div class="flex items-start gap-2">
+                                <MapPin size={18} class="text-yellow-600 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p class="text-yellow-800 font-medium text-sm">Shipping address needed</p>
+                                    <p class="text-yellow-700 text-xs">We need your address to calculate shipping and deliver your order</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Update Address",
+                cancelButtonText: "Later",
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Redirect to profile page with address tab focused
+                    router.visit(route("profile"), {
+                        data: { focus: "address" },
+                    });
+                }
+            });
+        } else {
+            // Fallback alert
+            if (
+                window.confirm(
+                    "Please update your shipping address in your profile before making a purchase. Go to profile page now?"
+                )
+            ) {
+                router.visit(route("profile"));
+            }
+        }
+    };
 
     // Video controls
     const toggleVideoPlay = () => {
@@ -267,7 +336,6 @@ export default function ProductDetails({ product_info }) {
     // NEW FUNCTION: Prepare checkout data in same structure as wishlist
     const prepareCheckoutData = () => {
         const variantData = prepareSelectedVariantData();
-        console.log(variantData);
 
         // Create the same data structure as wishlist items
         const checkoutItem = {
@@ -291,13 +359,11 @@ export default function ProductDetails({ product_info }) {
         return [checkoutItem]; // Return as array to match wishlist structure
     };
 
-    // UPDATED: Handle Buy Now - Send data in same structure as wishlist
+    // UPDATED: Handle Buy Now - with address validation
     const handleBuyNow = () => {
         // Check if user is authenticated
         if (!auth.user) {
-            // Test with a simple alert first
             if (typeof Swal !== "undefined") {
-                console.log("Using SweetAlert");
                 Swal.fire({
                     title: "Login Required",
                     text: "Please login to continue with your purchase",
@@ -317,8 +383,6 @@ export default function ProductDetails({ product_info }) {
                     }
                 });
             } else {
-                console.log("SweetAlert not available, using fallback");
-                // Fallback
                 if (
                     window.confirm(
                         "Please login to continue with your purchase."
@@ -330,6 +394,12 @@ export default function ProductDetails({ product_info }) {
                     });
                 }
             }
+            return;
+        }
+
+        // NEW: Check if user has valid address
+        if (!hasValidAddress) {
+            promptAddressUpdate();
             return;
         }
 
@@ -396,11 +466,22 @@ export default function ProductDetails({ product_info }) {
 
             setShowReviewModal(false);
 
-            // Show success message
-            alert("Review submitted successfully!");
+            Swal.fire({
+                icon: "success",
+                title: "Success",
+                text: "Review submitted successfully!",
+                timer: 2000,
+                showConfirmButton: false,
+            });
         } catch (error) {
             console.error("Error submitting review:", error);
-            alert("Failed to submit review. Please try again.");
+            Swal.fire({
+                icon: "error",
+                title: "Error",
+                text: "Something error! Please try again later...",
+                timer: 2000,
+                showConfirmButton: false,
+            });
         }
     };
 
@@ -491,6 +572,18 @@ export default function ProductDetails({ product_info }) {
             return;
         }
 
+        if (product_info[0].product_quantity <= 0) {
+            Swal.fire({
+                title: "Product Out of Stock",
+                text: "Items not available currently",
+                icon: "warning",
+                confirmButtonText: "OK",
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+            });
+            return;
+        }
+
         if (!validateVariant("adding to wishlist")) {
             return;
         }
@@ -500,7 +593,7 @@ export default function ProductDetails({ product_info }) {
 
         try {
             if (isWishlisted) {
-                await axios.delete(route("delete-wishlist"), {
+                await axios.delete(route("remove-wishlist"), {
                     data: { product_id: [product_id] },
                 });
                 setIsWishlisted(false);
@@ -630,6 +723,15 @@ export default function ProductDetails({ product_info }) {
         }
     }, [checkWishlistStatus, reviews]);
 
+    // NEW: Check user address on component mount and when auth changes
+    useEffect(() => {
+        if (auth.user) {
+            checkUserAddress();
+        } else {
+            setHasValidAddress(false);
+        }
+    }, [auth.user, checkUserAddress]);
+
     // WebSocket and other preserved effects
     useEffect(() => {
         getRecommendations();
@@ -717,12 +819,29 @@ export default function ProductDetails({ product_info }) {
         };
     }, []);
 
+    // NEW: Determine if Buy Now button should be disabled
+    const isBuyNowDisabled =
+        !auth.user ||
+        !hasValidAddress ||
+        (hasVariants && !selectedVariant) ||
+        availableStock === 0;
+
+    // NEW: Get Buy Now button title
+    const getBuyNowButtonTitle = () => {
+        if (!auth.user) return "Please login to purchase";
+        if (!hasValidAddress) return "Please update your address in profile";
+        if (hasVariants && !selectedVariant)
+            return "Please select a variant first";
+        if (availableStock === 0) return "Out of stock";
+        return "";
+    };
+
     return (
         <div className="min-h-screen bg-gray-50">
             <Navbar />
 
             {/* Main Product Section */}
-            <div className="max-w-7xl mx-auto mt-4 md:mt-16 px-4 sm:px-6 py-4 lg:py-6">
+            <div className="max-w-7xl mx-auto mt-14 md:mt-16 px-4 sm:px-6 py-4 lg:py-6">
                 <div className="flex items-center mb-4">
                     <Link
                         href={route("shopping")}
@@ -911,6 +1030,35 @@ export default function ProductDetails({ product_info }) {
                             </div>
                         )}
 
+                        {/* NEW: Address Warning Message */}
+                        {auth.user && !hasValidAddress && (
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
+                                <MapPin
+                                    className="text-yellow-600 mt-0.5 flex-shrink-0"
+                                    size={18}
+                                />
+                                <div className="flex-1">
+                                    <p className="text-yellow-800 font-medium text-sm">
+                                        Shipping address required
+                                    </p>
+                                    <p className="text-yellow-700 text-sm mt-1">
+                                        Please update your address in your
+                                        profile to enable purchases
+                                    </p>
+                                    <button
+                                        onClick={() =>
+                                            router.visit(route("profile"), {
+                                                data: { focus: "address" },
+                                            })
+                                        }
+                                        className="text-yellow-800 underline text-sm mt-2 hover:text-yellow-900"
+                                    >
+                                        Update Address Now
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Product Header */}
                         <div className="bg-white rounded-xl lg:rounded-2xl p-4 lg:p-6 border">
                             <div className="flex items-start justify-between mb-3 lg:mb-4">
@@ -1039,9 +1187,6 @@ export default function ProductDetails({ product_info }) {
                                         </>
                                     )}
                                 </div>
-                                <p className="text-gray-600 text-sm">
-                                    Price before tax
-                                </p>
                             </div>
 
                             {/* Stock Status */}
@@ -1243,26 +1388,13 @@ export default function ProductDetails({ product_info }) {
 
                                     <button
                                         onClick={handleBuyNow}
-                                        disabled={
-                                            (hasVariants && !selectedVariant) ||
-                                            availableStock === 0
-                                        }
+                                        disabled={isBuyNowDisabled}
                                         className={`flex-1 py-3 rounded-lg font-semibold ${
-                                            (hasVariants && !selectedVariant) ||
-                                            availableStock === 0
+                                            isBuyNowDisabled
                                                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                                                 : "bg-orange-400 text-white hover:bg-orange-600"
                                         }`}
-                                        title={
-                                            !auth.user
-                                                ? "Please login to purchase"
-                                                : hasVariants &&
-                                                  !selectedVariant
-                                                ? "Please select a variant first"
-                                                : availableStock === 0
-                                                ? "Out of stock"
-                                                : ""
-                                        }
+                                        title={getBuyNowButtonTitle()}
                                     >
                                         {loadingStates.buyNow ? (
                                             <>
@@ -1293,6 +1425,16 @@ export default function ProductDetails({ product_info }) {
                                         <p className="text-sm text-red-500 font-medium">
                                             This product is currently out of
                                             stock
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* NEW: Address limitation note */}
+                                {auth.user && !hasValidAddress && (
+                                    <div className="text-center">
+                                        <p className="text-sm text-yellow-600 font-medium">
+                                            Please update your address in
+                                            profile to enable purchases
                                         </p>
                                     </div>
                                 )}
@@ -1344,7 +1486,7 @@ export default function ProductDetails({ product_info }) {
                                             ?.store_name || "Seller Store"}
                                     </h3>
                                     <p className="text-xs lg:text-sm text-gray-600">
-                                        98% Positive Rating
+                                        Verified by Relove Market
                                     </p>
                                 </div>
                                 <button
@@ -1499,20 +1641,26 @@ export default function ProductDetails({ product_info }) {
                                                                 className="border-b pb-4 lg:pb-6 last:border-b-0"
                                                             >
                                                                 <div className="flex items-start gap-3 lg:gap-4">
-                                                                    <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                                    <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gray-200 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                                                         {review
                                                                             .user
                                                                             ?.profile_image ? (
                                                                             <img
-                                                                                src={`${
-                                                                                    import.meta
-                                                                                        .env
-                                                                                        .VITE_BASE_URL
-                                                                                }${
+                                                                                src={
                                                                                     review
                                                                                         .user
-                                                                                        .profile_image
-                                                                                }`}
+                                                                                        ?.profile_image
+                                                                                        ? `${
+                                                                                              import.meta
+                                                                                                  .env
+                                                                                                  .VITE_BASE_URL
+                                                                                          }${
+                                                                                              review
+                                                                                                  .user
+                                                                                                  .profile_image
+                                                                                          }`
+                                                                                        : "/image/user.png"
+                                                                                }
                                                                                 alt={
                                                                                     review
                                                                                         .user
@@ -1522,29 +1670,33 @@ export default function ProductDetails({ product_info }) {
                                                                                 className="w-full h-full rounded-lg object-cover"
                                                                             />
                                                                         ) : (
-                                                                            <span>
-                                                                                {review.avatar ||
-                                                                                    (review.user?.name?.charAt(
-                                                                                        0
-                                                                                    ) ??
-                                                                                        "U")}
-                                                                            </span>
+                                                                            <img
+                                                                                src="/image/user.png"
+                                                                                alt={
+                                                                                    review
+                                                                                        .user
+                                                                                        ?.name ||
+                                                                                    "User"
+                                                                                }
+                                                                                className="w-full h-full rounded-lg object-cover"
+                                                                            />
                                                                         )}
                                                                     </div>
                                                                     <div className="flex-1">
                                                                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                                                                             <span className="font-semibold text-sm text-black lg:text-base">
-                                                                                {review
+                                                                                {review.user_id ===
+                                                                                auth
                                                                                     .user
-                                                                                    .name ||
-                                                                                    "Anonymous"}
+                                                                                    .user_id
+                                                                                    ? "You"
+                                                                                    : review
+                                                                                          .user
+                                                                                          ?.name ||
+                                                                                      "Anonymous"}
                                                                             </span>
-                                                                            {review.verified && (
-                                                                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                                                    Verified
-                                                                                </span>
-                                                                            )}
                                                                         </div>
+
                                                                         <div className="flex text-yellow-400 mb-2">
                                                                             {[
                                                                                 ...Array(
@@ -1572,19 +1724,29 @@ export default function ProductDetails({ product_info }) {
                                                                                 )
                                                                             )}
                                                                         </div>
+
                                                                         <p className="text-gray-700 text-sm lg:text-base mb-3">
                                                                             {
                                                                                 review.comment
                                                                             }
                                                                         </p>
+
                                                                         <div className="flex items-center gap-3 lg:gap-4 text-xs lg:text-sm text-gray-500">
                                                                             <span>
-                                                                                {review.date ||
-                                                                                    new Date()
-                                                                                        .toISOString()
-                                                                                        .split(
-                                                                                            "T"
-                                                                                        )[0]}
+                                                                                {new Date(
+                                                                                    review.date ||
+                                                                                        review.created_at ||
+                                                                                        Date.now()
+                                                                                ).toLocaleString(
+                                                                                    "en-US",
+                                                                                    {
+                                                                                        year: "numeric",
+                                                                                        month: "short",
+                                                                                        day: "numeric",
+                                                                                        hour: "2-digit",
+                                                                                        minute: "2-digit",
+                                                                                    }
+                                                                                )}
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -1743,7 +1905,7 @@ export default function ProductDetails({ product_info }) {
                                                         }
                                                     </h3>
 
-                                                    <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
                                                         <div className="flex items-center space-x-1">
                                                             <div className="flex">
                                                                 {[
@@ -1773,7 +1935,7 @@ export default function ProductDetails({ product_info }) {
                                                                 )}
                                                             </span>
                                                         </div>
-                                                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">
+                                                        <span className="text-xs font-bold mt-2 md:mt-0 text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
                                                             {productData
                                                                 ?.category
                                                                 ?.category_name ||
@@ -1787,17 +1949,6 @@ export default function ProductDetails({ product_info }) {
                                                             {
                                                                 productData?.product_price
                                                             }
-                                                        </span>
-                                                        <span
-                                                            className={`text-xs font-medium ${
-                                                                isInStock
-                                                                    ? "text-green-600"
-                                                                    : "text-red-600"
-                                                            }`}
-                                                        >
-                                                            {isInStock
-                                                                ? "Available"
-                                                                : "Sold Out"}
                                                         </span>
                                                     </div>
                                                 </div>

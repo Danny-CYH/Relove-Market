@@ -31,7 +31,6 @@ class Product extends Model
         'product_manufacturer',
         'product_weight',
         'featured',
-        'flash_sale',
         'total_ratings',
         'seller_id',
         'category_id',

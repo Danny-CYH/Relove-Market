@@ -21,9 +21,13 @@ class Seller extends Model
         "seller_phone",
         "store_id",
         "business_id",
-        "subscription_plan_id",
         "is_verified",
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, "seller_id", "seller_id");
+    }
 
     public function sellerStore()
     {
@@ -43,10 +47,5 @@ class Seller extends Model
     public function conversations()
     {
         return $this->hasMany(Conversation::class, 'seller_id', 'seller_id');
-    }
-
-    public function subscription()
-    {
-        return $this->hasOne(Subscription::class, "subscription_plan_id", "subscription_plan_id");
     }
 }

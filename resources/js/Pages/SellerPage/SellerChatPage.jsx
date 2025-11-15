@@ -37,20 +37,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
 
     const { auth } = usePage().props;
 
-    // ✅ REMOVED: All subscription states and tier configurations
-
-    // ✅ KEPT: Check if seller can start new conversation - now always returns true
-    const canStartNewConversation = () => {
-        console.log("✅ Unlimited conversations enabled");
-        return true; // Always allow new conversations
-    };
-
-    // ✅ KEPT: Check if seller has reached conversation limit - now always returns false
-    const hasReachedLimit = () => {
-        console.log("✅ No conversation limits");
-        return false; // Never reach limit
-    };
-
     // ✅ KEPT: Handle new conversation creation - simplified without subscription checks
     const handleNewConversation = async (buyerId, productId) => {
         console.log("✅ Creating new conversation without restrictions");
@@ -204,7 +190,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
     // ✅ KEPT: Initialize component with proper data handling
     useEffect(() => {
         if (conversations && conversations.length > 0) {
-            console.log("Setting conversations from props:", conversations);
             setConversations(conversations);
 
             // Set active conversation if provided
@@ -213,10 +198,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
                     (conv) => conv.id == activeConversation
                 );
                 if (foundConversation) {
-                    console.log(
-                        "Setting active conversation:",
-                        foundConversation
-                    );
                     setActiveConversation(foundConversation);
                     // On mobile, hide sidebar when conversation is selected
                     if (isMobile) {
@@ -240,7 +221,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
         );
 
         if (hasUnreadMessages) {
-            console.log("📖 Auto-marking messages as read");
             markAsRead(activeConversation.id);
 
             // Also update local message state to show as read
@@ -420,7 +400,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
         setError(null);
         try {
             const response = await axios.get(`/messages/${conversationId}`);
-            console.log("Messages API Response:", response.data);
 
             // Handle both response structures
             const messagesData =
@@ -562,7 +541,6 @@ export default function SellerChatPage({ seller_storeInfo }) {
                         searchTerm={searchTerm}
                         conversationsLoading={conversationsLoading}
                         activeConversation={activeConversation}
-                        // ✅ REMOVED: All subscription-related props
                         handleConversationClick={handleConversationClick}
                     />
                     <RenderChatInterface
@@ -583,11 +561,11 @@ export default function SellerChatPage({ seller_storeInfo }) {
                             formatConversationTimeForDisplay
                         }
                         imageLoading={imageLoading}
+                        handleImageError={handleImageError}
+                        handleImageLoad={handleImageLoad}
                     />
                 </div>
             </main>
-
-            {/* ✅ REMOVED: UpgradeModal component */}
         </div>
     );
 }

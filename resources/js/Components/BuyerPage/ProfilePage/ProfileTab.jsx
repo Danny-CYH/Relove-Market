@@ -45,11 +45,11 @@ export function ProfileTab({
                             Edit Profile
                         </button>
                     ) : (
-                        <div className="flex space-x-2">
+                        <div className="flex flex-col md:flex-row space-x-2">
                             <button
                                 onClick={handleSave}
                                 disabled={loading}
-                                className="flex items-center bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center bg-blue-600 text-white mt-5 px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {loading ? (
                                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -62,7 +62,7 @@ export function ProfileTab({
                             {/* Cancel Button */}
                             <button
                                 onClick={handleCancel}
-                                className="flex items-center bg-gray-200 text-gray-700 px-4 py-2.5 rounded-xl hover:bg-gray-300 transition-colors font-medium"
+                                className="flex items-center bg-gray-200 text-gray-700 mt-5 px-4 py-2.5 rounded-xl hover:bg-gray-300 transition-colors font-medium"
                             >
                                 <X size={18} className="mr-2" />
                                 Cancel
@@ -258,55 +258,6 @@ export function ProfileTab({
                                 </span>
                             </div>
                         )}
-                    </div>
-
-                    {/* Preferences Section */}
-                    <div className="lg:col-span-2 mt-6 pt-6 border-t border-gray-200">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                            <Settings
-                                size={20}
-                                className="mr-2 text-purple-600"
-                            />
-                            Preferences
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                <div>
-                                    <p className="font-medium text-gray-900">
-                                        Newsletter
-                                    </p>
-                                    <p className="text-sm text-gray-600">
-                                        Receive product updates
-                                    </p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        defaultChecked
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-
-                            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                <div>
-                                    <p className="font-medium text-gray-900">
-                                        SMS Notifications
-                                    </p>
-                                    <p className="text-sm text-gray-600">
-                                        Order updates via SMS
-                                    </p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                                </label>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>

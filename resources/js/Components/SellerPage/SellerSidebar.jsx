@@ -7,12 +7,9 @@ import {
     FaBox,
     FaShoppingCart,
     FaMoneyBill,
-    FaTags,
-    FaCreditCard,
     FaUserCircle,
     FaSignOutAlt,
     FaStore,
-    FaCog,
     FaUser,
     FaChevronDown,
     FaChevronUp,
@@ -164,38 +161,6 @@ export function SellerSidebar({ notificationCount = 0 }) {
                         <FaMoneyBill className="text-lg text-amber-500" />
                         <span className="text-sm font-medium">Earnings</span>
                     </Link>
-
-                    <Link
-                        href={route("seller-manage-promotion")}
-                        className={`flex items-center space-x-3 p-3 rounded-xl transition-all ${
-                            isActive("seller-manage-promotion")
-                                ? "bg-indigo-50 text-indigo-600 shadow-sm border-l-4 border-indigo-600"
-                                : "text-gray-700 hover:bg-gray-50"
-                        }`}
-                    >
-                        <FaTags className="text-lg text-purple-500" />
-                        <span className="text-sm font-medium">Promotions</span>
-                    </Link>
-                </div>
-
-                {/* Account Section */}
-                <div className="mb-4">
-                    <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
-                        Account
-                    </div>
-                    <Link
-                        href={route("seller-manage-subscription")}
-                        className={`flex items-center space-x-3 p-3 rounded-xl transition-all ${
-                            isActive("seller-manage-subscription")
-                                ? "bg-indigo-50 text-indigo-600 shadow-sm border-l-4 border-indigo-600"
-                                : "text-gray-700 hover:bg-gray-50"
-                        }`}
-                    >
-                        <FaCreditCard className="text-lg text-teal-500" />
-                        <span className="text-sm font-medium">
-                            Subscription
-                        </span>
-                    </Link>
                 </div>
 
                 {/* Support Section */}
@@ -239,7 +204,19 @@ export function SellerSidebar({ notificationCount = 0 }) {
                 >
                     <div className="flex items-center space-x-3">
                         <div className="relative">
-                            <FaUserCircle className="text-xl text-indigo-600" />
+                            {auth.user?.profile_image ? (
+                                <img
+                                    src={
+                                        import.meta.env.VITE_BASE_URL +
+                                        auth.user?.profile_image
+                                    }
+                                    alt="User Profile"
+                                    className="h-10 w-10 rounded-full object-cover"
+                                />
+                            ) : (
+                                <FaUserCircle className="h-10 w-10 text-indigo-600" />
+                            )}
+
                             {notificationCount > 0 && (
                                 <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                                     {notificationCount}
@@ -275,13 +252,6 @@ export function SellerSidebar({ notificationCount = 0 }) {
                             >
                                 <FaUser className="w-4 h-4 mr-2" />
                                 Profile
-                            </Link>
-                            <Link
-                                href="#"
-                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
-                            >
-                                <FaCog className="w-4 h-4 mr-2" />
-                                Settings
                             </Link>
                             <Link
                                 href={route("logout")}
@@ -412,22 +382,12 @@ export function SellerSidebar({ notificationCount = 0 }) {
                             <ul className="py-1">
                                 <li>
                                     <Link
-                                        href="#"
+                                        href={route("seller-manage-profile")}
                                         className="flex items-center space-x-2 p-2 text-gray-700 hover:bg-gray-100 rounded-md text-sm"
                                         onClick={() => setProfileOpen(false)}
                                     >
                                         <FaUser className="text-sm" />
                                         <span>Profile</span>
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link
-                                        href="#"
-                                        className="flex items-center space-x-2 p-2 text-gray-700 hover:bg-gray-100 rounded-md text-sm"
-                                        onClick={() => setProfileOpen(false)}
-                                    >
-                                        <FaCog className="text-sm" />
-                                        <span>Settings</span>
                                     </Link>
                                 </li>
                                 <li>
