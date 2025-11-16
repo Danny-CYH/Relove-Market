@@ -11,9 +11,11 @@ import {
     CheckCircle2,
 } from "lucide-react";
 
-import { usePage, Link } from "@inertiajs/react";
 import axios from "axios";
 import dayjs from "dayjs";
+import Swal from "sweetalert2";
+
+import { usePage, Link } from "@inertiajs/react";
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
@@ -28,12 +30,7 @@ export default function ProfilePage() {
     const [isEditing, setIsEditing] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [notifications, setNotifications] = useState({
-        email: true,
-        sms: false,
-        push: true,
-        promotions: true,
-    });
+
     const [loading, setLoading] = useState(false);
 
     const fileInputRef = useRef(null);
@@ -112,13 +109,21 @@ export default function ProfilePage() {
         }
     };
 
-    // NEW: Order Confirmation Function
+    // NEW: Order Confirmation Function (SweetAlert Version)
     const confirmOrderDelivery = async (orderId) => {
-        if (
-            !confirm(
-                "Are you sure you have received your order in good condition? This will release payment to the seller."
-            )
-        ) {
+        // SweetAlert Confirmation Popup
+        const result = await Swal.fire({
+            title: "Confirm Delivery?",
+            text: "Have you received your order in good condition? This will release payment to the seller.",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Yes, I have received it",
+            cancelButtonText: "Cancel",
+            allowOutsideClick: false,
+        });
+
+        // If user cancels, stop the function
+        if (!result.isConfirmed) {
             return;
         }
 
@@ -148,17 +153,24 @@ export default function ProfilePage() {
                     )
                 );
 
-                alert(
-                    "Delivery confirmed! Payment has been released to the seller."
-                );
+                // SweetAlert Success Popup
+                await Swal.fire({
+                    title: "Delivery Confirmed!",
+                    text: "Payment has been released to the seller.",
+                    icon: "success",
+                });
             }
         } catch (error) {
             console.error("Error confirming delivery:", error);
-            if (error.response?.data?.message) {
-                alert(`Error: ${error.response.data.message}`);
-            } else {
-                alert("Failed to confirm delivery. Please try again.");
-            }
+
+            // SweetAlert Error Popup
+            Swal.fire({
+                title: "Error",
+                text: error.response?.data?.message
+                    ? error.response.data.message
+                    : "Failed to confirm delivery. Please try again.",
+                icon: "error",
+            });
         } finally {
             setConfirmingOrderId(null);
         }

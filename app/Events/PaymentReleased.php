@@ -3,64 +3,71 @@
 
 namespace App\Events;
 
+use App\Models\SellerEarning;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;   // <-- ADD THIS
 
-class PaymentReleased implements ShouldBroadcast
+class PaymentReleased implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $orderId;
-    public $amount;
-    public $sellerId;
-    public $releasedAt;
+    public $transaction;
 
     /**
      * Create a new event instance.
      */
-    public function __construct($orderId, $amount, $sellerId, $releasedAt)
+    public function __construct(SellerEarning $transaction)
     {
-        $this->orderId = $orderId;
-        $this->amount = $amount;
-        $this->sellerId = $sellerId;
-        $this->releasedAt = $releasedAt;
+        $this->transaction = $transaction;
+
+        // 🔥 LOG WHEN EVENT IS CREATED
+        Log::info("PaymentReleased Event Created", [
+            "seller_id" => $transaction->seller_id,
+            "order_id" => $transaction->order_id,
+            "amount" => $transaction->amount ?? null,
+        ]);
     }
 
     /**
      * Get the channels the event should broadcast on.
-     *
-     * @return array<int, \Illuminate\Broadcasting\Channel>
      */
-    public function broadcastOn(): array
+    public function broadcastOn()
     {
+        // 🔥 LOG WHICH CHANNEL THIS EVENT IS BROADCASTED TO
+        Log::info("PaymentReleased Event Broadcasting On Channel", [
+            "channel" => "seller.payment.{$this->transaction->seller_id}",
+        ]);
+
         return [
-            new PrivateChannel("seller.orders.{$this->sellerId}"),
+            new PrivateChannel("seller.payment.{$this->transaction->seller_id}"),
         ];
     }
 
-    /**
-     * The event's broadcast name.
-     */
-    public function broadcastAs(): string
+    public function broadcastAs()
     {
         return 'payment.released';
     }
 
     /**
-     * Get the data to broadcast.
+     * Get the broadcasted data.
      */
-    public function broadcastWith(): array
+    public function broadcastWith()
     {
+        // 🔥 LOG THE EXACT PAYLOAD SENT TO FRONTEND
+        Log::info("PaymentReleased Broadcast Data", [
+            "seller_earning" => $this->transaction,
+            "message" => "Payment for order #{$this->transaction->order_id} has been released.",
+        ]);
+
         return [
-            'order_id' => $this->orderId,
-            'amount' => $this->amount,
-            'released_at' => $this->releasedAt,
-            'message' => "Payment for order #{$this->orderId} has been released to your account.",
-            'timestamp' => now()->toISOString(),
+            "seller_earning" => $this->transaction,
+            "message" => "Payment for order #{$this->transaction->order_id} has been released to your account.",
         ];
     }
 }

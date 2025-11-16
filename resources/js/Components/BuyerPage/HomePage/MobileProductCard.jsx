@@ -31,10 +31,6 @@ export function MobileProductCard({ product, save_wishlist, get_wishlist }) {
     const stockQuantity = product.product_quantity || 0;
     const isInStock = stockQuantity > 0;
 
-    const sellerJoinDate = seller?.created_at
-        ? new Date(seller.created_at)
-        : null;
-
     // Calculate discount percentage
     const originalPrice =
         product.original_price || product.product_original_price;
@@ -155,6 +151,10 @@ export function MobileProductCard({ product, save_wishlist, get_wishlist }) {
                         />
                     )}
                 </button>
+
+                <div className="absolute bottom-3 left-3 bg-red-200 text-red-600 text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
+                    Sold: {product.order_items?.length}
+                </div>
             </div>
 
             {/* Product Information Section */}

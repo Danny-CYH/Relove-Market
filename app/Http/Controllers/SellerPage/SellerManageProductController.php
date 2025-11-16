@@ -103,6 +103,101 @@ class SellerManageProductController extends Controller
         ]);
     }
 
+    // Add this method to your SellerManageProductController
+    public function getProductMetrics(Request $request)
+    {
+        try {
+            $searchTerm = $request->get('search', '');
+            $statusFilter = $request->get('status', 'all');
+            $categoryFilter = $request->get('category', 'all');
+
+            $query = Product::where("seller_id", $this->seller_id);
+
+            // Apply the same filters as the main query
+            if (!empty($searchTerm)) {
+                $query->where('product_name', 'like', '%' . $searchTerm . '%');
+            }
+
+            if ($statusFilter !== 'all') {
+                $query->where('product_status', $statusFilter);
+            }
+
+            if ($categoryFilter !== 'all') {
+                $query->where('category_id', $categoryFilter);
+            }
+
+            // Get all products for metrics calculation (no pagination)
+            $allProducts = $query->get();
+
+            // Calculate metrics
+            $totalProducts = $allProducts->count();
+            $availableProducts = $allProducts->where('product_status', 'available')->count();
+            $unavailableProducts = $allProducts->where('product_status', 'unavailable')->count();
+            $lowStockProducts = $allProducts->where('product_quantity', '<', 10)->where('product_quantity', '>', 0)->count();
+            $outOfStockProducts = $allProducts->where('product_quantity', 0)->count();
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'totalProducts' => $totalProducts,
+                    'availableProducts' => $availableProducts,
+                    'unavailableProducts' => $unavailableProducts,
+                    'lowStockProducts' => $lowStockProducts,
+                    'outOfStockProducts' => $outOfStockProducts,
+                ]
+            ]);
+        } catch (Exception $e) {
+            \Log::error("GetProductMetrics error", [
+                "message" => $e->getMessage(),
+                "trace" => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // Add this method to auto-update product status when stock is zero
+    public function autoUpdateProductStatus()
+    {
+        try {
+            $products = Product::where('seller_id', $this->seller_id)
+                ->where('product_quantity', 0)
+                ->where('product_status', 'available')
+                ->get();
+
+            $updatedCount = 0;
+
+            foreach ($products as $product) {
+                $product->update([
+                    'product_status' => 'unavailable'
+                ]);
+                $updatedCount++;
+
+                // Broadcast the update
+                broadcast(new ProductUpdated($product, "updated"));
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Auto-updated {$updatedCount} products to unavailable status",
+                'updated_count' => $updatedCount
+            ]);
+        } catch (Exception $e) {
+            \Log::error("AutoUpdateProductStatus error", [
+                "message" => $e->getMessage(),
+                "trace" => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     // Code for seller to add the new products
     public function sellerAddProduct(Request $request)
     {

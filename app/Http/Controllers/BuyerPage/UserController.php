@@ -59,8 +59,7 @@ class UserController extends Controller
             'seller.sellerStore',
             "orderItems"
         ])
-            ->orderBy('featured', 'DESC')
-            ->orderBy('product_name', 'ASC');
+            ->orderBy('featured', 'DESC');
 
         // Apply basic filters for initial load if any
         if ($request->has('search') && $request->search) {

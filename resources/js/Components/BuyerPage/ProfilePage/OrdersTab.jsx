@@ -357,7 +357,7 @@ export function OrdersTab({
     // NEW: Render action buttons for mobile view
     const renderMobileActionButtons = (order) => {
         return (
-            <div className="flex gap-2 pt-3 border-t border-gray-100">
+            <div className="flex flex-col md:flex-row gap-2 pt-3 border-t border-gray-100">
                 {/* Receipt Button */}
                 <button
                     onClick={() => viewReceipt(order)}

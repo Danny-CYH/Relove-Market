@@ -8,11 +8,8 @@ import {
     Video,
     Info,
     Calendar,
-    Edit,
     Eye,
-    Tag,
     ShoppingCart,
-    BarChart3,
     ChevronLeft,
     ChevronRight,
     Palette,
@@ -698,6 +695,7 @@ export function SellerViewProduct_Modal({ product, onClose }) {
                                                                                 {
                                                                                     key
                                                                                 }
+
                                                                                 :{" "}
                                                                                 {
                                                                                     value

@@ -28,7 +28,7 @@ class SellerManageOrderController extends Controller
             $status = $request->input('status', '');
             $sort = $request->input('sort', 'created_at');
             $order = $request->input('order', 'desc');
-            $page = $request->input('page', 1); // Get the page number
+            $page = $request->input('page', 1);
 
             $query = Order::with(['user', 'orderItems.product', "orderItems.productImage"])
                 ->where('seller_id', $this->seller_id);
@@ -53,11 +53,11 @@ class SellerManageOrderController extends Controller
                 $query->where('order_status', $status);
             }
 
-            // Apply sorting
-            $query->orderBy($sort, $order);
+            // Calculate total counts and amounts BEFORE pagination
+            $totalCounts = $this->calculateTotalStats($query);
 
-            // ALWAYS use pagination, regardless of search
-            $paginated = $query->paginate(5, ['*'], 'page', $page);
+            // Apply sorting and pagination
+            $paginated = $query->orderBy($sort, $order)->paginate(5, ['*'], 'page', $page);
 
             return response()->json([
                 'success' => true,
@@ -67,7 +67,9 @@ class SellerManageOrderController extends Controller
                 'to' => $paginated->lastItem(),
                 'current_page' => $paginated->currentPage(),
                 'last_page' => $paginated->lastPage(),
-                'is_search' => !empty($search) // Just indicate if it's a search, but still paginated
+                'is_search' => !empty($search),
+                'total_counts' => $totalCounts['counts'],
+                'total_amounts' => $totalCounts['amounts']
             ]);
 
         } catch (Exception $e) {
@@ -78,6 +80,50 @@ class SellerManageOrderController extends Controller
         }
     }
 
+    private function calculateTotalStats($query)
+    {
+        // Clone the query to avoid affecting the main query
+        $countQuery = clone $query;
+
+        // Get all orders (without pagination) for stats calculation
+        $allOrders = $countQuery->get();
+
+        $counts = [
+            'All' => 0,
+            'Pending' => 0,
+            'Processing' => 0,
+            'Shipped' => 0,
+            'Delivered' => 0,
+            'Completed' => 0,
+            'Cancelled' => 0,
+        ];
+
+        $amounts = [
+            'All' => 0,
+            'Pending' => 0,
+            'Processing' => 0,
+            'Shipped' => 0,
+            'Delivered' => 0,
+            'Completed' => 0,
+            'Cancelled' => 0,
+        ];
+
+        foreach ($allOrders as $order) {
+            $status = $order->order_status ?: 'Processing';
+            $amount = floatval($order->total_amount ?: $order->amount ?: 0);
+
+            $counts['All']++;
+            $counts[$status] = ($counts[$status] ?? 0) + 1;
+            $amounts['All'] += $amount;
+            $amounts[$status] = ($amounts[$status] ?? 0) + $amount;
+        }
+
+        return [
+            'counts' => $counts,
+            'amounts' => $amounts
+        ];
+    }
+
     public function updateStatus(Request $request, $orderId)
     {
         try {
@@ -85,8 +131,15 @@ class SellerManageOrderController extends Controller
                 ->findOrFail($orderId);
 
             $validated = $request->validate([
-                'status' => 'required|in:Pending,Processing,Shipped,Delivered,Completed,Cancelled'
+                'status' => 'required|in:Pending,Processing,Shipped,Delivered,Cancelled'
             ]);
+
+            if ($validated['status'] === 'Completed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sellers cannot mark orders as completed. This status is set automatically when buyers confirm receipt.'
+                ], 403);
+            }
 
             $order->update(['order_status' => $validated['status']]);
 

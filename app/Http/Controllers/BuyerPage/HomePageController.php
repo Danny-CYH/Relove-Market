@@ -391,7 +391,8 @@ class HomePageController extends Controller
                 "ratings",
                 'category',
                 "productImage",
-                "productVariant"
+                "productVariant",
+                "orderItems"
             ])
                 ->where("featured", true)
                 ->get();

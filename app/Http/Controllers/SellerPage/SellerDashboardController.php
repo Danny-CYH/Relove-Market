@@ -28,9 +28,7 @@ class SellerDashboardController extends Controller
     {
         $seller_storeInfo = Seller::with([
             'sellerStore',
-            'product' => function ($query) {
-                $query->where('featured', true);
-            },
+            'product'
         ])
             ->where('seller_id', $this->seller_id)
             ->get();

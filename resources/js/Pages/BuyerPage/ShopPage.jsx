@@ -165,9 +165,14 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             clearTimeout(debounceTimeoutRef.current);
         }
 
-        // Set new timeout for API call
         debounceTimeoutRef.current = setTimeout(() => {
-            fetchProducts(1, { search: query });
+            if (query.trim() === "") {
+                // 👉 If search cleared, fetch all products
+                fetchProducts(1, {});
+            } else {
+                // 👉 Normal search request
+                fetchProducts(1, { search: query });
+            }
         }, 500);
     };
 
@@ -593,28 +598,45 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                 {expandedFilters.categories && (
                                     <div className="space-y-2 max-h-60 overflow-y-auto">
                                         {list_categoryItem?.map(
-                                            (category, index) => (
-                                                <label
-                                                    key={index}
-                                                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedCategories.includes(
-                                                            category.category_name
-                                                        )}
-                                                        onChange={() =>
-                                                            toggleCategory(
-                                                                category.category_name
-                                                            )
-                                                        }
-                                                        className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                    />
-                                                    <span className="text-sm text-gray-700">
-                                                        {category.category_name}
-                                                    </span>
-                                                </label>
-                                            )
+                                            (category, index) => {
+                                                const count = products.filter(
+                                                    (p) =>
+                                                        p.category
+                                                            ?.category_name ===
+                                                        category.category_name
+                                                ).length;
+
+                                                return (
+                                                    <label
+                                                        key={index}
+                                                        className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedCategories.includes(
+                                                                    category.category_name
+                                                                )}
+                                                                onChange={() =>
+                                                                    toggleCategory(
+                                                                        category.category_name
+                                                                    )
+                                                                }
+                                                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                                            />
+                                                            <span className="text-sm text-gray-700">
+                                                                {
+                                                                    category.category_name
+                                                                }
+                                                            </span>
+                                                        </div>
+
+                                                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                            {count}
+                                                        </span>
+                                                    </label>
+                                                );
+                                            }
                                         )}
                                     </div>
                                 )}
@@ -716,10 +738,9 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                     <div className="space-y-2">
                                         {[
                                             "New",
-                                            "Like New",
-                                            "Used - Good",
-                                            "Used - Fair",
-                                            "Vintage",
+                                            "Excellent",
+                                            "Good",
+                                            "Fair",
                                         ].map((condition, index) => (
                                             <label
                                                 key={index}
@@ -974,44 +995,62 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                     Price Range
                                 </h4>
                                 <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {[
-                                            {
-                                                label: "Under RM50",
-                                                range: [0, 50],
-                                            },
-                                            {
-                                                label: "RM50-100",
-                                                range: [50, 100],
-                                            },
-                                            {
-                                                label: "RM100-200",
-                                                range: [100, 200],
-                                            },
-                                            {
-                                                label: "Over RM200",
-                                                range: [200, 1000],
-                                            },
-                                        ].map((item, index) => (
-                                            <button
-                                                key={index}
-                                                onClick={() => {
-                                                    handleQuickPriceRange(
-                                                        item.range
-                                                    );
-                                                }}
-                                                className={`p-3 rounded-xl border-2 text-sm font-medium transition-colors ${
-                                                    priceRange[0] ===
-                                                        item.range[0] &&
-                                                    priceRange[1] ===
-                                                        item.range[1]
-                                                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                                                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                                                }`}
-                                            >
-                                                {item.label}
-                                            </button>
-                                        ))}
+                                    <div className="flex flex-row sm:flex-row sm:items-center gap-3">
+                                        {/* Min Price */}
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Min Price
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                                                    RM
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    value={priceRange[0]}
+                                                    onChange={(e) =>
+                                                        handlePriceInputChange(
+                                                            0,
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    onBlur={() =>
+                                                        fetchProducts(1)
+                                                    }
+                                                    className="w-full text-black pl-10 pr-3 py-2 border border-gray-300 
+                           rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Max Price */}
+                                        <div className="flex-1">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Max Price
+                                            </label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                                                    RM
+                                                </span>
+                                                <input
+                                                    type="text"
+                                                    value={priceRange[1]}
+                                                    onChange={(e) =>
+                                                        handlePriceInputChange(
+                                                            1,
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    onBlur={() =>
+                                                        fetchProducts(1)
+                                                    }
+                                                    className="w-full text-black pl-10 pr-3 py-2 border border-gray-300 
+                           rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder="1000"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1022,41 +1061,39 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                     Condition
                                 </h4>
                                 <div className="space-y-2">
-                                    {[
-                                        "New",
-                                        "Like New",
-                                        "Used - Good",
-                                        "Used - Fair",
-                                        "Vintage",
-                                    ].map((condition, index) => (
-                                        <label
-                                            key={index}
-                                            className="flex items-center gap-3 p-3 rounded-lg border border-gray-200"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedConditions.includes(
-                                                    condition
-                                                )}
-                                                onChange={() =>
-                                                    toggleCondition(condition)
-                                                }
-                                                className="w-5 h-5 text-blue-600 rounded border-gray-300"
-                                            />
-                                            <span className="text-sm text-gray-700 flex-1">
-                                                {condition}
-                                            </span>
-                                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                                {
-                                                    products.filter(
-                                                        (p) =>
-                                                            p.product_condition ===
+                                    {["New", "Excellent", "Good", "Fair"].map(
+                                        (condition, index) => (
+                                            <label
+                                                key={index}
+                                                className="flex items-center gap-3 p-3 rounded-lg border border-gray-200"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedConditions.includes(
+                                                        condition
+                                                    )}
+                                                    onChange={() =>
+                                                        toggleCondition(
                                                             condition
-                                                    ).length
-                                                }
-                                            </span>
-                                        </label>
-                                    ))}
+                                                        )
+                                                    }
+                                                    className="w-5 h-5 text-blue-600 rounded border-gray-300"
+                                                />
+                                                <span className="text-sm text-gray-700 flex-1">
+                                                    {condition}
+                                                </span>
+                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                                    {
+                                                        products.filter(
+                                                            (p) =>
+                                                                p.product_condition ===
+                                                                condition
+                                                        ).length
+                                                    }
+                                                </span>
+                                            </label>
+                                        )
+                                    )}
                                 </div>
                             </div>
 

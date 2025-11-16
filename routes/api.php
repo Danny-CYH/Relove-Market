@@ -56,6 +56,8 @@ Route::middleware(["is_seller"])->group(function () {
     Route::post('/api/seller-manage-product/delete-product', [SellerManageProductController::class, 'sellerDeleteProduct'])->name('delete-product');
     Route::post('/api/seller/toggle-listing', [SellerManageProductController::class, 'toggleProductListing'])->name("product-listing");
     Route::post('/api/seller/toggle-product-featured', [SellerManageProductController::class, 'toggleProductFeatured'])->name("product-featured");
+    Route::get('/api/products/metrics', [SellerManageProductController::class, 'getProductMetrics']);
+    Route::post('/api/products/auto-update-status', [SellerManageProductController::class, 'autoUpdateProductStatus']);
 
     // API for seller manage order
     Route::get("/api/get-list-order", [SellerManageOrderController::class, "get_listOrder"])->name("list-order");
@@ -88,9 +90,11 @@ Route::middleware(["is_admin"])->group(function () {
     Route::post('/products/{product}/unblock', [ProductManagementController::class, 'unblock_product']);
     Route::post('/products/{product}/flag', [ProductManagementController::class, 'flag_product']);
 
+    Route::get("/api/transactions", [TransactionManagementController::class, 'filterFunction'])->name("filter-functions");
+    Route::get("/api/transactions/metrics", [TransactionManagementController::class, "getData"])->name("get-data");
     Route::post('/api/transactions/{orderId}/release-payment', [TransactionManagementController::class, 'releasePayment'])->name('release-payment');
     Route::put('/api/transactions{orderId}/status', [TransactionManagementController::class, 'updateOrderStatus'])->name('update-order-status');
-    Route::get('/{orderId}/tracking', [TransactionManagementController::class, 'getOrderTracking']);
+    Route::get('/api/transactions/{orderId}/tracking', [TransactionManagementController::class, 'getOrderTracking']);
     Route::post('/{orderId}/manual-release', [TransactionManagementController::class, 'manualReleasePayment']);
     Route::get('/stats', [TransactionManagementController::class, 'getTransactionStats']);
 

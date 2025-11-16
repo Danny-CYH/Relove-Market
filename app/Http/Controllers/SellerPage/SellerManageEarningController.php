@@ -197,13 +197,18 @@ class SellerManageEarningController extends Controller
             }
 
             // Fetch earnings data for the period
-            $query = Order::with(['user', 'orderItems.product'])
+            $query = Order::with(['user', 'orderItems.product', 'sellerEarning'])
                 ->where('seller_id', $sellerId)
                 ->whereIn('order_status', ['Delivered', 'Completed'])
                 ->whereBetween('created_at', [$startDate . ' 00:00:00', $endDate . ' 23:59:59']);
 
             $transactions = $query->get();
-            $totalEarnings = $transactions->sum('seller_amount');
+
+            // Sum earnings from related sellerEarning
+            $totalEarnings = $transactions->map(function ($order) {
+                return optional($order->sellerEarning->first())->payout_amount ?? 0;
+            })->sum();
+
             $transactionCount = $transactions->count();
 
             // Prepare report data

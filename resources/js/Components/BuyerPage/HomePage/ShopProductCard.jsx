@@ -1,12 +1,4 @@
-import {
-    FaStar,
-    FaHeart,
-    FaTimes,
-    FaStore,
-    FaUser,
-    FaShieldAlt,
-    FaClock,
-} from "react-icons/fa";
+import { FaStar, FaHeart, FaTimes, FaClock } from "react-icons/fa";
 
 import { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
@@ -28,14 +20,9 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
     // Enhanced product information
     const productCondition = product.product_condition || "Like New";
     const createdAt = product.created_at ? new Date(product.created_at) : null;
-    const productSoldCount = product.order_items.length || 0;
-
-    // Enhanced seller information
-    const sellerStore = product.seller?.seller_store?.store_name;
-    const sellerRating = product.seller?.average_rating || 0;
-    const sellerTotalSales = product.seller?.total_sales || 0;
-
-    const isVerifiedSeller = product.seller?.is_verified || false;
+    const isNewProduct =
+        createdAt && Date.now() - createdAt.getTime() < 7 * 24 * 60 * 60 * 1000;
+    const productSoldCount = product.order_items?.length || 0;
 
     // Check if product is in wishlist when component mounts
     useEffect(() => {
@@ -396,15 +383,24 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
 
                     {/* Stock Status */}
                     <div className="mb-4">
-                        <span
-                            className={`text-xs font-medium ${
-                                isInStock ? "text-green-600" : "text-red-600"
-                            }`}
-                        >
-                            {isInStock
-                                ? `In Stock (${displayQuantity})`
-                                : "Out of Stock"}
-                        </span>
+                        <div className="flex flex-row justify-between">
+                            <span
+                                className={`text-xs font-medium ${
+                                    isInStock
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                }`}
+                            >
+                                {isInStock
+                                    ? `In Stock (${displayQuantity})`
+                                    : "Out of Stock"}
+                            </span>
+                            {isNewProduct && (
+                                <div className="text-violet-600 text-xs font-bold rounded">
+                                    NEW ARRIVAL
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Action Buttons */}
@@ -434,7 +430,7 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                             {loadingWishlist ? (
                                 <>
                                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    <span>Adding...</span>
+                                    <span>Checking...</span>
                                 </>
                             ) : isLiked ? (
                                 <>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OrderConfirmationMail;
 use App\Models\Product;
 use App\Models\Order;
 use App\Models\OrderItem;
@@ -12,6 +13,7 @@ use App\Events\SellerPage\NewOrderCreated;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -26,97 +28,100 @@ class PaymentController extends Controller
 {
     public function validateStock(Request $request)
     {
-        DB::beginTransaction();
-
-        try {
-            $validator = Validator::make($request->all(), [
+        // Validate input (outside any transaction)
+        $validator = Validator::make(
+            $request->all(),
+            [
                 'order_items' => 'required|array|min:1',
                 'order_items.*.product_id' => 'required|string',
                 'order_items.*.quantity' => 'required|integer|min:1',
                 'order_items.*.selected_variant' => 'sometimes|array',
                 'validation_timestamp' => 'sometimes|numeric',
-            ]);
+            ],
+            [
+                'order_items.required' => 'Your cart is empty. Please add items before placing an order.',
+                'order_items.min' => 'Your cart must contain at least one item.',
 
-            if ($validator->fails()) {
-                DB::rollBack();
-                return response()->json([
-                    'valid' => false,
-                    'error' => $validator->errors()->first()
-                ], 400);
-            }
+                'order_items.*.product_id.required' => 'A product in your cart is missing information. Please refresh and try again.',
+                'order_items.*.quantity.required' => 'Please enter the quantity for all items.',
+                'order_items.*.quantity.min' => 'Quantity must be at least 1.',
+                'order_items.*.selected_variant' => 'Please select product variants before proceed to checkout',
 
-            $validationResults = [];
-            $allValid = true;
-            $validationId = Str::uuid()->toString();
+                'validation_timestamp.numeric' => 'Invalid validation timestamp received.',
+            ]
+        );
 
-            foreach ($request->order_items as $index => $item) {
-                $productId = $item['product_id'];
-                $quantity = $item['quantity'];
-                $selectedVariant = $item['selected_variant'] ?? null;
+        if ($validator->fails()) {
+            return response()->json([
+                'valid' => false,
+                'error' => $validator->errors()->first()
+            ], 400);
+        }
 
-                // Create a unique lock key for this product/variant
-                $lockKey = "stock_validation_{$productId}";
-                if ($selectedVariant && isset($selectedVariant['variant_id'])) {
-                    $lockKey .= "_{$selectedVariant['variant_id']}";
-                }
+        $validationResults = [];
+        $allValid = true;
+        $validationId = Str::uuid()->toString();
 
-                // Use distributed lock to prevent race conditions
-                $lock = Cache::lock($lockKey, 10); // 10 second lock
+        foreach ($request->order_items as $item) {
 
-                if (!$lock->get()) {
-                    DB::rollBack();
-                    return response()->json([
-                        'valid' => false,
-                        'error' => "Unable to validate stock for item. Please try again."
-                    ], 423); // Locked status code
-                }
+            try {
+                DB::transaction(function () use ($item, &$validationResults, &$allValid) {
 
-                try {
+                    $productId = $item['product_id'];
+                    $quantity = $item['quantity'];
+                    $selectedVariant = $item['selected_variant'] ?? null;
+
+                    // UNIQUE lock per product/variant (per user optional)
+                    $lockKey = "stock_validation_{$productId}";
                     if ($selectedVariant && isset($selectedVariant['variant_id'])) {
-                        // Check variant stock with lock
-                        $variant = ProductVariant::where('variant_id', $selectedVariant['variant_id'])
-                            ->lockForUpdate()
-                            ->first();
+                        $lockKey .= "_{$selectedVariant['variant_id']}";
+                    }
 
-                        if (!$variant) {
-                            $validationResults[] = [
-                                'product_id' => $productId,
-                                'valid' => false,
-                                'error' => "Variant not found"
-                            ];
-                            $allValid = false;
-                            continue;
-                        }
+                    $lock = Cache::lock($lockKey, 10);
 
-                        if ($variant->quantity < $quantity) {
-                            $validationResults[] = [
-                                'product_id' => $productId,
-                                'valid' => false,
-                                'error' => "Not enough stock for selected variant. Available: {$variant->quantity}, Requested: {$quantity}"
-                            ];
-                            $allValid = false;
-                        } else {
+                    // Wait up to 5s for lock
+                    if (!$lock->block(5)) {
+                        throw new \Exception("Unable to validate stock for item. Please try again.");
+                    }
+
+                    try {
+                        // ------------ Variant Stock Check ------------
+                        if ($selectedVariant && isset($selectedVariant['variant_id'])) {
+
+                            $variant = ProductVariant::where('variant_id', $selectedVariant['variant_id'])
+                                ->lockForUpdate()
+                                ->first();
+
+                            if (!$variant) {
+                                throw new \Exception("Variant not found.");
+                            }
+
+                            if ($variant->quantity < $quantity) {
+                                $validationResults[] = [
+                                    'product_id' => $productId,
+                                    'valid' => false,
+                                    'error' => "Not enough stock for selected variant. Available: {$variant->quantity}, Requested: {$quantity}"
+                                ];
+                                $allValid = false;
+                                return;
+                            }
+
                             $validationResults[] = [
                                 'product_id' => $productId,
                                 'variant_id' => $selectedVariant['variant_id'],
                                 'valid' => true,
                                 'available_quantity' => $variant->quantity
                             ];
+                            return;
                         }
-                    } else {
-                        // Check main product stock with lock
+
+                        // ------------ Main Product Stock Check ------------
                         $product = Product::where('product_id', $productId)
                             ->lockForUpdate()
                             ->first();
 
                         if (!$product) {
-                            $validationResults[] = [
-                                'product_id' => $productId,
-                                'valid' => false,
-                                'error' => "Product not found: {$productId}"
-                            ];
-                            $allValid = false;
-                            continue;
+                            throw new \Exception("Product not found: {$productId}");
                         }
 
                         if ($product->product_quantity < $quantity) {
@@ -126,47 +131,49 @@ class PaymentController extends Controller
                                 'error' => "Not enough stock for product. Available: {$product->product_quantity}, Requested: {$quantity}"
                             ];
                             $allValid = false;
-                        } else {
-                            $validationResults[] = [
-                                'product_id' => $productId,
-                                'valid' => true,
-                                'available_quantity' => $product->product_quantity
-                            ];
+                            return;
                         }
+
+                        $validationResults[] = [
+                            'product_id' => $productId,
+                            'valid' => true,
+                            'available_quantity' => $product->product_quantity
+                        ];
+                    } finally {
+                        $lock->release();
                     }
-                } finally {
-                    $lock->release();
-                }
-            }
 
-            DB::commit();
+                }); // DB Transaction end
 
-            if ($allValid) {
-                // Store validation result temporarily to prevent race conditions
-                Cache::put("stock_validation_{$validationId}", $validationResults, 300); // 5 minutes
+            } catch (\Exception $e) {
 
-                return response()->json([
-                    'valid' => true,
-                    'message' => 'Stock validation successful',
-                    'validation_id' => $validationId,
-                    'results' => $validationResults
-                ]);
-            } else {
-                return response()->json([
+                $allValid = false;
+
+                $validationResults[] = [
+                    'product_id' => $item['product_id'],
                     'valid' => false,
-                    'error' => 'Some items are out of stock',
-                    'details' => $validationResults
-                ], 400);
+                    'error' => $e->getMessage()
+                ];
             }
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Stock validation error: ' . $e->getMessage());
-            return response()->json([
-                'valid' => false,
-                'error' => 'Stock validation failed: ' . $e->getMessage()
-            ], 500);
         }
+
+        // ------- Response Section -------
+        if ($allValid) {
+            Cache::put("stock_validation_{$validationId}", $validationResults, 300);
+
+            return response()->json([
+                'valid' => true,
+                'message' => 'Stock validation successful',
+                'validation_id' => $validationId,
+                'results' => $validationResults
+            ]);
+        }
+
+        return response()->json([
+            'valid' => false,
+            'error' => 'Some items are out of stock',
+            'details' => $validationResults
+        ], 400);
     }
 
     public function createPaymentIntent(Request $request)
@@ -418,6 +425,14 @@ class PaymentController extends Controller
 
                 DB::commit();
 
+                // Send email notification to buyer after successful order creation
+                try {
+                    $this->sendOrderConfirmationEmail($order);
+                } catch (\Throwable $e) {
+                    Log::error('Email sending failed: ' . $e->getMessage());
+                    // Don't fail the order if email fails
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Order created successfully',
@@ -469,6 +484,133 @@ class PaymentController extends Controller
                 'error' => 'Internal server error: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Send order confirmation email to buyer
+     */
+    private function sendOrderConfirmationEmail(Order $order)
+    {
+        try {
+            // Load relationships
+            $order->load(['user', 'orderItems.product', 'seller.sellerStore']);
+
+            $buyer = $order->user;
+            $seller = $order->seller;
+
+            if (!$buyer || !$buyer->email) {
+                Log::warning('Buyer email not found for order', ['order_id' => $order->order_id]);
+                return;
+            }
+
+            $emailData = [
+                'order_id' => $order->order_id,
+                'order_date' => $order->created_at->format('F j, Y g:i A'),
+                'buyer_name' => $buyer->name,
+                'seller_name' => $seller->seller_name ?? 'Seller',
+                'store_name' => $seller->sellerStore->store_name ?? 'Store',
+                'payment_method' => $this->formatPaymentMethod($order->payment_method),
+                'payment_status' => $order->payment_status,
+                'order_status' => $order->order_status,
+                'total_amount' => number_format($order->amount, 2),
+                'currency' => strtoupper($order->currency),
+                'order_items' => [],
+                'subtotal' => 0,
+                'shipping_fee' => 0, // You can add shipping fee to your order model
+                'total' => $order->amount,
+            ];
+
+            // Prepare order items
+            foreach ($order->orderItems as $item) {
+                $product = $item->product;
+                $itemTotal = $item->price * $item->quantity;
+
+                $emailData['order_items'][] = [
+                    'product_name' => $product->product_name ?? 'Product',
+                    'quantity' => $item->quantity,
+                    'unit_price' => number_format($item->price, 2),
+                    'total_price' => number_format($itemTotal, 2),
+                    'variant' => $item->selected_variant ? $this->formatVariant($item->selected_variant) : null,
+                ];
+
+                $emailData['subtotal'] += $itemTotal;
+            }
+
+            $emailData['subtotal'] = number_format($emailData['subtotal'], 2);
+            $emailData['total'] = number_format($emailData['total'], 2);
+
+            // Send email using Laravel Mail
+            Mail::to($buyer->email)->send(new OrderConfirmationMail($emailData));
+
+            Log::info('Order confirmation email sent successfully', [
+                'order_id' => $order->order_id,
+                'buyer_email' => $buyer->email,
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('Failed to send order confirmation email: ' . $e->getMessage(), [
+                'order_id' => $order->order_id,
+                'error' => $e->getTraceAsString()
+            ]);
+            throw $e; // Re-throw to be caught by the main function
+        }
+    }
+
+    /**
+     * Format payment method for display
+     */
+    private function formatPaymentMethod($method)
+    {
+        $methods = [
+            'card' => 'Credit/Debit Card',
+            'cod' => 'Cash on Delivery',
+            'paypal' => 'PayPal',
+            'bank_transfer' => 'Bank Transfer',
+        ];
+
+        return $methods[$method] ?? ucfirst($method);
+    }
+
+    /**
+     * Format variant information for display
+     */
+    private function formatVariant($selectedVariant)
+    {
+        // Case 1: If whole input is JSON string → decode
+        if (is_string($selectedVariant) && $this->isJson($selectedVariant)) {
+            $selectedVariant = json_decode($selectedVariant, true);
+        }
+
+        // Must be array now
+        if (!is_array($selectedVariant)) {
+            \Log::warning("Variant is not array", ['variant' => $selectedVariant]);
+            return null;
+        }
+
+        // Case 2: If "combination" exists but is JSON string
+        if (isset($selectedVariant['combination']) && is_string($selectedVariant['combination']) && $this->isJson($selectedVariant['combination'])) {
+            $selectedVariant['combination'] = json_decode($selectedVariant['combination'], true);
+        }
+
+        // Case 3: ensure "combination" exists and is an array
+        if (!isset($selectedVariant['combination']) || !is_array($selectedVariant['combination'])) {
+            \Log::warning("Variant combination is not array", ['variant' => $selectedVariant]);
+            return null;
+        }
+
+        // Build text
+        $variantText = '';
+        foreach ($selectedVariant['combination'] as $key => $value) {
+            $variantText .= ucfirst($key) . ': ' . $value . ', ';
+        }
+
+        return rtrim($variantText, ', ');
+    }
+
+    private function isJson($string)
+    {
+        json_decode($string);
+        return json_last_error() === JSON_ERROR_NONE;
     }
 
     public function getOrder($orderId)

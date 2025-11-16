@@ -314,7 +314,18 @@ export function SellerSidebar({ notificationCount = 0 }) {
                             onClick={() => setProfileOpen(!profileOpen)}
                             className="p-2 rounded-lg text-gray-700 hover:bg-gray-100"
                         >
-                            <FaUserCircle className="text-xl text-indigo-600" />
+                            {auth.user?.profile_image ? (
+                                <img
+                                    src={
+                                        import.meta.env.VITE_BASE_URL +
+                                        auth.user.profile_image
+                                    }
+                                    alt="User"
+                                    className="w-8 h-8 rounded-full object-cover"
+                                />
+                            ) : (
+                                <FaUserCircle className="text-2xl text-indigo-600" />
+                            )}
                         </button>
                     </div>
                 </nav>

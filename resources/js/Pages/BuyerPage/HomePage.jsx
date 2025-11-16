@@ -37,16 +37,16 @@ import { useState, useEffect, useRef } from "react";
 import { Link, usePage } from "@inertiajs/react";
 
 import axios from "axios";
+import Swal from "sweetalert2";
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
 
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
-import { ProductCard } from "@/Components/BuyerPage/ProductCard";
 import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
+import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
 import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
 import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
-import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
 import { FeaturedProductCard } from "@/Components/BuyerPage/HomePage/FeaturedProductCard";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
@@ -116,9 +116,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 }
             );
 
-            console.log("Camera search results:", response);
-
-            // Assuming the API returns an array of products
             setCameraSearchResults(response.data || []);
         } catch (error) {
             console.error("Camera search failed:", error);
@@ -181,12 +178,28 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 variant_id: variant_id,
             });
 
-            console.log("Wishlist saved:", response.data);
+            Swal.fire({
+                icon: "success",
+                title: "Added to Wishlist",
+                text:
+                    response.data.message ||
+                    "This item has been added to your wishlist.",
+                timer: 1500,
+                showConfirmButton: false,
+            });
         } catch (error) {
             console.error(
                 "Error saving wishlist:",
                 error.response?.data || error
             );
+
+            Swal.fire({
+                icon: "error",
+                title: "Failed",
+                text:
+                    error.response?.data?.message ||
+                    "Unable to add to wishlist.",
+            });
         }
     };
 
@@ -585,7 +598,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                                         key={product.product_id}
                                                         className="w-full flex-shrink-0 px-3"
                                                     >
-                                                        <ProductCard
+                                                        <FeaturedProductCard
                                                             product={product}
                                                             isFlashSale={false}
                                                             save_wishlist={

@@ -9,12 +9,63 @@ import {
     FaCamera,
     FaLock,
 } from "react-icons/fa";
+import Swal from "sweetalert2";
 
 import ReactCountryFlag from "react-country-flag";
 import malaysiaLocations from "./malaysia-location.json";
 import { MalaysiaStateModal } from "./MalaysiaStateModal";
 import { MalaysiaCityModal } from "./MalaysiaCityModal";
 import { BusinessTypeModal } from "./BusinessTypeModal";
+
+// SweetAlert configuration
+const showAlert = (icon, title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showLoadingAlert = (title, text = "") => {
+    return Swal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+};
+
+const showConfirmationAlert = (
+    title,
+    text,
+    confirmButtonText = "Yes",
+    cancelButtonText = "Cancel"
+) => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText,
+        cancelButtonText,
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+            cancelButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
 
 export function SellerRegisterForm({ step, setStep, list_business }) {
     const fieldStepMap = {
@@ -40,10 +91,6 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
     const { flash, errors } = usePage().props;
 
-    const [showSuccessToast, setShowSuccessToast] = useState(
-        !!flash?.successMessage
-    );
-    const [showErrorToast, setShowErrorToast] = useState(!!flash?.errorMessage);
     const [highlightedField, setHighlightedField] = useState("");
     const [errorMessage, setErrorMessage] = useState("");
     const [selectedFileName, setSelectedFileName] = useState("");
@@ -139,7 +186,15 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
         if (emptyField) {
             setHighlightedField(emptyField);
             setErrorMessage(`${fieldToLabel(emptyField)} is required`);
-            setShowErrorToast(true);
+
+            // Show SweetAlert for validation error
+            showAlert(
+                "error",
+                "Missing Information",
+                `${fieldToLabel(
+                    emptyField
+                )} is required. Please fill in all required fields.`
+            );
 
             setTimeout(() => {
                 const el = document.querySelector(`[name="${emptyField}"]`);
@@ -147,8 +202,7 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
                     el.scrollIntoView({ behavior: "smooth", block: "center" });
                     el.focus({ preventScroll: true });
                 }
-                setShowErrorToast(false);
-            }, 5000);
+            }, 500);
 
             return false;
         }
@@ -159,7 +213,12 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
             if (!nameRegex.test(formData.name)) {
                 setHighlightedField("name");
                 setErrorMessage("Name cannot contain numbers");
-                setShowErrorToast(true);
+
+                showAlert(
+                    "error",
+                    "Invalid Name",
+                    "Name cannot contain numbers or special characters. Please use only letters and spaces."
+                );
                 return false;
             }
         }
@@ -170,7 +229,12 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
             if (!emailRegex.test(formData.email)) {
                 setHighlightedField("email");
                 setErrorMessage("Please enter a valid email address");
-                setShowErrorToast(true);
+
+                showAlert(
+                    "error",
+                    "Invalid Email",
+                    "Please enter a valid email address format (e.g., yourname@example.com)."
+                );
                 return false;
             }
         }
@@ -182,10 +246,13 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
             if (!malaysiaPhoneRegex.test(cleanedPhone)) {
                 setHighlightedField("phoneNumber");
-                setErrorMessage(
-                    "Please enter a valid Malaysian phone number (e.g., 123456789, 0123456789)"
+                setErrorMessage("Please enter a valid Malaysian phone number");
+
+                showAlert(
+                    "error",
+                    "Invalid Phone Number",
+                    "Please enter a valid Malaysian phone number (e.g., 123456789, 0123456789)."
                 );
-                setShowErrorToast(true);
                 return false;
             }
         }
@@ -203,17 +270,25 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
             if (!validTypes.includes(file.type)) {
                 setHighlightedField("verificationImage");
-                setErrorMessage(
-                    "Please upload a valid image (JPEG, JPG, PNG, WEBP)"
+                setErrorMessage("Please upload a valid image");
+
+                showAlert(
+                    "error",
+                    "Invalid File Type",
+                    "Please upload a valid image file (JPEG, JPG, PNG, or WEBP)."
                 );
-                setShowErrorToast(true);
                 return false;
             }
 
             if (file.size > maxSize) {
                 setHighlightedField("verificationImage");
                 setErrorMessage("Image size should be less than 5MB");
-                setShowErrorToast(true);
+
+                showAlert(
+                    "error",
+                    "File Too Large",
+                    "Image size should be less than 5MB. Please choose a smaller file."
+                );
                 return false;
             }
         }
@@ -263,7 +338,6 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
         // Clear error if corrected
         if (highlightedField === name && value !== "") {
             setHighlightedField("");
-            setShowErrorToast(false);
             setErrorMessage("");
         }
     };
@@ -281,23 +355,44 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
                 setImagePreview(e.target.result);
             };
             reader.readAsDataURL(file);
+
+            // Show success message for image upload
+            showAlert(
+                "success",
+                "Image Uploaded",
+                "Your verification document has been uploaded successfully."
+            );
         }
 
         // Clear error if corrected
         if (highlightedField === "verificationImage" && file) {
             setHighlightedField("");
-            setShowErrorToast(false);
             setErrorMessage("");
         }
     };
 
-    // Remove image
-    const handleRemoveImage = () => {
-        setFormData({ ...formData, verificationImage: null });
-        setImagePreview(null);
-        setSelectedFileName("");
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
+    // Remove image with confirmation
+    const handleRemoveImage = async () => {
+        const result = await showConfirmationAlert(
+            "Remove Image?",
+            "Are you sure you want to remove the uploaded verification document?",
+            "Yes, Remove",
+            "Cancel"
+        );
+
+        if (result.isConfirmed) {
+            setFormData({ ...formData, verificationImage: null });
+            setImagePreview(null);
+            setSelectedFileName("");
+            if (fileInputRef.current) {
+                fileInputRef.current.value = "";
+            }
+
+            showAlert(
+                "info",
+                "Image Removed",
+                "The verification document has been removed. Please upload a new one."
+            );
         }
     };
 
@@ -328,7 +423,6 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
         if (highlightedField === "phoneNumber" && value !== "") {
             setHighlightedField("");
-            setShowErrorToast(false);
             setErrorMessage("");
         }
     };
@@ -338,6 +432,12 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
         setFormData({ ...formData, storeState: state, storeCity: "" });
         setShowStateModal(false);
         setSearchTerm("");
+
+        showAlert(
+            "success",
+            "State Selected",
+            `${state} has been selected as your business state.`
+        );
     };
 
     // Handler for selecting city from modal
@@ -345,6 +445,12 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
         setFormData({ ...formData, storeCity: city });
         setShowCityModal(false);
         setSearchTerm("");
+
+        showAlert(
+            "success",
+            "City Selected",
+            `${city} has been selected as your business city.`
+        );
     };
 
     // Handler for selecting business type from modal
@@ -352,6 +458,12 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
         setFormData({ ...formData, businessType: businessId });
         setShowBusinessModal(false);
         setSearchTerm("");
+
+        showAlert(
+            "success",
+            "Business Type Selected",
+            `${businessType} has been selected as your business type.`
+        );
     };
 
     const handleSearchChange = (e) => {
@@ -374,15 +486,57 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
     };
 
     const prevStep = () => setStep(step - 1);
-    const nextStep = () => {
+
+    const nextStep = async () => {
         const isValid = validateCurrentStep();
         if (isValid) {
-            setStep(step + 1);
+            // Show loading alert for step transition
+            const loadingAlert = showLoadingAlert(
+                "Processing...",
+                "Validating your information"
+            );
+
+            // Simulate validation delay
+            setTimeout(() => {
+                loadingAlert.close();
+                setStep(step + 1);
+
+                // Show success message for step completion
+                if (step === 1) {
+                    showAlert(
+                        "success",
+                        "Step 1 Complete!",
+                        "Personal information verified. Please continue with your store details."
+                    );
+                } else if (step === 2) {
+                    showAlert(
+                        "success",
+                        "Step 2 Complete!",
+                        "Store information verified. Please review your application before submitting."
+                    );
+                }
+            }, 1000);
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Final validation before submission
+        if (!validateCurrentStep()) {
+            return;
+        }
+
+        const result = await showConfirmationAlert(
+            "Submit Application?",
+            "Please review all information carefully. Once submitted, you cannot make changes to your application.",
+            "Yes, Submit Application",
+            "Review Again"
+        );
+
+        if (!result.isConfirmed) {
+            return;
+        }
 
         const submitFormData = new FormData();
         Object.keys(formData).forEach((key) => {
@@ -391,17 +545,7 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
             }
         });
 
-        postRegistration(route("seller-registration-process"), {
-            data: submitFormData,
-            forceFormData: true,
-            onSuccess: () => {
-                setShowSuccessToast(true);
-            },
-            onError: (errors) => {
-                setShowErrorToast(true);
-                setErrorMessage("Please check the form for errors");
-            },
-        });
+        postRegistration(route("seller-registration-process"));
     };
 
     useEffect(() => {
@@ -413,7 +557,9 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
             setStep(targetStep);
             setHighlightedField(firstError);
             setErrorMessage(errors[firstError]);
-            setShowErrorToast(true);
+
+            // Show SweetAlert for backend errors
+            showAlert("error", "Validation Error", errors[firstError]);
 
             setTimeout(() => {
                 const firstErrorField = document.querySelector(
@@ -456,26 +602,6 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
     return (
         <div className="w-full">
-            {/* Toast Notifications */}
-            <div className="fixed top-4 right-4 z-50 space-y-3">
-                {showSuccessToast && (
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center">
-                        <FaCheckCircle className="mr-2 text-green-600" />
-                        <span>
-                            {flash?.successMessage ||
-                                "Registration successful!"}
-                        </span>
-                    </div>
-                )}
-
-                {showErrorToast && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg flex items-center">
-                        <FaExclamationTriangle className="mr-2 text-red-600" />
-                        <span>{errorMessage}</span>
-                    </div>
-                )}
-            </div>
-
             {/* Modal Components */}
             <MalaysiaStateModal
                 isOpen={showStateModal}

@@ -38,6 +38,12 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
+        // ✅ Block users if status is not active
+        if ($user->status !== 'Active') {
+            Auth::logout();
+            return back()->with('errorMessage', 'Your account has been blocked. Please contact support.');
+        }
+
         // ✅ If email not verified
         if (!$user->hasVerifiedEmail()) {
             if ($user->last_login_at) {
@@ -64,7 +70,7 @@ class AuthenticatedSessionController extends Controller
             session(['user_id' => $user->user_id]);
 
             return redirect()->intended(route('homepage'));
-            
+
         } elseif ($role_name === 'Admin') {
             return redirect()->intended(route('admin-dashboard'));
         }

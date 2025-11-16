@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AdminPage;
 
 use App\Events\PaymentReleased;
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\SellerEarning;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
@@ -12,6 +13,154 @@ use Illuminate\Support\Facades\Log;
 
 class TransactionManagementController extends Controller
 {
+
+    public function getData(Request $request)
+    {
+        $query = Order::with([
+            "user",
+            "seller",
+            "orderItems.product",
+            "sellerEarning"
+        ]);
+
+        // Apply filters
+        if ($request->has('search') && $request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->where('payment_intent_id', 'like', '%' . $request->search . '%')
+                    ->orWhereHas('user', function ($q) use ($request) {
+                        $q->where('name', 'like', '%' . $request->search . '%');
+                    })
+                    ->orWhereHas('seller', function ($q) use ($request) {
+                        $q->where('seller_name', 'like', '%' . $request->search . '%');
+                    });
+            });
+        }
+
+        if ($request->has('status') && $request->status !== 'All') {
+            if ($request->status === 'paid') {
+                $query->where('order_status', 'Completed')
+                    ->whereHas('sellerEarning', function ($q) {
+                        $q->where('status', 'Pending');
+                    });
+            } elseif ($request->status === 'released') {
+                $query->whereHas('sellerEarning', function ($q) {
+                    $q->where('status', 'Released');
+                });
+            } else {
+                $query->where('order_status', $request->status);
+            }
+        }
+
+        if ($request->has('payment_method') && $request->payment_method !== 'All') {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        if ($request->has('start_date') && $request->start_date) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->has('end_date') && $request->end_date) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        // Get all transactions (no pagination) for metrics calculation
+        $allTransactions = $query->get();
+
+        // Calculate metrics
+        $completedTransactions = $allTransactions->filter(function ($transaction) {
+            return $transaction->order_status === 'Completed' ||
+                $transaction->order_status === 'Payment Released';
+        });
+
+        $pendingRelease = $allTransactions->filter(function ($transaction) {
+            return $transaction->order_status === 'Completed' &&
+                $transaction->sellerEarning->first()?->status === 'Pending';
+        });
+
+        $releasedPayments = $allTransactions->filter(function ($transaction) {
+            return $transaction->payment_status === 'released' ||
+                $transaction->sellerEarning->first()?->status === 'Released';
+        });
+
+        $totalRevenue = $completedTransactions->sum(function ($transaction) {
+            return floatval($transaction->sellerEarning->first()?->commission_deducted ?? 0);
+        });
+
+        $totalAmountPending = $pendingRelease->sum(function ($transaction) {
+            return floatval($transaction->sellerEarning->first()?->payout_amount ?? 0);
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'totalRevenue' => $totalRevenue,
+                'completedTransactions' => $completedTransactions->count(),
+                'pendingRelease' => $pendingRelease->count(),
+                'releasedPayments' => $releasedPayments->count(),
+                'totalAmountPending' => $totalAmountPending,
+            ]
+        ]);
+    }
+
+    public function filterFunction(Request $request)
+    {
+        $query = Order::with([
+            "user",
+            "seller",
+            "orderItems.product",
+            "sellerEarning"
+        ]);
+
+        // Apply filters
+        if ($request->has('search') && $request->search) {
+            $query->where(function ($q) use ($request) {
+                $q->where('payment_intent_id', 'like', '%' . $request->search . '%')
+                    ->orWhereHas('user', function ($q) use ($request) {
+                        $q->where('name', 'like', '%' . $request->search . '%');
+                    })
+                    ->orWhereHas('seller', function ($q) use ($request) {
+                        $q->where('seller_name', 'like', '%' . $request->search . '%');
+                    });
+            });
+        }
+
+        if ($request->has('status') && $request->status !== 'All') {
+            if ($request->status === 'paid') {
+                $query->where('order_status', 'Completed')
+                    ->whereHas('sellerEarning', function ($q) {
+                        $q->where('status', 'Pending');
+                    });
+            } elseif ($request->status === 'released') {
+                $query->whereHas('sellerEarning', function ($q) {
+                    $q->where('status', 'Released');
+                });
+            } else {
+                $query->where('order_status', $request->status);
+            }
+        }
+
+        if ($request->has('payment_method') && $request->payment_method !== 'All') {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        if ($request->has('start_date') && $request->start_date) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        if ($request->has('end_date') && $request->end_date) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        $perPage = $request->get('per_page', 5);
+        $transactions = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+        return response()->json([
+            'success' => true,
+            'data' => $transactions
+        ]);
+    }
+
+    // Function for releasing the payment to the seller.
     public function releasePayment($orderId)
     {
         try {
@@ -61,12 +210,7 @@ class TransactionManagementController extends Controller
 
             // Broadcast payment released event with proper data
             try {
-                event(new PaymentReleased(
-                    orderId: $orderId,
-                    amount: $transaction->payout_amount,
-                    sellerId: $transaction->seller->seller_id,
-                    releasedAt: now()->toISOString()
-                ));
+                event(new PaymentReleased($transaction));
 
                 \Log::info('Payment released event broadcasted', [
                     'order_id' => $orderId,
@@ -170,22 +314,24 @@ class TransactionManagementController extends Controller
     public function getOrderTracking($orderId)
     {
         try {
-            $transaction = Transaction::with(['user', 'seller', 'sellerEarnings'])
+            $orderTracking = SellerEarning::with(['seller', 'order'])
                 ->where('order_id', $orderId)
                 ->firstOrFail();
 
+            \Log::info("Order Tracking" . json_decode($orderTracking));
+
             $orderStatusSteps = [
                 ['status' => 'Pending', 'description' => 'Order placed', 'completed' => false],
-                ['status' => 'Confirmed', 'description' => 'Buyer confirmed order', 'completed' => false],
                 ['status' => 'Processing', 'description' => 'Seller processing order', 'completed' => false],
                 ['status' => 'Shipped', 'description' => 'Order shipped to buyer', 'completed' => false],
                 ['status' => 'Delivered', 'description' => 'Order delivered successfully', 'completed' => false],
+                ['status' => 'Confirmed', 'description' => 'Buyer confirmed order', 'completed' => false],
                 ['status' => 'Completed', 'description' => 'Order completed', 'completed' => false],
-                ['status' => 'Payment Released', 'description' => 'Payment released to seller', 'completed' => false],
+                ['status' => 'Released', 'description' => 'Payment released to seller', 'completed' => false],
             ];
 
             // Mark completed steps based on current status
-            $currentStatusIndex = array_search($transaction->order_status, array_column($orderStatusSteps, 'status'));
+            $currentStatusIndex = array_search($orderTracking->order->order_status, array_column($orderStatusSteps, 'status'));
 
             if ($currentStatusIndex !== false) {
                 foreach ($orderStatusSteps as $index => &$step) {
@@ -195,16 +341,15 @@ class TransactionManagementController extends Controller
             }
 
             // Check payment release status
-            $sellerEarning = $transaction->sellerEarnings->first();
-            $isPaymentReleased = $sellerEarning && $sellerEarning->status === 'Released';
+            $isPaymentReleased = $orderTracking && $orderTracking->status === 'Released';
 
             // Check if order is complete
-            $isOrderComplete = in_array($transaction->order_status, ['Completed', 'Payment Released']);
+            $isOrderComplete = in_array($orderTracking->order->order_status, ['Completed']);
 
             return response()->json([
                 'success' => true,
                 'data' => [
-                    'transaction' => $transaction,
+                    'orderTracking' => $orderTracking,
                     'tracking_steps' => $orderStatusSteps,
                     'is_order_complete' => $isOrderComplete,
                     'is_payment_complete' => $isPaymentReleased,

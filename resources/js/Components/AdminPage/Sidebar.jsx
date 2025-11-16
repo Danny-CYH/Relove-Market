@@ -209,20 +209,6 @@ export function Sidebar({ pendingCount = 0 }) {
                     </li>
                     <li>
                         <Link
-                            href={route("subscription-management")}
-                            className={`flex items-center p-3 rounded-lg transition-all group ${
-                                isActive("subscription-management")
-                                    ? "bg-white text-indigo-800 shadow-md"
-                                    : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
-                            }`}
-                            onClick={handleNavClick}
-                        >
-                            <FaCreditCard className="w-5 h-5 mr-3 flex-shrink-0" />
-                            <span className="font-medium">Subscriptions</span>
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
                             href={route("product-management")}
                             className={`flex items-center p-3 rounded-lg transition-all group ${
                                 isActive("product-management")

@@ -183,7 +183,7 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
         }
     };
 
-    // Get variant display text - FIXED VERSION
+    // Get variant display text - MODIFIED VERSION with separate lines
     const getVariantDisplayText = (variant) => {
         if (!variant) return null;
 
@@ -191,54 +191,82 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
         const processCombination = (combination) => {
             if (!combination) return null;
 
+            let variantEntries = [];
+
             // If it's already an object
             if (typeof combination === "object") {
-                return Object.entries(combination)
-                    .map(([key, value]) => `${key}: ${value}`)
-                    .join(", ");
+                variantEntries = Object.entries(combination).map(
+                    ([key, value]) => ({
+                        key: key.charAt(0).toUpperCase() + key.slice(1),
+                        value: value,
+                    })
+                );
             }
-
             // If it's a string
-            if (typeof combination === "string") {
+            else if (typeof combination === "string") {
                 // Try to parse as JSON first
                 try {
                     const parsed = JSON.parse(combination);
                     if (typeof parsed === "object") {
-                        return Object.entries(parsed)
-                            .map(([key, value]) => `${key}: ${value}`)
-                            .join(", ");
+                        variantEntries = Object.entries(parsed).map(
+                            ([key, value]) => ({
+                                key: key.charAt(0).toUpperCase() + key.slice(1),
+                                value: value,
+                            })
+                        );
+                    } else {
+                        // If it's a simple string, treat it as a single variant
+                        variantEntries = [
+                            { key: "Variant", value: combination },
+                        ];
                     }
-                    return combination; // Return as-is if not JSON object
                 } catch (error) {
                     // If not JSON, check if it's a simple key-value string
                     if (combination.includes(":")) {
-                        return combination; // Return as-is if it already contains colons
+                        // Split by comma first, then by colon
+                        const pairs = combination
+                            .split(",")
+                            .map((pair) => pair.trim());
+                        variantEntries = pairs.map((pair) => {
+                            const [key, value] = pair
+                                .split(":")
+                                .map((part) => part.trim());
+                            return {
+                                key: key
+                                    ? key.charAt(0).toUpperCase() + key.slice(1)
+                                    : "Variant",
+                                value: value || pair,
+                            };
+                        });
+                    } else {
+                        // If it's just a single value, format it nicely
+                        variantEntries = [
+                            { key: "Variant", value: combination },
+                        ];
                     }
-                    // If it's just a single value, format it nicely
-                    return combination;
                 }
             }
 
-            return null;
+            return variantEntries.length > 0 ? variantEntries : null;
         };
 
-        // Check different possible fields in order of priority
-        let displayText = null;
+        let variantEntries = [];
 
+        // Check different possible fields in order of priority
         // 1. Check variant_combination first
         if (variant.variant_combination) {
-            displayText = processCombination(variant.variant_combination);
+            const entries = processCombination(variant.variant_combination);
+            if (entries) variantEntries = entries;
         }
 
         // 2. Check combination field
-        if (!displayText && variant.combination) {
-            displayText = processCombination(variant.combination);
+        if (variantEntries.length === 0 && variant.combination) {
+            const entries = processCombination(variant.combination);
+            if (entries) variantEntries = entries;
         }
 
         // 3. Check if there are individual variant attributes
-        if (!displayText) {
-            const variantAttributes = [];
-
+        if (variantEntries.length === 0) {
             // Look for common variant attribute fields
             const variantFields = [
                 "color",
@@ -250,21 +278,21 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                 "length",
                 "width",
                 "height",
+                "dimension",
             ];
 
             variantFields.forEach((field) => {
                 if (variant[field]) {
-                    variantAttributes.push(`${field}: ${variant[field]}`);
+                    variantEntries.push({
+                        key: field.charAt(0).toUpperCase() + field.slice(1),
+                        value: variant[field],
+                    });
                 }
             });
-
-            if (variantAttributes.length > 0) {
-                displayText = variantAttributes.join(", ");
-            }
         }
 
         // 4. Check if variant itself has properties that could be displayed
-        if (!displayText && typeof variant === "object") {
+        if (variantEntries.length === 0 && typeof variant === "object") {
             // Exclude common non-variant fields
             const excludeFields = [
                 "id",
@@ -277,32 +305,48 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                 "image",
                 "created_at",
                 "updated_at",
+                "variant_combination",
+                "combination",
             ];
 
-            const variantProps = Object.entries(variant)
+            const validEntries = Object.entries(variant)
                 .filter(
                     ([key, value]) =>
                         !excludeFields.includes(key) &&
                         value &&
                         typeof value !== "object" &&
-                        key !== "variant_combination" &&
-                        key !== "combination"
+                        !Array.isArray(value)
                 )
-                .map(([key, value]) => `${key}: ${value}`);
+                .map(([key, value]) => ({
+                    key: key
+                        .split("_")
+                        .map(
+                            (word) =>
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                        )
+                        .join(" "),
+                    value: value,
+                }));
 
-            if (variantProps.length > 0) {
-                displayText = variantProps.join(", ");
+            if (validEntries.length > 0) {
+                variantEntries = validEntries;
             }
         }
 
         // 5. Final fallback - check if variant has a name or title
-        if (!displayText) {
-            if (variant.name) return variant.name;
-            if (variant.title) return variant.title;
-            if (variant.variant_name) return variant.variant_name;
+        if (variantEntries.length === 0) {
+            if (variant.name) {
+                variantEntries = [{ key: "Variant", value: variant.name }];
+            } else if (variant.title) {
+                variantEntries = [{ key: "Variant", value: variant.title }];
+            } else if (variant.variant_name) {
+                variantEntries = [
+                    { key: "Variant", value: variant.variant_name },
+                ];
+            }
         }
 
-        return displayText || "Variant";
+        return variantEntries.length > 0 ? variantEntries : null;
     };
 
     // Normalize product data structure to handle both single and multiple items
@@ -411,35 +455,6 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
     return (
         <div className="bg-gray-50 min-h-screen flex flex-col">
             <Navbar />
-
-            {/* Error Display */}
-            {checkoutErrors.length > 0 && (
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-20">
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                        <div className="flex items-center">
-                            <svg
-                                className="w-5 h-5 text-red-400 mr-2"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                            >
-                                <path
-                                    fillRule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                    clipRule="evenodd"
-                                />
-                            </svg>
-                            <h3 className="text-red-800 font-medium">
-                                Checkout Issues
-                            </h3>
-                        </div>
-                        <ul className="mt-2 text-red-700 text-sm">
-                            {checkoutErrors.map((error, index) => (
-                                <li key={index}>• {error}</li>
-                            ))}
-                        </ul>
-                    </div>
-                </div>
-            )}
 
             {/* Main Container */}
             <div className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8 my-16">
@@ -559,8 +574,8 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                                     selectedVariant?.price ||
                                     productData.product_price;
 
-                                // Get variant or options display text
-                                const variantText =
+                                // Get variant entries array
+                                const variantEntries =
                                     getVariantDisplayText(selectedVariant);
 
                                 return (
@@ -591,19 +606,30 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                                                 {productData.product_name}
                                             </p>
 
-                                            {/* Display Selected Variant */}
-                                            {variantText && (
-                                                <div className="mt-1">
-                                                    <div className="flex flex-wrap gap-1">
-                                                        <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
-                                                            {variantText}
-                                                        </span>
-                                                    </div>
+                                            {variantEntries?.length > 0 && (
+                                                <div className="mt-2 flex flex-col gap-2">
+                                                    {variantEntries.map(
+                                                        (entry, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="flex gap-2 items-center"
+                                                            >
+                                                                <span className="text-xs text-black bg-gray-200 px-2 py-0.5 rounded-md font-medium">
+                                                                    {entry.key}
+                                                                </span>
+                                                                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md font-semibold">
+                                                                    {
+                                                                        entry.value
+                                                                    }
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    )}
                                                 </div>
                                             )}
 
                                             {/* Debug info - remove in production */}
-                                            {!variantText &&
+                                            {!variantEntries &&
                                                 selectedVariant && (
                                                     <div className="mt-1">
                                                         <p className="text-xs text-gray-500">
@@ -615,7 +641,7 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                                                     </div>
                                                 )}
 
-                                            <p className="text-xs text-gray-500 mt-1">
+                                            <p className="text-xs text-gray-500 mt-2">
                                                 Price: RM {displayPrice} each
                                             </p>
                                         </div>

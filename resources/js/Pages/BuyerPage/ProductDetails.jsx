@@ -29,7 +29,6 @@ import { useEffect, useCallback, useState, useRef } from "react";
 import axios from "axios";
 
 import Swal from "sweetalert2";
-import "sweetalert2/dist/sweetalert2.min.css";
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
@@ -640,54 +639,56 @@ export default function ProductDetails({ product_info }) {
         e.preventDefault();
         if (!initialMessage.trim()) return;
 
+        // 1️⃣ If user NOT logged in → show alert first
+        if (!auth.user) {
+            if (typeof Swal !== "undefined") {
+                Swal.fire({
+                    title: "Login Required",
+                    text: "Please login to chat with the seller",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Login Now",
+                    cancelButtonText: "Cancel",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        router.visit(route("login"));
+                    }
+                });
+            }
+            return;
+        }
+
+        // 2️⃣ User is authenticated → now allow conversation start
         setIsStartingConversation(true);
+
         try {
             await axios.post("/start-conversation", {
                 seller_id: product_info[0].seller_id,
                 product_id: product_info[0].product_id,
                 message: initialMessage,
             });
+
             setShowConversationModal(false);
             setInitialMessage("");
 
-            // Check if user is authenticated
-            if (!auth.user) {
-                if (typeof Swal !== "undefined") {
-                    Swal.fire({
-                        title: "Conversation started",
-                        text: "You will be redirect to buyer chat",
-                        icon: "success",
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            router.visit(route("buyer-chat"));
-                        }
-                    });
-                }
-                return;
+            // 3️⃣ Show success alert
+            if (typeof Swal !== "undefined") {
+                Swal.fire({
+                    title: "Conversation started",
+                    text: "Redirecting you to chat...",
+                    icon: "success",
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        router.visit(route("buyer-chat"));
+                    }
+                });
             }
         } catch (error) {
-            // Check if user is authenticated
-            if (!auth.user) {
-                if (typeof Swal !== "undefined") {
-                    Swal.fire({
-                        title: "Login Required",
-                        text: "Please login to chat with the seller",
-                        icon: "warning",
-                        showCancelButton: true,
-                        confirmButtonText: "Login Now",
-                        cancelButtonText: "Cancel",
-                        allowOutsideClick: false,
-                        allowEscapeKey: false,
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            router.visit(route("login"));
-                        }
-                    });
-                }
-                return;
-            }
+            console.error("Conversation error:", error);
         } finally {
             setIsStartingConversation(false);
         }
@@ -1641,7 +1642,7 @@ export default function ProductDetails({ product_info }) {
                                                                 className="border-b pb-4 lg:pb-6 last:border-b-0"
                                                             >
                                                                 <div className="flex items-start gap-3 lg:gap-4">
-                                                                    <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gray-200 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                                    <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-white font-bold text-sm">
                                                                         {review
                                                                             .user
                                                                             ?.profile_image ? (
@@ -1653,8 +1654,7 @@ export default function ProductDetails({ product_info }) {
                                                                                         ? `${
                                                                                               import.meta
                                                                                                   .env
-                                                                                                  .VITE_BASE_URL
-                                                                                          }${
+                                                                                                  .VITE_BASE_URL +
                                                                                               review
                                                                                                   .user
                                                                                                   .profile_image
@@ -1944,10 +1944,18 @@ export default function ProductDetails({ product_info }) {
                                                     </div>
 
                                                     <div className="flex items-center justify-between">
-                                                        <span className="text-lg font-bold text-gray-900">
+                                                        <span className="text-lg font-bold text-green-700">
                                                             RM{" "}
                                                             {
                                                                 productData?.product_price
+                                                            }
+                                                        </span>
+                                                        <span className="text-xs font-bold text-gray-900">
+                                                            Sold:
+                                                            {
+                                                                productData
+                                                                    .order_items
+                                                                    .length
                                                             }
                                                         </span>
                                                     </div>

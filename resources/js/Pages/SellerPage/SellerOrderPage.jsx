@@ -101,7 +101,7 @@ export default function SellerOrderPage() {
         sortOrder,
     ]);
 
-    // In your SellerOrderPage component, add this useEffect
+    // Listen for order completion (triggered by buyer)
     useEffect(() => {
         if (!auth?.user?.seller_id || !window.Echo) return;
 
@@ -109,10 +109,10 @@ export default function SellerOrderPage() {
             `seller.orders.${auth.user.seller_id}`
         );
 
-        // Listen for order completion
+        // Listen for order completion (triggered by buyer confirmation)
         channel.listen(".order.completed", (e) => {
             showNotification(
-                `💰 Order ${e.order.order_id} completed! RM ${e.order.seller_amount} released to your account.`
+                `💰 Order ${e.order.order_id} completed! Buyer confirmed receipt. RM ${e.order.seller_amount} released to your account.`
             );
 
             // Refresh orders and earnings data
@@ -140,7 +140,6 @@ export default function SellerOrderPage() {
 
     const handlePrint = useCallback(() => {
         if (printRef.current) {
-            // Use react-to-print's functionality properly
             const printWindow = window.open("", "_blank");
             if (printWindow) {
                 printWindow.document.write(`
@@ -165,11 +164,8 @@ export default function SellerOrderPage() {
                 printWindow.document.close();
                 printWindow.focus();
 
-                // Wait for content to load before printing
                 setTimeout(() => {
                     printWindow.print();
-                    // Optional: close window after print
-                    // printWindow.onafterprint = () => printWindow.close();
                 }, 500);
             }
         }
@@ -177,7 +173,7 @@ export default function SellerOrderPage() {
 
     const showNotification = (message) => {
         if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("New Order Received", {
+            new Notification("Order Update", {
                 body: message,
                 icon: "/icon.png",
             });
@@ -235,8 +231,9 @@ export default function SellerOrderPage() {
                     current_page: currentPage,
                     last_page: Math.ceil(responseData.data.length / 5),
                 });
+
+                calculateStatusStats(responseData.data || []);
             } else {
-                // Normal paginated response
                 setAllSearchResults([]);
                 setIsSearchMode(false);
                 setOrders(responseData.data || []);
@@ -247,9 +244,14 @@ export default function SellerOrderPage() {
                     current_page: responseData.current_page || 1,
                     last_page: responseData.last_page || 1,
                 });
-            }
 
-            calculateStatusStats(responseData.data || []);
+                if (responseData.total_counts && responseData.total_amounts) {
+                    setStatusCounts(responseData.total_counts);
+                    setTotalAmounts(responseData.total_amounts);
+                } else {
+                    calculateStatusStats(responseData.data || []);
+                }
+            }
         } catch (error) {
             console.error("Error fetching orders:", error);
         } finally {
@@ -310,14 +312,13 @@ export default function SellerOrderPage() {
         fetchOrders(1, searchTerm, statusFilter, sortBy, sortOrder);
     }, [statusFilter, sortBy, sortOrder]);
 
-    // Pagination controls
+    // Pagination controls (keep existing pagination code)
     const nextPage = () => {
         if (currentPage < pagination.last_page) {
             const nextPage = currentPage + 1;
             setCurrentPage(nextPage);
 
             if (isSearchMode && allSearchResults.length > 0) {
-                // Client-side pagination for search results
                 const startIndex = (nextPage - 1) * 5;
                 const endIndex = startIndex + 5;
                 const paginatedResults = allSearchResults.slice(
@@ -332,7 +333,6 @@ export default function SellerOrderPage() {
                     current_page: nextPage,
                 }));
             } else {
-                // Server-side pagination
                 fetchOrders(
                     nextPage,
                     searchTerm,
@@ -392,7 +392,7 @@ export default function SellerOrderPage() {
                 return newSet;
             });
 
-            // Optimistic update
+            // Optimistic update for current page orders only
             setOrders((prevOrders) =>
                 prevOrders.map((order) =>
                     order.order_id === orderId
@@ -400,24 +400,6 @@ export default function SellerOrderPage() {
                         : order
                 )
             );
-
-            // Update status counts optimistically
-            setStatusCounts((prev) => {
-                const oldStatus = orders.find(
-                    (order) => order.order_id === orderId
-                )?.order_status;
-                const newCounts = { ...prev };
-                if (oldStatus && oldStatus !== "All") {
-                    newCounts[oldStatus] = Math.max(
-                        0,
-                        (newCounts[oldStatus] || 0) - 1
-                    );
-                }
-                if (newStatus !== "All") {
-                    newCounts[newStatus] = (newCounts[newStatus] || 0) + 1;
-                }
-                return newCounts;
-            });
 
             // API call
             const response = await axios.put(route("update-order", orderId), {
@@ -434,15 +416,21 @@ export default function SellerOrderPage() {
                     sortOrder
                 );
             } else {
+                // Refresh the data to get updated totals from server
+                fetchOrders(
+                    currentPage,
+                    searchTerm,
+                    statusFilter,
+                    sortBy,
+                    sortOrder
+                );
+
                 if (newStatus === "Delivered") {
                     showNotification(
-                        "✅ Order marked as delivered! Commission will be processed when buyer confirms receipt."
-                    );
-                } else if (newStatus === "Completed") {
-                    showNotification(
-                        "💰 Commission processed! This order is now complete."
+                        "✅ Order marked as delivered! Waiting for buyer to confirm receipt and complete the order."
                     );
                 }
+                // Remove Completed notification since seller can't trigger it
             }
         } catch (error) {
             console.error("Error updating order status:", error);
@@ -485,14 +473,14 @@ export default function SellerOrderPage() {
                 label: "Delivered",
                 color: "bg-green-100 text-green-800 border-green-200",
                 icon: CheckCircle,
-                description: "Mark as delivered (awaiting buyer confirmation)",
+                description: "Order delivered - waiting for buyer confirmation",
             },
             {
                 value: "Completed",
                 label: "Completed",
                 color: "bg-emerald-100 text-emerald-800 border-emerald-200",
                 icon: CheckCircle,
-                description: "Order completed - 8% commission charged",
+                description: "Order completed - buyer confirmed receipt",
             },
             {
                 value: "Cancelled",
@@ -522,9 +510,8 @@ export default function SellerOrderPage() {
                         ["Delivered"].includes(s.value)
                     );
                 case "Delivered":
-                    return statusOptions.filter((s) =>
-                        ["Completed"].includes(s.value)
-                    );
+                    // SELLER CANNOT MARK AS COMPLETED - only buyer can confirm
+                    return [];
                 case "Completed":
                     return [];
                 case "Cancelled":
@@ -548,10 +535,12 @@ export default function SellerOrderPage() {
                 } min-w-[100px] justify-between group`}
             >
                 <span className="truncate">{order.order_status}</span>
-                <ChevronDown
-                    size={14}
-                    className="transition-transform duration-200 group-hover:rotate-180"
-                />
+                {availableStatuses.length > 0 && (
+                    <ChevronDown
+                        size={14}
+                        className="transition-transform duration-200 group-hover:rotate-180"
+                    />
+                )}
             </button>
         );
     };
@@ -587,14 +576,14 @@ export default function SellerOrderPage() {
                 label: "Delivered",
                 color: "bg-green-100 text-green-800 border-green-200",
                 icon: CheckCircle,
-                description: "Mark as delivered (awaiting buyer confirmation)",
+                description: "Order delivered - waiting for buyer confirmation",
             },
             {
                 value: "Completed",
                 label: "Completed",
                 color: "bg-emerald-100 text-emerald-800 border-emerald-200",
                 icon: CheckCircle,
-                description: "Order completed - 8% commission charged",
+                description: "Order completed - buyer confirmed receipt",
             },
             {
                 value: "Cancelled",
@@ -624,9 +613,8 @@ export default function SellerOrderPage() {
                         ["Delivered"].includes(s.value)
                     );
                 case "Delivered":
-                    return statusOptions.filter((s) =>
-                        ["Completed"].includes(s.value)
-                    );
+                    // SELLER CANNOT MARK AS COMPLETED
+                    return [];
                 case "Completed":
                     return [];
                 case "Cancelled":
@@ -711,7 +699,6 @@ export default function SellerOrderPage() {
                                             <p className="font-medium text-gray-900">
                                                 Current Status
                                             </p>
-                                            {/* FIX THIS LINE: change order_status to description */}
                                             <p className="text-sm text-gray-600">
                                                 {currentStatus?.description}
                                             </p>
@@ -791,10 +778,26 @@ export default function SellerOrderPage() {
                                         />
                                     </div>
                                     <p className="text-gray-500 text-sm">
-                                        No further status updates available.
-                                        <br />
-                                        This order is already{" "}
-                                        {order.order_status.toLowerCase()}.
+                                        {order.order_status === "Delivered" ? (
+                                            <>
+                                                Order is delivered and waiting
+                                                for buyer confirmation.
+                                                <br />
+                                                <strong>
+                                                    Buyer must confirm receipt
+                                                    to complete the order.
+                                                </strong>
+                                            </>
+                                        ) : (
+                                            <>
+                                                No further status updates
+                                                available.
+                                                <br />
+                                                This order is already{" "}
+                                                {order.order_status.toLowerCase()}
+                                                .
+                                            </>
+                                        )}
                                     </p>
                                 </div>
                             )}
@@ -909,9 +912,10 @@ export default function SellerOrderPage() {
                             </h3>
                             <p className="text-xs sm:text-sm text-blue-700">
                                 <strong>8% platform commission</strong> will be
-                                automatically calculated when orders are marked
-                                as "Completed". Track your earnings in the
-                                Earnings dashboard.
+                                automatically calculated when buyers confirm
+                                order receipt. Mark orders as "Delivered" when
+                                shipped, then wait for buyer confirmation to
+                                complete the order and release funds.
                             </p>
                         </div>
                     </div>
@@ -1284,7 +1288,7 @@ export default function SellerOrderPage() {
                         selectedOrder={selectedOrder}
                         setSelectedOrder={setSelectedOrder}
                         setViewOrder={setViewOrder}
-                        printOrder={printOrderReceipt} // Update this prop too
+                        printOrder={printOrderReceipt}
                         updateOrderStatus={updateOrderStatus}
                     />
                 )}
@@ -1297,7 +1301,7 @@ export default function SellerOrderPage() {
                     />
                 )}
 
-                {/* Hidden printable component - MOVE THIS OUTSIDE THE TABLE */}
+                {/* Hidden printable component */}
                 <div style={{ position: "absolute", left: "-9999px", top: 0 }}>
                     {orderToPrint && (
                         <PrintableInvoice ref={printRef} order={orderToPrint} />

@@ -43,10 +43,39 @@ export default function SellerManageProduct({ list_categories }) {
     const [pagination, setPagination] = useState({});
 
     const [loading, setLoading] = useState(false);
+    const [metricsLoading, setMetricsLoading] = useState(false);
 
     // Featured products state
     const [featuredProducts, setFeaturedProducts] = useState([]);
     const [togglingProduct, setTogglingProduct] = useState(null);
+
+    const [metrics, setMetrics] = useState({
+        totalProducts: 0,
+        availableProducts: 0,
+        unavailableProducts: 0,
+        lowStockProducts: 0,
+        outOfStockProducts: 0,
+    });
+
+    const fetchMetrics = async (filters = {}) => {
+        setMetricsLoading(true);
+        try {
+            const params = new URLSearchParams({
+                ...filters,
+                metrics_only: "true",
+            });
+
+            const response = await axios.get(`/api/products/metrics?${params}`);
+
+            if (response.data.success) {
+                setMetrics(response.data.data);
+            }
+        } catch (error) {
+            console.error("Error fetching metrics:", error);
+        } finally {
+            setMetricsLoading(false);
+        }
+    };
 
     // Fetch featured products
     const fetchFeaturedProducts = async () => {
@@ -77,6 +106,41 @@ export default function SellerManageProduct({ list_categories }) {
             (fp) => fp.product_id === productId
         );
         return isFeatured;
+    };
+
+    // Auto update product status when stock reaches 0
+    const checkAndUpdateProductStatus = async (product) => {
+        if (
+            product.product_quantity === 0 &&
+            product.product_status === "available"
+        ) {
+            try {
+                const response = await axios.post(route("product-listing"), {
+                    product_id: product.product_id,
+                    status: "unavailable",
+                });
+
+                if (response.data.success) {
+                    console.log(
+                        `Auto-updated product ${product.product_id} to unavailable due to zero stock`
+                    );
+
+                    // Update local state
+                    setRealTimeProducts((prevProducts) =>
+                        prevProducts.map((p) =>
+                            p.product_id === product.product_id
+                                ? { ...p, product_status: "unavailable" }
+                                : p
+                        )
+                    );
+
+                    // Refresh metrics
+                    await fetchMetrics();
+                }
+            } catch (error) {
+                console.error("Error auto-updating product status:", error);
+            }
+        }
     };
 
     // Toggle product listing status
@@ -138,21 +202,25 @@ export default function SellerManageProduct({ list_categories }) {
             const currentFeaturedStatus = isProductFeatured(product.product_id);
             const newFeaturedStatus = !currentFeaturedStatus;
 
+            // Calculate tax if enabling featured status
+            const taxAmount = newFeaturedStatus
+                ? (parseFloat(product.product_price) * 0.1).toFixed(2)
+                : 0;
+
             const response = await axios.post(route("product-featured"), {
                 product_id: product.product_id,
                 featured: newFeaturedStatus,
+                tax_amount: taxAmount, // Send tax amount to backend
             });
 
             if (response.data.success) {
                 // Update featured products list immediately
                 if (newFeaturedStatus) {
-                    // Add to featured products
                     setFeaturedProducts((prev) => [
                         ...prev,
                         { product_id: product.product_id },
                     ]);
                 } else {
-                    // Remove from featured products
                     setFeaturedProducts((prev) =>
                         prev.filter(
                             (fp) => fp.product_id !== product.product_id
@@ -160,7 +228,7 @@ export default function SellerManageProduct({ list_categories }) {
                     );
                 }
 
-                // Also update realTimeProducts to reflect the change if the field exists
+                // Update realTimeProducts
                 setRealTimeProducts((prevProducts) =>
                     prevProducts.map((p) =>
                         p.product_id === product.product_id
@@ -169,27 +237,42 @@ export default function SellerManageProduct({ list_categories }) {
                     )
                 );
 
-                setModalMessage(
-                    `Product ${
-                        newFeaturedStatus ? "featured" : "unfeatured"
-                    } successfully`
-                );
+                // Show appropriate success message
+                if (newFeaturedStatus) {
+                    setModalMessage(
+                        `Product featured successfully!`
+                    );
+                } else {
+                    setModalMessage(
+                        `Product removed from featured status successfully`
+                    );
+                }
+
                 setModalType("success");
                 setLoadingProgress(true);
 
                 setTimeout(() => {
                     setLoadingProgress(false);
-                }, 2000);
+                }, 3000);
             }
         } catch (error) {
             console.error("Error toggling product featured:", error);
-            setModalMessage("Failed to update featured status");
+
+            // Handle specific error cases
+            if (error.response?.data?.error === "insufficient_balance") {
+                setModalMessage(
+                    "Insufficient balance to pay the featured product tax"
+                );
+            } else {
+                setModalMessage("Failed to update featured status");
+            }
+
             setModalType("error");
             setLoadingProgress(true);
 
             setTimeout(() => {
                 setLoadingProgress(false);
-            }, 2000);
+            }, 3000);
         } finally {
             setTogglingProduct(null);
         }
@@ -395,6 +478,21 @@ export default function SellerManageProduct({ list_categories }) {
         setLoading(false);
     };
 
+    // Load both metrics and products with filters
+    const loadDataWithFilters = async (page = 1) => {
+        const searchParams = {};
+        if (searchTerm.trim() !== "") searchParams.search = searchTerm;
+        if (statusFilter !== "all") searchParams.status = statusFilter;
+        if (categoryFilter !== "all") searchParams.category = categoryFilter;
+        if (sortBy !== "name") searchParams.sort = sortBy;
+
+        // Fetch both metrics and products in parallel
+        await Promise.all([
+            fetchMetrics(searchParams),
+            get_ListProducts(page, searchParams),
+        ]);
+    };
+
     // Update your handleSearchAndFilters function:
     const handleSearchAndFilters = (page = 1) => {
         const searchParams = {};
@@ -436,6 +534,9 @@ export default function SellerManageProduct({ list_categories }) {
                 );
             }
 
+            // Check if we need to auto-update status for zero stock
+            checkAndUpdateProductStatus(updatedProduct);
+
             if (e.action === "deleted") {
                 setRealTimeProducts((prevProducts) =>
                     prevProducts.filter((p) => p.product_id !== e.product_id)
@@ -448,6 +549,8 @@ export default function SellerManageProduct({ list_categories }) {
                     ...prevProducts,
                 ]);
             }
+
+            fetchMetrics();
         };
 
         channel.listen(".product.updated", productUpdatedListener);
@@ -470,7 +573,7 @@ export default function SellerManageProduct({ list_categories }) {
 
     // Fetch users whenever page or filters change
     useEffect(() => {
-        get_ListProducts(currentPage);
+        loadDataWithFilters(currentPage);
     }, [currentPage]);
 
     // code for display the error field
@@ -501,22 +604,17 @@ export default function SellerManageProduct({ list_categories }) {
 
             // Always reset to page 1 when filters change
             setCurrentPage(1);
-            get_ListProducts(1, searchParams);
+            loadDataWithFilters(1);
         }, 500);
 
         return () => clearTimeout(timeoutId);
     }, [searchTerm, statusFilter, categoryFilter, sortBy]);
 
     useEffect(() => {
-        const searchParams = {};
-
-        if (searchTerm.trim() !== "") searchParams.search = searchTerm;
-        if (statusFilter !== "all") searchParams.status = statusFilter;
-        if (categoryFilter !== "all") searchParams.category = categoryFilter;
-        if (sortBy !== "name") searchParams.sort = sortBy;
-
-        get_ListProducts(currentPage, searchParams);
-    }, [currentPage, searchTerm, statusFilter, categoryFilter, sortBy]);
+        realTimeProducts.forEach((product) => {
+            checkAndUpdateProductStatus(product);
+        });
+    }, [realTimeProducts]);
 
     // Count products by status
     const productCounts = {
@@ -636,7 +734,11 @@ export default function SellerManageProduct({ list_categories }) {
                                         Total Products
                                     </p>
                                     <p className="text-base md:text-lg font-semibold text-gray-900">
-                                        {pagination.total}
+                                        {metricsLoading ? (
+                                            <div className="animate-pulse bg-gray-200 h-6 w-8 rounded"></div>
+                                        ) : (
+                                            metrics.totalProducts
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -664,7 +766,11 @@ export default function SellerManageProduct({ list_categories }) {
                                         Available
                                     </p>
                                     <p className="text-base md:text-lg font-semibold text-gray-900">
-                                        {productCounts.available}
+                                        {metricsLoading ? (
+                                            <div className="animate-pulse bg-gray-200 h-6 w-8 rounded"></div>
+                                        ) : (
+                                            metrics.availableProducts
+                                        )}
                                     </p>
                                 </div>
                             </div>
@@ -692,14 +798,82 @@ export default function SellerManageProduct({ list_categories }) {
                                         Unavailable
                                     </p>
                                     <p className="text-base md:text-lg font-semibold text-gray-900">
-                                        {productCounts.unavailable}
+                                        {metricsLoading ? (
+                                            <div className="animate-pulse bg-gray-200 h-6 w-8 rounded"></div>
+                                        ) : (
+                                            metrics.unavailableProducts
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex items-center">
+                                <div className="bg-yellow-100 p-2 rounded-lg mr-3">
+                                    <svg
+                                        className="w-4 h-4 md:w-5 md:h-5 text-yellow-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"
+                                        />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-xs md:text-sm text-gray-600">
+                                        Low Stock
+                                    </p>
+                                    <p className="text-base md:text-lg font-semibold text-gray-900">
+                                        {metricsLoading ? (
+                                            <div className="animate-pulse bg-gray-200 h-6 w-8 rounded"></div>
+                                        ) : (
+                                            metrics.lowStockProducts
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex items-center">
+                                <div className="bg-orange-100 p-2 rounded-lg mr-3">
+                                    <svg
+                                        className="w-4 h-4 md:w-5 md:h-5 text-orange-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 8v4m0 4h.01M6 12a6 6 0 1112 0 6 6 0 01-12 0z"
+                                        />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-xs md:text-sm text-gray-600">
+                                        Out of Stock
+                                    </p>
+                                    <p className="text-base md:text-lg font-semibold text-gray-900">
+                                        {metricsLoading ? (
+                                            <div className="animate-pulse bg-gray-200 h-6 w-8 rounded"></div>
+                                        ) : (
+                                            metrics.outOfStockProducts
+                                        )}
                                     </p>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Search and filters - Improved responsiveness */}
+                    {/* Search and filters */}
                     <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm mb-6">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
                             {/* Search Bar */}

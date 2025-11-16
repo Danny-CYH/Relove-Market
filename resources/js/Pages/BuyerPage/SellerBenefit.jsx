@@ -1,5 +1,3 @@
-import { Footer } from "@/Components/BuyerPage/Footer";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
 import {
     FaStore,
     FaUsers,
@@ -14,6 +12,11 @@ import {
     FaAward,
     FaMoneyBillWave,
 } from "react-icons/fa";
+
+import { Link } from "@inertiajs/react";
+
+import { Footer } from "@/Components/BuyerPage/Footer";
+import { Navbar } from "@/Components/BuyerPage/Navbar";
 
 export default function SellerBenefits() {
     const benefits = [
@@ -67,21 +70,21 @@ export default function SellerBenefits() {
             business: "Vintage Threads",
             story: "I started selling vintage clothing part-time and now it's my full-time business. Relove Market helped me reach customers who truly appreciate sustainable fashion.",
             growth: "320% revenue growth in 6 months",
-            image: "/image/shania_yan.png",
+            image: "/image/user1.jpg",
         },
         {
             name: "Michael Tan",
             business: "Tech Renew",
             story: "As a tech enthusiast, I found a way to give old gadgets new life. The platform's tools made it easy to manage my inventory and connect with buyers.",
             growth: "200+ items sold in first year",
-            image: "/image/shania_yan.png",
+            image: "/image/user2.jpg",
         },
         {
             name: "Priya Kaur",
             business: "Home Preloved",
             story: "My passion for sustainable living turned into a thriving business. The educational resources and community support have been invaluable.",
             growth: "450+ happy customers",
-            image: "/image/shania_yan.png",
+            image: "/image/user3.jpg",
         },
     ];
 
@@ -126,18 +129,22 @@ export default function SellerBenefits() {
                         shopping.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <button className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-full font-semibold transition-colors shadow-lg hover:shadow-xl">
-                            Start Selling Now
-                        </button>
-                        <button className="border-2 border-green-600 text-green-700 px-8 py-4 rounded-full font-semibold hover:bg-green-600 hover:text-white transition-colors">
-                            Learn How It Works
-                        </button>
+                        <Link href={route("seller-registration")}>
+                            <button className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-full font-semibold transition-colors shadow-lg hover:shadow-xl">
+                                Start Selling Now
+                            </button>
+                        </Link>
+                        <a href="#intro">
+                            <button className="border-2 border-green-600 text-green-700 px-8 py-4 rounded-full font-semibold hover:bg-green-600 hover:text-white transition-colors">
+                                Learn How It Works
+                            </button>
+                        </a>
                     </div>
                 </div>
             </section>
 
             {/* Stats Section */}
-            <section className="py-12 bg-white">
+            <section id="intro" className="py-12 bg-white">
                 <div className="max-w-6xl mx-auto px-4">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
                         <div className="text-center">
@@ -251,9 +258,11 @@ export default function SellerBenefits() {
                     </div>
 
                     <div className="text-center mt-12">
-                        <button className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-semibold transition-colors">
-                            Begin Your Seller Journey
-                        </button>
+                        <Link href={route("seller-registration")}>
+                            <button className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-semibold transition-colors">
+                                Begin Your Seller Journey
+                            </button>
+                        </Link>
                     </div>
                 </div>
             </section>
@@ -441,13 +450,12 @@ export default function SellerBenefits() {
                         Join thousands of sellers who are building sustainable
                         businesses and making a positive environmental impact.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <button className="bg-white text-green-700 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition shadow-lg">
-                            Create Seller Account
-                        </button>
-                        <button className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-green-700 transition">
-                            Contact Sales Team
-                        </button>
+                    <div className="flex flex-row sm:flex-row gap-4 justify-center">
+                        <Link href={route("seller-registration")}>
+                            <button className="bg-white text-green-700 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition shadow-lg">
+                                Create Seller Account
+                            </button>
+                        </Link>
                     </div>
                     <p className="mt-8 text-sm opacity-80">
                         No setup fees • No monthly charges • Pay only when you

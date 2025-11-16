@@ -672,7 +672,7 @@ export function OrderDetails({
                                                 Shipping Fee
                                             </span>
                                             <span className="font-medium text-gray-500">
-                                                RM {shipping.toFixed(2)}
+                                                RM 5.00
                                             </span>
                                         </div>
                                         {selectedOrder.platform_tax > 0 && (

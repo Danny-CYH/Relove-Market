@@ -32,7 +32,71 @@ export function ReceiptModal({
     // Format currency
     const formatCurrency = (amount) => `RM ${parseFloat(amount).toFixed(2)}`;
 
-    // NEW: Handle delivery confirmation
+    // NEW: Function to parse and display combination data
+    const getCombinationDisplay = (item) => {
+        console.log(item);
+
+        if (!item.selected_variant.combination) return null;
+
+        try {
+            // Parse the combination JSON string
+            const combinationData = JSON.parse(
+                item.selected_variant.combination
+            );
+            const parts = [];
+
+            // Handle different combination structures
+            if (typeof combinationData === "object") {
+                // For object format like {"Colors":"red","Size":"U16"}
+                Object.entries(combinationData).forEach(([key, value]) => {
+                    if (value && value !== "null" && value !== "") {
+                        parts.push(`${key}: ${value}`);
+                    }
+                });
+            } else if (typeof combinationData === "string") {
+                // For string format, split by delimiter if needed
+                parts.push(combinationData);
+            }
+
+            return parts.length > 0 ? parts.join(" • ") : null;
+        } catch (error) {
+            console.error("Error parsing combination:", error);
+            // Fallback: display the raw combination string
+            return item.combination && typeof item.combination === "string"
+                ? item.combination
+                      .replace(/[{}"]/g, "")
+                      .replace(/:/g, ": ")
+                      .replace(/,/g, " • ")
+                : null;
+        }
+    };
+
+    // NEW: Function to get combination details for detailed display
+    const getCombinationDetails = (item) => {
+        if (!item.combination) return null;
+
+        try {
+            const combinationData = JSON.parse(item.combination);
+            const details = [];
+
+            if (typeof combinationData === "object") {
+                Object.entries(combinationData).forEach(([key, value]) => {
+                    if (value && value !== "null" && value !== "") {
+                        details.push({
+                            label: key,
+                            value: value,
+                        });
+                    }
+                });
+            }
+
+            return details.length > 0 ? details : null;
+        } catch (error) {
+            return null;
+        }
+    };
+
+    // Handle delivery confirmation
     const handleConfirmDelivery = () => {
         if (confirmOrderDelivery) {
             confirmOrderDelivery(order.order_id);
@@ -128,6 +192,20 @@ export function ReceiptModal({
                     }
                     .items-table .text-center {
                         text-align: center;
+                    }
+                    .combination-info {
+                        font-size: 12px;
+                        color: #666;
+                        margin-top: 4px;
+                    }
+                    .combination-badge {
+                        display: inline-block;
+                        background: #f3f4f6;
+                        border: 1px solid #e5e7eb;
+                        border-radius: 4px;
+                        padding: 2px 6px;
+                        margin: 2px 4px 2px 0;
+                        font-size: 11px;
                     }
                     .summary-table {
                         width: 100%;
@@ -269,13 +347,31 @@ export function ReceiptModal({
                             </thead>
                             <tbody>
                                 ${order.order_items
-                                    ?.map(
-                                        (item) => `
+                                    ?.map((item) => {
+                                        const combinationDisplay =
+                                            getCombinationDisplay(item);
+                                        return `
                                     <tr>
                                         <td>
                                             <strong>${
                                                 item.product?.product_name
-                                            }</strong><br>
+                                            }</strong>
+                                            ${
+                                                combinationDisplay
+                                                    ? `
+                                            <div class="combination-info">
+                                                ${combinationDisplay
+                                                    .split(" • ")
+                                                    .map(
+                                                        (part) =>
+                                                            `<span class="combination-badge">${part}</span>`
+                                                    )
+                                                    .join("")}
+                                            </div>
+                                            `
+                                                    : ""
+                                            }
+                                            <br>
                                             <small>Seller: ${
                                                 item.product?.seller
                                                     ?.seller_store
@@ -292,8 +388,8 @@ export function ReceiptModal({
                                             item.price * item.quantity
                                         )}</strong></td>
                                     </tr>
-                                `
-                                    )
+                                `;
+                                    })
                                     .join("")}
                             </tbody>
                         </table>
@@ -348,40 +444,7 @@ export function ReceiptModal({
         printWindow.document.close();
     };
 
-    // NEW: Render delivery confirmation section
-    const renderDeliveryConfirmation = () => {
-        if (order.order_status === "Delivered") {
-            return (
-                <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <Package className="h-5 w-5 text-green-600" />
-                            <div>
-                                <p className="font-semibold text-green-800 text-sm">
-                                    Order Delivered!
-                                </p>
-                                <p className="text-green-700 text-xs">
-                                    Confirm receipt to release payment to seller
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={handleConfirmDelivery}
-                            disabled={confirmingOrderId === order.order_id}
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
-                        >
-                            {confirmingOrderId === order.order_id
-                                ? "Confirming..."
-                                : "Confirm Delivery"}
-                        </button>
-                    </div>
-                </div>
-            );
-        }
-        return null;
-    };
-
-    // NEW: Render commission information
+    // Render commission information
     const renderCommissionInfo = () => {
         if (order.order_status === "Completed" && order.commission_amount) {
             return (
@@ -427,7 +490,7 @@ export function ReceiptModal({
 
                     {/* Right Section - Actions */}
                     <div className="flex items-center justify-between sm:justify-end gap-2 sm:space-x-2">
-                        {/* Print Button - Full width on mobile, auto width on desktop */}
+                        {/* Print Button */}
                         <button
                             onClick={handlePrint}
                             className="flex-1 sm:flex-none flex items-center justify-center bg-white text-blue-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium text-sm sm:text-base min-w-0"
@@ -453,9 +516,6 @@ export function ReceiptModal({
                     className="p-6 overflow-y-auto max-h-[calc(95vh-120px)]"
                     ref={receiptRef}
                 >
-                    {/* NEW: Delivery Confirmation Section */}
-                    {renderDeliveryConfirmation()}
-
                     {/* Receipt Content */}
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
                         {/* Receipt Header */}
@@ -581,75 +641,119 @@ export function ReceiptModal({
 
                             {/* Mobile View - Card Layout */}
                             <div className="md:hidden space-y-4">
-                                {order.order_items?.map((item, index) => (
-                                    <div
-                                        key={index}
-                                        className="bg-gray-50 rounded-lg p-4 border border-gray-200"
-                                    >
-                                        <div className="flex items-start space-x-3 mb-3">
-                                            {item.product?.product_image?.[0]
-                                                ?.image_path && (
-                                                <img
-                                                    src={`${
-                                                        import.meta.env
-                                                            .VITE_BASE_URL
-                                                    }${
-                                                        item.product
-                                                            .product_image[0]
-                                                            .image_path
-                                                    }`}
-                                                    alt={
-                                                        item.product
-                                                            .product_name
-                                                    }
-                                                    className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                                                />
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <h5 className="font-semibold text-gray-900 text-sm mb-1 truncate">
-                                                    {item.product?.product_name}
-                                                </h5>
-                                                <p className="text-xs text-gray-500 mb-2">
-                                                    Seller:{" "}
-                                                    {item.product?.seller
-                                                        ?.seller_store
-                                                        ?.store_name || "N/A"}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                            <div>
-                                                <span className="text-gray-600">
-                                                    Quantity:
-                                                </span>
-                                                <div className="font-medium text-black bg-white px-2 py-1 rounded border inline-block">
-                                                    {item.quantity}
+                                {order.order_items?.map((item, index) => {
+                                    const combinationDisplay =
+                                        getCombinationDisplay(item);
+                                    const combinationDetails =
+                                        getCombinationDetails(item);
+
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                                        >
+                                            <div className="flex items-start space-x-3 mb-3">
+                                                {item.product
+                                                    ?.product_image?.[0]
+                                                    ?.image_path && (
+                                                    <img
+                                                        src={`${
+                                                            import.meta.env
+                                                                .VITE_BASE_URL
+                                                        }${
+                                                            item.product
+                                                                .product_image[0]
+                                                                .image_path
+                                                        }`}
+                                                        alt={
+                                                            item.product
+                                                                .product_name
+                                                        }
+                                                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                                                    />
+                                                )}
+                                                <div className="flex-1 min-w-0">
+                                                    <h5 className="font-semibold text-gray-900 text-sm mb-1 truncate">
+                                                        {
+                                                            item.product
+                                                                ?.product_name
+                                                        }
+                                                    </h5>
+
+                                                    {/* Combination Display */}
+                                                    {combinationDisplay && (
+                                                        <div className="mb-2">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {combinationDisplay
+                                                                    .split(
+                                                                        " • "
+                                                                    )
+                                                                    .map(
+                                                                        (
+                                                                            part,
+                                                                            idx
+                                                                        ) => (
+                                                                            <span
+                                                                                key={
+                                                                                    idx
+                                                                                }
+                                                                                className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded border border-blue-200"
+                                                                            >
+                                                                                {
+                                                                                    part
+                                                                                }
+                                                                            </span>
+                                                                        )
+                                                                    )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <p className="text-xs text-gray-500 mb-2">
+                                                        Seller:{" "}
+                                                        {item.product?.seller
+                                                            ?.seller_store
+                                                            ?.store_name ||
+                                                            "N/A"}
+                                                    </p>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <span className="text-gray-600">
-                                                    Unit Price:
-                                                </span>
-                                                <div className="font-medium text-black">
-                                                    {formatCurrency(item.price)}
-                                                </div>
-                                            </div>
-                                            <div className="col-span-2 border-t pt-2">
-                                                <div className="flex justify-between items-center">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                                <div>
                                                     <span className="text-gray-600">
-                                                        Total:
+                                                        Quantity:
                                                     </span>
-                                                    <span className="font-semibold text-blue-600">
+                                                    <div className="font-medium text-black bg-white px-2 py-1 rounded border inline-block">
+                                                        {item.quantity}
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-600">
+                                                        Unit Price:
+                                                    </span>
+                                                    <div className="font-medium text-black">
                                                         {formatCurrency(
-                                                            item.price *
-                                                                item.quantity
+                                                            item.price
                                                         )}
-                                                    </span>
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-2 border-t pt-2">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-600">
+                                                            Total:
+                                                        </span>
+                                                        <span className="font-semibold text-blue-600">
+                                                            {formatCurrency(
+                                                                item.price *
+                                                                    item.quantity
+                                                            )}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
 
                             {/* Desktop View - Scrollable Table */}
@@ -674,73 +778,113 @@ export function ReceiptModal({
                                         </thead>
                                         <tbody>
                                             {order.order_items?.map(
-                                                (item, index) => (
-                                                    <tr
-                                                        key={index}
-                                                        className="hover:bg-gray-50 transition-colors"
-                                                    >
-                                                        <td className="px-4 py-3 border-b">
-                                                            <div className="flex items-center space-x-3">
-                                                                {item.product
-                                                                    ?.product_image?.[0]
-                                                                    ?.image_path && (
-                                                                    <img
-                                                                        src={`${
-                                                                            import.meta
-                                                                                .env
-                                                                                .VITE_BASE_URL
-                                                                        }${
-                                                                            item
+                                                (item, index) => {
+                                                    const combinationDisplay =
+                                                        getCombinationDisplay(
+                                                            item
+                                                        );
+
+                                                    return (
+                                                        <tr
+                                                            key={index}
+                                                            className="hover:bg-gray-50 transition-colors"
+                                                        >
+                                                            <td className="px-4 py-3 border-b">
+                                                                <div className="flex items-center space-x-3">
+                                                                    {item
+                                                                        .product
+                                                                        ?.product_image?.[0]
+                                                                        ?.image_path && (
+                                                                        <img
+                                                                            src={`${
+                                                                                import.meta
+                                                                                    .env
+                                                                                    .VITE_BASE_URL
+                                                                            }${
+                                                                                item
+                                                                                    .product
+                                                                                    .product_image[0]
+                                                                                    .image_path
+                                                                            }`}
+                                                                            alt={
+                                                                                item
+                                                                                    .product
+                                                                                    .product_name
+                                                                            }
+                                                                            className="w-10 h-10 object-cover rounded"
+                                                                        />
+                                                                    )}
+                                                                    <div className="min-w-0">
+                                                                        <div className="font-medium text-gray-900 truncate max-w-[200px]">
+                                                                            {
+                                                                                item
+                                                                                    .product
+                                                                                    ?.product_name
+                                                                            }
+                                                                        </div>
+
+                                                                        {/* Combination Display */}
+                                                                        {combinationDisplay && (
+                                                                            <div className="mt-1">
+                                                                                <div className="flex flex-wrap gap-1">
+                                                                                    {combinationDisplay
+                                                                                        .split(
+                                                                                            " • "
+                                                                                        )
+                                                                                        .map(
+                                                                                            (
+                                                                                                part,
+                                                                                                idx
+                                                                                            ) => (
+                                                                                                <span
+                                                                                                    key={
+                                                                                                        idx
+                                                                                                    }
+                                                                                                    className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded border border-blue-200"
+                                                                                                >
+                                                                                                    {
+                                                                                                        part
+                                                                                                    }
+                                                                                                </span>
+                                                                                            )
+                                                                                        )}
+                                                                                </div>
+                                                                            </div>
+                                                                        )}
+
+                                                                        <div className="text-sm text-gray-500 truncate max-w-[200px]">
+                                                                            Seller:{" "}
+                                                                            {item
                                                                                 .product
-                                                                                .product_image[0]
-                                                                                .image_path
-                                                                        }`}
-                                                                        alt={
-                                                                            item
-                                                                                .product
-                                                                                .product_name
-                                                                        }
-                                                                        className="w-10 h-10 object-cover rounded"
-                                                                    />
-                                                                )}
-                                                                <div className="min-w-0">
-                                                                    <div className="font-medium text-gray-900 truncate max-w-[200px]">
-                                                                        {
-                                                                            item
-                                                                                .product
-                                                                                ?.product_name
-                                                                        }
-                                                                    </div>
-                                                                    <div className="text-sm text-gray-500 truncate max-w-[200px]">
-                                                                        Seller:{" "}
-                                                                        {item
-                                                                            .product
-                                                                            ?.seller
-                                                                            ?.seller_store
-                                                                            ?.store_name ||
-                                                                            "N/A"}
+                                                                                ?.seller
+                                                                                ?.seller_store
+                                                                                ?.store_name ||
+                                                                                "N/A"}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-center border-b">
-                                                            <span className="bg-gray-100 px-3 py-1 rounded text-sm font-medium text-black">
-                                                                {item.quantity}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right border-b text-gray-900">
-                                                            {formatCurrency(
-                                                                item.price
-                                                            )}
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right border-b font-semibold text-gray-900">
-                                                            {formatCurrency(
-                                                                item.price *
-                                                                    item.quantity
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                )
+                                                            </td>
+                                                            <td className="px-4 py-3 text-center border-b">
+                                                                <span className="bg-gray-100 px-3 py-1 rounded text-sm font-medium text-black">
+                                                                    {
+                                                                        item.quantity
+                                                                    }
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right border-b text-gray-900">
+                                                                {formatCurrency(
+                                                                    item.price
+                                                                )}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-right border-b font-semibold text-gray-900">
+                                                                {formatCurrency(
+                                                                    item.price *
+                                                                        item.quantity
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }
                                             )}
                                         </tbody>
                                     </table>
@@ -804,7 +948,7 @@ export function ReceiptModal({
                             </div>
                         </div>
 
-                        {/* NEW: Commission Information */}
+                        {/* Commission Information */}
                         {renderCommissionInfo()}
 
                         {/* Footer */}

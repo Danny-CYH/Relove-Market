@@ -171,7 +171,6 @@ export default function EarningsPage() {
         });
 
         return () => {
-            console.log("🧹 Leaving earnings channel");
             channel.stopListening(".order.completed");
             channel.stopListening(".order.status.updated");
             window.Echo.leaveChannel(`seller.earnings.${auth.user.seller_id}`);
@@ -740,7 +739,7 @@ export default function EarningsPage() {
                                                         <span
                                                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
                                                                 tx.order_status ===
-                                                                    "Completed"
+                                                                "Completed"
                                                                     ? "bg-green-100 text-green-700"
                                                                     : "bg-yellow-100 text-yellow-700"
                                                             }`}

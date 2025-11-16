@@ -97,11 +97,6 @@ export default function SellerDashboard() {
         }
     };
 
-    // Close notification modal
-    const handleCloseNotificationModal = () => {
-        setShowNotificationModal(false);
-    };
-
     // Remove individual notification
     const removeNotification = (notificationId) => {
         setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
@@ -210,7 +205,7 @@ export default function SellerDashboard() {
             const ordersCount = calculateOrders(orders, filterType);
             const totalOrders = calculateTotalOrders(orders);
             const conversionRate = calculateConversionRate(orders);
-            const totalProducts = products?.length || 0;
+            const totalProducts = products.length || 0;
 
             return {
                 earnings,
@@ -234,19 +229,72 @@ export default function SellerDashboard() {
         setNewOrders(new Set());
     };
 
-    // Real-time order updates with Echo
+    // Add this function to refresh dashboard data
+    const refreshDashboardData = useCallback(async () => {
+        try {
+            console.log(
+                "🔄 Refreshing dashboard data after payment release..."
+            );
+            const { data } = await axios.get(route("dashboard-data"));
+            const featured_products = await axios.get(
+                route("featured-products")
+            );
+
+            setSellerData(data.seller_storeInfo[0]);
+            setShop(data);
+            setFeaturedProducts(featured_products.data.featured_products);
+
+            const orders = data.order_data || [];
+            const products = data.seller_storeInfo[0]?.product || [];
+
+            const calculatedKPIs = calculateAllKPIs(
+                orders,
+                products,
+                timeFilter
+            );
+            setKpis(calculatedKPIs);
+            setRealTimeOrders(orders);
+            setOrderData(orders);
+
+            console.log("✅ Dashboard data refreshed successfully");
+        } catch (error) {
+            console.error("Error refreshing dashboard data:", error);
+        }
+    }, [calculateAllKPIs, timeFilter]);
+
+    // Real-time order updates with Echo - CORRECTED VERSION
     useEffect(() => {
         if (!auth?.user?.seller_id || !window.Echo) {
             console.log("Echo not available or seller_id missing");
             return;
         }
 
-        const channel = window.Echo.private(
-            `seller.orders.${auth.user.seller_id}`
-        );
+        // CORRECT CHANNEL NAME - Match what Laravel is broadcasting to
+        const channelPayment = `seller.payment.${auth.user.seller_id}`;
+        const channelOrders = `seller.orders.${auth.user.seller_id}`;
 
-        // New order created
-        channel.listen(".new.order.created", (e) => {
+        const listen_channelPayment = window.Echo.private(channelPayment);
+        const listen_channelOrders = window.Echo.private(channelOrders);
+
+        window.Echo.connector.pusher.connection.bind("error", (err) => {
+            console.error("❌ ECHO CONNECTION ERROR:", err);
+        });
+
+        // Enhanced Payment released notification
+        listen_channelPayment.listen(".payment.released", (e) => {
+            console.log("💰💰💰 PAYMENT RELEASED EVENT RECEIVED:", e);
+
+            // Show notification
+            showNotification(
+                `💰 Payment Released!\nOrder #${e.seller_earning.order_id}\nAmount: RM ${e.seller_earning.payout_amount}`,
+                "success"
+            );
+
+            // Refresh dashboard data to update earnings
+            refreshDashboardData();
+        });
+
+        listen_channelOrders.listen(".new.order.created", (e) => {
             console.log("✅ Real-time new order received:", e);
 
             const newOrder = e.order;
@@ -297,101 +345,7 @@ export default function SellerDashboard() {
                 return calculateAllKPIs(updatedOrders, products, timeFilter);
             });
         });
-
-        // Order status updates
-        channel.listen(".order.updated", (e) => {
-            console.log("🔄 Order updated:", e);
-
-            const updatedOrder = e.order;
-
-            // Update in realTimeOrders
-            setRealTimeOrders((prev) =>
-                prev.map((order) =>
-                    order.order_id === updatedOrder.order_id
-                        ? updatedOrder
-                        : order
-                )
-            );
-
-            // Update in orderData
-            setOrderData((prev) =>
-                prev.map((order) =>
-                    order.order_id === updatedOrder.order_id
-                        ? updatedOrder
-                        : order
-                )
-            );
-
-            // Recalculate KPIs after order update
-            setKpis((prev) => {
-                const products = sellerData?.product || [];
-                return calculateAllKPIs(orderData, products, timeFilter);
-            });
-
-            showNotification(
-                `📦 Order #${updatedOrder.order_id} status updated to ${updatedOrder.order_status}`,
-                "info",
-                {
-                    type: "order_update",
-                    orderId: updatedOrder.order_id,
-                    status: updatedOrder.order_status,
-                }
-            );
-        });
-
-        // Payment released notification
-        channel.listen(".payment.released", (e) => {
-            console.log("💰 Payment released:", e);
-
-            const { order_id, amount, released_at } = e.payment;
-
-            showNotification(
-                `💰 Payment Released!\nOrder #${order_id}\nAmount: RM ${amount}`,
-                "success",
-                {
-                    type: "payment_released",
-                    orderId: order_id,
-                    amount: amount,
-                    releasedAt: released_at,
-                }
-            );
-
-            refreshDashboardData();
-        });
-
-        // Order cancellation
-        channel.listen(".order.cancelled", (e) => {
-            console.log("❌ Order cancelled:", e);
-
-            const { order_id, reason } = e.order;
-
-            showNotification(
-                `❌ Order #${order_id} Cancelled\nReason: ${
-                    reason || "Not specified"
-                }`,
-                "warning",
-                {
-                    type: "order_cancelled",
-                    orderId: order_id,
-                    reason: reason,
-                }
-            );
-        });
-
-        return () => {
-            channel.stopListening(".new.order.created");
-            channel.stopListening(".order.updated");
-            channel.stopListening(".payment.released");
-            channel.stopListening(".order.cancelled");
-            window.Echo.leaveChannel(`seller.orders.${auth.user.seller_id}`);
-        };
-    }, [
-        auth?.user?.seller_id,
-        sellerData,
-        showNotification,
-        calculateAllKPIs,
-        timeFilter,
-    ]);
+    }, [auth?.user?.seller_id, showNotification, refreshDashboardData]);
 
     // Fetch listed products
     useEffect(() => {
@@ -411,34 +365,6 @@ export default function SellerDashboard() {
             fetchListedProducts();
         }
     }, [sellerData?.seller_store?.store_id]);
-
-    // Function to refresh dashboard data
-    const refreshDashboardData = useCallback(async () => {
-        try {
-            const { data } = await axios.get(route("dashboard-data"));
-            const featured_products = await axios.get(
-                route("featured-products")
-            );
-
-            setSellerData(data.seller_storeInfo[0]);
-            setShop(data);
-            setFeaturedProducts(featured_products.data.featured_products);
-
-            const orders = data.order_data || [];
-            const products = data.seller_storeInfo[0]?.product || [];
-
-            const calculatedKPIs = calculateAllKPIs(
-                orders,
-                products,
-                timeFilter
-            );
-            setKpis(calculatedKPIs);
-            setRealTimeOrders(orders);
-            setOrderData(orders);
-        } catch (error) {
-            console.error("Error refreshing dashboard data:", error);
-        }
-    }, [calculateAllKPIs, timeFilter]);
 
     // GENERATE EARNINGS CHART DATA BASED ON TIME FILTER
     const generateEarningsChartData = useCallback((orders, filterType) => {

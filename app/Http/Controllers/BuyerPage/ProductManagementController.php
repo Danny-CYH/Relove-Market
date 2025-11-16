@@ -9,15 +9,16 @@ use App\Events\BuyerPage\ProductDetails\ReviewsUpdate;
 use App\Mail\ProductBlockedNotification;
 use App\Mail\ProductFlaggedNotification;
 use App\Mail\ProductUnblockedNotification;
+
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Rating;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 
 use Exception;
-use Illuminate\Support\Facades\Mail;
 
 class ProductManagementController extends Controller
 {
@@ -60,11 +61,12 @@ class ProductManagementController extends Controller
                 'productVariant',
                 'category',
                 'ratings',
-                'seller.sellerStore'
-            ])->where('product_status', 'available');
+                'seller.sellerStore',
+                'orderItems'
+            ])
+                ->orderBy('featured', 'desc');
 
-            // Apply search filter
-            if (!empty($searchTerm)) {
+            if ($searchTerm !== null && trim($searchTerm) !== '') {
                 $query->where('product_name', 'ILIKE', '%' . $searchTerm . '%');
             }
 
@@ -136,7 +138,7 @@ class ProductManagementController extends Controller
                 'search_query' => $searchTerm,
             ]);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             \Log::error('❌ SHOPPING API Error: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
 
@@ -201,6 +203,7 @@ class ProductManagementController extends Controller
                 "productVideo",
                 "productFeature",
                 "productIncludeItem",
+                'orderItems',
                 "ratings",
                 "category",
             ])

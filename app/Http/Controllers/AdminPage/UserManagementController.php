@@ -8,6 +8,7 @@ use App\Models\User;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class UserManagementController extends Controller
 {
@@ -55,7 +56,7 @@ class UserManagementController extends Controller
             $request->validate([
                 'action' => 'required|in:block,unblock,delete',
                 'user_ids' => 'required|array',
-                'user_ids.*' => 'exists:users,user_id'
+                'user_ids.*' => 'exists:users,user_id',
             ]);
 
             DB::beginTransaction();
@@ -63,18 +64,40 @@ class UserManagementController extends Controller
             $userIds = $request->user_ids;
             $action = $request->action;
 
+
             switch ($action) {
                 case 'block':
+                    $users = User::whereIn('user_id', $userIds)->get();
                     User::whereIn('user_id', $userIds)->update(['status' => 'Blocked']);
+
+                    // Send email notifications for blocked users
+                    foreach ($users as $user) {
+                        $this->sendBlockNotificationEmail($user);
+                    }
+
                     $message = count($userIds) . ' user(s) blocked successfully';
                     break;
 
                 case 'unblock':
+                    $users = User::whereIn('user_id', $userIds)->get();
                     User::whereIn('user_id', $userIds)->update(['status' => 'Active']);
+
+                    // Send email notifications for unblocked users
+                    foreach ($users as $user) {
+                        $this->sendUnblockNotificationEmail($user);
+                    }
+
                     $message = count($userIds) . ' user(s) unblocked successfully';
                     break;
 
                 case 'delete':
+                    $users = User::whereIn('user_id', $userIds)->get();
+
+                    // Send email notifications for deleted users
+                    foreach ($users as $user) {
+                        $this->sendAccountDeletionEmail($user);
+                    }
+
                     User::whereIn('user_id', $userIds)->delete();
                     $message = count($userIds) . ' user(s) deleted successfully';
                     break;
@@ -97,6 +120,90 @@ class UserManagementController extends Controller
                 'success' => false,
                 'message' => 'Failed to perform action'
             ], 500);
+        }
+    }
+
+    /**
+     * Send block notification email to user
+     */
+    private function sendBlockNotificationEmail(User $user)
+    {
+        try {
+            $subject = 'Account Blocked - Relove Market';
+
+            $data = [
+                'userName' => $user->name,
+                'supportEmail' => 'support@relovemarket.com',
+                'currentDate' => now()->format('F j, Y'),
+                'platformName' => 'Relove Market'
+            ];
+
+            Mail::send('AdminPage/account-blocked', $data, function ($message) use ($user, $subject) {
+                $message->to($user->email)
+                    ->subject($subject)
+                    ->from('noreply@relovemarket.com', 'Relove Market');
+            });
+
+            \Log::info("Block notification email sent to: {$user->email}");
+
+        } catch (\Exception $e) {
+            \Log::error("Failed to send block notification email to {$user->email}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Send unblock notification email to user
+     */
+    private function sendUnblockNotificationEmail(User $user)
+    {
+        try {
+            $subject = 'Account Reactivated - Relove Market';
+
+            $data = [
+                'userName' => $user->name,
+                'supportEmail' => 'support@relovemarket.com',
+                'currentDate' => now()->format('F j, Y'),
+                'platformName' => 'Relove Market'
+            ];
+
+            Mail::send('AdminPage/account-unblocked', $data, function ($message) use ($user, $subject) {
+                $message->to($user->email)
+                    ->subject($subject)
+                    ->from('noreply@relovemarket.com', 'Relove Market');
+            });
+
+            \Log::info("Unblock notification email sent to: {$user->email}");
+
+        } catch (\Exception $e) {
+            \Log::error("Failed to send unblock notification email to {$user->email}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Send account deletion notification email to user
+     */
+    private function sendAccountDeletionEmail(User $user)
+    {
+        try {
+            $subject = 'Account Deleted - Relove Market';
+
+            $data = [
+                'userName' => $user->name,
+                'supportEmail' => 'support@relovemarket.com',
+                'currentDate' => now()->format('F j, Y'),
+                'platformName' => 'Relove Market'
+            ];
+
+            Mail::send('AdminPage/account-deleted', $data, function ($message) use ($user, $subject) {
+                $message->to($user->email)
+                    ->subject($subject)
+                    ->from('noreply@relovemarket.com', 'Relove Market');
+            });
+
+            \Log::info("Account deletion email sent to: {$user->email}");
+
+        } catch (\Exception $e) {
+            \Log::error("Failed to send account deletion email to {$user->email}: " . $e->getMessage());
         }
     }
 

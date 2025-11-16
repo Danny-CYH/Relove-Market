@@ -123,14 +123,8 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                     <span className="truncate">
                         {product.seller?.seller_store?.store_name || "Seller"}
                     </span>
-                    <span className="flex items-center">
-                        <Link
-                            href={route("product-details", product.product_id)}
-                        >
-                            <span className="text-blue-500 text-xs font-bold">
-                                Details
-                            </span>
-                        </Link>
+                    <span className="flex font-bold items-center">
+                        Sold: {product.order_items.length}
                     </span>
                 </div>
             </div>

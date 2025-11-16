@@ -124,6 +124,172 @@ export function CheckoutForm({
         }
     };
 
+    // Get variant display text - MODIFIED VERSION with separate lines
+    const getVariantDisplayText = (variant) => {
+        if (!variant) return null;
+
+        // Helper function to process combination object/string
+        const processCombination = (combination) => {
+            if (!combination) return null;
+
+            let variantEntries = [];
+
+            // If it's already an object
+            if (typeof combination === "object") {
+                variantEntries = Object.entries(combination).map(
+                    ([key, value]) => ({
+                        key: key.charAt(0).toUpperCase() + key.slice(1),
+                        value: value,
+                    })
+                );
+            }
+            // If it's a string
+            else if (typeof combination === "string") {
+                // Try to parse as JSON first
+                try {
+                    const parsed = JSON.parse(combination);
+                    if (typeof parsed === "object") {
+                        variantEntries = Object.entries(parsed).map(
+                            ([key, value]) => ({
+                                key: key.charAt(0).toUpperCase() + key.slice(1),
+                                value: value,
+                            })
+                        );
+                    } else {
+                        // If it's a simple string, treat it as a single variant
+                        variantEntries = [
+                            { key: "Variant", value: combination },
+                        ];
+                    }
+                } catch (error) {
+                    // If not JSON, check if it's a simple key-value string
+                    if (combination.includes(":")) {
+                        // Split by comma first, then by colon
+                        const pairs = combination
+                            .split(",")
+                            .map((pair) => pair.trim());
+                        variantEntries = pairs.map((pair) => {
+                            const [key, value] = pair
+                                .split(":")
+                                .map((part) => part.trim());
+                            return {
+                                key: key
+                                    ? key.charAt(0).toUpperCase() + key.slice(1)
+                                    : "Variant",
+                                value: value || pair,
+                            };
+                        });
+                    } else {
+                        // If it's just a single value, format it nicely
+                        variantEntries = [
+                            { key: "Variant", value: combination },
+                        ];
+                    }
+                }
+            }
+
+            return variantEntries.length > 0 ? variantEntries : null;
+        };
+
+        let variantEntries = [];
+
+        // Check different possible fields in order of priority
+        // 1. Check variant_combination first
+        if (variant.variant_combination) {
+            const entries = processCombination(variant.variant_combination);
+            if (entries) variantEntries = entries;
+        }
+
+        // 2. Check combination field
+        if (variantEntries.length === 0 && variant.combination) {
+            const entries = processCombination(variant.combination);
+            if (entries) variantEntries = entries;
+        }
+
+        // 3. Check if there are individual variant attributes
+        if (variantEntries.length === 0) {
+            // Look for common variant attribute fields
+            const variantFields = [
+                "color",
+                "size",
+                "material",
+                "style",
+                "type",
+                "weight",
+                "length",
+                "width",
+                "height",
+                "dimension",
+            ];
+
+            variantFields.forEach((field) => {
+                if (variant[field]) {
+                    variantEntries.push({
+                        key: field.charAt(0).toUpperCase() + field.slice(1),
+                        value: variant[field],
+                    });
+                }
+            });
+        }
+
+        // 4. Check if variant itself has properties that could be displayed
+        if (variantEntries.length === 0 && typeof variant === "object") {
+            // Exclude common non-variant fields
+            const excludeFields = [
+                "id",
+                "variant_id",
+                "price",
+                "variant_price",
+                "quantity",
+                "stock_quantity",
+                "sku",
+                "image",
+                "created_at",
+                "updated_at",
+                "variant_combination",
+                "combination",
+            ];
+
+            const validEntries = Object.entries(variant)
+                .filter(
+                    ([key, value]) =>
+                        !excludeFields.includes(key) &&
+                        value &&
+                        typeof value !== "object" &&
+                        !Array.isArray(value)
+                )
+                .map(([key, value]) => ({
+                    key: key
+                        .split("_")
+                        .map(
+                            (word) =>
+                                word.charAt(0).toUpperCase() + word.slice(1)
+                        )
+                        .join(" "),
+                    value: value,
+                }));
+
+            if (validEntries.length > 0) {
+                variantEntries = validEntries;
+            }
+        }
+
+        // 5. Final fallback - check if variant has a name or title
+        if (variantEntries.length === 0) {
+            if (variant.name) {
+                variantEntries = [{ key: "Variant", value: variant.name }];
+            } else if (variant.title) {
+                variantEntries = [{ key: "Variant", value: variant.title }];
+            } else if (variant.variant_name) {
+                variantEntries = [
+                    { key: "Variant", value: variant.variant_name },
+                ];
+            }
+        }
+
+        return variantEntries.length > 0 ? variantEntries : null;
+    };
+
     // Prepare order items data with variant support
     const prepareOrderItems = () => {
         return list_product.map((product) => {
@@ -393,11 +559,6 @@ export function CheckoutForm({
             return;
         }
 
-        if (paymentMethod !== "credit") {
-            handleNonCardPayment();
-            return;
-        }
-
         setIsLoading(true);
         setError(null);
 
@@ -486,120 +647,6 @@ export function CheckoutForm({
                 "error",
                 "Payment Error",
                 "An unexpected error occurred during payment processing. Please try again.",
-                "Back to Wishlist"
-            ).then((result) => {
-                if (result.isConfirmed) {
-                    redirectToWishlist();
-                }
-            });
-            setIsLoading(false);
-        }
-    };
-
-    const handleNonCardPayment = async () => {
-        setIsLoading(true);
-        try {
-            const orderData = prepareOrderData();
-
-            // Validate stock before proceeding with non-card payment
-            const stockValidation = await validateStock(orderData.order_items);
-            if (!stockValidation.valid) {
-                setError(stockValidation.error);
-                await showAlert(
-                    "error",
-                    "Stock Issue",
-                    stockValidation.error ||
-                        "Some items are no longer available. Please review your cart.",
-                    "Back to Wishlist"
-                ).then((result) => {
-                    if (result.isConfirmed) {
-                        redirectToWishlist();
-                    }
-                });
-                setIsLoading(false);
-                return;
-            }
-
-            // Map frontend payment methods to Stripe payment method types
-            const getPaymentMethodTypes = () => {
-                switch (paymentMethod) {
-                    case "grabpay":
-                        return ["grabpay"];
-                    case "paypal":
-                        return ["paypal"];
-                    case "cod":
-                        return ["cash_on_delivery"];
-                    default:
-                        return ["card"];
-                }
-            };
-
-            const loadingAlert = showLoadingAlert(
-                "Processing Order",
-                `Setting up your ${paymentMethod.toUpperCase()} payment...`
-            );
-
-            const response = await fetch("/create-payment-intent", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document.querySelector(
-                        'meta[name="csrf-token"]'
-                    ).content,
-                },
-                body: JSON.stringify({
-                    amount: Math.round(total * 100),
-                    currency: "myr",
-                    payment_method_types: getPaymentMethodTypes(),
-                    ...orderData,
-                }),
-            });
-
-            const data = await response.json();
-            loadingAlert.close();
-            console.log("Non-card Payment Intent:", data);
-
-            if (data.orderId) {
-                // For non-card payments, we need to handle the payment flow differently
-                if (paymentMethod === "cod") {
-                    // Handle Cash on Delivery - create order without payment intent
-                    await handleSuccessfulPayment(
-                        "cod_" + Date.now(),
-                        data.orderId,
-                        orderData
-                    );
-                } else {
-                    // For other payment methods, redirect to their payment page
-                    await handleSuccessfulPayment(
-                        data.id,
-                        data.orderId,
-                        orderData
-                    );
-                }
-            } else {
-                const errorMsg =
-                    data.error || "Failed to create order for non-card payment";
-                setError(errorMsg);
-                await showAlert(
-                    "error",
-                    "Order Failed",
-                    errorMsg,
-                    "Back to Wishlist"
-                ).then((result) => {
-                    if (result.isConfirmed) {
-                        redirectToWishlist();
-                    }
-                });
-                setIsLoading(false);
-            }
-        } catch (err) {
-            console.error("Non-card Payment Error:", err);
-            const errorMsg = "Payment processing failed: " + err.message;
-            setError(errorMsg);
-            await showAlert(
-                "error",
-                "Payment Error",
-                "Failed to process your payment. Please try again.",
                 "Back to Wishlist"
             ).then((result) => {
                 if (result.isConfirmed) {
@@ -715,39 +762,24 @@ export function CheckoutForm({
         }
     };
 
-    // Render selected variant for display
+    // Render selected variant for display - MODIFIED VERSION
     const renderSelectedVariant = (product) => {
         const selectedVariant = parseSelectedVariant(product);
+        const variantEntries = getVariantDisplayText(selectedVariant);
 
-        if (
-            !selectedVariant ||
-            !selectedVariant.combination ||
-            Object.keys(selectedVariant.combination).length === 0
-        ) {
+        if (!variantEntries || variantEntries.length === 0) {
             return null;
         }
 
-        let combination = selectedVariant.combination;
-
-        if (typeof combination === "string") {
-            try {
-                combination = JSON.parse(combination);
-            } catch {
-                console.error("Invalid combination JSON:", combination);
-                return null;
-            }
-        }
-
         return (
-            <div className="mt-1">
-                <p className="text-sm text-gray-700">
-                    <strong>Variant:</strong>
-                    {Object.entries(combination).map(([key, value]) => (
-                        <span key={key} className="ml-2">
-                            {key}: {value}
+            <div className="mt-2 grid grid-rows-2 gap-2">
+                {variantEntries.map((entry, idx) => (
+                    <div key={idx} className="flex flex-col">
+                        <span className="text-xs text-blue-500 font-semibold capitalize">
+                            {entry.key}: {entry.value}
                         </span>
-                    ))}
-                </p>
+                    </div>
+                ))}
             </div>
         );
     };
@@ -760,19 +792,14 @@ export function CheckoutForm({
         }
 
         return (
-            <div className="mt-1">
-                {Object.entries(selectedOptions).map(
-                    ([optionType, optionData]) => (
-                        <div key={optionType} className="text-xs text-gray-600">
-                            <span className="capitalize font-medium">
-                                {optionType}:
-                            </span>
-                            <span className="ml-1">
-                                {optionData.value_name}
-                            </span>
-                        </div>
-                    )
-                )}
+            <div className="mt-2 grid grid-cols-2 gap-2">
+                {Object.entries(selectedOptions).map(([type, data]) => (
+                    <div key={type} className="flex flex-col">
+                        <span className="text-gray-500 font-medium capitalize">
+                            {type}: {data.value_name}
+                        </span>
+                    </div>
+                ))}
             </div>
         );
     };
@@ -824,7 +851,7 @@ export function CheckoutForm({
                                 </p>
                                 {renderSelectedVariant(item) ||
                                     renderSelectedOptions(item)}
-                                <p className="text-gray-600 text-sm mt-1">
+                                <p className="text-gray-600 text-sm mt-2">
                                     Quantity: {quantity} × RM{" "}
                                     {price.toFixed(2) || 0}
                                 </p>

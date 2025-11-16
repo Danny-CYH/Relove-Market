@@ -368,9 +368,6 @@ export default function Wishlist({ user_wishlist }) {
                 },
                 {
                     headers: {
-                        "X-CSRF-TOKEN": document.querySelector(
-                            'meta[name="csrf-token"]'
-                        ).content,
                         "Content-Type": "application/json",
                         Accept: "application/json",
                     },
@@ -804,7 +801,7 @@ export default function Wishlist({ user_wishlist }) {
                             </div>
                         )}
 
-                        <div className="flex gap-3">
+                        <div className="flex flex-col md:flex-row gap-3">
                             <button
                                 onClick={onClose}
                                 className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"

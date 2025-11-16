@@ -1,43 +1,76 @@
+// Components/SellerPage/SellerManageProduct/FeaturedToggleButton.jsx
+import React, { useState } from "react";
 import { Star } from "lucide-react";
+import { FeaturedTaxModal } from "./FeaturedTaxModal";
 
-export function FeaturedToggleButton({
+export const FeaturedToggleButton = ({
     product,
     isProductFeatured,
     toggleProductFeatured,
     togglingProduct,
-}) {
-    const isFeatured = isProductFeatured(product.product_id);
+}) => {
+    const [showTaxModal, setShowTaxModal] = useState(false);
+    const currentFeaturedStatus = isProductFeatured(product.product_id);
+
+    const handleToggleClick = () => {
+        // Show tax modal only when enabling featured status
+        if (!currentFeaturedStatus) {
+            setShowTaxModal(true);
+        } else {
+            // Directly disable featured status (no tax for disabling)
+            toggleProductFeatured(product);
+        }
+    };
+
+    const handleConfirmFeatured = () => {
+        setShowTaxModal(false);
+        toggleProductFeatured(product);
+    };
 
     return (
-        <button
-            onClick={() => toggleProductFeatured(product)}
-            disabled={togglingProduct === product.product_id}
-            className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 ${
-                isFeatured
-                    ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-300"
-            } ${
-                togglingProduct === product.product_id
-                    ? "opacity-50 cursor-not-allowed"
-                    : "cursor-pointer hover:scale-105"
-            }`}
-            title={isFeatured ? "Click to unfeature" : "Click to feature"}
-        >
-            {togglingProduct === product.product_id ? (
-                <div className="animate-spin h-3 w-3 border-2 border-current border-t-transparent rounded-full mr-1"></div>
-            ) : (
+        <>
+            <button
+                onClick={handleToggleClick}
+                disabled={togglingProduct === product.product_id}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    currentFeaturedStatus
+                        ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200"
+                        : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
+                } ${
+                    togglingProduct === product.product_id
+                        ? "opacity-50 cursor-not-allowed"
+                        : "cursor-pointer"
+                }`}
+                title={
+                    currentFeaturedStatus
+                        ? "Remove from featured"
+                        : "Make featured (10% tax applies)"
+                }
+            >
                 <Star
-                    size={14}
-                    className={`mr-1 ${
-                        isFeatured
-                            ? "fill-yellow-400 text-yellow-600"
-                            : "text-gray-500"
-                    }`}
+                    size={12}
+                    className={
+                        currentFeaturedStatus
+                            ? "fill-yellow-500 text-yellow-500"
+                            : "text-gray-400"
+                    }
                 />
-            )}
-            <span className="font-medium">
-                {isFeatured ? "Featured" : "Feature"}
-            </span>
-        </button>
+                {togglingProduct === product.product_id ? (
+                    <span>Processing...</span>
+                ) : (
+                    <span>
+                        {currentFeaturedStatus ? "Featured" : "Feature"}
+                    </span>
+                )}
+            </button>
+
+            <FeaturedTaxModal
+                isOpen={showTaxModal}
+                onClose={() => setShowTaxModal(false)}
+                onConfirm={handleConfirmFeatured}
+                product={product}
+                currentFeaturedStatus={currentFeaturedStatus}
+            />
+        </>
     );
-}
+};
