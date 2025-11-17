@@ -22,6 +22,8 @@ return new class extends Migration {
             $table->float("total_ratings")->default(0);
             $table->string('seller_id');
             $table->string('category_id');
+            $table->timestamp("blocked_at")->nullable();
+            $table->string("block_reason")->nullable();
             $table->timestamps();
         });
     }

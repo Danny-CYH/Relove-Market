@@ -162,12 +162,12 @@ export function Navbar() {
                                                 ? import.meta.env
                                                       .VITE_BASE_URL +
                                                   auth.user.profile_image
-                                                : "../image/user.png" // ✅ Direct path to your default image in public folder
+                                                : "../image/user.png"
                                         }
                                         alt="Profile"
-                                        className="w-8 max-h-10 rounded-full object-cover"
+                                        className="w-10 max-h-10 rounded-full object-cover"
                                         onError={(e) => {
-                                            e.target.src = "../image/user.png"; // ✅ consistent fallback
+                                            e.target.src = "../image/user.png";
                                         }}
                                     />
                                 </button>

@@ -26,7 +26,7 @@ class TransactionManagementController extends Controller
         // Apply filters
         if ($request->has('search') && $request->search) {
             $query->where(function ($q) use ($request) {
-                $q->where('payment_intent_id', 'like', '%' . $request->search . '%')
+                $q->where('order_id', 'like', '%' . $request->search . '%')
                     ->orWhereHas('user', function ($q) use ($request) {
                         $q->where('name', 'like', '%' . $request->search . '%');
                     })
@@ -114,7 +114,7 @@ class TransactionManagementController extends Controller
         // Apply filters
         if ($request->has('search') && $request->search) {
             $query->where(function ($q) use ($request) {
-                $q->where('payment_intent_id', 'like', '%' . $request->search . '%')
+                $q->where('order_id', 'like', '%' . $request->search . '%')
                     ->orWhereHas('user', function ($q) use ($request) {
                         $q->where('name', 'like', '%' . $request->search . '%');
                     })

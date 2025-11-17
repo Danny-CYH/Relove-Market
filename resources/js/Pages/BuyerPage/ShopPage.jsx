@@ -875,9 +875,9 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                         onClick={() =>
                                             handlePageChange(currentPage - 1)
                                         }
-                                        className="flex items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                                        className="flex text-black items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
                                     >
-                                        <ChevronLeft className="w-4 h-4" />
+                                        <ChevronLeft className="w-4 h-4 text-blue-600" />
                                         <span className="hidden lg:inline">
                                             Previous
                                         </span>
@@ -889,7 +889,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                             onClick={() =>
                                                 handlePageChange(page)
                                             }
-                                            className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl text-sm font-medium transition-colors ${
+                                            className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl text-sm text-black font-medium transition-colors ${
                                                 currentPage === page
                                                     ? "bg-blue-600 text-white"
                                                     : "border border-gray-300 hover:bg-gray-50"
@@ -906,10 +906,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                         }
                                         className="flex items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
                                     >
-                                        <span className="hidden lg:inline">
+                                        <span className="hidden lg:inline text-black">
                                             Next
                                         </span>
-                                        <ChevronRight className="w-4 h-4" />
+                                        <ChevronRight className="w-4 h-4 text-blue-600" />
                                     </button>
                                 </div>
                             </div>

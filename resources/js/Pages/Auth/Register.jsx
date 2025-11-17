@@ -4,8 +4,6 @@ import TextInput from "@/Components/TextInput";
 import { Link, useForm, usePage } from "@inertiajs/react";
 import { useEffect, useState } from "react";
 import {
-    FaCheckCircle,
-    FaExclamationTriangle,
     FaEnvelope,
     FaLock,
     FaUser,
@@ -14,18 +12,265 @@ import {
     FaFacebook,
     FaEye,
     FaEyeSlash,
+    FaCheck,
+    FaTimes,
+    FaInfoCircle,
 } from "react-icons/fa";
+import Swal from "sweetalert2";
+
+// SweetAlert configuration
+const showAlert = (icon, title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showLoadingAlert = (title, text = "") => {
+    return Swal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+};
+
+const showConfirmationAlert = (
+    title,
+    text,
+    confirmButtonText = "Yes",
+    cancelButtonText = "Cancel"
+) => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText,
+        cancelButtonText,
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+            cancelButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+// Password validation functions
+const validatePassword = (password) => {
+    const validations = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        number: /[0-9]/.test(password),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+
+    const isValid = Object.values(validations).every(Boolean);
+    const strength = Object.values(validations).filter(Boolean).length;
+
+    return { isValid, validations, strength };
+};
+
+const getPasswordStrengthText = (strength) => {
+    if (strength === 0) return { text: "Very Weak", color: "text-red-600" };
+    if (strength <= 2) return { text: "Weak", color: "text-red-500" };
+    if (strength <= 3) return { text: "Fair", color: "text-yellow-500" };
+    if (strength <= 4) return { text: "Good", color: "text-blue-500" };
+    return { text: "Strong", color: "text-green-600" };
+};
+
+// Terms and Privacy Modal Component
+const TermsPrivacyModal = ({ isOpen, onClose, modalType }) => {
+    if (!isOpen) return null;
+
+    const modalContent = {
+        terms: {
+            title: "Terms of Service",
+            content: (
+                <div className="space-y-4">
+                    <p className="text-gray-600">
+                        Welcome to Relove Market. By accessing or using our
+                        platform, you agree to be bound by these Terms of
+                        Service.
+                    </p>
+                    <div className="space-y-3">
+                        <h4 className="font-medium text-gray-900">
+                            User Responsibilities
+                        </h4>
+                        <p className="text-gray-600">
+                            You are responsible for maintaining the
+                            confidentiality of your account and password and for
+                            restricting access to your computer.
+                        </p>
+                        <h4 className="font-medium text-gray-900">
+                            Service Modifications
+                        </h4>
+                        <p className="text-gray-600">
+                            We reserve the right to modify or discontinue,
+                            temporarily or permanently, the service with or
+                            without notice.
+                        </p>
+                        <h4 className="font-medium text-gray-900">
+                            User Conduct
+                        </h4>
+                        <p className="text-gray-600">
+                            You agree not to use the service for any illegal
+                            purpose or in any way that violates these terms.
+                        </p>
+                    </div>
+                </div>
+            ),
+        },
+        privacy: {
+            title: "Privacy Policy",
+            content: (
+                <div className="space-y-4">
+                    <p className="text-gray-600">
+                        Your privacy is important to us. This Privacy Policy
+                        explains how we collect, use, and protect your personal
+                        information.
+                    </p>
+                    <div className="space-y-3">
+                        <h4 className="font-medium text-gray-900">
+                            Information We Collect
+                        </h4>
+                        <p className="text-gray-600">
+                            We collect information you provide directly to us,
+                            such as when you create an account, use our
+                            services, or contact us for support.
+                        </p>
+                        <h4 className="font-medium text-gray-900">
+                            How We Use Information
+                        </h4>
+                        <p className="text-gray-600">
+                            We use the information we collect to provide,
+                            maintain, and improve our services, and to develop
+                            new ones.
+                        </p>
+                        <h4 className="font-medium text-gray-900">
+                            Data Security
+                        </h4>
+                        <p className="text-gray-600">
+                            We implement appropriate technical and
+                            organizational measures to protect your personal
+                            information against unauthorized access.
+                        </p>
+                    </div>
+                </div>
+            ),
+        },
+    };
+
+    const currentModal = modalContent[modalType];
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black bg-opacity-50"
+                onClick={onClose}
+            ></div>
+
+            {/* Modal Container */}
+            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-6 border-b">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                        {currentModal.title}
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        <svg
+                            className="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                </div>
+
+                {/* Modal Content */}
+                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                    {currentModal.content}
+
+                    {/* Contact Information */}
+                    <section className="bg-gray-50 p-4 rounded-lg mt-6">
+                        <h4 className="font-medium text-gray-900 mb-2">
+                            Questions?
+                        </h4>
+                        <p className="text-gray-600 text-sm">
+                            If you have any questions about our{" "}
+                            {modalType === "terms"
+                                ? "Terms of Service"
+                                : "Privacy Policy"}
+                            , please contact us at{" "}
+                            <a
+                                href="mailto:support@relovemarket.com"
+                                className="text-blue-600 hover:text-blue-500"
+                            >
+                                support@relovemarket.com
+                            </a>
+                        </p>
+                    </section>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex justify-end p-6 border-t bg-gray-50">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                    >
+                        I Understand
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default function Register() {
     const { flash } = usePage().props;
     const [showEmailVerificationModal, setShowEmailVerificationModal] =
         useState(false);
-    const [showSuccessToast, setShowSuccessToast] = useState(
-        !!flash?.successMessage
-    );
-    const [showErrorToast, setShowErrorToast] = useState(!!flash?.errorMessage);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [showPasswordRequirements, setShowPasswordRequirements] =
+        useState(false);
+    const [showTermsModal, setShowTermsModal] = useState(false);
+    const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+    const [passwordValidation, setPasswordValidation] = useState({
+        isValid: false,
+        validations: {
+            length: false,
+            uppercase: false,
+            lowercase: false,
+            number: false,
+            special: false,
+        },
+        strength: 0,
+    });
 
     const {
         data: registerData,
@@ -51,67 +296,201 @@ export default function Register() {
 
     useEffect(() => {
         if (flash?.successMessage) {
-            setShowSuccessToast(true);
-            const timer = setTimeout(() => setShowSuccessToast(false), 5000);
-            return () => clearTimeout(timer);
+            showAlert("success", "Success!", flash.successMessage);
         }
 
         if (flash?.errorMessage) {
-            setShowErrorToast(true);
-            const timer = setTimeout(() => setShowErrorToast(false), 5000);
-            return () => clearTimeout(timer);
+            showAlert("error", "Error!", flash.errorMessage);
+        }
+
+        if (flash?.showVerificationModal) {
+            setVerifyData("user_email", registerData.email);
+            reset("name", "email", "password", "password_confirmation");
+            setShowEmailVerificationModal(true);
         }
     }, [flash]);
 
-    const register_submit = (e) => {
+    // Validate password on change
+    useEffect(() => {
+        if (registerData.password) {
+            const validation = validatePassword(registerData.password);
+            setPasswordValidation(validation);
+        } else {
+            setPasswordValidation({
+                isValid: false,
+                validations: {
+                    length: false,
+                    uppercase: false,
+                    lowercase: false,
+                    number: false,
+                    special: false,
+                },
+                strength: 0,
+            });
+        }
+    }, [registerData.password]);
+
+    // Modal functions
+    const openTermsModal = () => {
+        setShowTermsModal(true);
+    };
+
+    const openPrivacyModal = () => {
+        setShowPrivacyModal(true);
+    };
+
+    const closeTermsModal = () => {
+        setShowTermsModal(false);
+    };
+
+    const closePrivacyModal = () => {
+        setShowPrivacyModal(false);
+    };
+
+    const register_submit = async (e) => {
         e.preventDefault();
+
+        // Validate form
+        if (
+            !registerData.name ||
+            !registerData.email ||
+            !registerData.password ||
+            !registerData.password_confirmation
+        ) {
+            showAlert(
+                "warning",
+                "Missing Information",
+                "Please fill in all required fields"
+            );
+            return;
+        }
+
+        // Validate password strength
+        if (!passwordValidation.isValid) {
+            showAlert(
+                "warning",
+                "Weak Password",
+                "Please create a stronger password that meets all requirements."
+            );
+            return;
+        }
+
+        // Validate password confirmation
+        if (registerData.password !== registerData.password_confirmation) {
+            showAlert(
+                "error",
+                "Password Mismatch",
+                "Passwords do not match. Please make sure both passwords are identical."
+            );
+            return;
+        }
+
+        const loadingAlert = showLoadingAlert(
+            "Creating Account",
+            "Please wait while we create your account..."
+        );
 
         postRegister(route("register"), {
             preserveState: true,
             preserveScroll: true,
-            onSuccess: () => {
-                setVerifyData("user_email", registerData.email);
+            onSuccess: (page) => {
+                loadingAlert.close();
 
-                reset("name", "email", "password", "password_confirmation");
-                setShowEmailVerificationModal(true);
+                // Check if the server sent showVerificationModal in the response
+                if (page.props.showVerificationModal) {
+                    setVerifyData("user_email", registerData.email);
+                    reset("name", "email", "password", "password_confirmation");
+                    setShowEmailVerificationModal(true);
+                }
+            },
+            onError: (errors) => {
+                loadingAlert.close();
+
+                let errorMessage =
+                    "Failed to create account. Please try again.";
+
+                if (errors.email) {
+                    errorMessage = errors.email;
+                } else if (errors.password) {
+                    errorMessage = errors.password;
+                } else if (errors.name) {
+                    errorMessage = errors.name;
+                }
+
+                showAlert("error", "Registration Failed", errorMessage);
             },
         });
     };
 
-    const resend_emailVerification = (e) => {
+    const resend_emailVerification = async (e) => {
         e.preventDefault();
+
+        const loadingAlert = showLoadingAlert(
+            "Sending Verification Email",
+            "Please wait..."
+        );
 
         postResendEmail(route("custom.verification.send"), {
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
+                loadingAlert.close();
                 setShowEmailVerificationModal(false);
-                setShowSuccessToast(true);
-                setTimeout(() => setShowSuccessToast(false), 5000);
+                showAlert(
+                    "success",
+                    "Email Sent!",
+                    "A new verification link has been sent to your email address."
+                );
+            },
+            onError: (errors) => {
+                loadingAlert.close();
+                showAlert(
+                    "error",
+                    "Failed to Send",
+                    "Failed to send verification email. Please try again."
+                );
             },
         });
     };
 
+    const handleCloseVerificationModal = async () => {
+        const result = await showConfirmationAlert(
+            "Close Verification?",
+            "Are you sure you want to close this window? You can always resend the verification email later.",
+            "Yes, Close",
+            "Stay"
+        );
+
+        if (result.isConfirmed) {
+            setShowEmailVerificationModal(false);
+        }
+    };
+
+    const showPasswordRequirementsModal = () => {
+        setShowPasswordRequirements(true);
+    };
+
+    const PasswordRequirement = ({ met, text }) => (
+        <div
+            className={`flex items-center text-sm ${
+                met ? "text-green-600" : "text-gray-500"
+            }`}
+        >
+            {met ? (
+                <FaCheck className="w-4 h-4 mr-2" />
+            ) : (
+                <FaTimes className="w-4 h-4 mr-2" />
+            )}
+            {text}
+        </div>
+    );
+
+    const { text: strengthText, color: strengthColor } =
+        getPasswordStrengthText(passwordValidation.strength);
+
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-blue-50">
             <Navbar />
-
-            {/* Toast Notifications */}
-            <div className="fixed top-4 right-4 z-50 space-y-3">
-                {showSuccessToast && (
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center animate-fade-in">
-                        <FaCheckCircle className="mr-2 text-green-600" />
-                        <span>{flash.successMessage}</span>
-                    </div>
-                )}
-
-                {showErrorToast && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg flex items-center animate-fade-in">
-                        <FaExclamationTriangle className="mr-2 text-red-600" />
-                        <span>{flash.errorMessage}</span>
-                    </div>
-                )}
-            </div>
 
             {/* Main Content */}
             <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-16">
@@ -119,13 +498,6 @@ export default function Register() {
                     {/* Left Column - Register Form */}
                     <div className="py-10 px-8 sm:px-10">
                         <div className="mb-8">
-                            <Link
-                                href={route("homepage")}
-                                className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4"
-                            >
-                                <FaArrowLeft className="mr-2" />
-                                Back to Home
-                            </Link>
                             <h2 className="text-3xl font-bold text-gray-900 mb-2">
                                 Join Relove Market
                             </h2>
@@ -191,9 +563,19 @@ export default function Register() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Password
-                                </label>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Password
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={showPasswordRequirementsModal}
+                                        className="text-blue-600 hover:text-blue-500 text-sm font-medium flex items-center"
+                                    >
+                                        <FaInfoCircle className="w-3 h-3 mr-1" />
+                                        Requirements
+                                    </button>
+                                </div>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                         <FaLock className="h-5 w-5 text-gray-400" />
@@ -229,10 +611,45 @@ export default function Register() {
                                         )}
                                     </button>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Use at least 8 characters with a mix of
-                                    letters, numbers & symbols
-                                </p>
+
+                                {/* Compact Password Strength Indicator */}
+                                {registerData.password && (
+                                    <div className="mt-2">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-xs text-gray-600">
+                                                Password strength:
+                                            </span>
+                                            <span
+                                                className={`text-xs font-medium ${strengthColor}`}
+                                            >
+                                                {strengthText}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div
+                                                className={`h-1.5 rounded-full transition-all duration-300 ${
+                                                    passwordValidation.strength <=
+                                                    2
+                                                        ? "bg-red-500"
+                                                        : passwordValidation.strength <=
+                                                          3
+                                                        ? "bg-yellow-500"
+                                                        : passwordValidation.strength <=
+                                                          4
+                                                        ? "bg-blue-500"
+                                                        : "bg-green-500"
+                                                }`}
+                                                style={{
+                                                    width: `${
+                                                        (passwordValidation.strength /
+                                                            5) *
+                                                        100
+                                                    }%`,
+                                                }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div>
@@ -280,6 +697,14 @@ export default function Register() {
                                         )}
                                     </button>
                                 </div>
+                                {registerData.password_confirmation &&
+                                    registerData.password !==
+                                        registerData.password_confirmation && (
+                                        <p className="text-red-600 text-sm mt-1 flex items-center">
+                                            <FaTimes className="w-3 h-3 mr-1" />
+                                            Passwords do not match
+                                        </p>
+                                    )}
                             </div>
 
                             <div className="flex items-center">
@@ -295,25 +720,32 @@ export default function Register() {
                                     className="ml-2 block text-sm text-gray-600"
                                 >
                                     I agree to the{" "}
-                                    <Link
-                                        href="#"
-                                        className="text-blue-600 hover:text-blue-500"
+                                    <button
+                                        type="button"
+                                        onClick={openTermsModal}
+                                        className="text-blue-600 hover:text-blue-500 underline cursor-pointer"
                                     >
                                         Terms of Service
-                                    </Link>{" "}
+                                    </button>{" "}
                                     and{" "}
-                                    <Link
-                                        href="#"
-                                        className="text-blue-600 hover:text-blue-500"
+                                    <button
+                                        type="button"
+                                        onClick={openPrivacyModal}
+                                        className="text-blue-600 hover:text-blue-500 underline cursor-pointer"
                                     >
                                         Privacy Policy
-                                    </Link>
+                                    </button>
                                 </label>
                             </div>
 
                             <button
                                 type="submit"
-                                disabled={processingRegister}
+                                disabled={
+                                    processingRegister ||
+                                    !passwordValidation.isValid ||
+                                    registerData.password !==
+                                        registerData.password_confirmation
+                                }
                                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {processingRegister ? (
@@ -346,37 +778,6 @@ export default function Register() {
                             </button>
                         </form>
 
-                        <div className="mt-6">
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-gray-300"></div>
-                                </div>
-                                <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-white text-gray-500">
-                                        Or continue with
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="mt-6 grid grid-cols-2 gap-3">
-                                <button
-                                    type="button"
-                                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-                                >
-                                    <FaGoogle className="text-red-500 h-5 w-5" />
-                                    <span className="ml-2">Google</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-                                >
-                                    <FaFacebook className="text-blue-600 h-5 w-5" />
-                                    <span className="ml-2">Facebook</span>
-                                </button>
-                            </div>
-                        </div>
-
                         <div className="mt-8 text-center">
                             <p className="text-sm text-gray-600">
                                 Already have an account?{" "}
@@ -404,34 +805,34 @@ export default function Register() {
                             </h3>
                             <ul className="space-y-4">
                                 <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
+                                    <FaCheck className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
                                     <span>
                                         Access thousands of unique preloved
                                         items
                                     </span>
                                 </li>
                                 <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
+                                    <FaCheck className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
                                     <span>
                                         Join a community of eco-conscious
                                         shoppers
                                     </span>
                                 </li>
                                 <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
+                                    <FaCheck className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
                                     <span>
                                         Save money while reducing environmental
                                         impact
                                     </span>
                                 </li>
                                 <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
+                                    <FaCheck className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
                                     <span>
                                         Secure transactions and buyer protection
                                     </span>
                                 </li>
                                 <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
+                                    <FaCheck className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
                                     <span>
                                         Personalized recommendations based on
                                         your preferences
@@ -443,13 +844,25 @@ export default function Register() {
                 </div>
             </div>
 
-            {/* Email Verification Modal */}
-            {showEmailVerificationModal && (
+            {/* Terms and Privacy Modals */}
+            <TermsPrivacyModal
+                isOpen={showTermsModal}
+                onClose={closeTermsModal}
+                modalType="terms"
+            />
+            <TermsPrivacyModal
+                isOpen={showPrivacyModal}
+                onClose={closePrivacyModal}
+                modalType="privacy"
+            />
+
+            {/* Password Requirements Modal */}
+            {showPasswordRequirements && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
                     <div className="flex items-center justify-center min-h-full p-4 text-center">
                         <div
                             className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                            onClick={() => setShowEmailVerificationModal(false)}
+                            onClick={() => setShowPasswordRequirements(false)}
                         ></div>
 
                         <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
@@ -458,8 +871,149 @@ export default function Register() {
                                     type="button"
                                     className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
                                     onClick={() =>
-                                        setShowEmailVerificationModal(false)
+                                        setShowPasswordRequirements(false)
                                     }
+                                >
+                                    <span className="sr-only">Close</span>
+                                    <svg
+                                        className="h-6 w-6"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth="2"
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div className="sm:flex sm:items-start">
+                                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                                    <FaLock className="h-6 w-6 text-blue-600" />
+                                </div>
+                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                                        Password Requirements
+                                    </h3>
+                                    <div className="mt-2">
+                                        <p className="text-sm text-gray-500 mb-4">
+                                            For your security, please create a
+                                            strong password that meets the
+                                            following requirements:
+                                        </p>
+                                        <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
+                                            <PasswordRequirement
+                                                met={
+                                                    passwordValidation
+                                                        .validations.length
+                                                }
+                                                text="At least 8 characters long"
+                                            />
+                                            <PasswordRequirement
+                                                met={
+                                                    passwordValidation
+                                                        .validations.uppercase
+                                                }
+                                                text="One uppercase letter (A-Z)"
+                                            />
+                                            <PasswordRequirement
+                                                met={
+                                                    passwordValidation
+                                                        .validations.lowercase
+                                                }
+                                                text="One lowercase letter (a-z)"
+                                            />
+                                            <PasswordRequirement
+                                                met={
+                                                    passwordValidation
+                                                        .validations.number
+                                                }
+                                                text="One number (0-9)"
+                                            />
+                                            <PasswordRequirement
+                                                met={
+                                                    passwordValidation
+                                                        .validations.special
+                                                }
+                                                text="One special character (!@#$%^&*)"
+                                            />
+                                        </div>
+                                        {registerData.password && (
+                                            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <span className="text-sm font-medium text-blue-900">
+                                                        Current Strength:
+                                                    </span>
+                                                    <span
+                                                        className={`text-sm font-semibold ${strengthColor}`}
+                                                    >
+                                                        {strengthText}
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-blue-200 rounded-full h-2">
+                                                    <div
+                                                        className={`h-2 rounded-full transition-all duration-300 ${
+                                                            passwordValidation.strength <=
+                                                            2
+                                                                ? "bg-red-500"
+                                                                : passwordValidation.strength <=
+                                                                  3
+                                                                ? "bg-yellow-500"
+                                                                : passwordValidation.strength <=
+                                                                  4
+                                                                ? "bg-blue-500"
+                                                                : "bg-green-500"
+                                                        }`}
+                                                        style={{
+                                                            width: `${
+                                                                (passwordValidation.strength /
+                                                                    5) *
+                                                                100
+                                                            }%`,
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-5 sm:mt-6">
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowPasswordRequirements(false)
+                                    }
+                                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                >
+                                    Got it
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Email Verification Modal */}
+            {showEmailVerificationModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="flex items-center justify-center min-h-full p-4 text-center">
+                        <div
+                            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+                            onClick={handleCloseVerificationModal}
+                        ></div>
+
+                        <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
+                            <div className="absolute top-0 right-0 pt-4 pr-4">
+                                <button
+                                    type="button"
+                                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
+                                    onClick={handleCloseVerificationModal}
                                 >
                                     <span className="sr-only">Close</span>
                                     <svg

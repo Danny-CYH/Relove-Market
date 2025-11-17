@@ -17,19 +17,19 @@ class UserManagementController extends Controller
         try {
             $query = User::with('role');
 
-            // Filter by role
-            if ($request->has('role') && $request->role !== 'All') {
+            // Filter by role - only apply if not empty
+            if ($request->has('role') && !empty($request->role)) {
                 $query->whereHas('role', function ($q) use ($request) {
                     $q->where('role_name', $request->role);
                 });
             }
 
-            // Filter by status
-            if ($request->has('status') && $request->status !== 'All') {
+            // Filter by status - only apply if not empty
+            if ($request->has('status') && !empty($request->status)) {
                 $query->where('status', $request->status);
             }
 
-            // Search by name or email
+            // Search by name or email - only apply if not empty
             if ($request->has('search') && !empty($request->search)) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {

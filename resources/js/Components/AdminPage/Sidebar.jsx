@@ -14,6 +14,7 @@ import {
     FaExclamationTriangle,
     FaBox,
     FaUserCog,
+    FaMobile, // Added for smartphone icon
 } from "react-icons/fa";
 
 export function Sidebar({ pendingCount = 0 }) {
@@ -96,6 +97,22 @@ export function Sidebar({ pendingCount = 0 }) {
         if (isMobile) {
             setSidebarOpen(false);
         }
+    };
+
+    // Get current page title for mobile navbar
+    const getCurrentPageTitle = () => {
+        if (url.startsWith(route("admin-dashboard", {}, false))) {
+            return "Dashboard";
+        } else if (url.startsWith(route("list-transaction", {}, false))) {
+            return "Transactions";
+        } else if (url.startsWith(route("pending-seller-list", {}, false))) {
+            return "Seller Registrations";
+        } else if (url.startsWith(route("product-moderation", {}, false))) {
+            return "Products";
+        } else if (url.startsWith(route("user-management", {}, false))) {
+            return "Users";
+        }
+        return "Admin Panel";
     };
 
     const sidebarVariants = {
@@ -209,9 +226,9 @@ export function Sidebar({ pendingCount = 0 }) {
                     </li>
                     <li>
                         <Link
-                            href={route("product-management")}
+                            href={route("product-moderation")}
                             className={`flex items-center p-3 rounded-lg transition-all group ${
-                                isActive("product-management")
+                                isActive("product-moderation")
                                     ? "bg-white text-indigo-800 shadow-md"
                                     : "text-indigo-100 hover:bg-indigo-700 hover:text-white"
                             }`}
@@ -306,54 +323,38 @@ export function Sidebar({ pendingCount = 0 }) {
 
     return (
         <>
-            {/* Mobile Navigation Bar */}
+            {/* Mobile Navigation Bar - Updated Design */}
             {isMobile && (
-                <nav className="fixed top-0 left-0 right-0 bg-indigo-800 shadow-lg z-50 flex items-center justify-between p-4 md:hidden safe-top">
-                    <button
-                        onClick={toggleSidebar}
-                        className="p-2 rounded-lg text-white hover:bg-indigo-700 transition-colors hamburger-button"
-                        aria-label="Toggle sidebar"
-                    >
-                        {sidebarOpen ? (
-                            <FaTimes className="text-xl" />
-                        ) : (
-                            <FaBars className="text-xl" />
-                        )}
-                    </button>
-
-                    <div className="flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-                            <span className="text-indigo-800 font-bold text-sm">
-                                A
-                            </span>
-                        </div>
-                        <h1 className="text-lg font-bold text-white">Admin</h1>
-                    </div>
-
-                    {/* Notification indicator on mobile navbar */}
-                    {pendingCount > 0 && (
-                        <Link
-                            href={route("pending-seller-list")}
-                            className="p-2 rounded-lg text-white hover:bg-indigo-700 transition-colors relative"
-                            onClick={handleNavClick}
+                <div className="lg:hidden fixed top-0 left-0 right-0 bg-white shadow-sm z-40 p-4 safe-top">
+                    <div className="flex items-center justify-between">
+                        <button
+                            onClick={toggleSidebar}
+                            className="p-2 rounded-lg bg-gray-100 hamburger-button"
+                            aria-label="Toggle sidebar"
                         >
-                            <FaBell className="text-lg" />
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-5 h-5 flex items-center justify-center">
-                                {pendingCount > 9 ? "9+" : pendingCount}
-                            </span>
-                        </Link>
-                    )}
-                </nav>
-            )}
-
-            {/* Desktop Sidebar - RESTORED TO ORIGINAL */}
-            {!isMobile && (
-                <div className="h-full bg-gradient-to-b from-indigo-800 to-indigo-900 text-white hidden md:flex md:flex-col w-64 flex-shrink-0">
-                    {sidebarContent}
+                            {sidebarOpen ? (
+                                <FaTimes className="w-5 h-5 text-gray-700" />
+                            ) : (
+                                <FaBars className="w-5 h-5 text-gray-700" />
+                            )}
+                        </button>
+                        <h1 className="text-lg font-bold text-gray-800">
+                            {getCurrentPageTitle()}
+                        </h1>
+                        <FaMobile className="w-5 h-5 text-gray-400" />
+                    </div>
                 </div>
             )}
 
-            {/* Mobile Sidebar Overlay */}
+            {/* Desktop Sidebar - Always visible on desktop */}
+            <div
+                style={{ height: "100vh" }}
+                className="bg-gradient-to-b from-indigo-800 to-indigo-900 text-white hidden md:flex md:flex-col w-64 flex-shrink-0 fixed left-0 top-0 z-30"
+            >
+                {sidebarContent}
+            </div>
+
+            {/* Mobile Sidebar Modal */}
             <AnimatePresence>
                 {isMobile && sidebarOpen && (
                     <>
@@ -363,23 +364,21 @@ export function Sidebar({ pendingCount = 0 }) {
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            transition={{ duration: 0.2 }}
-                            className="fixed inset-0 bg-black z-40 md:hidden"
+                            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
                             onClick={() => setSidebarOpen(false)}
                         />
 
-                        {/* Sidebar - FIXED FULL HEIGHT */}
+                        {/* Sidebar Modal */}
                         <motion.div
                             variants={sidebarVariants}
                             initial="hidden"
                             animate="visible"
                             exit="exit"
-                            transition={{
-                                type: "tween",
-                                duration: 0.3,
-                                ease: "easeOut",
+                            className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-gradient-to-b from-indigo-800 to-indigo-900 text-white z-50 md:hidden overflow-hidden flex flex-col mobile-sidebar shadow-2xl"
+                            style={{
+                                top: 0,
+                                height: "100vh",
                             }}
-                            className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-gradient-to-b from-indigo-800 to-indigo-900 text-white z-50 md:hidden overflow-hidden flex flex-col mobile-sidebar safe-area"
                         >
                             {sidebarContent}
                         </motion.div>
@@ -387,8 +386,12 @@ export function Sidebar({ pendingCount = 0 }) {
                 )}
             </AnimatePresence>
 
-            {/* Add padding for mobile navbar */}
-            {isMobile && <div className="h-16 md:hidden"></div>}
+            {/* Add padding for mobile navbar and desktop sidebar */}
+            {isMobile ? (
+                <div className="h-16 md:hidden"></div> // Adjusted height to match the new navbar
+            ) : (
+                <div className="w-64 flex-shrink-0"></div>
+            )}
         </>
     );
 }

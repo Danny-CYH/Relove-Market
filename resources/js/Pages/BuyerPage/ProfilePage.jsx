@@ -583,7 +583,7 @@ export default function ProfilePage() {
                                 ))}
 
                                 <Link href={route("logout")} method="POST">
-                                    <button className="w-full flex items-center px-4 py-3.5 rounded-xl text-left text-red-600 hover:bg-red-50 transition-all mt-4 group">
+                                    <button className="flex items-center px-4 py-3.5 rounded-xl text-left text-red-600 hover:bg-red-50 transition-all mt-4 group">
                                         <LogOut
                                             size={20}
                                             className="mr-3 flex-shrink-0"

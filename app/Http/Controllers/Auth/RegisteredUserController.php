@@ -34,6 +34,13 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Validate first - this will automatically throw ValidationException
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
         try {
             $latestUser = User::orderBy('user_id', 'desc')->first();
 
@@ -42,12 +49,6 @@ class RegisteredUserController extends Controller
                 : 1;
 
             $newUserId = 'USR-' . str_pad($number, 5, '0', STR_PAD_LEFT);
-
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
-                'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            ]);
 
             $user = User::create([
                 'user_id' => $newUserId,
@@ -61,8 +62,6 @@ class RegisteredUserController extends Controller
             event(new Registered($user));
 
             return redirect(route("register"))->with('showVerificationModal', true);
-        } catch (ValidationException $e) {
-            return back()->with("errorMessage", $e->getMessage());
         } catch (\Throwable $e) {
             return back()->with('errorMessage', $e->getMessage());
         }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminPage\AdminDashboardController;
+use App\Http\Controllers\AdminPage\ProductModerationController;
 use App\Http\Controllers\AdminPage\TransactionManagementController;
 use App\Http\Controllers\AdminPage\UserManagementController;
 
@@ -82,13 +83,12 @@ Route::middleware(["is_admin"])->group(function () {
     Route::get('/api/admin/dashboard/notifications', [AdminDashboardController::class, 'getNotifications']);
 
     // API for manage products
-    Route::get('/api/admin/products', [ProductManagementController::class, 'get_allProducts'])->name('get-all-products');
-    Route::get('/api/admin/products/stats', [ProductManagementController::class, 'get_product_stats'])->name('get-product-stats');
-    Route::post('/api/admin/products/{product}/{action}', [ProductManagementController::class, 'update_product_status'])->name('update-product-status');
-
-    Route::post('/products/{product}/block', [ProductManagementController::class, 'block_product']);
-    Route::post('/products/{product}/unblock', [ProductManagementController::class, 'unblock_product']);
-    Route::post('/products/{product}/flag', [ProductManagementController::class, 'flag_product']);
+    Route::get('/api/admin/products', [ProductModerationController::class, 'get_allProducts'])->name('get-all-products');
+    Route::get('/api/admin/products/stats', [ProductModerationController::class, 'get_product_stats'])->name('get-product-stats');
+    Route::post('/api/admin/products/{product}/{action}', [ProductModerationController::class, 'update_product_status'])->name('update-product-status');
+    Route::post('/api/admin/products/{product}/block', [ProductModerationController::class, 'block_product'])->name("admin.products.block");
+    Route::post('/api/admin/products/{product}/unblock', [ProductModerationController::class, 'unblock_product'])->name("admin.products.unblock");
+    Route::post('/api/admin/products/{product}/flag', [ProductModerationController::class, 'flag_product'])->name("admin.products.flag");
 
     Route::get("/api/transactions", [TransactionManagementController::class, 'filterFunction'])->name("filter-functions");
     Route::get("/api/transactions/metrics", [TransactionManagementController::class, "getData"])->name("get-data");

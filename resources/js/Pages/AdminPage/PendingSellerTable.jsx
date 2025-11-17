@@ -51,7 +51,7 @@ export default function PendingSellerTable() {
                 dropdownRef.current &&
                 !dropdownRef.current.contains(e.target)
             ) {
-                setIsOpen(false);
+                setActiveDropdown(null);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -86,7 +86,7 @@ export default function PendingSellerTable() {
                 {/* Dropdown Toggle Button - Show on mobile, hide on larger screens */}
                 <button
                     onClick={onToggle}
-                    className="sm:hidden text-gray-600 hover:text-gray-900 p-1 rounded-md border border-gray-300 bg-white"
+                    className="sm:hidden text-gray-600 hover:text-gray-900 p-1 rounded-md border border-gray-300 bg-white z-20 relative"
                 >
                     <svg
                         className="w-4 h-4"
@@ -107,8 +107,8 @@ export default function PendingSellerTable() {
                 {/* Dropdown Menu */}
                 {isOpen && (
                     <div
-                        ref={dropdownRef}
-                        className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10 sm:hidden"
+                        className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50 sm:hidden"
+                        style={{ top: "100%" }}
                     >
                         <div className="py-1">
                             <button
@@ -552,7 +552,7 @@ export default function PendingSellerTable() {
                                     </th>
                                     <th
                                         scope="col"
-                                        className="px-3 py-3 sm:px-6 sm:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                        className="px-3 py-3 sm:px-6 sm:py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider relative z-10"
                                     >
                                         Actions
                                     </th>
@@ -611,9 +611,9 @@ export default function PendingSellerTable() {
                                                     status={seller.status}
                                                 />
                                             </td>
-                                            <td className="px-3 py-4 sm:px-6 sm:py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <td className="px-3 py-4 sm:px-6 sm:py-4 whitespace-nowrap text-right text-sm font-medium relative z-20">
                                                 {/* Mobile: Dropdown Button */}
-                                                <div className="sm:hidden">
+                                                <div className="sm:hidden relative z-30">
                                                     <ActionDropdown
                                                         seller={seller}
                                                         isOpen={

@@ -52,8 +52,6 @@ export default function AdminDashboard() {
                     `/api/admin/dashboard/stats?timeframe=${timeFrame}`
                 );
 
-                console.log(response);
-
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -340,7 +338,7 @@ export default function AdminDashboard() {
                 )}
 
                 {/* Header */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 mt-20 md:mt-0">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
                             Dashboard Overview
@@ -533,7 +531,7 @@ export default function AdminDashboard() {
                             </Link>
 
                             <Link
-                                href={route("product-management")}
+                                href={route("product-moderation")}
                                 className="p-4 bg-blue-50 rounded-lg text-center hover:bg-blue-100 transition-colors group border border-blue-100"
                             >
                                 <FaBox className="w-6 h-6 text-blue-600 mx-auto mb-2" />

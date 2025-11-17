@@ -96,7 +96,7 @@ Route::middleware(["is_admin"])->group(function () {
     Route::get("/list-transaction", [AdminController::class, 'transactionPage'])->name("list-transaction");
     Route::get("/subscription-management", [AdminController::class, 'subscriptionManagement'])->name("subscription-management");
     Route::get("/subscription-policy", [AdminController::class, 'subscriptionPolicy'])->name("subscription-policy");
-    Route::get("/product-management", [AdminController::class, "productManagement"])->name("product-management");
+    Route::get("/product-moderation", [AdminController::class, "productModeration"])->name("product-moderation");
     Route::get("/user-management", [AdminController::class, "userManagement"])->name("user-management");
 
 

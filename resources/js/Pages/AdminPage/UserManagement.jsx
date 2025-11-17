@@ -61,22 +61,37 @@ export default function UserManagement() {
         ) => {
             setLoading(true);
             try {
+                // Convert "All" filters to empty strings for the API
+                const apiStatus = status === "All" ? "" : status;
+                const apiRole = role === "All" ? "" : role;
+                const apiSearch = search === "" ? "" : search;
+
+                console.log("API Params:", {
+                    page,
+                    search: apiSearch,
+                    status: apiStatus,
+                    role: apiRole,
+                });
+
                 const params = new URLSearchParams({
                     page: page.toString(),
-                    search: search,
-                    status: status,
-                    role: role,
+                    search: apiSearch,
+                    status: apiStatus,
+                    role: apiRole,
                     per_page: "10",
                 });
 
                 const response = await fetch(
                     `/api/admin/user-management/list?${params}`
                 );
+
                 if (!response.ok) {
                     throw new Error("Failed to fetch users");
                 }
 
                 const data = await response.json();
+
+                console.log("API Response:", data);
 
                 setUsers(data.data || []);
                 setCurrentPage(data.current_page || 1);
@@ -96,7 +111,7 @@ export default function UserManagement() {
                 setLoading(false);
             }
         },
-        []
+        [filter, statusFilter, roleFilter]
     );
 
     // Fetch users when filters or page change
@@ -173,8 +188,6 @@ export default function UserManagement() {
             if (!response.ok) {
                 throw new Error("Failed to perform action");
             }
-
-            const result = await response.json();
 
             // Refresh the user list
             fetchUsers(currentPage, filter, statusFilter, roleFilter);

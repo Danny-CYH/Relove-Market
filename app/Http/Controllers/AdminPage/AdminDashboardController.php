@@ -5,6 +5,7 @@ namespace App\Http\Controllers\AdminPage;
 use App\Http\Controllers\Controller;
 
 use App\Models\Order;
+use App\Models\SellerEarning;
 use App\Models\SellerRegistration;
 use App\Models\User;
 
@@ -20,7 +21,11 @@ class AdminDashboardController extends Controller
             $timeframe = $request->get('timeframe', 'monthly');
 
             // Total Revenue (from completed orders)
-            $totalRevenue = Order::whereIn('order_status', ['completed', 'Delivered'])->sum('tax_amount');
+            $totalRevenue = SellerEarning::whereHas('order', function ($q) {
+                $q->whereIn('order_status', ['Completed', 'Delivered']);
+            })
+                ->sum('commission_deducted');
+
 
             // Total Orders
             $totalOrders = Order::count();
@@ -29,10 +34,10 @@ class AdminDashboardController extends Controller
             $totalCustomers = User::count();
 
             // Pending Sellers
-            $pendingSellers = SellerRegistration::where("status", "pending")->count();
+            $pendingSellers = SellerRegistration::where("status", "Pending")->count();
 
             // Average Order Value
-            $averageOrderValue = Order::where('order_status', 'completed')
+            $averageOrderValue = Order::where('order_status', 'Completed')
                 ->avg('amount') ?? 0;
 
             // Revenue data for chart based on timeframe
@@ -77,9 +82,11 @@ class AdminDashboardController extends Controller
                 $data = [];
                 for ($i = 6; $i >= 0; $i--) {
                     $date = $now->copy()->subDays($i);
-                    $revenue = Order::whereIn('order_status', ['Completed', "Delivered"])
+                    $revenue = SellerEarning::whereHas('order', function ($q) {
+                        $q->whereIn('order_status', ['Completed', 'Delivered']);
+                    })
                         ->whereDate('created_at', $date)
-                        ->sum('tax_amount');
+                        ->sum('commission_deducted');
                     $data[] = (float) $revenue;
                 }
                 return ['daily' => $data];
@@ -90,9 +97,11 @@ class AdminDashboardController extends Controller
                 for ($i = 3; $i >= 0; $i--) {
                     $startDate = $now->copy()->subWeeks($i + 1)->startOfWeek();
                     $endDate = $now->copy()->subWeeks($i)->startOfWeek();
-                    $revenue = Order::whereIn('order_status', ['Completed', "Delivered"])
+                    $revenue = SellerEarning::whereHas('order', function ($q) {
+                        $q->whereIn('order_status', ['Completed', 'Delivered']);
+                    })
                         ->whereBetween('created_at', [$startDate, $endDate])
-                        ->sum('tax_amount');
+                        ->sum('commission_deducted');
                     $data[] = (float) $revenue;
                 }
                 return ['weekly' => $data];
@@ -103,10 +112,13 @@ class AdminDashboardController extends Controller
                 $data = [];
                 for ($i = 11; $i >= 0; $i--) {
                     $date = $now->copy()->subMonths($i);
-                    $revenue = Order::whereIn('order_status', ['Completed', "Delivered"])
+
+                    $revenue = SellerEarning::whereHas('order', function ($q) {
+                        $q->whereIn('order_status', ['Completed', 'Delivered']);
+                    })
                         ->whereYear('created_at', $date->year)
                         ->whereMonth('created_at', $date->month)
-                        ->sum('tax_amount');
+                        ->sum('commission_deducted');
                     $data[] = (float) $revenue;
                 }
                 return ['monthly' => $data];

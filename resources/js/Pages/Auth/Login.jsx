@@ -12,20 +12,65 @@ import {
     FaLock,
     FaArrowLeft,
     FaCheckCircle,
-    FaExclamationTriangle,
 } from "react-icons/fa";
+import Swal from "sweetalert2";
+
+// SweetAlert configuration
+const showAlert = (icon, title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showLoadingAlert = (title, text = "") => {
+    return Swal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+};
+
+const showConfirmationAlert = (
+    title,
+    text,
+    confirmButtonText = "Yes",
+    cancelButtonText = "Cancel"
+) => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText,
+        cancelButtonText,
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+            cancelButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
 
 export default function Login() {
     const { flash, token, email } = usePage().props;
 
-    const [showSuccessToast, setShowSuccessToast] = useState(
-        !!flash?.successMessage
-    );
-    const [showErrorToast, setShowErrorToast] = useState(!!flash?.errorMessage);
     const [showResetModal, setShowResetModal] = useState(false);
     const [showForgetModal, setShowForgetModal] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
 
     // login account
     const {
@@ -64,22 +109,22 @@ export default function Login() {
     });
 
     useEffect(() => {
+        // Show success message if exists
         if (flash?.successMessage) {
-            setShowSuccessToast(true);
-            const timer = setTimeout(() => setShowSuccessToast(false), 5000);
-            return () => clearTimeout(timer);
+            showAlert("success", "Success!", flash.successMessage);
         }
 
+        // Show error message if exists
         if (flash?.errorMessage) {
-            setShowErrorToast(true);
-            const timer = setTimeout(() => setShowErrorToast(false), 5000);
-            return () => clearTimeout(timer);
+            showAlert("error", "Error!", flash.errorMessage);
         }
 
+        // Handle reset password modal
         if (resetData.token && resetData.email) {
             setShowResetModal(true);
         }
 
+        // Handle reset password URL
         if (window.location.pathname.includes("/reset-password/")) {
             const pathSegments = window.location.pathname.split("/");
             const tokenFromPath = pathSegments[pathSegments.length - 1];
@@ -102,78 +147,174 @@ export default function Login() {
         e.preventDefault();
 
         if (!loginData.email || !loginData.password) {
-            setErrorMessage("Please fill in all fields");
-            setShowErrorToast(true);
-            setTimeout(() => setShowErrorToast(false), 5000);
-        } else {
-            postLogin(route("login"), {
-                onSuccess: () => {
-                    console.log("✅ Login successful");
-                },
-                onError: (errors) => {
-                    console.log(errors);
-                    reset("email", "password");
-                    setErrorMessage(
-                        "Invalid email or password. Please try again."
-                    );
-                    setShowErrorToast(true);
-                    setTimeout(() => setShowErrorToast(false), 5000);
-                },
-            });
+            showAlert(
+                "warning",
+                "Missing Information",
+                "Please fill in all fields"
+            );
+            return;
         }
+
+        const loadingAlert = showLoadingAlert(
+            "Signing In",
+            "Please wait while we sign you in..."
+        );
+
+        postLogin(route("login"), {
+            onSuccess: () => {
+                loadingAlert.close();
+            },
+            onError: (errors) => {
+                loadingAlert.close();
+                console.log(errors);
+
+                let errorMessage =
+                    "Invalid email or password. Please try again.";
+                if (errors.email) {
+                    errorMessage = errors.email;
+                } else if (errors.password) {
+                    errorMessage = errors.password;
+                }
+
+                showAlert("error", "Login Failed", errorMessage);
+                reset("email", "password");
+            },
+        });
     };
 
-    const resetLink_submit = (e) => {
+    const resetLink_submit = async (e) => {
         e.preventDefault();
+
+        if (!forgetData.email) {
+            showAlert(
+                "warning",
+                "Email Required",
+                "Please enter your email address"
+            );
+            return;
+        }
+
+        const loadingAlert = showLoadingAlert(
+            "Sending Reset Link",
+            "Please wait..."
+        );
 
         postForget(route("password.email"), {
             email: forgetData.email,
             onSuccess: () => {
+                loadingAlert.close();
                 setShowForgetModal(false);
+                setForgetData("email", "");
+                showAlert(
+                    "success",
+                    "Reset Link Sent!",
+                    "If your email exists in our system, you will receive a password reset link shortly."
+                );
             },
             onError: (errors) => {
-                setErrorMessage(errors.email || "Error sending reset link");
-                setShowErrorToast(true);
-                setTimeout(() => setShowErrorToast(false), 5000);
+                loadingAlert.close();
+                let errorMessage =
+                    errors.email ||
+                    "Error sending reset link. Please try again.";
+                showAlert("error", "Failed to Send", errorMessage);
             },
         });
     };
 
-    const updatePassword_submit = (e) => {
+    const updatePassword_submit = async (e) => {
         e.preventDefault();
+
+        if (!resetData.password || !resetData.password_confirmation) {
+            showAlert(
+                "warning",
+                "Missing Information",
+                "Please fill in all password fields"
+            );
+            return;
+        }
+
+        if (resetData.password !== resetData.password_confirmation) {
+            showAlert(
+                "error",
+                "Password Mismatch",
+                "Passwords do not match. Please try again."
+            );
+            return;
+        }
+
+        const loadingAlert = showLoadingAlert(
+            "Updating Password",
+            "Please wait..."
+        );
 
         postReset(route("password.store"), {
             onSuccess: () => {
+                loadingAlert.close();
                 setShowResetModal(false);
+                setResetData({
+                    token: "",
+                    email: "",
+                    password: "",
+                    password_confirmation: "",
+                });
+                showAlert(
+                    "success",
+                    "Password Updated!",
+                    "Your password has been updated successfully. You can now login with your new password."
+                ).then(() => {
+                    window.location.href = "/login";
+                });
             },
             onError: (errors) => {
-                setErrorMessage(errors.password || "Error resetting password");
-                setShowErrorToast(true);
-                setTimeout(() => setShowErrorToast(false), 5000);
+                loadingAlert.close();
+                let errorMessage =
+                    "Error resetting password. Please try again.";
+
+                if (errors.password) {
+                    errorMessage = errors.password[0];
+                } else if (errors.email) {
+                    errorMessage = errors.email;
+                } else if (errors.token) {
+                    errorMessage =
+                        "Invalid or expired reset token. Please request a new reset link.";
+                }
+
+                showAlert("error", "Reset Failed", errorMessage);
             },
         });
+    };
+
+    const handleForgetPasswordClick = () => {
+        setShowForgetModal(true);
+    };
+
+    const handleCloseForgetModal = () => {
+        setShowForgetModal(false);
+        setForgetData("email", "");
+    };
+
+    const handleCloseResetModal = async () => {
+        const result = await showConfirmationAlert(
+            "Cancel Password Reset?",
+            "Are you sure you want to cancel the password reset process?",
+            "Yes, Cancel",
+            "Continue Reset"
+        );
+
+        if (result.isConfirmed) {
+            setShowResetModal(false);
+            setResetData({
+                token: "",
+                email: "",
+                password: "",
+                password_confirmation: "",
+            });
+        }
     };
 
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-blue-50">
             <Navbar />
-
-            {/* Toast Notifications */}
-            <div className="fixed top-4 right-4 z-50 space-y-3">
-                {showSuccessToast && (
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg shadow-lg flex items-center animate-fade-in">
-                        <FaCheckCircle className="mr-2 text-green-600" />
-                        <span>{flash.successMessage}</span>
-                    </div>
-                )}
-
-                {showErrorToast && (
-                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg shadow-lg flex items-center animate-fade-in">
-                        <FaExclamationTriangle className="mr-2 text-red-600" />
-                        <span>{flash.errorMessage || errorMessage}</span>
-                    </div>
-                )}
-            </div>
 
             {/* Main Content */}
             <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-12">
@@ -181,13 +322,6 @@ export default function Login() {
                     {/* Left Column - Login Form */}
                     <div className="py-10 px-8 sm:px-10">
                         <div className="mb-8">
-                            <Link
-                                href={route("homepage")}
-                                className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors mb-4"
-                            >
-                                <FaArrowLeft className="mr-2" />
-                                Back to Home
-                            </Link>
                             <h2 className="text-3xl font-bold text-gray-900 mb-2">
                                 Welcome Back
                             </h2>
@@ -288,7 +422,7 @@ export default function Login() {
 
                                 <button
                                     type="button"
-                                    onClick={() => setShowForgetModal(true)}
+                                    onClick={handleForgetPasswordClick}
                                     className="text-sm text-blue-600 hover:text-blue-500 font-medium"
                                 >
                                     Forgot password?
@@ -329,37 +463,6 @@ export default function Login() {
                                 )}
                             </button>
                         </form>
-
-                        <div className="mt-6">
-                            <div className="relative">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-gray-300"></div>
-                                </div>
-                                <div className="relative flex justify-center text-sm">
-                                    <span className="px-2 bg-white text-gray-500">
-                                        Or continue with
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div className="mt-6 grid grid-cols-2 gap-3">
-                                <button
-                                    type="button"
-                                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-                                >
-                                    <FaGoogle className="text-red-500 h-5 w-5" />
-                                    <span className="ml-2">Google</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
-                                >
-                                    <FaFacebook className="text-blue-600 h-5 w-5" />
-                                    <span className="ml-2">Facebook</span>
-                                </button>
-                            </div>
-                        </div>
 
                         <div className="mt-8 text-center">
                             <p className="text-sm text-gray-600">
@@ -419,7 +522,7 @@ export default function Login() {
                     <div className="flex items-center justify-center min-h-full p-4 text-center">
                         <div
                             className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                            onClick={() => setShowForgetModal(false)}
+                            onClick={handleCloseForgetModal}
                         ></div>
 
                         <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
@@ -427,7 +530,7 @@ export default function Login() {
                                 <button
                                     type="button"
                                     className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                                    onClick={() => setShowForgetModal(false)}
+                                    onClick={handleCloseForgetModal}
                                 >
                                     <span className="sr-only">Close</span>
                                     <svg
@@ -478,6 +581,7 @@ export default function Login() {
                                             name="email"
                                             placeholder="Enter your email"
                                             value={forgetData.email}
+                                            autoComplete="off"
                                             onChange={(e) =>
                                                 setForgetData(
                                                     "email",
@@ -513,7 +617,7 @@ export default function Login() {
                     <div className="flex items-center justify-center min-h-full p-4 text-center">
                         <div
                             className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                            onClick={() => setShowResetModal(false)}
+                            onClick={handleCloseResetModal}
                         ></div>
 
                         <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
@@ -521,7 +625,7 @@ export default function Login() {
                                 <button
                                     type="button"
                                     className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                                    onClick={() => setShowResetModal(false)}
+                                    onClick={handleCloseResetModal}
                                 >
                                     <span className="sr-only">Close</span>
                                     <svg

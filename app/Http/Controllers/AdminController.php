@@ -219,9 +219,9 @@ class AdminController extends Controller
         return Inertia::render("AdminPage/SubscriptionPolicy");
     }
 
-    public function productManagement()
+    public function productModeration()
     {
-        return Inertia::render("AdminPage/ProductManagement");
+        return Inertia::render("AdminPage/ProductModeration");
     }
 
     public function userManagement()

@@ -245,29 +245,24 @@ export function SellerAddProduct_Modal({
 
     const conditionOptions = [
         {
-            value: "new",
+            value: "New",
             label: "Brand New",
             description: "Never used, with original tags and packaging",
         },
         {
-            value: "excellent",
+            value: "Excellent",
             label: "Excellent",
             description: "Lightly used, well maintained",
         },
         {
-            value: "good",
+            value: "Good",
             label: "Good",
             description: "Normal signs of use, fully functional",
         },
         {
-            value: "fair",
+            value: "Fair",
             label: "Fair",
             description: "Visible wear but still functional",
-        },
-        {
-            value: "poor",
-            label: "Poor",
-            description: "Heavily used, may need repairs",
         },
     ];
 

@@ -16,6 +16,7 @@ import {
     FaComments,
     FaHeadset,
     FaBell,
+    FaLeaf,
 } from "react-icons/fa";
 
 import { Link, usePage } from "@inertiajs/react";
@@ -247,6 +248,14 @@ export function SellerSidebar({ notificationCount = 0 }) {
                             className="overflow-hidden mt-2 space-y-1"
                         >
                             <Link
+                                href={route("homepage")}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
+                                onClick={() => setProfileOpen(false)}
+                            >
+                                <FaLeaf className="w-4 h-4 mr-2 text-green-500" />
+                                <span>Relove Market</span>
+                            </Link>
+                            <Link
                                 href={route("seller-manage-profile")}
                                 className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg"
                             >
@@ -391,6 +400,16 @@ export function SellerSidebar({ notificationCount = 0 }) {
                                 My Account
                             </div>
                             <ul className="py-1">
+                                <li>
+                                    <Link
+                                        href={route("homepage")}
+                                        className="flex items-center space-x-2 p-2 text-gray-700 hover:bg-gray-100 rounded-md text-sm"
+                                        onClick={() => setProfileOpen(false)}
+                                    >
+                                        <FaLeaf className="text-sm text-green-500" />
+                                        <span>Relove Market</span>
+                                    </Link>
+                                </li>
                                 <li>
                                     <Link
                                         href={route("seller-manage-profile")}

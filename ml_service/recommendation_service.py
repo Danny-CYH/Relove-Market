@@ -11,6 +11,7 @@ import torch
 import ast
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime
 
 app = FastAPI(title="AI Camera Search API", version="1.0")
 
@@ -120,45 +121,40 @@ async def add_product(
     name: str = Form(...),
     category: str = Form(...),
     image: UploadFile = None,
-    embedding_vector: str = Form(None)  # New parameter for direct vector input
+    embedding_vector: str = Form(None)
 ):
     embedding_list = None
     
-    # Option 1: Process image if provided
+    # Option 1: image embedding
     if image:
         image_bytes = await image.read()
         embedding = get_embedding(image_bytes)
         embedding_list = embedding.tolist()
         print(f"✅ Generated embedding from image - shape: {embedding.shape}")
-    
-    # Option 2: Use pre-computed vector if provided
+
+    # Option 2: pre-computed vector
     elif embedding_vector:
         try:
-            # Parse the vector string (comma-separated values or JSON array)
             if embedding_vector.startswith('[') and embedding_vector.endswith(']'):
-                # JSON array format
                 embedding_list = ast.literal_eval(embedding_vector)
             else:
-                # Comma-separated values
                 embedding_list = [float(x.strip()) for x in embedding_vector.split(',')]
             
-            # Convert to numpy array and ensure it's normalized
             embedding_array = np.array(embedding_list, dtype=np.float32)
-            
-            # Normalize the vector (important for cosine similarity)
             norm = np.linalg.norm(embedding_array)
+
             if norm > 0:
                 embedding_array = embedding_array / norm
                 embedding_list = embedding_array.tolist()
-            
-            print(f"✅ Using pre-computed vector - length: {len(embedding_list)}, norm: {np.linalg.norm(embedding_array):.4f}")
-            
+
+            print(f"✅ Using pre-computed vector - length: {len(embedding_list)}")
+
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid embedding vector format: {str(e)}")
-    
-    # Option 3: No embedding provided - use category-based embedding
+
+    # Option 3: category-based embedding
     else:
-        print("⚠️ No image or vector provided, using category-based embedding")
+        print("⚠️ No image/vector, generating category-based embedding")
         try:
             text_inputs = clip_processor(
                 text=[category.lower().strip()], 
@@ -169,43 +165,52 @@ async def add_product(
             with torch.no_grad():
                 text_features = clip_model.get_text_features(**text_inputs)
                 text_features = text_features / text_features.norm(p=2, dim=-1, keepdim=True)
+
             embedding = text_features.squeeze().cpu().numpy()
             embedding_list = embedding.tolist()
             print(f"✅ Generated category-based embedding - shape: {embedding.shape}")
+
         except Exception as e:
             print(f"❌ Failed to generate category embedding: {e}")
-            # Fallback to zero vector
             embedding_list = [0.0] * 512
 
-    # Normalize category
     category_name = category.lower().strip()
+    created_at = datetime.utcnow()
+    updated_at = datetime.utcnow()
 
     try:
         with get_conn() as conn:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO product_embeddings (product_id, name, category, embedding)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO product_embeddings (product_id, name, category, embedding, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                     ON CONFLICT (product_id) DO UPDATE
                     SET name = EXCLUDED.name,
                         category = EXCLUDED.category,
-                        embedding = EXCLUDED.embedding
+                        embedding = EXCLUDED.embedding,
+                        updated_at = EXCLUDED.updated_at
                 """, (
                     product_id,
                     name,
                     category_name,
-                    embedding_list
+                    embedding_list,
+                    created_at,
+                    updated_at
                 ))
-        
+
         return {
-            "message": "✅ Product added successfully",
+            "message": "✅ Product added/updated successfully",
             "product_id": product_id,
             "embedding_source": "image" if image else "pre_computed_vector" if embedding_vector else "category_based",
-            "embedding_length": len(embedding_list) if embedding_list else 0,
-            "embedding_norm": round(np.linalg.norm(np.array(embedding_list)), 4) if embedding_list else 0
+            "created_at": created_at.isoformat(),
+            "updated_at": updated_at.isoformat(),
+            "embedding_length": len(embedding_list),
+            "embedding_norm": round(np.linalg.norm(np.array(embedding_list)), 4)
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
 
 
 # ============================================================

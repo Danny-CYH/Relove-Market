@@ -239,9 +239,7 @@ export default function SellerManageProduct({ list_categories }) {
 
                 // Show appropriate success message
                 if (newFeaturedStatus) {
-                    setModalMessage(
-                        `Product featured successfully!`
-                    );
+                    setModalMessage(`Product featured successfully!`);
                 } else {
                     setModalMessage(
                         `Product removed from featured status successfully`
@@ -313,6 +311,7 @@ export default function SellerManageProduct({ list_categories }) {
             setModalType("success");
 
             await get_ListProducts(currentPage);
+            await fetchMetrics();
 
             setTimeout(() => {
                 setLoadingProgress(false);
@@ -418,14 +417,14 @@ export default function SellerManageProduct({ list_categories }) {
                 searchParams.category = categoryFilter;
             if (sortBy !== "name") searchParams.sort = sortBy;
 
-            // If we're on page 1 or have more than 1 item, stay on current page
-            // Otherwise, go to previous page if the last item on current page was deleted
             const shouldGoToPrevPage =
                 currentPage > 1 && realTimeProducts.length === 1;
             const newPage = shouldGoToPrevPage ? currentPage - 1 : currentPage;
 
             setCurrentPage(newPage);
-            get_ListProducts(currentPage, searchParams);
+
+            await get_ListProducts(currentPage, searchParams);
+            await fetchMetrics();
 
             setTimeout(() => {
                 setLoadingProgress(false);
@@ -493,27 +492,6 @@ export default function SellerManageProduct({ list_categories }) {
         ]);
     };
 
-    // Update your handleSearchAndFilters function:
-    const handleSearchAndFilters = (page = 1) => {
-        const searchParams = {};
-
-        if (searchTerm.trim() !== "") {
-            searchParams.search = searchTerm;
-        }
-        if (statusFilter !== "all") {
-            searchParams.status = statusFilter;
-        }
-        if (categoryFilter !== "all") {
-            searchParams.category = categoryFilter;
-        }
-        if (sortBy !== "name") {
-            searchParams.sort = sortBy;
-        }
-
-        setCurrentPage(page);
-        get_ListProducts(page, searchParams);
-    };
-
     // Real time update for product listing with Echo
     useEffect(() => {
         if (!window.Echo) return;
@@ -521,10 +499,8 @@ export default function SellerManageProduct({ list_categories }) {
         const channel = window.Echo.channel("products");
 
         const productUpdatedListener = (e) => {
-            console.log("🎯 ProductUpdated event received:", e);
-
+            const updatedProduct = e.product;
             if (e.action === "updated") {
-                const updatedProduct = e.product;
                 setRealTimeProducts((prevProducts) =>
                     prevProducts.map((p) =>
                         p.product_id === updatedProduct.product_id

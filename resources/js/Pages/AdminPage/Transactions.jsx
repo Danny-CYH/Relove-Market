@@ -12,6 +12,10 @@ import {
     Zap,
     Eye,
     RefreshCw,
+    Filter,
+    X,
+    Menu,
+    Smartphone,
 } from "lucide-react";
 import { Sidebar } from "@/Components/AdminPage/Sidebar";
 import dayjs from "dayjs";
@@ -41,6 +45,8 @@ export default function Transactions({ list_transactions }) {
     const [actionLoading, setActionLoading] = useState(null);
     const [paginationLoading, setPaginationLoading] = useState(false);
     const [metricsLoading, setMetricsLoading] = useState(false);
+    const [showFilters, setShowFilters] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     const [metrics, setMetrics] = useState({
         totalRevenue: 0,
@@ -50,13 +56,21 @@ export default function Transactions({ list_transactions }) {
         totalAmountPending: 0,
     });
 
-    // Fetch metrics data (all data, not paginated)
+    // Check mobile view on mount and resize
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    // Fetch metrics data
     const fetchMetrics = async (filters = {}) => {
         setMetricsLoading(true);
         try {
             const params = new URLSearchParams({
                 ...filters,
-                metrics_only: "true", // Add this flag to indicate we only want metrics
+                metrics_only: "true",
             });
 
             const response = await axios.get(
@@ -73,7 +87,7 @@ export default function Transactions({ list_transactions }) {
         }
     };
 
-    // Fetch paginated data
+    // Fetch paginated data with filters
     const fetchTransactions = async (page = 1, filters = {}) => {
         setPaginationLoading(true);
         try {
@@ -109,8 +123,8 @@ export default function Transactions({ list_transactions }) {
         }
     };
 
-    // Load both metrics and transactions with filters
-    const loadDataWithFilters = async (page = 1) => {
+    // Build filters object
+    const buildFilters = () => {
         const filters = {};
         if (filter) filters.search = filter;
         if (statusFilter !== "All") filters.status = statusFilter;
@@ -118,6 +132,12 @@ export default function Transactions({ list_transactions }) {
             filters.payment_method = paymentMethodFilter;
         if (dateRange.start) filters.start_date = dateRange.start;
         if (dateRange.end) filters.end_date = dateRange.end;
+        return filters;
+    };
+
+    // Load both metrics and transactions with filters
+    const loadDataWithFilters = async (page = 1) => {
+        const filters = buildFilters();
 
         // Fetch both metrics and transactions in parallel
         await Promise.all([
@@ -138,17 +158,238 @@ export default function Transactions({ list_transactions }) {
         await loadDataWithFilters(page);
     };
 
-    // Handle filter changes
+    // Handle filter changes with debouncing
     useEffect(() => {
-        loadDataWithFilters(1);
+        const timeoutId = setTimeout(() => {
+            loadDataWithFilters(1);
+        }, 500); // 500ms debounce
+
+        return () => clearTimeout(timeoutId);
     }, [filter, statusFilter, paymentMethodFilter, dateRange]);
+
+    // Clear all filters
+    const clearAllFilters = () => {
+        setFilter("");
+        setStatusFilter("All");
+        setPaymentMethodFilter("All");
+        setDateRange({ start: "", end: "" });
+    };
+
+    // Check if any filter is active
+    const hasActiveFilters = () => {
+        return (
+            filter ||
+            statusFilter !== "All" ||
+            paymentMethodFilter !== "All" ||
+            dateRange.start ||
+            dateRange.end
+        );
+    };
+
+    // Mobile responsive stats
+    const StatsOverview = () => (
+        <div
+            className={`grid gap-3 mb-6 ${
+                isMobile
+                    ? "grid-cols-2"
+                    : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+            }`}
+        >
+            {/* Total Revenue */}
+            <div className="bg-white p-3 rounded-xl shadow-md border-l-4 border-l-green-500">
+                <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-600 truncate">
+                            Platform Revenue
+                        </p>
+                        <p className="text-lg font-bold text-gray-800 truncate">
+                            {metricsLoading ? (
+                                <RefreshCw className="w-4 h-4 text-gray-400 animate-spin inline" />
+                            ) : (
+                                `RM ${metrics.totalRevenue.toFixed(2)}`
+                            )}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                            {metrics.completedTransactions} completed
+                        </p>
+                    </div>
+                    <div className="rounded-full bg-green-100 p-2 ml-2">
+                        <DollarSign className="w-4 h-4 text-green-600" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Completed Transactions */}
+            <div className="bg-white p-3 rounded-xl shadow-md border-l-4 border-l-blue-500">
+                <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-600 truncate">
+                            Completed Orders
+                        </p>
+                        <p className="text-lg font-bold text-gray-800">
+                            {metricsLoading ? (
+                                <RefreshCw className="w-4 h-4 text-gray-400 animate-spin inline" />
+                            ) : (
+                                metrics.completedTransactions
+                            )}
+                        </p>
+                        <p className="text-xs text-gray-500">Total completed</p>
+                    </div>
+                    <div className="rounded-full bg-blue-100 p-2 ml-2">
+                        <CheckCircle className="w-4 h-4 text-blue-600" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Pending Release */}
+            <div className="bg-white p-3 rounded-xl shadow-md border-l-4 border-l-yellow-500">
+                <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-600 truncate">
+                            Pending Release
+                        </p>
+                        <p className="text-lg font-bold text-gray-800">
+                            {metricsLoading ? (
+                                <RefreshCw className="w-4 h-4 text-gray-400 animate-spin inline" />
+                            ) : (
+                                metrics.pendingRelease
+                            )}
+                        </p>
+                        <p className="text-xs text-yellow-600 truncate">
+                            RM {metrics.totalAmountPending.toFixed(2)}
+                        </p>
+                    </div>
+                    <div className="rounded-full bg-yellow-100 p-2 ml-2">
+                        <Clock className="w-4 h-4 text-yellow-600" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Released Payments */}
+            <div className="bg-white p-3 rounded-xl shadow-md border-l-4 border-l-purple-500">
+                <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-600 truncate">
+                            Released Payments
+                        </p>
+                        <p className="text-lg font-bold text-gray-800">
+                            {metricsLoading ? (
+                                <RefreshCw className="w-4 h-4 text-gray-400 animate-spin inline" />
+                            ) : (
+                                metrics.releasedPayments
+                            )}
+                        </p>
+                        <p className="text-xs text-gray-500">Payments sent</p>
+                    </div>
+                    <div className="rounded-full bg-purple-100 p-2 ml-2">
+                        <DollarSign className="w-4 h-4 text-purple-600" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const TransactionRow = ({ transaction }) => (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-3">
+            {/* Header */}
+            <div className="flex justify-between items-start mb-3">
+                <div className="flex-1">
+                    <div className="font-mono text-sm font-semibold text-gray-900 mb-1">
+                        {transaction.order_id}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                        {dayjs(transaction.created_at).format(
+                            "DD MMM YYYY, HH:mm"
+                        )}
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => showOrderTracking(transaction)}
+                        className="text-blue-600 hover:text-blue-800 p-1"
+                        title="Track Order"
+                    >
+                        <Eye size={16} />
+                    </button>
+                    {transaction.order_status === "Completed" &&
+                        transaction?.seller_earning[0]?.status ===
+                            "Pending" && (
+                            <button
+                                onClick={() =>
+                                    manualReleasePayment(transaction.order_id)
+                                }
+                                disabled={
+                                    actionLoading === transaction.order_id
+                                }
+                                className="flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50"
+                            >
+                                {actionLoading === transaction.order_id ? (
+                                    <RefreshCw
+                                        size={10}
+                                        className="animate-spin"
+                                    />
+                                ) : (
+                                    <DollarSign size={10} />
+                                )}
+                                Release
+                            </button>
+                        )}
+                </div>
+            </div>
+
+            {/* Details */}
+            <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                    <div className="text-xs text-gray-500">Buyer → Seller</div>
+                    <div className="font-medium text-gray-900 truncate">
+                        {transaction.user?.name} →{" "}
+                        {transaction.seller?.seller_name}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-xs text-gray-500">Payout Amount</div>
+                    <div className="font-semibold text-gray-900">
+                        RM {transaction.seller_earning[0]?.payout_amount || 0}
+                    </div>
+                </div>
+                <div>
+                    <div className="text-xs text-gray-500">Order Status</div>
+                    <span
+                        className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            transaction.order_status === "Completed"
+                                ? "bg-green-100 text-green-800 border border-green-200"
+                                : "bg-yellow-200 text-yellow-900 border border-yellow-300"
+                        }`}
+                    >
+                        {transaction.order_status}
+                    </span>
+                </div>
+                <div>
+                    <div className="text-xs text-gray-500">Payment Status</div>
+                    <div
+                        className={`font-bold text-sm ${
+                            transaction?.seller_earning?.[0]?.status ===
+                            "Released"
+                                ? "text-green-800"
+                                : transaction?.seller_earning?.[0]?.status ===
+                                  "Pending"
+                                ? "text-yellow-500"
+                                : "text-gray-500"
+                        }`}
+                    >
+                        {transaction?.seller_earning?.[0]?.status || "N/A"}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
 
     // Generate page numbers for pagination
     const generatePageNumbers = () => {
         const pages = [];
         const current = pagination.current_page;
         const last = pagination.last_page;
-        const delta = 2; // Number of pages to show on each side of current page
+        const delta = 2;
 
         for (let i = 1; i <= last; i++) {
             if (
@@ -162,7 +403,6 @@ export default function Transactions({ list_transactions }) {
             }
         }
 
-        // Remove consecutive ellipses
         return pages.filter((page, index, array) => {
             return !(page === "..." && array[index - 1] === "...");
         });
@@ -175,12 +415,8 @@ export default function Transactions({ list_transactions }) {
                 `/api/transactions/${orderId}/release-payment`
             );
 
-            console.log("Release payment response:", response);
-
             if (response.data.success) {
-                // Refresh both metrics and current page after successful release
                 await loadDataWithFilters(pagination.current_page);
-
                 showNotification(
                     "💰 Payment Released",
                     `Payment successfully released to seller for order ${orderId}`,
@@ -208,12 +444,11 @@ export default function Transactions({ list_transactions }) {
         }
     };
 
-    // Fix the manualReleasePayment function
     const manualReleasePayment = async (orderId) => {
         const transaction = transactions.find((t) => t.order_id === orderId);
         if (!transaction) return;
 
-        const sellerEarning = transaction.seller_earning?.[0];
+        const sellerEarning = transaction.seller_earning[0];
         const payoutAmount = sellerEarning?.payout_amount || transaction.amount;
 
         if (
@@ -227,9 +462,7 @@ export default function Transactions({ list_transactions }) {
         }
     };
 
-    // Fix the bulk release logic
     const bulkReleasePayments = async () => {
-        // Use metrics data for bulk release info instead of current page data
         if (metrics.pendingRelease === 0) {
             showNotification(
                 "ℹ️ No Pending Releases",
@@ -250,15 +483,11 @@ export default function Transactions({ list_transactions }) {
         ) {
             setIsLoading(true);
             try {
-                // Since we don't have all transaction IDs here, we'll need to fetch them
-                // or handle bulk release differently. For now, let's refresh and show message
                 showNotification(
                     "📦 Bulk Release Initiated",
                     "Bulk release feature is being processed...",
                     "info"
                 );
-
-                // Refresh data after bulk operation
                 await loadDataWithFilters(pagination.current_page);
             } catch (error) {
                 console.error("Bulk release error:", error);
@@ -273,9 +502,7 @@ export default function Transactions({ list_transactions }) {
         }
     };
 
-    // Enhanced order tracking function
     const showOrderTracking = async (transaction) => {
-        console.log(transaction);
         try {
             const response = await fetch(
                 `/api/transactions/${transaction.order.order_id}/tracking`
@@ -298,64 +525,11 @@ export default function Transactions({ list_transactions }) {
         }
     };
 
-    // Generate report
-    const generateReport = () => {
-        setShowReportModal(true);
-    };
-
-    // Update order status
-    const updateOrderStatus = async (transactionId, newStatus) => {
-        setActionLoading(transactionId);
-        try {
-            const response = await fetch(
-                `/api/transactions/${transactionId}/status`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ status: newStatus }),
-                }
-            );
-
-            if (response.ok) {
-                // Refresh both metrics and current page after status update
-                await loadDataWithFilters(pagination.current_page);
-
-                if (newStatus === "Confirmed") {
-                    autoReleasePayment(transactionId);
-                }
-
-                showNotification(
-                    "✅ Status Updated",
-                    `Order status updated to ${newStatus}`,
-                    "success"
-                );
-            }
-        } catch (error) {
-            console.error("Error updating order status:", error);
-            showNotification(
-                "❌ Update Failed",
-                "Failed to update order status",
-                "error"
-            );
-        } finally {
-            setActionLoading(null);
-        }
-    };
-
-    // Notification system
     const showNotification = (title, message, type = "info") => {
-        // You can replace this with your preferred notification system
         console.log(`[${type}] ${title}: ${message}`);
-        // For now, using alert as fallback
         alert(`${title}: ${message}`);
     };
 
-    // Filter transactions (client-side filtering removed since we're using server-side)
-    const filteredTransactions = transactions;
-
-    // Order status steps for tracking
     const orderStatusSteps = [
         { status: "Pending", icon: Clock, description: "Order placed" },
         {
@@ -385,7 +559,131 @@ export default function Transactions({ list_transactions }) {
         },
     ];
 
-    // Quick actions for payment release
+    // Enhanced Filter Component
+    const FilterSection = () => (
+        <div className="bg-white rounded-xl shadow-md p-4 mb-6 border border-gray-200">
+            <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <Filter className="w-5 h-5" />
+                    Filters
+                </h3>
+                <div className="flex items-center gap-2">
+                    {hasActiveFilters() && (
+                        <button
+                            onClick={clearAllFilters}
+                            className="flex items-center gap-1 px-3 py-1 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                            <X className="w-4 h-4" />
+                            Clear All
+                        </button>
+                    )}
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="text-gray-600 hover:text-gray-800"
+                    >
+                        {showFilters ? "Hide" : "Show"} Filters
+                    </button>
+                </div>
+            </div>
+
+            {showFilters && (
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+                    {/* Search Input */}
+                    <div className="relative">
+                        <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
+                        <input
+                            type="text"
+                            placeholder="Search transactions..."
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            className="text-black w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                    </div>
+
+                    {/* Status Filter */}
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="text-black border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="All">All Order Statuses</option>
+                        <option value="Paid">Paid (Pending Release)</option>
+                        <option value="Released">Released</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Failed">Failed</option>
+                        <option value="Completed">Completed</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Shipped">Shipped</option>
+                        <option value="Delivered">Delivered</option>
+                    </select>
+
+                    {/* Payment Method Filter */}
+                    <select
+                        value={paymentMethodFilter}
+                        onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                        className="text-black border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                        <option value="All">All Payment Methods</option>
+                        <option value="credit">Credit Card</option>
+                    </select>
+                </div>
+            )}
+
+            {/* Active Filters Badges */}
+            {hasActiveFilters() && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                    {filter && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Search: {filter}
+                            <button
+                                onClick={() => setFilter("")}
+                                className="ml-1 hover:bg-blue-200 rounded-full"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </span>
+                    )}
+                    {statusFilter !== "All" && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Status: {statusFilter}
+                            <button
+                                onClick={() => setStatusFilter("All")}
+                                className="ml-1 hover:bg-green-200 rounded-full"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </span>
+                    )}
+                    {paymentMethodFilter !== "All" && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Payment: {paymentMethodFilter}
+                            <button
+                                onClick={() => setPaymentMethodFilter("All")}
+                                className="ml-1 hover:bg-purple-200 rounded-full"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </span>
+                    )}
+                    {(dateRange.start || dateRange.end) && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            Date: {dateRange.start || "Start"} to{" "}
+                            {dateRange.end || "End"}
+                            <button
+                                onClick={() =>
+                                    setDateRange({ start: "", end: "" })
+                                }
+                                className="ml-1 hover:bg-orange-200 rounded-full"
+                            >
+                                <X className="w-3 h-3" />
+                            </button>
+                        </span>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+
     const QuickActions = () => (
         <div className="bg-white rounded-xl shadow-md p-4 mb-6 border border-blue-200">
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -435,120 +733,61 @@ export default function Transactions({ list_transactions }) {
         <div className="flex min-h-screen bg-gray-50">
             <Sidebar />
 
-            <main className="flex-1 p-4 lg:p-6 min-w-0 w-full">
-                {/* Mobile Header */}
-                <div className="lg:hidden mb-4 flex items-center justify-between">
-                    <h1 className="text-xl font-bold text-gray-800">
-                        Payment Management
-                    </h1>
-                </div>
+            <main
+                className={`flex-1 p-4 min-w-0 w-full ${
+                    isMobile ? "pt-20" : "p-4 lg:p-6"
+                }`}
+            >
+                <StatsOverview />
 
-                {/* Enhanced Stats Overview */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                    {/* Total Revenue */}
-                    <div className="bg-white p-4 rounded-xl shadow-md border-l-4 border-l-green-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">
-                                    Platform Revenue
-                                </p>
-                                <p className="text-2xl font-bold text-gray-800">
-                                    {metricsLoading ? (
-                                        <RefreshCw className="w-5 h-5 text-gray-400 animate-spin inline" />
-                                    ) : (
-                                        `RM ${metrics.totalRevenue.toFixed(2)}`
-                                    )}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    From {metrics.completedTransactions}{" "}
-                                    completed orders
-                                </p>
-                            </div>
-                            <div className="rounded-full bg-green-100 p-3">
-                                <DollarSign className="w-6 h-6 text-green-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Completed Transactions */}
-                    <div className="bg-white p-4 rounded-xl shadow-md border-l-4 border-l-blue-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">
-                                    Completed Orders
-                                </p>
-                                <p className="text-2xl font-bold text-gray-800">
-                                    {metricsLoading ? (
-                                        <RefreshCw className="w-5 h-5 text-gray-400 animate-spin inline" />
-                                    ) : (
-                                        metrics.completedTransactions
-                                    )}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    Total orders completed
-                                </p>
-                            </div>
-                            <div className="rounded-full bg-blue-100 p-3">
-                                <CheckCircle className="w-6 h-6 text-blue-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Pending Release */}
-                    <div className="bg-white p-4 rounded-xl shadow-md border-l-4 border-l-yellow-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">
-                                    Pending Release
-                                </p>
-                                <p className="text-2xl font-bold text-gray-800">
-                                    {metricsLoading ? (
-                                        <RefreshCw className="w-5 h-5 text-gray-400 animate-spin inline" />
-                                    ) : (
-                                        metrics.pendingRelease
-                                    )}
-                                </p>
-                                <p className="text-xs text-yellow-600">
-                                    {metricsLoading
-                                        ? "Loading..."
-                                        : `RM ${metrics.totalAmountPending.toFixed(
+                {/* Quick Actions - Simplified for mobile */}
+                {!isMobile && (
+                    <div className="bg-white rounded-xl shadow-md p-4 mb-6 border border-blue-200">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                                    Payment Release Center
+                                </h3>
+                                <p className="text-gray-600 text-sm">
+                                    {metrics.pendingRelease > 0
+                                        ? `${
+                                              metrics.pendingRelease
+                                          } orders ready for release (RM ${metrics.totalAmountPending.toFixed(
                                               2
-                                          )}`}
+                                          )})`
+                                        : "No payments pending release"}
                                 </p>
                             </div>
-                            <div className="rounded-full bg-yellow-100 p-3">
-                                <Clock className="w-6 h-6 text-yellow-600" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Released Payments */}
-                    <div className="bg-white p-4 rounded-xl shadow-md border-l-4 border-l-purple-500">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-sm font-medium text-gray-600">
-                                    Released Payments
-                                </p>
-                                <p className="text-2xl font-bold text-gray-800">
-                                    {metricsLoading ? (
-                                        <RefreshCw className="w-5 h-5 text-gray-400 animate-spin inline" />
-                                    ) : (
-                                        metrics.releasedPayments
-                                    )}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                    Payments sent to sellers
-                                </p>
-                            </div>
-                            <div className="rounded-full bg-purple-100 p-3">
-                                <DollarSign className="w-6 h-6 text-purple-600" />
+                            <div className="flex flex-col sm:flex-row gap-2">
+                                {metrics.pendingRelease > 0 && (
+                                    <button
+                                        onClick={bulkReleasePayments}
+                                        disabled={isLoading}
+                                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm"
+                                    >
+                                        <Zap size={16} />
+                                        {isLoading
+                                            ? "Processing..."
+                                            : `Release All (${metrics.pendingRelease})`}
+                                    </button>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        setStatusFilter("paid");
+                                        setFilter("");
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                                >
+                                    <Eye size={16} />
+                                    View Pending
+                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
 
-                {/* Quick Actions */}
-                <QuickActions />
+                {/* Enhanced Filter Section */}
+                <FilterSection />
 
                 <div className="bg-white rounded-xl shadow-md overflow-hidden">
                     {/* Header */}
@@ -556,312 +795,313 @@ export default function Transactions({ list_transactions }) {
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div>
                                 <h2 className="text-xl lg:text-2xl font-bold text-gray-800">
-                                    Transaction Management
+                                    {isMobile
+                                        ? "Transactions"
+                                        : "Transaction Management"}
                                 </h2>
                                 <p className="text-gray-600 text-sm lg:text-base">
-                                    Manage payments and track order status
+                                    {isMobile
+                                        ? "Manage payments"
+                                        : "Manage payments and track order status"}
                                 </p>
                             </div>
-
-                            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                <button
-                                    onClick={generateReport}
-                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                                >
-                                    <BarChart3 size={16} />
-                                    Generate Report
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Enhanced Filters */}
-                    <div className="p-4 bg-gray-50 border-b border-gray-200">
-                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-                            <div className="relative">
-                                <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
-                                <input
-                                    type="text"
-                                    placeholder="Search transactions..."
-                                    value={filter}
-                                    onChange={(e) => setFilter(e.target.value)}
-                                    className="text-black w-full border border-gray-300 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                />
-                            </div>
-
-                            <select
-                                value={statusFilter}
-                                onChange={(e) =>
-                                    setStatusFilter(e.target.value)
-                                }
-                                className="text-black border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                            >
-                                <option value="All">All Statuses</option>
-                                <option value="paid">
-                                    Paid (Pending Release)
-                                </option>
-                                <option value="released">Released</option>
-                                <option value="pending">Pending</option>
-                                <option value="failed">Failed</option>
-                            </select>
-
-                            <div className="flex gap-2">
-                                <input
-                                    type="date"
-                                    value={dateRange.start}
-                                    onChange={(e) =>
-                                        setDateRange({
-                                            ...dateRange,
-                                            start: e.target.value,
-                                        })
-                                    }
-                                    className="text-black flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                />
-                                <input
-                                    type="date"
-                                    value={dateRange.end}
-                                    onChange={(e) =>
-                                        setDateRange({
-                                            ...dateRange,
-                                            end: e.target.value,
-                                        })
-                                    }
-                                    className="text-black flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Transactions Table */}
-                    <div className="w-full overflow-x-auto">
-                        {paginationLoading && (
-                            <div className="flex justify-center items-center py-8">
-                                <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" />
-                                <span className="ml-2 text-gray-600">
-                                    Loading transactions...
-                                </span>
-                            </div>
-                        )}
-                        <table className="w-full min-w-[1000px] divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Order Info
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Amount
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Payment
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredTransactions.map((transaction) => (
-                                    <tr
-                                        key={transaction.order_id}
-                                        className="hover:bg-gray-50"
-                                    >
-                                        <td className="px-4 py-4">
-                                            <div className="max-w-[200px]">
-                                                <div className="font-mono text-sm font-medium text-gray-900 truncate">
-                                                    {transaction.order_id}
-                                                </div>
-                                                <div className="text-xs text-gray-500 truncate">
-                                                    {transaction.user?.name} →{" "}
-                                                    {
-                                                        transaction.seller
-                                                            ?.seller_name
-                                                    }
-                                                </div>
-                                                <div className="text-xs text-gray-400">
-                                                    {dayjs(
-                                                        transaction.created_at
-                                                    ).format(
-                                                        "DD MMM YYYY, HH:mm"
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <div className="text-sm font-semibold text-gray-900">
-                                                RM {transaction.amount}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <span
-                                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                    transaction.order_status ===
-                                                    "Completed"
-                                                        ? "bg-green-100 text-green-800 border border-green-200"
-                                                        : "bg-green-200 text-green-900 border border-green-300"
-                                                }`}
-                                            >
-                                                {transaction.order_status}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <div className="flex flex-col gap-1">
-                                                <span
-                                                    className={`items-center rounded-full text-sm font-bold ${
-                                                        transaction
-                                                            ?.seller_earning[0]
-                                                            ?.status ===
-                                                        "Released"
-                                                            ? "text-green-800"
-                                                            : transaction
-                                                                  ?.seller_earning[0]
-                                                                  ?.status ===
-                                                              "Pending"
-                                                            ? " text-yellow-500"
-                                                            : " text-red-800"
-                                                    }`}
-                                                >
-                                                    {
-                                                        transaction
-                                                            ?.seller_earning[0]
-                                                            ?.status
-                                                    }
-                                                </span>
-                                                <span className="text-xs text-gray-800">
-                                                    {transaction.payment_method}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() =>
-                                                        showOrderTracking(
-                                                            transaction
-                                                        )
-                                                    }
-                                                    className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
-                                                    title="Track Order"
-                                                >
-                                                    <Eye size={16} />
-                                                </button>
-
-                                                {transaction.order_status ===
-                                                    "Completed" &&
-                                                    transaction
-                                                        ?.seller_earning[0]
-                                                        ?.status ===
-                                                        "Pending" && (
-                                                        <button
-                                                            onClick={() =>
-                                                                manualReleasePayment(
-                                                                    transaction.order_id
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                actionLoading ===
-                                                                transaction.order_id
-                                                            }
-                                                            className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-xs"
-                                                        >
-                                                            {actionLoading ===
-                                                            transaction.order_id ? (
-                                                                <RefreshCw
-                                                                    size={12}
-                                                                    className="animate-spin"
-                                                                />
-                                                            ) : (
-                                                                <DollarSign
-                                                                    size={12}
-                                                                />
-                                                            )}
-                                                            Release
-                                                        </button>
-                                                    )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Enhanced Pagination */}
-                    <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                            <div className="text-sm text-gray-700">
+                            <div className="text-sm text-gray-600">
                                 Showing {pagination.from} to {pagination.to} of{" "}
                                 {pagination.total} transactions
                             </div>
-                            <div className="flex items-center space-x-1">
-                                {/* Previous Button */}
-                                <button
-                                    onClick={() =>
-                                        handlePageChange(
-                                            pagination.current_page - 1
-                                        )
-                                    }
-                                    disabled={pagination.current_page === 1}
-                                    className={`p-2 rounded-md ${
-                                        pagination.current_page === 1
-                                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                    }`}
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-
-                                {/* Page Numbers */}
-                                {generatePageNumbers().map((page, index) =>
-                                    page === "..." ? (
-                                        <span
-                                            key={`ellipsis-${index}`}
-                                            className="px-2 text-gray-500"
-                                        >
-                                            ...
-                                        </span>
-                                    ) : (
-                                        <button
-                                            key={page}
-                                            onClick={() =>
-                                                handlePageChange(page)
-                                            }
-                                            className={`px-3 py-1.5 rounded-md text-sm ${
-                                                page === pagination.current_page
-                                                    ? "bg-indigo-600 text-white"
-                                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                            }`}
-                                        >
-                                            {page}
-                                        </button>
-                                    )
-                                )}
-
-                                {/* Next Button */}
-                                <button
-                                    onClick={() =>
-                                        handlePageChange(
-                                            pagination.current_page + 1
-                                        )
-                                    }
-                                    disabled={
-                                        pagination.current_page ===
-                                        pagination.last_page
-                                    }
-                                    className={`p-2 rounded-md ${
-                                        pagination.current_page ===
-                                        pagination.last_page
-                                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                    }`}
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </button>
-                            </div>
                         </div>
                     </div>
+
+                    {/* Loading State */}
+                    {paginationLoading && (
+                        <div className="flex justify-center items-center py-8">
+                            <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin" />
+                            <span className="ml-2 text-gray-600">
+                                Loading...
+                            </span>
+                        </div>
+                    )}
+
+                    {!paginationLoading && transactions.length === 0 && (
+                        <div className="text-center py-12">
+                            <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                No transactions found
+                            </h3>
+                            <p className="text-gray-500 mb-4">
+                                {hasActiveFilters()
+                                    ? "Try adjusting your filters"
+                                    : "No transactions available"}
+                            </p>
+                            {hasActiveFilters() && (
+                                <button
+                                    onClick={clearAllFilters}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                                >
+                                    Clear Filters
+                                </button>
+                            )}
+                        </div>
+                    )}
+
+                    {!paginationLoading && transactions.length > 0 && (
+                        <>
+                            {/* Mobile View */}
+                            {isMobile ? (
+                                <div className="p-4">
+                                    {transactions.map((transaction) => (
+                                        <TransactionRow
+                                            key={transaction.order_id}
+                                            transaction={transaction}
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                /* Desktop Table View */
+                                <div className="w-full overflow-x-auto">
+                                    <table className="w-full min-w-[1000px] divide-y divide-gray-200">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Order Info
+                                                </th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Payout Amount
+                                                </th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Order Status
+                                                </th>
+                                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Payment Status
+                                                </th>
+                                                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Actions
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {transactions.map((transaction) => (
+                                                <tr
+                                                    key={transaction.order_id}
+                                                    className="hover:bg-gray-50"
+                                                >
+                                                    <td className="px-4 py-4">
+                                                        <div className="font-mono text-sm font-medium text-gray-900">
+                                                            {
+                                                                transaction.order_id
+                                                            }
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {
+                                                                transaction.user
+                                                                    ?.name
+                                                            }{" "}
+                                                            →{" "}
+                                                            {
+                                                                transaction
+                                                                    .seller
+                                                                    ?.seller_name
+                                                            }
+                                                        </div>
+                                                        <div className="text-xs text-gray-400">
+                                                            {dayjs(
+                                                                transaction.created_at
+                                                            ).format(
+                                                                "DD MMM YYYY, HH:mm"
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <div className="text-sm font-semibold text-gray-900">
+                                                            RM{" "}
+                                                            {transaction
+                                                                .seller_earning[0]
+                                                                ?.payout_amount ||
+                                                                0}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <span
+                                                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                                transaction.order_status ===
+                                                                "Completed"
+                                                                    ? "bg-green-100 text-green-800 border border-green-200"
+                                                                    : "bg-yellow-200 text-yellow-900 border border-yellow-300"
+                                                            }`}
+                                                        >
+                                                            {
+                                                                transaction.order_status
+                                                            }
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <span
+                                                            className={`text-sm font-bold ${
+                                                                transaction
+                                                                    ?.seller_earning?.[0]
+                                                                    ?.status ===
+                                                                "Released"
+                                                                    ? "text-green-800"
+                                                                    : transaction
+                                                                          ?.seller_earning?.[0]
+                                                                          ?.status ===
+                                                                      "Pending"
+                                                                    ? "text-yellow-500"
+                                                                    : "text-gray-500"
+                                                            }`}
+                                                        >
+                                                            {transaction
+                                                                ?.seller_earning?.[0]
+                                                                ?.status ||
+                                                                "N/A"}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={() =>
+                                                                    showOrderTracking(
+                                                                        transaction
+                                                                    )
+                                                                }
+                                                                className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+                                                                title="Track Order"
+                                                            >
+                                                                <Eye
+                                                                    size={16}
+                                                                />
+                                                            </button>
+                                                            {transaction.order_status ===
+                                                                "Completed" &&
+                                                                transaction
+                                                                    ?.seller_earning[0]
+                                                                    ?.status ===
+                                                                    "Pending" && (
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            manualReleasePayment(
+                                                                                transaction.order_id
+                                                                            )
+                                                                        }
+                                                                        disabled={
+                                                                            actionLoading ===
+                                                                            transaction.order_id
+                                                                        }
+                                                                        className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-xs"
+                                                                    >
+                                                                        {actionLoading ===
+                                                                        transaction.order_id ? (
+                                                                            <RefreshCw
+                                                                                size={
+                                                                                    12
+                                                                                }
+                                                                                className="animate-spin"
+                                                                            />
+                                                                        ) : (
+                                                                            <DollarSign
+                                                                                size={
+                                                                                    12
+                                                                                }
+                                                                            />
+                                                                        )}
+                                                                        Release
+                                                                    </button>
+                                                                )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {/* Pagination */}
+                            {pagination.last_page > 1 && (
+                                <div className="px-4 py-4 bg-gray-50 border-t border-gray-200">
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                                        <div className="text-sm text-gray-700">
+                                            Showing {pagination.from} to{" "}
+                                            {pagination.to} of{" "}
+                                            {pagination.total}
+                                        </div>
+                                        <div className="flex items-center space-x-1">
+                                            <button
+                                                onClick={() =>
+                                                    handlePageChange(
+                                                        pagination.current_page -
+                                                            1
+                                                    )
+                                                }
+                                                disabled={
+                                                    pagination.current_page ===
+                                                    1
+                                                }
+                                                className={`p-2 rounded-md ${
+                                                    pagination.current_page ===
+                                                    1
+                                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                }`}
+                                            >
+                                                <ChevronLeft className="w-4 h-4" />
+                                            </button>
+
+                                            {generatePageNumbers().map(
+                                                (page, index) =>
+                                                    page === "..." ? (
+                                                        <span
+                                                            key={`ellipsis-${index}`}
+                                                            className="px-2 text-gray-500"
+                                                        >
+                                                            ...
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            key={page}
+                                                            onClick={() =>
+                                                                handlePageChange(
+                                                                    page
+                                                                )
+                                                            }
+                                                            className={`px-3 py-1.5 rounded-md text-sm ${
+                                                                page ===
+                                                                pagination.current_page
+                                                                    ? "bg-indigo-600 text-white"
+                                                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                            }`}
+                                                        >
+                                                            {page}
+                                                        </button>
+                                                    )
+                                            )}
+
+                                            <button
+                                                onClick={() =>
+                                                    handlePageChange(
+                                                        pagination.current_page +
+                                                            1
+                                                    )
+                                                }
+                                                disabled={
+                                                    pagination.current_page ===
+                                                    pagination.last_page
+                                                }
+                                                className={`p-2 rounded-md ${
+                                                    pagination.current_page ===
+                                                    pagination.last_page
+                                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                }`}
+                                            >
+                                                <ChevronRight className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
 
                 {/* Order Tracking Modal */}

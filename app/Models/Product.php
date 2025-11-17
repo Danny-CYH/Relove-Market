@@ -34,6 +34,8 @@ class Product extends Model
         'total_ratings',
         'seller_id',
         'category_id',
+        'blocked_at',
+        'block_reason'
     ];
 
     public function seller()

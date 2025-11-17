@@ -207,7 +207,7 @@ class SellerManageProductController extends Controller
             'product_price' => 'required|string|min:0',
             'product_status' => 'required|in:available,reserved,sold,draft',
             'product_quantity' => 'required|integer|min:1',
-            'product_condition' => 'required|in:new,excellent,good,fair,poor',
+            'product_condition' => 'required|in:New,Excellent,Good,Fair',
             'category_id' => 'required|exists:categories,category_id',
             'key_features.*' => 'required|string|max:255',
             'included_items.*' => 'string|max:255',

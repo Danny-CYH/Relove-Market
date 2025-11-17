@@ -3,26 +3,72 @@ import { usePage, Link, router } from "@inertiajs/react";
 import { motion } from "framer-motion";
 import {
     FaSearch,
-    FaFilter,
     FaEye,
     FaBan,
     FaExclamationTriangle,
     FaCheck,
-    FaTimes,
     FaStore,
     FaStar,
     FaStarHalfAlt,
     FaRegStar,
-    FaEllipsisV,
     FaChevronLeft,
     FaChevronRight,
-    FaChevronDown,
 } from "react-icons/fa";
 import { Sidebar } from "@/Components/AdminPage/Sidebar";
 import axios from "axios";
+import Swal from "sweetalert2";
 
-export default function ProductManagement() {
-    const { auth } = usePage().props;
+// SweetAlert configuration
+const showAlert = (icon, title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showLoadingAlert = (title, text = "") => {
+    return Swal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+};
+
+const showConfirmationAlert = (
+    title,
+    text,
+    confirmButtonText = "Yes",
+    cancelButtonText = "Cancel"
+) => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText,
+        cancelButtonText,
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+            cancelButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+export default function ProductModeration() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -31,6 +77,7 @@ export default function ProductManagement() {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showModal, setShowModal] = useState(false);
     const [actionType, setActionType] = useState("");
+    const [actionLoading, setActionLoading] = useState(false);
 
     // Pagination state from database
     const [currentPage, setCurrentPage] = useState(1);
@@ -39,7 +86,6 @@ export default function ProductManagement() {
     const [totalProducts, setTotalProducts] = useState(0);
     const [from, setFrom] = useState(0);
     const [to, setTo] = useState(0);
-    // Add this to your component state
     const [actionReason, setActionReason] = useState("");
 
     // Stats state
@@ -70,8 +116,6 @@ export default function ProductManagement() {
                 params,
             });
 
-            console.log("Products response:", response);
-
             const data = response.data.products;
 
             if (data && data.data) {
@@ -88,6 +132,7 @@ export default function ProductManagement() {
         } catch (error) {
             console.error("Error fetching products:", error);
             setProducts([]);
+            showAlert("error", "Error", "Failed to load products");
         } finally {
             setLoading(false);
         }
@@ -96,7 +141,6 @@ export default function ProductManagement() {
     const fetchStats = async () => {
         try {
             const response = await axios.get(route("get-product-stats"));
-            console.log("Stats response:", response.data);
 
             if (response.data) {
                 setStats({
@@ -108,6 +152,7 @@ export default function ProductManagement() {
             }
         } catch (error) {
             console.error("Error fetching stats:", error);
+            showAlert("error", "Error", "Failed to load statistics");
         }
     };
 
@@ -125,70 +170,180 @@ export default function ProductManagement() {
         return () => clearTimeout(timeoutId);
     }, [searchTerm, statusFilter, ratingFilter, itemsPerPage]);
 
-    const handleAction = (product, action) => {
+    const handleAction = async (product, action) => {
         setSelectedProduct(product);
         setActionType(action);
-        setShowModal(true);
+
+        // Use SweetAlert for confirmation instead of custom modal
+        const actionConfig = {
+            block: {
+                title: "Block Product",
+                text: `Are you sure you want to block the product "${product.product_name}"? This will hide it from all users and prevent future purchases.`,
+                icon: "warning",
+                confirmButtonColor: "#d33",
+                confirmButtonText: "Yes, Block Product",
+            },
+            unblock: {
+                title: "Unblock Product",
+                text: `Are you sure you want to unblock the product "${product.product_name}"? This will make it visible to all users again.`,
+                icon: "question",
+                confirmButtonColor: "#3085d6",
+                confirmButtonText: "Yes, Unblock Product",
+            },
+            flag: {
+                title: "Flag Product",
+                text: `Are you sure you want to flag the product "${product.product_name}"? This will mark it for review.`,
+                icon: "info",
+                confirmButtonColor: "#f59e0b",
+                confirmButtonText: "Yes, Flag Product",
+            },
+        };
+
+        const config = actionConfig[action];
+
+        // For blocking, show a more detailed confirmation with reason input
+        if (action === "block") {
+            const { value: reason } = await Swal.fire({
+                title: config.title,
+                text: config.text,
+                icon: config.icon,
+                input: "textarea",
+                inputLabel: "Reason for blocking (optional)",
+                inputPlaceholder:
+                    "Enter the reason for blocking this product...",
+                inputAttributes: {
+                    "aria-label": "Enter the reason for blocking this product",
+                },
+                showCancelButton: true,
+                confirmButtonColor: config.confirmButtonColor,
+                cancelButtonColor: "#6b7280",
+                confirmButtonText: config.confirmButtonText,
+                cancelButtonText: "Cancel",
+                customClass: {
+                    popup: "rounded-2xl",
+                    confirmButton: "px-4 py-2 rounded-lg font-medium",
+                    cancelButton: "px-4 py-2 rounded-lg font-medium",
+                },
+                preConfirm: (reason) => {
+                    if (!reason) {
+                        Swal.showValidationMessage(
+                            "Please provide a reason for blocking"
+                        );
+                    }
+                },
+            });
+
+            if (reason) {
+                await performAction(product, action, reason);
+            }
+        } else {
+            // For other actions, use standard confirmation
+            const result = await showConfirmationAlert(
+                config.title,
+                config.text,
+                config.confirmButtonText,
+                "Cancel"
+            );
+
+            if (result.isConfirmed) {
+                await performAction(
+                    product,
+                    action,
+                    `Product ${action}ed by admin`
+                );
+            }
+        }
     };
 
-    const confirmAction = async () => {
-        if (!selectedProduct) return;
+    const performAction = async (product, action, reason = "") => {
+        setActionLoading(true);
+        const loadingAlert = showLoadingAlert(
+            `${action.charAt(0).toUpperCase() + action.slice(1)}ing Product...`,
+            "Please wait while we process your request"
+        );
 
         try {
             let endpoint;
             let method = "post";
 
-            switch (actionType) {
+            switch (action) {
                 case "block":
                     endpoint = route(
                         "admin.products.block",
-                        selectedProduct.product_id
+                        product.product_id
                     );
                     break;
                 case "unblock":
                     endpoint = route(
                         "admin.products.unblock",
-                        selectedProduct.product_id
+                        product.product_id
                     );
                     break;
                 case "flag":
-                    endpoint = route(
-                        "admin.products.flag",
-                        selectedProduct.product_id
-                    );
+                    endpoint = route("admin.products.flag", product.product_id);
                     break;
                 default:
-                    console.error("Unknown action type:", actionType);
+                    console.error("Unknown action type:", action);
                     return;
             }
 
+            console.log(`Performing ${action} on product:`, product.product_id);
+            console.log(`Endpoint: ${endpoint}`);
+
             const response = await axios[method](endpoint, {
-                reason: `Product ${actionType}ed by admin for policy violation`,
+                reason: reason || `Product ${action}ed by admin`,
             });
 
+            console.log("Action response:", response);
+
             if (response.data.success) {
+                loadingAlert.close();
+
                 // Show success message
-                console.log(response.data.message);
+                showAlert(
+                    "success",
+                    "Success!",
+                    response.data.message || `Product ${action}ed successfully`
+                );
 
                 // Refresh the data
-                fetchProducts(
+                await fetchProducts(
                     currentPage,
                     searchTerm,
                     statusFilter,
                     ratingFilter
                 );
-                fetchStats();
+                await fetchStats();
             } else {
-                console.error("Action failed:", response.data.error);
-                // You can show an error toast here
+                loadingAlert.close();
+                showAlert(
+                    "error",
+                    "Action Failed",
+                    response.data.error || `Failed to ${action} product`
+                );
+            }
+        } catch (error) {
+            loadingAlert.close();
+            console.error("Error performing action:", error);
+
+            let errorMessage = `Failed to ${action} product`;
+
+            if (error.response) {
+                // Server responded with error status
+                errorMessage =
+                    error.response.data?.message ||
+                    error.response.data?.error ||
+                    errorMessage;
+                console.error("Server error:", error.response.data);
+            } else if (error.request) {
+                // Request was made but no response received
+                errorMessage =
+                    "No response from server. Please check your connection.";
             }
 
-            setShowModal(false);
-            setSelectedProduct(null);
-        } catch (error) {
-            console.error("Error performing action:", error);
-            // Show error message to user
-            setShowModal(false);
+            showAlert("error", "Error", errorMessage);
+        } finally {
+            setActionLoading(false);
             setSelectedProduct(null);
         }
     };
@@ -410,9 +565,9 @@ export default function ProductManagement() {
             <div className="flex-1 p-4 md:p-6 lg:p-8 overflow-x-hidden">
                 <div className="max-w-7xl mx-auto w-full">
                     {/* Header */}
-                    <div className="mb-6 md:mb-8">
+                    <div className="mb-6 mt-16 md:mt-0 md:mb-8">
                         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                            Product Management
+                            Product Moderation
                         </h1>
                         <p className="text-sm md:text-base text-gray-600">
                             Monitor and manage products, review quality issues,
@@ -507,7 +662,7 @@ export default function ProductManagement() {
 
                             <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                                 <select
-                                    className="text-black w-32 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base"
+                                    className="text-black w-full md:w-32 border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base"
                                     value={statusFilter}
                                     onChange={(e) =>
                                         setStatusFilter(e.target.value)
@@ -732,7 +887,10 @@ export default function ProductManagement() {
                                                                     "block"
                                                                 )
                                                             }
-                                                            className="text-red-600 hover:text-red-900 p-1"
+                                                            disabled={
+                                                                actionLoading
+                                                            }
+                                                            className="text-red-600 hover:text-red-900 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                                             title="Block Product"
                                                         >
                                                             <FaBan className="w-4 h-4" />
@@ -748,7 +906,10 @@ export default function ProductManagement() {
                                                                     "unblock"
                                                                 )
                                                             }
-                                                            className="text-green-600 hover:text-green-900 p-1"
+                                                            disabled={
+                                                                actionLoading
+                                                            }
+                                                            className="text-green-600 hover:text-green-900 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                                             title="Unblock Product"
                                                         >
                                                             <FaCheck className="w-4 h-4" />
@@ -762,7 +923,8 @@ export default function ProductManagement() {
                                                                 "flag"
                                                             )
                                                         }
-                                                        className="text-yellow-600 hover:text-yellow-900 p-1"
+                                                        disabled={actionLoading}
+                                                        className="text-yellow-600 hover:text-yellow-900 p-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         title="Flag as Fake"
                                                     >
                                                         <FaExclamationTriangle className="w-4 h-4" />
@@ -811,84 +973,6 @@ export default function ProductManagement() {
                         )}
                     </div>
                 </div>
-
-                {/* Action Confirmation Modal */}
-                {showModal && selectedProduct && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="bg-white rounded-lg max-w-md w-full p-6"
-                        >
-                            <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                Confirm{" "}
-                                {actionType.charAt(0).toUpperCase() +
-                                    actionType.slice(1)}
-                            </h3>
-
-                            <p className="text-sm text-gray-600 mb-4">
-                                Are you sure you want to {actionType} the
-                                product "
-                                <strong>{selectedProduct.product_name}</strong>"
-                                by{" "}
-                                {selectedProduct.seller?.seller_name ||
-                                    "the seller"}
-                                ?
-                            </p>
-
-                            <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Reason (optional)
-                                </label>
-                                <textarea
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                    rows="3"
-                                    placeholder="Enter reason for this action..."
-                                    onChange={(e) =>
-                                        setActionReason(e.target.value)
-                                    }
-                                />
-                            </div>
-
-                            {actionType === "block" && (
-                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                                    <div className="flex">
-                                        <FaExclamationTriangle className="text-yellow-400 mt-0.5 flex-shrink-0" />
-                                        <div className="ml-3">
-                                            <p className="text-sm text-yellow-800">
-                                                Blocking this product will hide
-                                                it from all users, prevent
-                                                future purchases, and notify the
-                                                seller via email.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="flex justify-end space-x-3">
-                                <button
-                                    onClick={() => setShowModal(false)}
-                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={confirmAction}
-                                    className={`px-4 py-2 text-sm font-medium text-white rounded-lg ${
-                                        actionType === "block"
-                                            ? "bg-red-600 hover:bg-red-700"
-                                            : actionType === "flag"
-                                            ? "bg-yellow-600 hover:bg-yellow-700"
-                                            : "bg-green-600 hover:bg-green-700"
-                                    }`}
-                                >
-                                    Confirm {actionType}
-                                </button>
-                            </div>
-                        </motion.div>
-                    </div>
-                )}
             </div>
         </div>
     );
