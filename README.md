@@ -1,8 +1,4 @@
-<<<<<<< Updated upstream
-# E-Preloved Exchange Store Using Software as a Service Model 🛍️
-=======
 # Relove Market - E-Preloved Exchange Store Using Software as a Service Model 🛍️
->>>>>>> Stashed changes
 
 <div align="center">
 
@@ -12,26 +8,6 @@
 
 _A modern SaaS platform for Malaysian preloved goods exchange_
 
-<<<<<<< Updated upstream
-[Live Demo](#live-demo) • [Features](#features) • [Installation](#installation) • [Tech Stack](#tech-stack) • [API Documentation](#api-documentation)
-
-</div>
-
-![Platform Overview](/project%20resource/home_page.png)
-
-## 📋 Table of Contents
-
--   [Overview](#overview)
--   [Key Features](#key-features)
--   [Tech Stack](#tech-stack)
--   [Architecture](#architecture)
--   [Installation](#installation)
--   [Configuration](#configuration)
--   [API Documentation](#api-documentation)
--   [Deployment](#deployment)
--   [Contributing](#contributing)
--   [License](#license)
-=======
 [Features](#-key-features) • [Installation](#-installation) • [Tech Stack](#-tech-stack) • [API Documentation](#-api-documentation)
 
 </div>
@@ -40,17 +16,16 @@ _A modern SaaS platform for Malaysian preloved goods exchange_
 
 ## 📋 Table of Contents
 
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Installation](#-installation)
-- [Configuration](#-configuration)
-- [API Documentation](#-api-documentation)
-- [Deployment](#-deployment)
-- [Contributing](#-contributing)
-- [License](#-license)
->>>>>>> Stashed changes
+-   [Overview](#-overview)
+-   [Key Features](#-key-features)
+-   [Tech Stack](#-tech-stack)
+-   [Architecture](#-architecture)
+-   [Installation](#-installation)
+-   [Configuration](#-configuration)
+-   [API Documentation](#-api-documentation)
+-   [Deployment](#-deployment)
+-   [Contributing](#-contributing)
+-   [License](#-license)
 
 ## 🚀 Overview
 
@@ -58,39 +33,22 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 
 ### 🌟 Key Highlights
 
-<<<<<<< Updated upstream
 -   **🇲🇾 Malaysian Focus**: Tailored for local users and market needs
 -   **🤝 Community Driven**: Everyone can become an approved seller
 -   **💸 Revenue Model**: 8% commission on successful transactions
 -   **🤖 AI Powered**: Visual search and intelligent recommendations
 -   **⚡ Real-time Updates**: Live dashboard and instant notifications
 -   **📱 PWA Ready**: Progressive Web App for mobile experience
-=======
-- **🇲🇾 Malaysian Focus**: Tailored for local users and market needs
-- **🤝 Community Driven**: Everyone can become an approved seller
-- **💸 Revenue Model**: 8% commission on successful transactions
-- **🤖 AI Powered**: Visual search and intelligent recommendations
-- **⚡ Real-time Updates**: Live dashboard and instant notifications
-- **📱 PWA Ready**: Progressive Web App for mobile experience
->>>>>>> Stashed changes
 
 ## ✨ Key Features
 
 ### 🛍️ Core Marketplace Features
 
-<<<<<<< Updated upstream
 -   **Multi-vendor Marketplace** with admin approval system
 -   **Advanced Product Listings** with real-time management
 -   **Secure Payment Processing** via Stripe integration
 -   **Commission Management** (8% platform fee)
 -   **Order & Escrow Management**
-=======
-- **Multi-vendor Marketplace** with admin approval system
-- **Advanced Product Listings** with real-time management
-- **Secure Payment Processing** via Stripe integration
-- **Commission Management** (8% platform fee)
-- **Order & Escrow Management**
->>>>>>> Stashed changes
 
 ### 🤖 AI-Powered Enhancements
 
@@ -100,9 +58,10 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 - Product recommendations
 ```
 
+````
+
 ### 💬 Communication System
 
-<<<<<<< Updated upstream
 -   **Real-time Chat** between buyers and sellers
 -   **Pusher-powered notifications**
 -   **Order progress updates**
@@ -122,33 +81,11 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 -   **Transaction Management**
 -   **Product Moderation**
 -   **User Management**
-=======
-- **Real-time Chat** between buyers and sellers
-- **Pusher-powered notifications**
-- **Order progress updates**
-- **Review and rating system**
-
-### 📊 Seller Dashboard
-
-- **Real-time Earnings Tracking** (5-minute refresh)
-- **Order Management System**
-- **Product Inventory Management**
-- **Sales Analytics & Reports**
-
-### 👑 Admin Features
-
-- **Admin Dashboard**
-- **Seller Approval Workflow**
-- **Transaction Management**
-- **Product Moderation**
-- **User Management**
->>>>>>> Stashed changes
 
 ## 🛠️ Tech Stack
 
 ### Backend
 
-<<<<<<< Updated upstream
 -   **Laravel 11+** - PHP Framework (MVC Architecture)
 -   **Supabase** - Primary Database
 -   **Python** - AI/ML Services
@@ -166,25 +103,6 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 
 -   **Pusher** - Real-time WebSocket communications
 -   **Supabase** - Additional database services
-=======
-- **Laravel 11+** - PHP Framework (MVC Architecture)
-- **Supabase** - Primary Database
-- **Python** - AI/ML Services
-- **Stripe** - Payment Processing
-
-### Frontend
-
-- **React 18** - UI Library
-- **Vite** - Build Tool & Dev Server
-- **TailwindCSS** - Utility-first CSS Framework
-- **SweetAlert2** - Beautiful Alerts & Modals
-- **PWA** - Progressive Web App Features
-
-### Real-time & Services
-
-- **Pusher** - Real-time WebSocket communications
-- **Supabase** - Additional database services
->>>>>>> Stashed changes
 
 ## 🏗️ Architecture
 
@@ -204,11 +122,7 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 │   AI Services    │    │   Real-time      │    │   Database      │
 │   (Python)       │    │   Features       │    │   Layer         │
 │                  │    │                  │    │                 │
-<<<<<<< Updated upstream
-│ • Visual Search  │    │ • Live Chat      │    │ • Supabase         │
-=======
 │ • Visual Search  │    │ • Live Chat      │    │ • Supabase      │
->>>>>>> Stashed changes
 │ • Recommendations│    │ • Notifications  │    │                 │
 │ • Image Analysis │    │ • Order Updates  │    │                 │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
@@ -218,19 +132,11 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 
 ### Prerequisites
 
-<<<<<<< Updated upstream
 -   PHP 8.2+
 -   Node.js 18+
 -   MySQL 8.0+
 -   Composer
 -   Python 3.8+
-=======
-- PHP 8.2+
-- Node.js 18+
-- MySQL 8.0+
-- Composer
-- Python 3.8+
->>>>>>> Stashed changes
 
 ### Backend Setup (Laravel)
 
@@ -264,27 +170,6 @@ php artisan serve
 
 ### Frontend Setup (React + Vite)
 
-<<<<<<< Updated upstream
-# Install dependencies
-
-npm install
-
-# Environment configuration
-
-cp .env.example .env.local
-
-# Configure API endpoints
-
-VITE_BASE_URL=http://localhost:8000
-VITE_PUSHER_APP_KEY=your_pusher_key
-VITE_STRIPE_PUBLISHABLE_KEY=your_stripe_key
-
-# Start development server
-
-npm run dev
-
-````
-=======
 ```bash
 # Install dependencies
 npm install
@@ -295,7 +180,6 @@ cp .env.example .env.local
 # Start development server
 npm run dev
 ```
->>>>>>> Stashed changes
 
 ### AI Services Setup (Python)
 
@@ -307,11 +191,7 @@ cd ml_service
 
 # Start AI services
 .\venv\Scripts\uvicorn.exe recommendation_service:app --host 127.0.0.1 --port 5000 --reload
-<<<<<<< Updated upstream
-````
-=======
 ```
->>>>>>> Stashed changes
 
 ## ⚙️ Configuration
 
@@ -327,11 +207,7 @@ APP_DEBUG=false
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
-<<<<<<< Updated upstream
-DB_DATABASE=epreloved_exchange
-=======
 DB_DATABASE=relove_market
->>>>>>> Stashed changes
 DB_USERNAME=username
 DB_PASSWORD=password
 
@@ -396,10 +272,6 @@ POST   /api/seller/profile/user/update
 POST   /api/seller/profile/store/update
 POST   /api/seller/profile/image
 DELETE /api/seller/store/image
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
 ```
 
 ### Admin Endpoints
@@ -436,12 +308,6 @@ GET     /api/admin/user-management/stats
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
-<<<<<<< Updated upstream
-
-# Set up queue workers for real-time features
-php artisan queue:work
-=======
->>>>>>> Stashed changes
 ```
 
 2. **Frontend Deployment**
@@ -478,33 +344,17 @@ export default defineConfig({
 
 ### Project Video
 
-<<<<<<< Updated upstream
-[![Platform Demo Video](https://via.placeholder.com/800x450.png?text=Click+to+Watch+Platform+Demo+Video)](your-video-link-here)
-
-_Add your project demonstration video here_
+[![Platform Demo Video](./project%20resource/home_page.png)](https://youtu.be/kQ_tLq3dBuU)
 
 ### Platform Screenshots
 
-| Homepage                                       | Seller Dashboard                                              | Product Listing                               |
-| ---------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
-| ![Homepage](/project%20resource/home_page.png) | ![Seller Dashboard](/project%20resource/seller_dashboard.png) | ![Products](/project%20resource/shopping.png) |
-
-| AI Search                                           | Real-time Chat                        | Mobile PWA                             |
-| --------------------------------------------------- | ------------------------------------- | -------------------------------------- |
-| ![AI Search](/project%20resource/visual_search.png) | ![Chat](/project%20resource/chat.png) | ![Mobile](/project%20resource/pwa.png) |
-=======
-[![Platform Demo Video](./project%20resource/relove-market-preview.png)](https://youtu.be/kQ_tLq3dBuU)
-
-### Platform Screenshots
-
-| Homepage | Seller Dashboard | Product Listing |
-|----------|------------------|-----------------|
+| Homepage                                        | Seller Dashboard                                               | Product Listing                                |
+| ----------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
 | ![Homepage](./project%20resource/home_page.png) | ![Seller Dashboard](./project%20resource/seller_dashboard.png) | ![Products](./project%20resource/shopping.png) |
 
-| AI Search | Real-time Chat | Mobile PWA |
-|-----------|----------------|------------|
+| AI Search                                            | Real-time Chat                         | Mobile PWA                              |
+| ---------------------------------------------------- | -------------------------------------- | --------------------------------------- |
 | ![AI Search](./project%20resource/visual_search.png) | ![Chat](./project%20resource/chat.png) | ![Mobile](./project%20resource/pwa.png) |
->>>>>>> Stashed changes
 
 ## 👥 Contributing
 
@@ -526,9 +376,8 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 
 For support and questions:
 
-<<<<<<< Updated upstream
 -   📧 Email: chengyangho14@gmail.com
--   🐛 Issues: [GitHub Issues](https://github.com/Danny-CYH/e-preloved-exchange/issues)
+-   🐛 Issues: [GitHub Issues](https://github.com/Danny-CYH/Relove-Market/issues)
 
 ## 🙏 Acknowledgments
 
@@ -537,18 +386,6 @@ For support and questions:
 -   Stripe for payment processing
 -   Pusher for real-time features
 -   All our beta testers and early adopters
-=======
-- 📧 Email: chengyangho14@gmail.com
-- 🐛 Issues: [GitHub Issues](https://github.com/Danny-CYH/Relove-Market/issues)
-
-## 🙏 Acknowledgments
-
-- Malaysian e-commerce community
-- Laravel & React open-source communities
-- Stripe for payment processing
-- Pusher for real-time features
-- All our beta testers and early adopters
->>>>>>> Stashed changes
 
 ---
 
@@ -556,13 +393,7 @@ For support and questions:
 
 **Built with ❤️ for the Malaysian preloved community**
 
-<<<<<<< Updated upstream
-[![Twitter](https://img.shields.io/twitter/follow/epreloved?style=social)](https://twitter.com/epreloved)
-[![GitHub stars](https://img.shields.io/github/stars/your-username/e-preloved-exchange?style=social)](https://github.com/Danny-CYH/e-preloved-exchange)
-
-</div>
-=======
 [![GitHub stars](https://img.shields.io/github/stars/Danny-CYH/Relove-Market?style=social)](https://github.com/Danny-CYH/Relove-Market)
 
 </div>
->>>>>>> Stashed changes
+````
