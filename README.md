@@ -1,4 +1,3 @@
-````markdown
 # Relove Market - E-Preloved Exchange Store Using Software as a Service Model 🛍️
 
 <div align="center">
@@ -58,7 +57,6 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 - Image-based product search
 - Product recommendations
 ```
-````
 
 ### 💬 Communication System
 
