@@ -154,18 +154,27 @@ class ProductManagementController extends Controller
     public function getRecommendations(Request $request)
     {
         $productId = $request->input('product_id');
-        $topK = $request->input('top_k', 5);
+        $topK = $request->input('top_k', 8);
         $similarityThreshold = $request->input('similarity_threshold', 0.70);
+
+        \Log::info('Starting recommendation process', [
+            'product_id' => $productId,
+            'top_k' => $topK,
+            'similarity_threshold' => $similarityThreshold
+        ]);
 
         try {
             $response = Http::timeout(30)->post(env('ML_SERVICE_URL') . '/recommend/', [
                 'product_id' => $productId,
-                'top_k' => $topK,
+                'top_k' => $topK + 5, // Request more to account for filtering
                 'similarity_threshold' => $similarityThreshold
             ]);
 
             if (!$response->successful()) {
-                \Log::error('ML service error: ' . $response->body());
+                \Log::error('ML service error', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
                 return response()->json(['error' => 'Recommendation service unavailable'], 500);
             }
 
@@ -173,31 +182,69 @@ class ProductManagementController extends Controller
 
             // Check if we have an error from ML service
             if (isset($data['error'])) {
+                \Log::warning('ML service returned error', ['error' => $data['error']]);
                 return response()->json([
                     'error' => $data['error'],
                     'message' => $data['message'] ?? 'No recommendations found',
-                    'closest_match_similarity' => $data['closest_match_similarity'] ?? null,
-                    'similarity_threshold' => $data['similarity_threshold'] ?? null
                 ], 404);
             }
 
             // Check if we have recommendations
             if (!isset($data['recommendations']) || empty($data['recommendations'])) {
+                \Log::warning('No recommendations from ML service');
                 return response()->json([
                     'error' => 'No recommendations found',
                     'message' => 'No similar products found above the similarity threshold',
-                    'similarity_threshold' => $data['similarity_threshold'] ?? 0.70
                 ], 404);
             }
 
-            // Extract product_ids
-            $productIds = collect($data['recommendations'])
-                ->pluck('product_id')
-                ->toArray();
+            \Log::info('ML service returned recommendations', [
+                'count' => count($data['recommendations'])
+            ]);
 
-            \Log::info('Fetching products from database', ['product_ids' => $productIds]);
+            // Process recommendations with strict duplicate removal
+            $seenProductIds = [];
+            $processedRecommendations = [];
 
-            // Query your DB for full product info
+            foreach ($data['recommendations'] as $rec) {
+                $recProductId = $rec['product_id'] ?? null;
+
+                // Skip if no product ID, current product, or duplicate
+                if (
+                    !$recProductId ||
+                    $recProductId == $productId ||
+                    in_array($recProductId, $seenProductIds)
+                ) {
+                    continue;
+                }
+
+                $seenProductIds[] = $recProductId;
+                $processedRecommendations[] = $rec;
+
+                // Stop if we have enough unique recommendations
+                if (count($processedRecommendations) >= $topK) {
+                    break;
+                }
+            }
+
+            \Log::info('After duplicate filtering', [
+                'original_count' => count($data['recommendations']),
+                'unique_count' => count($processedRecommendations),
+                'product_ids' => $seenProductIds
+            ]);
+
+            if (empty($processedRecommendations)) {
+                \Log::warning('No unique recommendations after filtering');
+                return response()->json([
+                    'error' => 'No unique recommendations found',
+                    'message' => 'All recommended products are duplicates or invalid'
+                ], 404);
+            }
+
+            // Get product IDs for database query
+            $productIds = array_column($processedRecommendations, 'product_id');
+
+            // Query database for product details
             $products = Product::with([
                 "productImage",
                 "productVideo",
@@ -208,52 +255,61 @@ class ProductManagementController extends Controller
                 "category",
             ])
                 ->whereIn('product_id', $productIds)
-                ->get();
+                ->get()
+                ->keyBy('product_id'); // Key by product_id for easy lookup
 
-            \Log::info('Found products in database', ['count' => $products->count()]);
+            \Log::info('Database query results', [
+                'requested_ids' => $productIds,
+                'found_products' => $products->count()
+            ]);
 
-            // Map products with similarity scores and maintain order
-            $recommendations = collect($data['recommendations'])
-                ->map(function ($rec) use ($products) {
-                    $product = $products->firstWhere('product_id', $rec['product_id']);
+            // Build final recommendations array
+            $finalRecommendations = [];
+            foreach ($processedRecommendations as $rec) {
+                $product = $products->get($rec['product_id']);
 
-                    if (!$product) {
-                        \Log::warning('Product not found in database', ['product_id' => $rec['product_id']]);
-                        return null;
-                    }
+                if (!$product) {
+                    \Log::warning('Product not found in database', ['product_id' => $rec['product_id']]);
+                    continue;
+                }
 
-                    return [
-                        'product_id' => $rec['product_id'],
-                        'similarity' => $rec['similarity'],
-                        'similarity_percentage' => round($rec['similarity'] * 100, 1),
-                        'ai_confidence' => $rec['similarity'] >= 0.8 ? 'high' : ($rec['similarity'] >= 0.6 ? 'medium' : 'low'),
-                        'product' => $product
-                    ];
-                })
-                ->filter()
-                ->values();
+                $finalRecommendations[] = [
+                    'product_id' => $rec['product_id'],
+                    'similarity' => $rec['similarity'],
+                    'similarity_percentage' => round($rec['similarity'] * 100, 1),
+                    'ai_confidence' => $rec['similarity'] >= 0.8 ? 'high' : ($rec['similarity'] >= 0.6 ? 'medium' : 'low'),
+                    'product' => $product
+                ];
+            }
 
-            \Log::info('Final recommendations', ['count' => $recommendations->count()]);
+            \Log::info('Final recommendations prepared', [
+                'count' => count($finalRecommendations),
+                'product_ids' => array_column($finalRecommendations, 'product_id')
+            ]);
 
-            if ($recommendations->isEmpty()) {
+            if (empty($finalRecommendations)) {
                 return response()->json([
-                    'error' => 'Products not found in database',
-                    'message' => 'Recommended products were not found in the local database'
+                    'error' => 'No valid products found',
+                    'message' => 'Recommended products were not found in the database'
                 ], 404);
             }
 
             return response()->json([
-                "recommendations" => $recommendations,
+                "recommendations" => $finalRecommendations,
                 "search_metrics" => $data['search_metrics'] ?? [],
                 "source_product" => $data['source_product'] ?? null,
-                "source_category" => $data['source_category'] ?? null,
-                "similarity_threshold" => $data['similarity_threshold'] ?? 0.70,
-                "total_found" => $data['total_found'] ?? count($recommendations)
+                "total_found" => count($finalRecommendations)
             ]);
 
         } catch (Exception $e) {
-            \Log::error('Recommendation error: ' . $e->getMessage());
-            return response()->json(['error' => 'Recommendation failed: ' . $e->getMessage()], 500);
+            \Log::error('Recommendation process failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'error' => 'Recommendation failed',
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 

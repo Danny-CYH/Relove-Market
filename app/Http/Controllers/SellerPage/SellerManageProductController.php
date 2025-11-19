@@ -405,7 +405,7 @@ class SellerManageProductController extends Controller
                 'product_price' => 'required|numeric|min:0',
                 'product_status' => 'required|in:available,reserved,sold,draft',
                 'product_quantity' => 'required|integer|min:1',
-                'product_condition' => 'required|in:new,excellent,good,fair,poor',
+                'product_condition' => 'required|in:New,Excellent,Good,Fair',
                 'category_id' => 'required|exists:categories,category_id',
                 'key_features.*' => 'nullable|string|max:255',
                 'included_items.*' => 'nullable|string|max:255',
@@ -413,11 +413,12 @@ class SellerManageProductController extends Controller
                 'new_product_videos.*' => 'nullable|mimes:mp4,mov,avi,wmv,mkv|max:51200',
                 'images_to_delete.*' => 'nullable|string',
                 'videos_to_delete.*' => 'nullable|string',
-                'variants.*.combination' => 'nullable|string',
-                'variants.*.quantity' => 'nullable|integer|min:0',
-                'variants.*.price' => 'nullable|numeric|min:0',
-                'variants.*.variant_key' => 'nullable|string',
-                'variants.*.variant_id' => 'nullable|string|exists:product_variants,variant_id',
+                'variants' => 'nullable|array',
+                'variants.*.combination' => 'required|string',
+                'variants.*.quantity' => 'required|integer|min:0',
+                'variants.*.price' => 'required|numeric|min:0',
+                'variants.*.variant_key' => 'required|string',
+                'variants.*.variant_id' => 'nullable|exists:product_variants,variant_id',
             ]);
 
             if ($validator->fails()) {
@@ -496,8 +497,7 @@ class SellerManageProductController extends Controller
             }
 
             // ✅ Handle product variants
-            if ($request->has('variants')) {
-                // Get all existing variant IDs for this product
+            if ($request->has('variants') && is_array($request->variants)) {
                 $existingVariantIds = ProductVariant::where('product_id', $product->product_id)
                     ->pluck('variant_id')
                     ->toArray();
@@ -505,13 +505,18 @@ class SellerManageProductController extends Controller
                 $submittedVariantIds = [];
 
                 foreach ($request->variants as $variantData) {
-                    $combination = json_decode($variantData['combination'], true);
+                    // Ensure combination is properly formatted
+                    $combination = $variantData['combination'];
+                    if (is_string($combination)) {
+                        $combination = json_decode($combination, true) ?? [];
+                    }
+
                     $quantity = $variantData['quantity'] ?? 0;
                     $price = $variantData['price'] ?? $request->product_price;
                     $variantKey = $variantData['variant_key'];
                     $variantId = $variantData['variant_id'] ?? null;
 
-                    if ($variantId) {
+                    if ($variantId && in_array($variantId, $existingVariantIds)) {
                         // Update existing variant
                         $existingVariant = ProductVariant::where('variant_id', $variantId)->first();
                         if ($existingVariant) {

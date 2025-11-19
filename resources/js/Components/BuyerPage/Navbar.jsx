@@ -69,8 +69,12 @@ export function Navbar() {
                         href={route("homepage")}
                         className="flex items-center space-x-2"
                     >
-                        <div className="bg-green-600 text-white p-2 rounded-lg">
-                            <FaLeaf className="text-xl" />
+                        <div className="bg-emerald-50 p-2 rounded-lg flex items-center justify-center">
+                            <img
+                                src="../relove_market.png"
+                                alt="Relove Market Icon"
+                                className="w-7 h-7"
+                            />
                         </div>
                         <span className="text-xl font-bold text-gray-900">
                             Relove{" "}
@@ -340,8 +344,12 @@ export function Navbar() {
                                     className="flex items-center space-x-2"
                                     onClick={() => setIsOpen(false)}
                                 >
-                                    <div className="bg-green-600 text-white p-2 rounded-lg">
-                                        <FaLeaf className="text-xl" />
+                                    <div className="bg-emerald-50 p-2 rounded-lg flex items-center justify-center">
+                                        <img
+                                            src="../relove_market.png"
+                                            alt="Relove Market Icon"
+                                            className="w-6 h-6"
+                                        />
                                     </div>
                                     <span className="text-xl font-bold text-gray-900">
                                         Relove{" "}

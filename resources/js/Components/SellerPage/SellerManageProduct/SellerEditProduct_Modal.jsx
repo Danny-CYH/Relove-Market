@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
     X,
     Info,
@@ -19,11 +19,10 @@ export function SellerEditProduct_Modal({
     list_categories,
     onClose,
 }) {
-    const BASEURL = "http://127.0.0.1:8000/storage/";
     const [step, setStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Product fields - removed weight, manufacturer, brand, material, status
+    // Product fields
     const [productName, setProductName] = useState(product?.product_name || "");
     const [productDescription, setProductDescription] = useState(
         product?.product_description || ""
@@ -34,6 +33,9 @@ export function SellerEditProduct_Modal({
     const [productCondition, setProductCondition] = useState(
         product?.product_condition || ""
     );
+    const [productQuantity, setProductQuantity] = useState(
+        product?.product_quantity || "1"
+    );
     const [productStatus, setProductStatus] = useState(
         product?.product_status || "available"
     );
@@ -41,7 +43,15 @@ export function SellerEditProduct_Modal({
         product?.category_id || ""
     );
 
-    // Only variants state
+    // Options system (like Add Product modal)
+    const [productOptions, setProductOptions] = useState([
+        {
+            option_name: "",
+            option_values: [],
+            newValue: "",
+        },
+    ]);
+
     const [productVariants, setProductVariants] = useState([]);
 
     // Media states
@@ -61,29 +71,24 @@ export function SellerEditProduct_Modal({
 
     const conditionOptions = [
         {
-            value: "new",
+            value: "New",
             label: "Brand New",
             description: "Never used, with original tags and packaging",
         },
         {
-            value: "excellent",
+            value: "Excellent",
             label: "Excellent",
             description: "Lightly used, well maintained",
         },
         {
-            value: "good",
+            value: "Good",
             label: "Good",
             description: "Normal signs of use, fully functional",
         },
         {
-            value: "fair",
+            value: "Fair",
             label: "Fair",
             description: "Visible wear but still functional",
-        },
-        {
-            value: "poor",
-            label: "Poor",
-            description: "Heavily used, may need repairs",
         },
     ];
 
@@ -98,12 +103,70 @@ export function SellerEditProduct_Modal({
         { number: 1, title: "Basic", icon: "📝" },
         { number: 2, title: "Details", icon: "🔍" },
         { number: 3, title: "Features", icon: "⭐" },
-        { number: 4, title: "Variants", icon: "⚙️" },
+        { number: 4, title: "Options", icon: "⚙️" },
         { number: 5, title: "Media", icon: "🖼️" },
         { number: 6, title: "Review", icon: "👀" },
     ];
 
-    // Initialize form with product data
+    // Generate variants when options change (same as Add Product)
+    const generateVariants = (options) => {
+        if (options.length === 0) return [];
+
+        const optionGroups = options
+            .filter((opt) => opt.option_name && opt.option_values.length > 0)
+            .map((opt) => ({
+                name: opt.option_name,
+                values: opt.option_values.map((v) => v.value),
+            }));
+
+        if (optionGroups.length === 0) return [];
+
+        const generateCombinations = (groups, index = 0, current = {}) => {
+            if (index === groups.length) {
+                return [current];
+            }
+
+            const results = [];
+            const currentGroup = groups[index];
+
+            for (const value of currentGroup.values) {
+                const combination = {
+                    ...current,
+                    [currentGroup.name]: value,
+                };
+                results.push(
+                    ...generateCombinations(groups, index + 1, combination)
+                );
+            }
+
+            return results;
+        };
+
+        const combinations = generateCombinations(optionGroups);
+
+        return combinations.map((combination) => {
+            const variantKey = Object.values(combination).join("|");
+            const existingVariant = productVariants.find(
+                (v) => v.variant_key === variantKey
+            );
+
+            return {
+                variant_key: variantKey,
+                combination: combination,
+                quantity: existingVariant ? existingVariant.quantity : "0",
+                price: existingVariant
+                    ? existingVariant.price
+                    : productPrice || "0",
+            };
+        });
+    };
+
+    useEffect(() => {
+        const newVariants = generateVariants(productOptions);
+        setProductVariants(newVariants);
+    }, [productOptions]);
+
+    // Initialize form with product data - UPDATED
     useEffect(() => {
         if (product) {
             setProductName(product.product_name || "");
@@ -123,8 +186,51 @@ export function SellerEditProduct_Modal({
                 ]
             );
 
-            // Handle product variants
+            // Handle product variants - NEW APPROACH
             if (product.product_variant && product.product_variant.length > 0) {
+                // Extract options from existing variants
+                const existingCombinations = product.product_variant.map(
+                    (variant) =>
+                        typeof variant.variant_combination === "string"
+                            ? JSON.parse(variant.variant_combination)
+                            : variant.variant_combination
+                );
+
+                // Extract unique option names and values
+                const optionMap = new Map();
+                existingCombinations.forEach((combination) => {
+                    Object.entries(combination).forEach(([key, value]) => {
+                        if (!optionMap.has(key)) {
+                            optionMap.set(key, new Set());
+                        }
+                        optionMap.get(key).add(value);
+                    });
+                });
+
+                // Convert to productOptions format
+                const options = Array.from(optionMap.entries()).map(
+                    ([name, values], index) => ({
+                        option_name: name,
+                        option_values: Array.from(values).map((value) => ({
+                            value,
+                        })),
+                        newValue: "",
+                    })
+                );
+
+                setProductOptions(
+                    options.length > 0
+                        ? options
+                        : [
+                              {
+                                  option_name: "",
+                                  option_values: [],
+                                  newValue: "",
+                              },
+                          ]
+                );
+
+                // Set variants with existing data
                 setProductVariants(
                     product.product_variant.map((variant) => ({
                         variant_id: variant.variant_id,
@@ -141,15 +247,15 @@ export function SellerEditProduct_Modal({
                     }))
                 );
             } else {
-                // If no variants exist, create a default one
-                setProductVariants([
+                // If no variants exist, start with empty options
+                setProductOptions([
                     {
-                        variant_key: "default",
-                        combination: {},
-                        quantity: product.product_quantity?.toString() || "0",
-                        price: product.product_price || "0",
+                        option_name: "",
+                        option_values: [],
+                        newValue: "",
                     },
                 ]);
+                setProductVariants([]);
             }
 
             // Handle images and videos
@@ -173,7 +279,7 @@ export function SellerEditProduct_Modal({
             formData.append("product_status", productStatus);
             formData.append("product_condition", productCondition);
             formData.append("category_id", productCategories);
-            formData.append("product_status", "available"); // Default status
+            formData.append("product_quantity", productQuantity || "1"); // Add this line
 
             // Add key features (only non-empty ones)
             keyFeatures.forEach((feature, index) => {
@@ -189,40 +295,45 @@ export function SellerEditProduct_Modal({
                 }
             });
 
-            // Add product variants
-            productVariants.forEach((variant, index) => {
-                formData.append(
-                    `variants[${index}][combination]`,
-                    JSON.stringify(variant.combination)
-                );
-                formData.append(
-                    `variants[${index}][quantity]`,
-                    variant.quantity || "0"
-                );
-                formData.append(
-                    `variants[${index}][price]`,
-                    variant.price || productPrice
-                );
-                formData.append(
-                    `variants[${index}][variant_key]`,
-                    variant.variant_key
-                );
-
-                // Include variant_id for existing variants
-                if (variant.variant_id) {
+            // Add product variants - FIXED
+            if (productVariants.length > 0) {
+                productVariants.forEach((variant, index) => {
                     formData.append(
-                        `variants[${index}][variant_id]`,
-                        variant.variant_id
+                        `variants[${index}][combination]`,
+                        JSON.stringify(variant.combination || {})
                     );
-                }
-            });
+                    formData.append(
+                        `variants[${index}][quantity]`,
+                        variant.quantity?.toString() || "0"
+                    );
+                    formData.append(
+                        `variants[${index}][price]`,
+                        variant.price?.toString() || productPrice || "0"
+                    );
+                    formData.append(
+                        `variants[${index}][variant_key]`,
+                        variant.variant_key || `variant-${index}`
+                    );
 
-            // Calculate total quantity from variants
-            const totalQuantity = productVariants.reduce((total, variant) => {
-                return total + parseInt(variant.quantity || "0");
-            }, 0);
+                    // Include variant_id for existing variants
+                    if (variant.variant_id) {
+                        formData.append(
+                            `variants[${index}][variant_id]`,
+                            variant.variant_id
+                        );
+                    }
+                });
+            }
 
-            formData.append("product_quantity", totalQuantity);
+            // Calculate total quantity from variants or use default
+            const totalQuantity =
+                productVariants.length > 0
+                    ? productVariants.reduce((total, variant) => {
+                          return total + parseInt(variant.quantity || "0");
+                      }, 0)
+                    : productQuantity || 1;
+
+            formData.append("product_quantity", totalQuantity.toString());
 
             // Media handling
             newImages.forEach((img) => {
@@ -245,6 +356,15 @@ export function SellerEditProduct_Modal({
                 formData.append(`videos_to_delete[${index}]`, vidId);
             });
 
+            // Debug: Log form data before submission
+            console.log("Submitting form data:", {
+                product_id: product.product_id,
+                product_name: productName,
+                product_price: productPrice,
+                variants: productVariants,
+                total_quantity: totalQuantity,
+            });
+
             await onEdit(e, formData);
         } catch (error) {
             console.error("Error updating product:", error);
@@ -253,106 +373,85 @@ export function SellerEditProduct_Modal({
         }
     };
 
-    // Variant management functions
-    const addVariant = () => {
-        if (productVariants.length < 20) {
-            setProductVariants([
-                ...productVariants,
+    // Option management functions (from Add Product)
+    const addProductOption = () => {
+        if (productOptions.length < 5) {
+            setProductOptions([
+                ...productOptions,
                 {
-                    variant_key: `variant_${Date.now()}`,
-                    combination: {},
-                    quantity: "0",
-                    price: productPrice || "0",
+                    option_name: "",
+                    option_values: [],
+                    newValue: "",
                 },
             ]);
         }
     };
 
-    const updateVariantCombination = (variantIndex, key, value) => {
+    const updateProductOptionName = (index, value) => {
+        const newOptions = [...productOptions];
+        newOptions[index].option_name = value;
+        setProductOptions(newOptions);
+    };
+
+    const addOptionValue = (index) => {
+        const newOptions = [...productOptions];
+        const value = newOptions[index].newValue.trim();
+
+        if (
+            value !== "" &&
+            !newOptions[index].option_values.some((v) => v.value === value)
+        ) {
+            newOptions[index].option_values.push({
+                value: value,
+            });
+            newOptions[index].newValue = "";
+        }
+        setProductOptions(newOptions);
+    };
+
+    const removeOptionValue = (optionIndex, valueIndex) => {
+        const newOptions = [...productOptions];
+        newOptions[optionIndex].option_values = newOptions[
+            optionIndex
+        ].option_values.filter((_, i) => i !== valueIndex);
+        setProductOptions(newOptions);
+    };
+
+    const removeProductOption = (index) => {
+        if (productOptions.length > 1) {
+            setProductOptions(productOptions.filter((_, i) => i !== index));
+        }
+    };
+
+    const handleOptionValueKeyDown = (e, index) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            addOptionValue(index);
+        }
+    };
+
+    // Variant management functions (from Add Product)
+    const updateVariantQuantity = (variantKey, quantity) => {
         setProductVariants((prev) =>
-            prev.map((variant, index) =>
-                index === variantIndex
-                    ? {
-                          ...variant,
-                          combination: { ...variant.combination, [key]: value },
-                          variant_key:
-                              Object.values({
-                                  ...variant.combination,
-                                  [key]: value,
-                              }).join("|") || `variant_${Date.now()}`,
-                      }
+            prev.map((variant) =>
+                variant.variant_key === variantKey
+                    ? { ...variant, quantity }
                     : variant
             )
         );
     };
 
-    const removeVariantCombinationKey = (variantIndex, key) => {
+    const updateVariantPrice = (variantKey, price) => {
         setProductVariants((prev) =>
-            prev.map((variant, index) => {
-                if (index === variantIndex) {
-                    const newCombination = { ...variant.combination };
-                    delete newCombination[key];
-                    return {
-                        ...variant,
-                        combination: newCombination,
-                        variant_key:
-                            Object.values(newCombination).join("|") ||
-                            `variant_${Date.now()}`,
-                    };
-                }
-                return variant;
-            })
-        );
-    };
-
-    const addCombinationKey = (variantIndex, newKey) => {
-        if (newKey.trim()) {
-            setProductVariants((prev) =>
-                prev.map((variant, index) =>
-                    index === variantIndex
-                        ? {
-                              ...variant,
-                              combination: {
-                                  ...variant.combination,
-                                  [newKey.trim()]: "",
-                              },
-                              variant_key:
-                                  Object.values({
-                                      ...variant.combination,
-                                      [newKey.trim()]: "",
-                                  }).join("|") || `variant_${Date.now()}`,
-                          }
-                        : variant
-                )
-            );
-        }
-    };
-
-    const updateVariantQuantity = (variantIndex, quantity) => {
-        setProductVariants((prev) =>
-            prev.map((variant, index) =>
-                index === variantIndex ? { ...variant, quantity } : variant
+            prev.map((variant) =>
+                variant.variant_key === variantKey
+                    ? { ...variant, price }
+                    : variant
             )
         );
     };
 
-    const updateVariantPrice = (variantIndex, price) => {
-        setProductVariants((prev) =>
-            prev.map((variant, index) =>
-                index === variantIndex ? { ...variant, price } : variant
-            )
-        );
-    };
-
-    const removeVariant = (variantIndex) => {
-        if (productVariants.length > 1) {
-            setProductVariants(
-                productVariants.filter((_, i) => i !== variantIndex)
-            );
-        }
-    };
-
-    // Feature functions
+    // Feature functions (keep existing)
     const addFeature = () => {
         if (keyFeatures.length < 10) {
             setKeyFeatures([...keyFeatures, ""]);
@@ -389,7 +488,7 @@ export function SellerEditProduct_Modal({
         }
     };
 
-    // Media handlers
+    // Media handlers (keep existing)
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
         const newImages = files.map((file) => ({
@@ -521,7 +620,7 @@ export function SellerEditProduct_Modal({
                             onSubmit={handleSubmit}
                             className="space-y-4 sm:space-y-6"
                         >
-                            {/* Step 1: Basic Info */}
+                            {/* Step 1: Basic Info - Keep existing */}
                             {step === 1 && (
                                 <div className="space-y-4 sm:space-y-6">
                                     <div>
@@ -564,7 +663,7 @@ export function SellerEditProduct_Modal({
                                 </div>
                             )}
 
-                            {/* Step 2: Product Details */}
+                            {/* Step 2: Product Details - Keep existing */}
                             {step === 2 && (
                                 <div className="grid grid-cols-1 gap-4 sm:gap-6">
                                     <div>
@@ -634,7 +733,6 @@ export function SellerEditProduct_Modal({
                                         )}
                                     </div>
 
-                                    {/* Status Field - Restored */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Status *
@@ -679,7 +777,7 @@ export function SellerEditProduct_Modal({
                                 </div>
                             )}
 
-                            {/* Step 3: Features */}
+                            {/* Step 3: Features - Keep existing */}
                             {step === 3 && (
                                 <div className="space-y-4 sm:space-y-6">
                                     <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
@@ -826,7 +924,7 @@ export function SellerEditProduct_Modal({
                                 </div>
                             )}
 
-                            {/* Step 4: Variants */}
+                            {/* Step 4: Options - NEW from Add Product modal */}
                             {step === 4 && (
                                 <div className="space-y-4 sm:space-y-6">
                                     <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
@@ -840,34 +938,35 @@ export function SellerEditProduct_Modal({
                                                     Product Variants
                                                 </p>
                                                 <p className="text-xs text-blue-600">
-                                                    Manage your product variants
-                                                    directly. Each variant can
-                                                    have different combinations,
-                                                    quantities, and prices.
+                                                    Add options like Color,
+                                                    Size, etc. Set individual
+                                                    quantities and prices for
+                                                    each variant.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
 
+                                    {/* Options Configuration */}
                                     <div className="space-y-3">
-                                        {productVariants.map(
-                                            (variant, variantIndex) => (
+                                        {productOptions.map(
+                                            (option, optionIndex) => (
                                                 <div
-                                                    key={variantIndex}
+                                                    key={optionIndex}
                                                     className="border rounded-lg p-3 sm:p-4 bg-gray-50"
                                                 >
                                                     <div className="flex justify-between items-center mb-3">
                                                         <h4 className="font-semibold text-gray-800 text-sm">
-                                                            Variant{" "}
-                                                            {variantIndex + 1}
+                                                            Option{" "}
+                                                            {optionIndex + 1}
                                                         </h4>
-                                                        {productVariants.length >
+                                                        {productOptions.length >
                                                             1 && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() =>
-                                                                    removeVariant(
-                                                                        variantIndex
+                                                                    removeProductOption(
+                                                                        optionIndex
                                                                     )
                                                                 }
                                                                 className="text-red-600 hover:text-red-800 font-medium text-xs"
@@ -877,65 +976,59 @@ export function SellerEditProduct_Modal({
                                                         )}
                                                     </div>
 
-                                                    {/* Variant Combinations */}
                                                     <div className="mb-3">
                                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                            Variant Combinations
+                                                            Option Name *
                                                         </label>
-                                                        <div className="space-y-2">
-                                                            {Object.entries(
-                                                                variant.combination
-                                                            ).map(
+                                                        <input
+                                                            type="text"
+                                                            value={
+                                                                option.option_name
+                                                            }
+                                                            onChange={(e) =>
+                                                                updateProductOptionName(
+                                                                    optionIndex,
+                                                                    e.target
+                                                                        .value
+                                                                )
+                                                            }
+                                                            placeholder="e.g., Size, Color"
+                                                            className="text-black w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                                            required
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                            Option Values *
+                                                        </label>
+
+                                                        {/* Display existing option values */}
+                                                        <div className="space-y-2 mb-2">
+                                                            {option.option_values.map(
                                                                 (
-                                                                    [
-                                                                        key,
-                                                                        value,
-                                                                    ],
-                                                                    comboIndex
+                                                                    value,
+                                                                    valueIndex
                                                                 ) => (
                                                                     <div
                                                                         key={
-                                                                            comboIndex
+                                                                            valueIndex
                                                                         }
-                                                                        className="flex items-center gap-2"
+                                                                        className="flex items-center gap-2 bg-white p-2 rounded-lg border text-sm"
                                                                     >
-                                                                        <input
-                                                                            type="text"
-                                                                            value={
-                                                                                key
-                                                                            }
-                                                                            disabled
-                                                                            className="text-black w-24 px-2 py-1 border border-gray-300 rounded bg-gray-100 text-sm"
-                                                                            placeholder="Attribute"
-                                                                        />
-                                                                        <span className="text-gray-500">
-                                                                            :
-                                                                        </span>
-                                                                        <input
-                                                                            type="text"
-                                                                            value={
-                                                                                value
-                                                                            }
-                                                                            onChange={(
-                                                                                e
-                                                                            ) =>
-                                                                                updateVariantCombination(
-                                                                                    variantIndex,
-                                                                                    key,
-                                                                                    e
-                                                                                        .target
-                                                                                        .value
-                                                                                )
-                                                                            }
-                                                                            className="text-black flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-transparent text-sm"
-                                                                            placeholder="Value"
-                                                                        />
+                                                                        <div className="flex-1">
+                                                                            <span className="font-medium text-gray-700">
+                                                                                {
+                                                                                    value.value
+                                                                                }
+                                                                            </span>
+                                                                        </div>
                                                                         <button
                                                                             type="button"
                                                                             onClick={() =>
-                                                                                removeVariantCombinationKey(
-                                                                                    variantIndex,
-                                                                                    key
+                                                                                removeOptionValue(
+                                                                                    optionIndex,
+                                                                                    valueIndex
                                                                                 )
                                                                             }
                                                                             className="text-red-500 hover:text-red-700 p-1"
@@ -951,95 +1044,50 @@ export function SellerEditProduct_Modal({
                                                             )}
                                                         </div>
 
-                                                        {/* Add new combination key */}
-                                                        <div className="mt-2 flex gap-2">
+                                                        {/* Add new option value */}
+                                                        <div className="flex gap-2">
                                                             <input
                                                                 type="text"
-                                                                placeholder="New attribute (e.g., Color, Size)"
-                                                                className="text-black flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-transparent text-sm"
-                                                                onKeyDown={(
+                                                                value={
+                                                                    option.newValue
+                                                                }
+                                                                onChange={(
                                                                     e
                                                                 ) => {
-                                                                    if (
-                                                                        e.key ===
-                                                                        "Enter"
-                                                                    ) {
-                                                                        addCombinationKey(
-                                                                            variantIndex,
-                                                                            e
-                                                                                .target
-                                                                                .value
-                                                                        );
-                                                                        e.target.value =
-                                                                            "";
-                                                                    }
+                                                                    const newOptions =
+                                                                        [
+                                                                            ...productOptions,
+                                                                        ];
+                                                                    newOptions[
+                                                                        optionIndex
+                                                                    ].newValue =
+                                                                        e.target.value;
+                                                                    setProductOptions(
+                                                                        newOptions
+                                                                    );
                                                                 }}
+                                                                onKeyDown={(
+                                                                    e
+                                                                ) =>
+                                                                    handleOptionValueKeyDown(
+                                                                        e,
+                                                                        optionIndex
+                                                                    )
+                                                                }
+                                                                placeholder="Option value"
+                                                                className="text-black flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                                                             />
                                                             <button
                                                                 type="button"
-                                                                onClick={(
-                                                                    e
-                                                                ) => {
-                                                                    const input =
-                                                                        e.target
-                                                                            .previousElementSibling;
-                                                                    addCombinationKey(
-                                                                        variantIndex,
-                                                                        input.value
-                                                                    );
-                                                                    input.value =
-                                                                        "";
-                                                                }}
-                                                                className="px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 font-medium text-sm"
+                                                                onClick={() =>
+                                                                    addOptionValue(
+                                                                        optionIndex
+                                                                    )
+                                                                }
+                                                                className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium text-sm"
                                                             >
                                                                 Add
                                                             </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Quantity and Price */}
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        <div>
-                                                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                                Quantity *
-                                                            </label>
-                                                            <input
-                                                                type="text"
-                                                                value={
-                                                                    variant.quantity
-                                                                }
-                                                                onChange={(e) =>
-                                                                    updateVariantQuantity(
-                                                                        variantIndex,
-                                                                        e.target
-                                                                            .value
-                                                                    )
-                                                                }
-                                                                className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-transparent text-sm"
-                                                                placeholder="0"
-                                                                required
-                                                            />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                                                                Price (RM) *
-                                                            </label>
-                                                            <input
-                                                                type="text"
-                                                                value={
-                                                                    variant.price
-                                                                }
-                                                                onChange={(e) =>
-                                                                    updateVariantPrice(
-                                                                        variantIndex,
-                                                                        e.target
-                                                                            .value
-                                                                    )
-                                                                }
-                                                                className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-transparent text-sm"
-                                                                placeholder="0.00"
-                                                                required
-                                                            />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1047,37 +1095,134 @@ export function SellerEditProduct_Modal({
                                         )}
                                     </div>
 
-                                    {productVariants.length < 20 && (
+                                    {productOptions.length < 5 && (
                                         <button
                                             type="button"
-                                            onClick={addVariant}
-                                            className="w-full py-3 border-2 border-dashed border-gray-300 rounded text-gray-600 hover:text-indigo-600 hover:border-indigo-400 flex items-center justify-center text-sm"
+                                            onClick={addProductOption}
+                                            className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:text-indigo-600 hover:border-indigo-400 flex items-center justify-center text-sm"
                                         >
                                             <Plus size={16} className="mr-2" />
-                                            Add Another Variant
+                                            Add Another Option
                                         </button>
                                     )}
 
-                                    {/* Total Stock Summary */}
-                                    <div className="mt-3 p-2 bg-gray-50 rounded text-sm">
-                                        <p className="text-gray-600">
-                                            Total Stock:{" "}
-                                            {productVariants.reduce(
-                                                (sum, variant) =>
-                                                    sum +
-                                                    parseInt(
-                                                        variant.quantity || 0
-                                                    ),
-                                                0
-                                            )}{" "}
-                                            units across{" "}
-                                            {productVariants.length} variants
-                                        </p>
-                                    </div>
+                                    {/* Variants Display */}
+                                    {productVariants.length > 0 && (
+                                        <div className="mt-6">
+                                            <h3 className="text-base font-semibold text-gray-800 mb-3">
+                                                Product Variants (
+                                                {productVariants.length})
+                                            </h3>
+
+                                            <div className="space-y-3 max-h-64 overflow-y-auto">
+                                                {productVariants.map(
+                                                    (variant, index) => (
+                                                        <div
+                                                            key={
+                                                                variant.variant_key
+                                                            }
+                                                            className="border rounded-lg p-3 bg-white"
+                                                        >
+                                                            <div className="mb-2">
+                                                                <span className="font-medium text-gray-700 text-sm">
+                                                                    Variant{" "}
+                                                                    {index + 1}:
+                                                                </span>
+                                                                <span className="ml-1 text-gray-600 text-sm">
+                                                                    {Object.entries(
+                                                                        variant.combination
+                                                                    )
+                                                                        .map(
+                                                                            ([
+                                                                                key,
+                                                                                value,
+                                                                            ]) =>
+                                                                                `${key}: ${value}`
+                                                                        )
+                                                                        .join(
+                                                                            ", "
+                                                                        )}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <div>
+                                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                                        Quantity
+                                                                        *
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={
+                                                                            variant.quantity
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            updateVariantQuantity(
+                                                                                variant.variant_key,
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                                                        placeholder="0"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                                                        Price
+                                                                        (RM) *
+                                                                    </label>
+                                                                    <input
+                                                                        type="text"
+                                                                        value={
+                                                                            variant.price
+                                                                        }
+                                                                        onChange={(
+                                                                            e
+                                                                        ) =>
+                                                                            updateVariantPrice(
+                                                                                variant.variant_key,
+                                                                                e
+                                                                                    .target
+                                                                                    .value
+                                                                            )
+                                                                        }
+                                                                        className="text-black w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 focus:border-transparent text-sm"
+                                                                        placeholder="0.00"
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+
+                                            <div className="mt-3 p-2 bg-gray-50 rounded text-sm">
+                                                <p className="text-gray-600">
+                                                    Total Stock:{" "}
+                                                    {productVariants.reduce(
+                                                        (sum, variant) =>
+                                                            sum +
+                                                            parseInt(
+                                                                variant.quantity ||
+                                                                    0
+                                                            ),
+                                                        0
+                                                    )}{" "}
+                                                    units
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
-                            {/* Step 5: Media */}
+                            {/* Step 5: Media - Keep existing */}
                             {step === 5 && (
                                 <div className="space-y-4 sm:space-y-6">
                                     <div className="bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
@@ -1114,7 +1259,10 @@ export function SellerEditProduct_Modal({
                                                         src={
                                                             img.file
                                                                 ? img.preview
-                                                                : `${BASEURL}${img.image_path}`
+                                                                : import.meta
+                                                                      .env
+                                                                      .VITE_BASE_URL +
+                                                                  img.image_path
                                                         }
                                                         alt=""
                                                         className="w-full h-full object-cover rounded border cursor-pointer"
@@ -1224,7 +1372,10 @@ export function SellerEditProduct_Modal({
                                                                     src={
                                                                         video.file
                                                                             ? video.preview
-                                                                            : `${BASEURL}${video.video_path}`
+                                                                            : import.meta
+                                                                                  .env
+                                                                                  .VITE_BASE_URL +
+                                                                              video.video_path
                                                                     }
                                                                     className="w-full h-32 object-cover"
                                                                     controls
@@ -1292,7 +1443,7 @@ export function SellerEditProduct_Modal({
                                 </div>
                             )}
 
-                            {/* Step 6: Review */}
+                            {/* Step 6: Review - Keep existing */}
                             {step === 6 && (
                                 <div className="space-y-4 sm:space-y-6">
                                     <h3 className="text-lg font-semibold text-gray-800 border-b pb-2">
@@ -1487,7 +1638,10 @@ export function SellerEditProduct_Modal({
                                                                     src={
                                                                         img.file
                                                                             ? img.preview
-                                                                            : `${BASEURL}${img.image_path}`
+                                                                            : import.meta
+                                                                                  .env
+                                                                                  .VITE_BASE_URL +
+                                                                              img.image_path
                                                                     }
                                                                     alt=""
                                                                     className="w-12 h-12 object-cover rounded border"
@@ -1600,7 +1754,10 @@ export function SellerEditProduct_Modal({
                                 src={
                                     allImages[currentImageIndex].file
                                         ? allImages[currentImageIndex].preview
-                                        : `${BASEURL}${allImages[currentImageIndex].image_path}`
+                                        : `${import.meta.env.VITE_BASE_URL}${
+                                              allImages[currentImageIndex]
+                                                  .image_path
+                                          }`
                                 }
                                 alt=""
                                 className="w-full h-auto max-h-[70vh] object-contain rounded"

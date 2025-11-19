@@ -18,13 +18,15 @@ import {
     Volume2,
     VolumeX,
     MapPin,
+    ChevronLeft,
+    ChevronRightIcon,
 } from "lucide-react";
 
 import { FaStar } from "react-icons/fa";
 
 import { Link, router, usePage } from "@inertiajs/react";
 
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useState, useRef, useMemo } from "react";
 
 import axios from "axios";
 
@@ -175,6 +177,370 @@ export default function ProductDetails({ product_info }) {
             }
         }
     };
+
+    // Carousel Component
+    // Carousel Component
+    function ProductCarousel({ products, title }) {
+        const [currentIndex, setCurrentIndex] = useState(0);
+        const [touchStart, setTouchStart] = useState(null);
+        const [touchEnd, setTouchEnd] = useState(null);
+        const carouselRef = useRef(null);
+        const [itemsToShow, setItemsToShow] = useState(4);
+
+        // Remove duplicates from products array
+        const uniqueProducts = useMemo(() => {
+            const seen = new Set();
+            return products.filter((product) => {
+                const productData = product.product || product;
+                const productId = productData.product_id;
+
+                if (seen.has(productId)) {
+                    console.warn("Duplicate product found:", productId);
+                    return false;
+                }
+
+                seen.add(productId);
+                return true;
+            });
+        }, [products]);
+
+        // Update items to show based on screen size
+        useEffect(() => {
+            const updateItemsToShow = () => {
+                const screenWidth = window.innerWidth;
+                if (screenWidth >= 1536) return 5; // 2xl screens
+                if (screenWidth >= 1280) return 4; // xl screens
+                if (screenWidth >= 1024) return 3; // lg screens
+                if (screenWidth >= 768) return 2; // md screens
+                return 1; // mobile
+            };
+
+            const handleResize = () => {
+                setItemsToShow(updateItemsToShow());
+            };
+
+            handleResize(); // Set initial value
+            window.addEventListener("resize", handleResize);
+
+            return () => window.removeEventListener("resize", handleResize);
+        }, []);
+
+        // Minimum swipe distance
+        const minSwipeDistance = 50;
+
+        const onTouchStart = (e) => {
+            setTouchEnd(null);
+            setTouchStart(e.targetTouches[0].clientX);
+        };
+
+        const onTouchMove = (e) => setTouchEnd(e.targetTouches[0].clientX);
+
+        const onTouchEnd = () => {
+            if (!touchStart || !touchEnd) return;
+            const distance = touchStart - touchEnd;
+            const isLeftSwipe = distance > minSwipeDistance;
+            const isRightSwipe = distance < -minSwipeDistance;
+
+            if (isLeftSwipe) {
+                nextSlide();
+            } else if (isRightSwipe) {
+                prevSlide();
+            }
+        };
+
+        const nextSlide = () => {
+            if (uniqueProducts.length <= itemsToShow) return;
+            setCurrentIndex((prevIndex) => {
+                const nextIndex = prevIndex + 1;
+                const maxIndex = uniqueProducts.length - itemsToShow;
+                return nextIndex > maxIndex ? 0 : nextIndex;
+            });
+        };
+
+        const prevSlide = () => {
+            if (uniqueProducts.length <= itemsToShow) return;
+            setCurrentIndex((prevIndex) => {
+                const prevIndexNew = prevIndex - 1;
+                return prevIndexNew < 0
+                    ? uniqueProducts.length - itemsToShow
+                    : prevIndexNew;
+            });
+        };
+
+        const goToSlide = (index) => {
+            setCurrentIndex(index);
+        };
+
+        // Get visible products for current slide
+        const getVisibleProducts = () => {
+            if (uniqueProducts.length <= itemsToShow) {
+                return uniqueProducts;
+            }
+
+            return uniqueProducts.slice(
+                currentIndex,
+                currentIndex + itemsToShow
+            );
+        };
+
+        // Auto-play carousel only if we have multiple slides
+        useEffect(() => {
+            if (uniqueProducts.length <= itemsToShow) return;
+
+            const interval = setInterval(() => {
+                nextSlide();
+            }, 5000);
+
+            return () => clearInterval(interval);
+        }, [uniqueProducts.length, itemsToShow, currentIndex]);
+
+        const visibleProducts = getVisibleProducts();
+        const totalSlides = Math.max(
+            1,
+            uniqueProducts.length - itemsToShow + 1
+        );
+        const canNavigate = uniqueProducts.length > itemsToShow;
+
+        if (!uniqueProducts || uniqueProducts.length === 0) {
+            return (
+                <div className="mt-8 lg:mt-12 text-center py-8">
+                    <p className="text-gray-500 mb-4">
+                        No similar products available at the moment
+                    </p>
+                    <Link href={route("shopping")}>
+                        <button className="text-blue-600 hover:text-blue-800 font-medium">
+                            Explore More Products →
+                        </button>
+                    </Link>
+                </div>
+            );
+        }
+
+        return (
+            <div className="mt-8 lg:mt-12">
+                <div className="flex items-center justify-between mb-4 lg:mb-6">
+                    <h2 className="text-xl lg:text-2xl text-black font-bold">
+                        {title}
+                    </h2>
+
+                    {/* Navigation Controls */}
+                    {canNavigate && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={prevSlide}
+                                className="p-2 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm"
+                            >
+                                <ChevronLeft
+                                    size={20}
+                                    className="text-gray-600"
+                                />
+                            </button>
+                            <button
+                                onClick={nextSlide}
+                                className="p-2 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm"
+                            >
+                                <ChevronRightIcon
+                                    size={20}
+                                    className="text-gray-600"
+                                />
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Carousel Container */}
+                <div
+                    ref={carouselRef}
+                    className="relative"
+                    onTouchStart={onTouchStart}
+                    onTouchMove={onTouchMove}
+                    onTouchEnd={onTouchEnd}
+                >
+                    {/* Products Grid - Responsive columns */}
+                    <div
+                        className={`grid grid-cols-1 ${
+                            itemsToShow >= 2 ? "sm:grid-cols-2" : ""
+                        } ${itemsToShow >= 3 ? "lg:grid-cols-3" : ""} ${
+                            itemsToShow >= 4 ? "xl:grid-cols-4" : ""
+                        } ${
+                            itemsToShow >= 5 ? "2xl:grid-cols-5" : ""
+                        } gap-3 lg:gap-4`}
+                    >
+                        {visibleProducts.map((rec) => {
+                            const productData = rec.product || rec;
+                            const rating =
+                                productData?.ratings?.reduce(
+                                    (acc, curr) => acc + curr.rating,
+                                    0
+                                ) / productData?.ratings?.length || 0;
+                            const isInStock =
+                                (productData?.product_quantity || 0) > 0;
+                            const stockQuantity =
+                                productData?.product_quantity || 0;
+                            const isNewProduct =
+                                productData?.created_at &&
+                                Date.now() -
+                                    new Date(productData.created_at).getTime() <
+                                    7 * 24 * 60 * 60 * 1000;
+
+                            return (
+                                <Link
+                                    href={route(
+                                        "product-details",
+                                        productData.product_id
+                                    )}
+                                    key={`${productData.product_id}-${
+                                        rec.similarity || Math.random()
+                                    }`}
+                                    className="block"
+                                >
+                                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 group h-full flex flex-col">
+                                        {/* Image with Badges */}
+                                        <div className="relative flex-shrink-0">
+                                            <img
+                                                src={
+                                                    productData
+                                                        ?.product_image?.[0]
+                                                        ?.image_path
+                                                        ? import.meta.env
+                                                              .VITE_BASE_URL +
+                                                          productData
+                                                              .product_image[0]
+                                                              .image_path
+                                                        : "/placeholder.png"
+                                                }
+                                                alt={
+                                                    productData?.product_name ||
+                                                    ""
+                                                }
+                                                className="w-full h-32 sm:h-40 lg:h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                                                loading="lazy"
+                                            />
+
+                                            {/* Badges */}
+                                            <div className="absolute top-2 left-2 flex flex-col gap-1">
+                                                {isNewProduct && (
+                                                    <div className="bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                                        NEW
+                                                    </div>
+                                                )}
+                                                {!isInStock && (
+                                                    <div className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                                        SOLD
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Product Info */}
+                                        <div className="p-3 flex-1 flex flex-col">
+                                            <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-2 leading-tight flex-1">
+                                                {productData?.product_name}
+                                            </h3>
+
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center space-x-1">
+                                                    <div className="flex">
+                                                        {[1, 2, 3, 4, 5].map(
+                                                            (star) => (
+                                                                <FaStar
+                                                                    key={star}
+                                                                    className={`w-3 h-3 ${
+                                                                        star <=
+                                                                        Math.round(
+                                                                            rating
+                                                                        )
+                                                                            ? "text-yellow-400"
+                                                                            : "text-gray-300"
+                                                                    }`}
+                                                                />
+                                                            )
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs text-gray-600 font-medium">
+                                                        {rating.toFixed(1)}
+                                                    </span>
+                                                </div>
+                                                <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded truncate max-w-[80px]">
+                                                    {productData?.category
+                                                        ?.category_name ||
+                                                        "General"}
+                                                </span>
+                                            </div>
+
+                                            <div className="flex items-center justify-between mt-auto">
+                                                <span className="text-lg font-bold text-green-700">
+                                                    RM{" "}
+                                                    {productData?.product_price}
+                                                </span>
+                                                <span className="text-xs font-bold text-gray-900">
+                                                    Sold:{" "}
+                                                    {productData.order_items
+                                                        ?.length || 0}
+                                                </span>
+                                            </div>
+
+                                            {/* Stock Status */}
+                                            <div className="mt-2">
+                                                <span
+                                                    className={`text-xs font-medium ${
+                                                        isInStock
+                                                            ? "text-green-600"
+                                                            : "text-red-600"
+                                                    }`}
+                                                >
+                                                    {isInStock
+                                                        ? `${stockQuantity} in stock`
+                                                        : "Out of stock"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+
+                    {/* Dots Indicator */}
+                    {canNavigate && totalSlides > 1 && (
+                        <div className="flex justify-center mt-6 space-x-2">
+                            {Array.from({ length: totalSlides }).map(
+                                (_, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => goToSlide(index)}
+                                        className={`w-2 h-2 rounded-full transition-all ${
+                                            index === currentIndex
+                                                ? "bg-blue-600 w-4"
+                                                : "bg-gray-300 hover:bg-gray-400"
+                                        }`}
+                                        aria-label={`Go to slide ${index + 1}`}
+                                    />
+                                )
+                            )}
+                        </div>
+                    )}
+
+                    {/* Slide Counter */}
+                    {canNavigate && (
+                        <div className="text-center mt-3 text-sm text-gray-500">
+                            Slide {currentIndex + 1} of {totalSlides}
+                        </div>
+                    )}
+                </div>
+
+                {/* Show all products notice when there are many */}
+                {uniqueProducts.length >= 8 && (
+                    <div className="text-center mt-4">
+                        <p className="text-sm text-gray-600">
+                            Showing {Math.min(uniqueProducts.length, 10)} of
+                            many similar products
+                        </p>
+                    </div>
+                )}
+            </div>
+        );
+    }
 
     // Video controls
     const toggleVideoPlay = () => {
@@ -1825,159 +2191,10 @@ export default function ProductDetails({ product_info }) {
                 </div>
 
                 {/* Related Products */}
-                {recommendations &&
-                    (recommendations.length > 0 ? (
-                        <div className="mt-8 lg:mt-12">
-                            <h2 className="text-xl lg:text-2xl text-black font-bold mb-4 lg:mb-6">
-                                You Might Also Like
-                            </h2>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
-                                {recommendations.map((product) => {
-                                    const productData =
-                                        product.product || product;
-                                    const rating =
-                                        productData?.ratings?.[0]?.rating || 0;
-                                    const isInStock =
-                                        (productData?.product_quantity || 0) >
-                                        0;
-                                    const stockQuantity =
-                                        productData?.product_quantity || 0;
-                                    const isNewProduct =
-                                        productData?.created_at &&
-                                        Date.now() -
-                                            new Date(
-                                                productData.created_at
-                                            ).getTime() <
-                                            7 * 24 * 60 * 60 * 1000;
-
-                                    return (
-                                        <Link
-                                            href={route(
-                                                "product-details",
-                                                productData.product_id
-                                            )}
-                                            key={productData.product_id}
-                                            className="block"
-                                        >
-                                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-300 group">
-                                                {/* Image with Badges */}
-                                                <div className="relative">
-                                                    <img
-                                                        src={
-                                                            productData
-                                                                ?.product_image?.[0]
-                                                                ?.image_path
-                                                                ? import.meta
-                                                                      .env
-                                                                      .VITE_BASE_URL +
-                                                                  productData
-                                                                      .product_image[0]
-                                                                      .image_path
-                                                                : "/placeholder.png"
-                                                        }
-                                                        alt={
-                                                            productData?.product_name ||
-                                                            ""
-                                                        }
-                                                        className="w-full h-32 object-cover"
-                                                    />
-
-                                                    {/* Badges */}
-                                                    <div className="absolute top-2 left-2 flex gap-1">
-                                                        {isNewProduct && (
-                                                            <div className="bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-                                                                NEW
-                                                            </div>
-                                                        )}
-                                                        {!isInStock && (
-                                                            <div className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-                                                                SOLD
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                {/* Compact Info */}
-                                                <div className="p-3">
-                                                    <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-2 leading-tight">
-                                                        {
-                                                            productData?.product_name
-                                                        }
-                                                    </h3>
-
-                                                    <div className="flex flex-col md:flex-row md:items-center justify-between mb-2">
-                                                        <div className="flex items-center space-x-1">
-                                                            <div className="flex">
-                                                                {[
-                                                                    1, 2, 3, 4,
-                                                                    5,
-                                                                ].map(
-                                                                    (star) => (
-                                                                        <FaStar
-                                                                            key={
-                                                                                star
-                                                                            }
-                                                                            className={`w-3 h-3 ${
-                                                                                star <=
-                                                                                Math.round(
-                                                                                    rating
-                                                                                )
-                                                                                    ? "text-yellow-400"
-                                                                                    : "text-gray-300"
-                                                                            }`}
-                                                                        />
-                                                                    )
-                                                                )}
-                                                            </div>
-                                                            <span className="text-xs text-gray-600 font-medium">
-                                                                {rating.toFixed(
-                                                                    1
-                                                                )}
-                                                            </span>
-                                                        </div>
-                                                        <span className="text-xs font-bold mt-2 md:mt-0 text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                                                            {productData
-                                                                ?.category
-                                                                ?.category_name ||
-                                                                "General"}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-lg font-bold text-green-700">
-                                                            RM{" "}
-                                                            {
-                                                                productData?.product_price
-                                                            }
-                                                        </span>
-                                                        <span className="text-xs font-bold text-gray-900">
-                                                            Sold:
-                                                            {
-                                                                productData
-                                                                    .order_items
-                                                                    .length
-                                                            }
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="mt-8 lg:mt-12 text-center py-8">
-                            <p className="text-gray-500 mb-4">
-                                No similar products available at the moment
-                            </p>
-                            <Link href={route("shopping")}>
-                                <button className="text-blue-600 hover:text-blue-800 font-medium">
-                                    Explore More Products →
-                                </button>
-                            </Link>
-                        </div>
-                    ))}
+                <ProductCarousel
+                    products={recommendations}
+                    title={"You Might Also Like"}
+                />
             </div>
 
             {/* Modals */}

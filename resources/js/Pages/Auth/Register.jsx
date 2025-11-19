@@ -1,21 +1,26 @@
 import { Footer } from "@/Components/BuyerPage/Footer";
 import { Navbar } from "@/Components/BuyerPage/Navbar";
+import { TermsPrivacyModal } from "@/Components/Auth/Register/TermsPrivacyModal";
+import { PasswordRequirementsModal } from "@/Components/Auth/Register/PasswordRequirementsModal";
+import { EmailVerificationModal } from "@/Components/Auth/Register/EmailVerificationModal";
+
 import TextInput from "@/Components/TextInput";
+
 import { Link, useForm, usePage } from "@inertiajs/react";
+
 import { useEffect, useState } from "react";
+
 import {
     FaEnvelope,
     FaLock,
     FaUser,
-    FaArrowLeft,
-    FaGoogle,
-    FaFacebook,
     FaEye,
     FaEyeSlash,
     FaCheck,
     FaTimes,
     FaInfoCircle,
 } from "react-icons/fa";
+
 import Swal from "sweetalert2";
 
 // SweetAlert configuration
@@ -92,164 +97,6 @@ const getPasswordStrengthText = (strength) => {
     return { text: "Strong", color: "text-green-600" };
 };
 
-// Terms and Privacy Modal Component
-const TermsPrivacyModal = ({ isOpen, onClose, modalType }) => {
-    if (!isOpen) return null;
-
-    const modalContent = {
-        terms: {
-            title: "Terms of Service",
-            content: (
-                <div className="space-y-4">
-                    <p className="text-gray-600">
-                        Welcome to Relove Market. By accessing or using our
-                        platform, you agree to be bound by these Terms of
-                        Service.
-                    </p>
-                    <div className="space-y-3">
-                        <h4 className="font-medium text-gray-900">
-                            User Responsibilities
-                        </h4>
-                        <p className="text-gray-600">
-                            You are responsible for maintaining the
-                            confidentiality of your account and password and for
-                            restricting access to your computer.
-                        </p>
-                        <h4 className="font-medium text-gray-900">
-                            Service Modifications
-                        </h4>
-                        <p className="text-gray-600">
-                            We reserve the right to modify or discontinue,
-                            temporarily or permanently, the service with or
-                            without notice.
-                        </p>
-                        <h4 className="font-medium text-gray-900">
-                            User Conduct
-                        </h4>
-                        <p className="text-gray-600">
-                            You agree not to use the service for any illegal
-                            purpose or in any way that violates these terms.
-                        </p>
-                    </div>
-                </div>
-            ),
-        },
-        privacy: {
-            title: "Privacy Policy",
-            content: (
-                <div className="space-y-4">
-                    <p className="text-gray-600">
-                        Your privacy is important to us. This Privacy Policy
-                        explains how we collect, use, and protect your personal
-                        information.
-                    </p>
-                    <div className="space-y-3">
-                        <h4 className="font-medium text-gray-900">
-                            Information We Collect
-                        </h4>
-                        <p className="text-gray-600">
-                            We collect information you provide directly to us,
-                            such as when you create an account, use our
-                            services, or contact us for support.
-                        </p>
-                        <h4 className="font-medium text-gray-900">
-                            How We Use Information
-                        </h4>
-                        <p className="text-gray-600">
-                            We use the information we collect to provide,
-                            maintain, and improve our services, and to develop
-                            new ones.
-                        </p>
-                        <h4 className="font-medium text-gray-900">
-                            Data Security
-                        </h4>
-                        <p className="text-gray-600">
-                            We implement appropriate technical and
-                            organizational measures to protect your personal
-                            information against unauthorized access.
-                        </p>
-                    </div>
-                </div>
-            ),
-        },
-    };
-
-    const currentModal = modalContent[modalType];
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black bg-opacity-50"
-                onClick={onClose}
-            ></div>
-
-            {/* Modal Container */}
-            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden">
-                {/* Modal Header */}
-                <div className="flex items-center justify-between p-6 border-b">
-                    <h2 className="text-xl font-semibold text-gray-900">
-                        {currentModal.title}
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                        <svg
-                            className="w-6 h-6"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
-                    </button>
-                </div>
-
-                {/* Modal Content */}
-                <div className="p-6 overflow-y-auto max-h-[60vh]">
-                    {currentModal.content}
-
-                    {/* Contact Information */}
-                    <section className="bg-gray-50 p-4 rounded-lg mt-6">
-                        <h4 className="font-medium text-gray-900 mb-2">
-                            Questions?
-                        </h4>
-                        <p className="text-gray-600 text-sm">
-                            If you have any questions about our{" "}
-                            {modalType === "terms"
-                                ? "Terms of Service"
-                                : "Privacy Policy"}
-                            , please contact us at{" "}
-                            <a
-                                href="mailto:support@relovemarket.com"
-                                className="text-blue-600 hover:text-blue-500"
-                            >
-                                support@relovemarket.com
-                            </a>
-                        </p>
-                    </section>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="flex justify-end p-6 border-t bg-gray-50">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-                    >
-                        I Understand
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
 export default function Register() {
     const { flash } = usePage().props;
     const [showEmailVerificationModal, setShowEmailVerificationModal] =
@@ -260,6 +107,10 @@ export default function Register() {
         useState(false);
     const [showTermsModal, setShowTermsModal] = useState(false);
     const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+    const [nameValidation, setNameValidation] = useState({
+        isValid: true,
+        message: "",
+    });
     const [passwordValidation, setPasswordValidation] = useState({
         isValid: false,
         validations: {
@@ -278,6 +129,7 @@ export default function Register() {
         post: postRegister,
         processing: processingRegister,
         reset,
+        errors: registerErrors,
     } = useForm({
         name: "",
         email: "",
@@ -294,21 +146,50 @@ export default function Register() {
         user_email: "",
     });
 
+    // Handle flash messages and modal display
     useEffect(() => {
-        if (flash?.successMessage) {
-            showAlert("success", "Success!", flash.successMessage);
-        }
-
         if (flash?.errorMessage) {
             showAlert("error", "Error!", flash.errorMessage);
         }
 
-        if (flash?.showVerificationModal) {
+        // Check if we should show the verification modal
+        if (flash?.successMessage) {
             setVerifyData("user_email", registerData.email);
-            reset("name", "email", "password", "password_confirmation");
             setShowEmailVerificationModal(true);
+
+            // Reset form fields but keep the email for verification
+            reset("password", "password_confirmation", "name");
         }
     }, [flash]);
+
+    useEffect(() => {
+        if (registerData.name) {
+            const nameRegex = /^[a-zA-Z\s]*$/;
+            const isValid = nameRegex.test(registerData.name);
+
+            if (!isValid) {
+                setNameValidation({
+                    isValid: false,
+                    message: "Name should only contain letters and spaces",
+                });
+            } else if (registerData.name.trim().length < 2) {
+                setNameValidation({
+                    isValid: false,
+                    message: "Name should be at least 2 characters long",
+                });
+            } else {
+                setNameValidation({
+                    isValid: true,
+                    message: "",
+                });
+            }
+        } else {
+            setNameValidation({
+                isValid: true,
+                message: "",
+            });
+        }
+    }, [registerData.name]);
 
     // Validate password on change
     useEffect(() => {
@@ -329,15 +210,6 @@ export default function Register() {
             });
         }
     }, [registerData.password]);
-
-    // Modal functions
-    const openTermsModal = () => {
-        setShowTermsModal(true);
-    };
-
-    const openPrivacyModal = () => {
-        setShowPrivacyModal(true);
-    };
 
     const closeTermsModal = () => {
         setShowTermsModal(false);
@@ -362,6 +234,33 @@ export default function Register() {
                 "Missing Information",
                 "Please fill in all required fields"
             );
+            return;
+        }
+
+        // Validate name - no numbers or symbols allowed
+        const nameRegex = /^[a-zA-Z\s]*$/; // Only letters and spaces allowed
+        if (!nameRegex.test(registerData.name)) {
+            showAlert(
+                "warning",
+                "Invalid Name",
+                "Name should only contain letters and spaces. Numbers and symbols are not allowed."
+            );
+            return;
+        }
+
+        // Validate name length
+        if (registerData.name.trim().length < 2) {
+            showAlert(
+                "warning",
+                "Invalid Name",
+                "Name should be at least 2 characters long."
+            );
+            return;
+        }
+
+        // Validate name doesn't contain only spaces
+        if (registerData.name.trim() === "") {
+            showAlert("warning", "Invalid Name", "Please enter a valid name.");
             return;
         }
 
@@ -390,17 +289,25 @@ export default function Register() {
             "Please wait while we create your account..."
         );
 
+        // Use Inertia's post method with proper configuration
         postRegister(route("register"), {
             preserveState: true,
             preserveScroll: true,
             onSuccess: (page) => {
                 loadingAlert.close();
 
-                // Check if the server sent showVerificationModal in the response
-                if (page.props.showVerificationModal) {
+                // Check if the response indicates we should show verification modal
+                if (page.props.flash?.successMessage) {
                     setVerifyData("user_email", registerData.email);
-                    reset("name", "email", "password", "password_confirmation");
                     setShowEmailVerificationModal(true);
+
+                    // Clear the form but keep email for reference
+                    setRegisterData({
+                        ...registerData,
+                        password: "",
+                        password_confirmation: "",
+                        name: "",
+                    });
                 }
             },
             onError: (errors) => {
@@ -466,25 +373,6 @@ export default function Register() {
         }
     };
 
-    const showPasswordRequirementsModal = () => {
-        setShowPasswordRequirements(true);
-    };
-
-    const PasswordRequirement = ({ met, text }) => (
-        <div
-            className={`flex items-center text-sm ${
-                met ? "text-green-600" : "text-gray-500"
-            }`}
-        >
-            {met ? (
-                <FaCheck className="w-4 h-4 mr-2" />
-            ) : (
-                <FaTimes className="w-4 h-4 mr-2" />
-            )}
-            {text}
-        </div>
-    );
-
     const { text: strengthText, color: strengthColor } =
         getPasswordStrengthText(passwordValidation.strength);
 
@@ -508,6 +396,7 @@ export default function Register() {
                         </div>
 
                         <form onSubmit={register_submit} className="space-y-6">
+                            {/* Form fields remain the same */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Full Name
@@ -529,10 +418,27 @@ export default function Register() {
                                                 e.target.value
                                             )
                                         }
-                                        className="pl-10 w-full"
+                                        className={`pl-10 w-full ${
+                                            registerData.name &&
+                                            !nameValidation.isValid
+                                                ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                                                : ""
+                                        }`}
                                         required
                                     />
                                 </div>
+                                {registerData.name &&
+                                    !nameValidation.isValid && (
+                                        <p className="text-red-600 text-sm mt-1 flex items-center">
+                                            <FaTimes className="w-3 h-3 mr-1" />
+                                            {nameValidation.message}
+                                        </p>
+                                    )}
+                                {registerErrors.name && (
+                                    <p className="text-red-600 text-sm mt-1">
+                                        {registerErrors.name}
+                                    </p>
+                                )}
                             </div>
 
                             <div>
@@ -560,8 +466,14 @@ export default function Register() {
                                         required
                                     />
                                 </div>
+                                {registerErrors.email && (
+                                    <p className="text-red-600 text-sm mt-1">
+                                        {registerErrors.email}
+                                    </p>
+                                )}
                             </div>
 
+                            {/* Password and other fields remain the same */}
                             <div>
                                 <div className="flex items-center justify-between mb-2">
                                     <label className="block text-sm font-medium text-gray-700">
@@ -569,7 +481,9 @@ export default function Register() {
                                     </label>
                                     <button
                                         type="button"
-                                        onClick={showPasswordRequirementsModal}
+                                        onClick={() =>
+                                            setShowPasswordRequirements(true)
+                                        }
                                         className="text-blue-600 hover:text-blue-500 text-sm font-medium flex items-center"
                                     >
                                         <FaInfoCircle className="w-3 h-3 mr-1" />
@@ -611,8 +525,13 @@ export default function Register() {
                                         )}
                                     </button>
                                 </div>
+                                {registerErrors.password && (
+                                    <p className="text-red-600 text-sm mt-1">
+                                        {registerErrors.password}
+                                    </p>
+                                )}
 
-                                {/* Compact Password Strength Indicator */}
+                                {/* Password strength indicator */}
                                 {registerData.password && (
                                     <div className="mt-2">
                                         <div className="flex justify-between items-center mb-1">
@@ -722,7 +641,7 @@ export default function Register() {
                                     I agree to the{" "}
                                     <button
                                         type="button"
-                                        onClick={openTermsModal}
+                                        onClick={() => setShowTermsModal(true)}
                                         className="text-blue-600 hover:text-blue-500 underline cursor-pointer"
                                     >
                                         Terms of Service
@@ -730,7 +649,9 @@ export default function Register() {
                                     and{" "}
                                     <button
                                         type="button"
-                                        onClick={openPrivacyModal}
+                                        onClick={() =>
+                                            setShowPrivacyModal(true)
+                                        }
                                         className="text-blue-600 hover:text-blue-500 underline cursor-pointer"
                                     >
                                         Privacy Policy
@@ -850,6 +771,8 @@ export default function Register() {
                 onClose={closeTermsModal}
                 modalType="terms"
             />
+
+            {/* Privacy Policy Modal */}
             <TermsPrivacyModal
                 isOpen={showPrivacyModal}
                 onClose={closePrivacyModal}
@@ -858,226 +781,23 @@ export default function Register() {
 
             {/* Password Requirements Modal */}
             {showPasswordRequirements && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-full p-4 text-center">
-                        <div
-                            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                            onClick={() => setShowPasswordRequirements(false)}
-                        ></div>
-
-                        <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
-                            <div className="absolute top-0 right-0 pt-4 pr-4">
-                                <button
-                                    type="button"
-                                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                                    onClick={() =>
-                                        setShowPasswordRequirements(false)
-                                    }
-                                >
-                                    <span className="sr-only">Close</span>
-                                    <svg
-                                        className="h-6 w-6"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div className="sm:flex sm:items-start">
-                                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                                    <FaLock className="h-6 w-6 text-blue-600" />
-                                </div>
-                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                        Password Requirements
-                                    </h3>
-                                    <div className="mt-2">
-                                        <p className="text-sm text-gray-500 mb-4">
-                                            For your security, please create a
-                                            strong password that meets the
-                                            following requirements:
-                                        </p>
-                                        <div className="space-y-3 bg-gray-50 p-4 rounded-lg">
-                                            <PasswordRequirement
-                                                met={
-                                                    passwordValidation
-                                                        .validations.length
-                                                }
-                                                text="At least 8 characters long"
-                                            />
-                                            <PasswordRequirement
-                                                met={
-                                                    passwordValidation
-                                                        .validations.uppercase
-                                                }
-                                                text="One uppercase letter (A-Z)"
-                                            />
-                                            <PasswordRequirement
-                                                met={
-                                                    passwordValidation
-                                                        .validations.lowercase
-                                                }
-                                                text="One lowercase letter (a-z)"
-                                            />
-                                            <PasswordRequirement
-                                                met={
-                                                    passwordValidation
-                                                        .validations.number
-                                                }
-                                                text="One number (0-9)"
-                                            />
-                                            <PasswordRequirement
-                                                met={
-                                                    passwordValidation
-                                                        .validations.special
-                                                }
-                                                text="One special character (!@#$%^&*)"
-                                            />
-                                        </div>
-                                        {registerData.password && (
-                                            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                                                <div className="flex justify-between items-center mb-2">
-                                                    <span className="text-sm font-medium text-blue-900">
-                                                        Current Strength:
-                                                    </span>
-                                                    <span
-                                                        className={`text-sm font-semibold ${strengthColor}`}
-                                                    >
-                                                        {strengthText}
-                                                    </span>
-                                                </div>
-                                                <div className="w-full bg-blue-200 rounded-full h-2">
-                                                    <div
-                                                        className={`h-2 rounded-full transition-all duration-300 ${
-                                                            passwordValidation.strength <=
-                                                            2
-                                                                ? "bg-red-500"
-                                                                : passwordValidation.strength <=
-                                                                  3
-                                                                ? "bg-yellow-500"
-                                                                : passwordValidation.strength <=
-                                                                  4
-                                                                ? "bg-blue-500"
-                                                                : "bg-green-500"
-                                                        }`}
-                                                        style={{
-                                                            width: `${
-                                                                (passwordValidation.strength /
-                                                                    5) *
-                                                                100
-                                                            }%`,
-                                                        }}
-                                                    ></div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="mt-5 sm:mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setShowPasswordRequirements(false)
-                                    }
-                                    className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                >
-                                    Got it
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <PasswordRequirementsModal
+                    passwordValidation={passwordValidation}
+                    registerData={registerData}
+                    setShowPasswordRequirements={setShowPasswordRequirements}
+                    strengthColor={strengthColor}
+                    strengthText={strengthText}
+                />
             )}
 
             {/* Email Verification Modal */}
             {showEmailVerificationModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-full p-4 text-center">
-                        <div
-                            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                            onClick={handleCloseVerificationModal}
-                        ></div>
-
-                        <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
-                            <div className="absolute top-0 right-0 pt-4 pr-4">
-                                <button
-                                    type="button"
-                                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                                    onClick={handleCloseVerificationModal}
-                                >
-                                    <span className="sr-only">Close</span>
-                                    <svg
-                                        className="h-6 w-6"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div className="sm:flex sm:items-start">
-                                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                                    <FaEnvelope className="h-6 w-6 text-blue-600" />
-                                </div>
-                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                        Verify Your Email
-                                    </h3>
-                                    <div className="mt-2">
-                                        <p className="text-sm text-gray-500">
-                                            Thanks for signing up! Before
-                                            getting started, could you verify
-                                            your email address by clicking on
-                                            the link we just emailed to you? If
-                                            you didn't receive the email, we
-                                            will gladly send you another.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <form
-                                onSubmit={resend_emailVerification}
-                                method="POST"
-                                className="mt-5"
-                            >
-                                <input
-                                    type="hidden"
-                                    name="user_email"
-                                    value={verifyData.user_email}
-                                />
-                                <div className="mt-5 sm:mt-6">
-                                    <button
-                                        type="submit"
-                                        disabled={processingResendEmail}
-                                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        {processingResendEmail
-                                            ? "Sending..."
-                                            : "Resend Verification Email"}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                <EmailVerificationModal
+                    handleCloseVerificationModal={handleCloseVerificationModal}
+                    processingResendEmail={processingResendEmail}
+                    resend_emailVerification={resend_emailVerification}
+                    verifyData={verifyData}
+                />
             )}
 
             <Footer />

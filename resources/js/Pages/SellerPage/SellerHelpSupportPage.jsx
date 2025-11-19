@@ -90,14 +90,14 @@ export default function SellerHelpSupportPage() {
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">
                             Contact Us
                         </h3>
-                        <ul className="space-y-3">
+                        <ul className="space-y-3 text-black">
                             <li className="flex items-center gap-3">
                                 <Phone className="text-indigo-500" size={20} />
                                 <span>+60 123-456-789</span>
                             </li>
                             <li className="flex items-center gap-3">
                                 <Mail className="text-indigo-500" size={20} />
-                                <span>support@gemilang.com</span>
+                                <span>support@relovemarket.com</span>
                             </li>
                             <li className="flex items-center gap-3">
                                 <MessageSquare
@@ -119,21 +119,21 @@ export default function SellerHelpSupportPage() {
                                 <input
                                     type="text"
                                     placeholder="Your Name"
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className="w-full text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 />
                             </div>
                             <div>
                                 <input
                                     type="email"
                                     placeholder="Your Email"
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className="w-full text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 />
                             </div>
                             <div>
                                 <textarea
                                     placeholder="Your Message"
                                     rows="4"
-                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                                    className="w-full text-black border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                 ></textarea>
                             </div>
                             <button

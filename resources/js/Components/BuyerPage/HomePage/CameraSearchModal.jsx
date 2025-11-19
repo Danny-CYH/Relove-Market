@@ -33,11 +33,6 @@ export function CameraSearchModal({
             return [];
         }
 
-        console.log(
-            `✅ Found ${recommendations.length} recommendations:`,
-            recommendations
-        );
-
         // Transform the data to match ProductCard expectations
         const processedResults = recommendations
             .map((item, index) => {
@@ -45,16 +40,7 @@ export function CameraSearchModal({
                 const similarity = item.similarity || 0;
                 const similarityThreshold = results.similarity_threshold || 0.7;
 
-                console.log(
-                    `📊 Processing: ${
-                        item.name || item.product_id
-                    }, Similarity: ${similarity}, Threshold: ${similarityThreshold}`
-                );
-
                 if (similarity < similarityThreshold) {
-                    console.log(
-                        `🚫 Skipping ${item.name} - similarity ${similarity} below threshold ${similarityThreshold}`
-                    );
                     return null;
                 }
 
@@ -122,16 +108,12 @@ export function CameraSearchModal({
             })
             .filter(Boolean); // Remove null items (those below threshold)
 
-        console.log(`🎯 Final processed results:`, processedResults);
         return processedResults;
     }, [searchResults]);
 
     // Reset when modal opens/closes or new search results come in
     useEffect(() => {
         if (isOpen && safeSearchResults.length > 0) {
-            console.log(
-                `🔄 Setting displayed results: ${safeSearchResults.length} items`
-            );
             setDisplayedResults(safeSearchResults.slice(0, resultsPerPage));
             setPage(1);
             setHasMore(safeSearchResults.length > resultsPerPage);
@@ -149,10 +131,6 @@ export function CameraSearchModal({
         const nextPage = page + 1;
         const endIndex = nextPage * resultsPerPage;
         const newResults = safeSearchResults.slice(0, endIndex);
-
-        console.log(
-            `⬇️ Loading more: page ${nextPage}, showing ${newResults.length} items`
-        );
 
         setDisplayedResults(newResults);
         setPage(nextPage);
@@ -205,7 +183,7 @@ export function CameraSearchModal({
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">
-                                AI Camera Search
+                                AI Visual Search
                             </h2>
                             <p className="text-sm text-gray-600">
                                 {safeSearchResults.length > 0

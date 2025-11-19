@@ -1,3 +1,5 @@
+import { ForgetPasswordModal } from "@/Components/Auth/Login/ForgetPasswordModal";
+import { ResetPasswordModal } from "@/Components/Auth/Login/ResetPasswordModal";
 import { Footer } from "@/Components/BuyerPage/Footer";
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import TextInput from "@/Components/TextInput";
@@ -6,11 +8,8 @@ import { useState, useEffect } from "react";
 import {
     FaEye,
     FaEyeSlash,
-    FaGoogle,
-    FaFacebook,
     FaEnvelope,
     FaLock,
-    FaArrowLeft,
     FaCheckCircle,
 } from "react-icons/fa";
 import Swal from "sweetalert2";
@@ -166,7 +165,6 @@ export default function Login() {
             },
             onError: (errors) => {
                 loadingAlert.close();
-                console.log(errors);
 
                 let errorMessage =
                     "Invalid email or password. Please try again.";
@@ -518,228 +516,24 @@ export default function Login() {
 
             {/* Forgot Password Modal */}
             {showForgetModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-full p-4 text-center">
-                        <div
-                            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                            onClick={handleCloseForgetModal}
-                        ></div>
-
-                        <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
-                            <div className="absolute top-0 right-0 pt-4 pr-4">
-                                <button
-                                    type="button"
-                                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                                    onClick={handleCloseForgetModal}
-                                >
-                                    <span className="sr-only">Close</span>
-                                    <svg
-                                        className="h-6 w-6"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div className="sm:flex sm:items-start">
-                                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                                    <FaEnvelope className="h-6 w-6 text-blue-600" />
-                                </div>
-                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                        Reset your password
-                                    </h3>
-                                    <div className="mt-2">
-                                        <p className="text-sm text-gray-500">
-                                            Enter your email address and we'll
-                                            send you a link to reset your
-                                            password.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <form onSubmit={resetLink_submit} className="mt-5">
-                                <div>
-                                    <label
-                                        htmlFor="email"
-                                        className="block text-sm font-medium text-gray-700"
-                                    >
-                                        Email address
-                                    </label>
-                                    <div className="mt-1">
-                                        <TextInput
-                                            type="email"
-                                            name="email"
-                                            placeholder="Enter your email"
-                                            value={forgetData.email}
-                                            autoComplete="off"
-                                            onChange={(e) =>
-                                                setForgetData(
-                                                    "email",
-                                                    e.target.value
-                                                )
-                                            }
-                                            className="w-full"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="mt-5 sm:mt-6">
-                                    <button
-                                        type="submit"
-                                        disabled={processingForget}
-                                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        {processingForget
-                                            ? "Sending..."
-                                            : "Send reset link"}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                <ForgetPasswordModal
+                    forgetData={forgetData}
+                    handleCloseForgetModal={handleCloseForgetModal}
+                    processingForget={processingForget}
+                    resetLink_submit={resetLink_submit}
+                    setForgetData={setForgetData}
+                />
             )}
 
             {/* Reset Password Modal */}
             {showResetModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-full p-4 text-center">
-                        <div
-                            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                            onClick={handleCloseResetModal}
-                        ></div>
-
-                        <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
-                            <div className="absolute top-0 right-0 pt-4 pr-4">
-                                <button
-                                    type="button"
-                                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                                    onClick={handleCloseResetModal}
-                                >
-                                    <span className="sr-only">Close</span>
-                                    <svg
-                                        className="h-6 w-6"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div className="sm:flex sm:items-start">
-                                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                                    <FaLock className="h-6 w-6 text-blue-600" />
-                                </div>
-                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                        Set new password
-                                    </h3>
-                                    <div className="mt-2">
-                                        <p className="text-sm text-gray-500">
-                                            Enter your new password below.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <form
-                                onSubmit={updatePassword_submit}
-                                className="mt-5 space-y-4"
-                            >
-                                <div>
-                                    <label
-                                        htmlFor="email"
-                                        className="block text-sm font-medium text-gray-700"
-                                    >
-                                        Email
-                                    </label>
-                                    <TextInput
-                                        type="email"
-                                        value={resetData.email}
-                                        readOnly
-                                        className="w-full bg-gray-100"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label
-                                        htmlFor="password"
-                                        className="block text-sm font-medium text-gray-700"
-                                    >
-                                        New Password
-                                    </label>
-                                    <TextInput
-                                        type="password"
-                                        name="password"
-                                        placeholder="Enter new password"
-                                        value={resetData.password}
-                                        onChange={(e) =>
-                                            setResetData(
-                                                "password",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="w-full"
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label
-                                        htmlFor="password_confirmation"
-                                        className="block text-sm font-medium text-gray-700"
-                                    >
-                                        Confirm Password
-                                    </label>
-                                    <TextInput
-                                        type="password"
-                                        name="password_confirmation"
-                                        placeholder="Confirm new password"
-                                        value={resetData.password_confirmation}
-                                        onChange={(e) =>
-                                            setResetData(
-                                                "password_confirmation",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="w-full"
-                                        required
-                                    />
-                                </div>
-
-                                <div className="mt-5 sm:mt-6">
-                                    <button
-                                        type="submit"
-                                        disabled={processingReset}
-                                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        {processingReset
-                                            ? "Updating..."
-                                            : "Update password"}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+                <ResetPasswordModal
+                    handleCloseResetModal={handleCloseForgetModal}
+                    processingReset={processingReset}
+                    resetData={resetData}
+                    setResetData={setResetData}
+                    updatePassword_submit={updatePassword_submit}
+                />
             )}
 
             <Footer />

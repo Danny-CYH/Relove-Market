@@ -11,41 +11,26 @@ use App\Http\Controllers\SellerController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ChatController;
 
-use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 
 use Inertia\Inertia;
 
 Route::get('/', function () {
     return redirect()->route('homepage');
-    // return Inertia::render('Welcome', [
-    //     'canLogin' => Route::has('login'),
-    //     'canRegister' => Route::has('register'),
-    //     'laravelVersion' => Application::VERSION,
-    //     'phpVersion' => PHP_VERSION,
-    // ]);
-});
-
-Route::middleware('auth')->group(function () {
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
 // General Page that can be access without login
 Route::get('/relove-market', [UserController::class, 'homepage'])->name('homepage');
 Route::get("/about-us", [UserController::class, 'aboutus'])->name("about-us");
 Route::get("/shopping", [UserController::class, 'shopping'])->name("shopping");
+Route::get('/api/shopping', [ProductManagementController::class, 'shoppingApi']);
 Route::get("/seller-benefit", [UserController::class, 'sellerBenefit'])->name("seller-benefit");
 Route::get("/product-details/{productId}", [UserController::class, "productDetails"])->name('product-details');
-
 Route::get('/seller-shop', [UserController::class, 'sellerShop'])->name('seller-shop');
 
 // Code for calling the product image based recommendation for user
 Route::post("/api/recommend", [ProductManagementController::class, "getRecommendations"])->name("recommend");
 Route::post('/camera-search', [HomePageController::class, 'cameraSearch'])->name("camera-search");
-Route::get("/api/get-list-products", [ProductManagementController::class, "get_listProducts"]);
-Route::get('/api/shopping', [ProductManagementController::class, 'shoppingApi']);
 
 // Need to login account and is a buyer can access this all feature
 Route::middleware(["is_buyer"])->group(function () {
@@ -56,17 +41,12 @@ Route::middleware(["is_buyer"])->group(function () {
 
     Route::get('/checkout', [UserController::class, 'checkoutPage'])->name('checkout');
     Route::post('/checkout-process', [UserController::class, 'checkoutProcess'])->name('checkout-process');
-
     Route::post("/validate-stock", [PaymentController::class, "validateStock"]);
     Route::post('/create-payment-intent', [PaymentController::class, 'createPaymentIntent']);
     Route::post('/confirm-payment', [PaymentController::class, 'confirmPayment']);
     Route::get('/order/{orderId}', [PaymentController::class, 'getOrder']);
     Route::get('/orders', [PaymentController::class, 'listOrders']);
     Route::get('/order-success', [PaymentController::class, "show_orderSuccess"]);
-
-    Route::post('/get-payment-intent-status', [PaymentController::class, 'getPaymentIntentStatus']);
-    Route::post('/create-order-direct', [PaymentController::class, 'createOrderDirect']);
-    Route::get('/payment-complete', [PaymentController::class, 'handlePaymentComplete']);
 });
 
 // need to login account and is a seller can access all this feature
@@ -75,17 +55,11 @@ Route::middleware(['is_seller'])->group(function () {
     Route::get("/seller-manage-product", [SellerController::class, "sellerManageProduct"])->name("seller-manage-product");
     Route::get("/seller-manage-order", [SellerController::class, "sellerOrderPage"])->name("seller-manage-order");
     Route::get("/seller-manage-earning", [SellerController::class, "sellerEarningPage"])->name("seller-manage-earning");
-    Route::get("/seller-manage-promotion", [SellerController::class, "sellerPromotionPage"])->name("seller-manage-promotion");
     Route::get("/seller-help-support", [SellerController::class, "sellerHelpSupportPage"])->name("seller-help-support");
     Route::get('/seller-manage-profile', [SellerController::class, 'getProfile'])->name("seller-manage-profile");
     Route::get('/seller-chat', [ChatController::class, "sellerChat"])->name('seller-chat');
 
     Route::post('/profile-update', [SellerController::class, 'updateProfile']);
-
-    Route::post('/seller-manage-promotion/view-promotion', [SellerController::class, 'sellerViewPromotion'])->name('view-promotion');
-    Route::post('/seller-manage-promotion/add-promotion', [SellerController::class, 'sellerAddPromotion'])->name('add-promotion');
-    Route::post('/seller-manage-promotion/edit-promotion', [SellerController::class, 'sellerEditPromotion'])->name('edit-promotion');
-    Route::post('/seller-manage-promotion/delete-promotion', [SellerController::class, 'sellerDeletePromotion'])->name('delete-promotion');
 });
 
 // need to login account and is a admin can access all this feature
@@ -94,11 +68,8 @@ Route::middleware(["is_admin"])->group(function () {
     Route::get("/pending-seller-list", [AdminController::class, "pendingSellerTable"])->name("pending-seller-list");
     Route::get("/admin-profile", [AdminController::class, 'profilePage'])->name("admin-profile");
     Route::get("/list-transaction", [AdminController::class, 'transactionPage'])->name("list-transaction");
-    Route::get("/subscription-management", [AdminController::class, 'subscriptionManagement'])->name("subscription-management");
-    Route::get("/subscription-policy", [AdminController::class, 'subscriptionPolicy'])->name("subscription-policy");
     Route::get("/product-moderation", [AdminController::class, "productModeration"])->name("product-moderation");
     Route::get("/user-management", [AdminController::class, "userManagement"])->name("user-management");
-
 
     Route::get('/admin/dashboard/pending-seller-list', [AdminController::class, 'getSellerList']);
     Route::post('/admin/pending-seller/{id}/action', [AdminController::class, 'handleAction']);

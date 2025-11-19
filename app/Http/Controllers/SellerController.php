@@ -61,71 +61,9 @@ class SellerController extends Controller
         return Inertia::render("SellerPage/SellerEarningPage");
     }
 
-    public function sellerPromotionPage()
-    {
-        $list_promotion = Promotions::all();
-
-        return Inertia::render(
-            "SellerPage/SellerPromotionPage",
-            [
-                "list_promotion" => $list_promotion
-            ]
-        );
-    }
-
     public function sellerHelpSupportPage()
     {
         return Inertia::render("SellerPage/SellerHelpSupportPage");
-    }
-
-    public function sellerAddPromotion(Request $request)
-    {
-        try {
-            // ✅ Validate request
-            $validated = $request->validate([
-                'promotion_name' => 'required|string|max:255',
-                'promotion_discount' => 'required|string|max:50', // can be percentage or text like "BOGO"
-                'promotion_type' => 'required|in:Flash Sale,Voucher,Free Shipping',
-                'promotion_startDate' => 'required|date|before:promotion_endDate',
-                'promotion_endDate' => 'required|date|after:promotion_startDate',
-                'promotion_status' => 'required|in:Active,Paused,Expired',
-                'promotion_usage' => 'nullable|integer|min:1',
-                'promotion_badge' => 'nullable|string|max:50',
-            ]);
-
-            // ✅ Create promotion
-            Promotions::create([
-                'promotion_id' => Str::uuid()->toString(),
-                'promotion_name' => $validated['promotion_name'],
-                'promotion_discount' => $validated['promotion_discount'],
-                'promotion_type' => $validated['promotion_type'],
-                'promotion_startDate' => $validated['promotion_startDate'],
-                'promotion_endDate' => $validated['promotion_endDate'],
-                'promotion_status' => $validated['promotion_status'],
-                'promotion_limit' => $validated['promotion_usage'] ?? null,
-            ]);
-
-            return response()->json([
-                "successMessage" => "Promotion Created Successfully!"
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                "errorMessage" => $e->getMessage()
-            ]);
-        }
-    }
-
-    public function sellerEditPromotion(Request $request)
-    {
-
-    }
-    public function sellerDeletePromotion(Request $request)
-    {
-
-    }
-    public function sellerViewPromotion(Request $request)
-    {
-
     }
 
     public function getProfile()

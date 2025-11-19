@@ -38,21 +38,19 @@ class ProductModerationController extends Controller
                 $query->where('product_status', $request->status);
             }
 
-            // Rating filter - fixed to use average rating from ratings table
-            if ($request->has('rating') && $request->rating) {
-                $query->whereHas('ratings', function ($q) use ($request) {
-                    switch ($request->rating) {
-                        case 'low':
-                            $q->havingRaw('AVG(rating) < 2.5');
-                            break;
-                        case 'medium':
-                            $q->havingRaw('AVG(rating) BETWEEN 2.5 AND 4');
-                            break;
-                        case 'high':
-                            $q->havingRaw('AVG(rating) >= 4');
-                            break;
-                    }
-                });
+            // Rating filter
+            if ($request->has('rating') && !empty($request->rating)) {
+                switch ($request->rating) {
+                    case 'low':
+                        $query->where('products.total_ratings', '<', 2.5);
+                        break;
+                    case 'medium':
+                        $query->whereBetween('products.total_ratings', [2.5, 4]);
+                        break;
+                    case 'high':
+                        $query->where('products.total_ratings', '>=', 4);
+                        break;
+                }
             }
 
             // Pagination

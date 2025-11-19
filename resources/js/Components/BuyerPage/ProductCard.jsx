@@ -1,17 +1,7 @@
 // Components/BuyerPage/ProductCard.jsx
-import {
-    FaClock,
-    FaShoppingCart,
-    FaStar,
-    FaHeart,
-    FaTimes,
-    FaInfo,
-    FaSearch,
-    FaProductHunt,
-} from "react-icons/fa";
+import { FaStar, FaTimes } from "react-icons/fa";
 import { useState } from "react";
 import { Link } from "@inertiajs/react";
-import { rating } from "@material-tailwind/react";
 
 export function ProductCard({
     product,
@@ -19,8 +9,6 @@ export function ProductCard({
     save_wishlist,
     isAiResult = false,
 }) {
-    // console.log(product);
-
     const [isHovered, setIsHovered] = useState(false);
     const [isLiked, setIsLiked] = useState(false);
     const [showVariantModal, setShowVariantModal] = useState(false);
@@ -34,7 +22,7 @@ export function ProductCard({
 
     // Safe data extraction with fallbacks
     const productData = product.product || product;
-    console.log(productData);
+    // console.log(productData);
 
     const productName =
         productData.product_name || productData.name || "Unnamed Product";
@@ -54,10 +42,6 @@ export function ProductCard({
     const seller = productData.seller || {
         seller_store: { store_name: "Unknown Seller" },
     };
-
-    // AI-specific data
-    const aiSimilarity = product.ai_similarity;
-    const aiConfidence = product.ai_confidence;
 
     // Check if product has variants
     const hasVariants =

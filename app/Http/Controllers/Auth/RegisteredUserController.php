@@ -61,9 +61,10 @@ class RegisteredUserController extends Controller
 
             event(new Registered($user));
 
-            return redirect(route("register"))->with('showVerificationModal', true);
+            return redirect(route("register"))->with('successMessage', true);
         } catch (\Throwable $e) {
-            return back()->with('errorMessage', $e->getMessage());
+            \Log::error('Registration Error: ' . $e->getMessage());
+            return redirect(route("register"))->with('errorMessage', false);
         }
     }
 

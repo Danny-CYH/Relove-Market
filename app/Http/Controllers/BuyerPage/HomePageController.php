@@ -183,7 +183,6 @@ class HomePageController extends Controller
                             })->toArray(),
                             'main_image' => $imagePath,
                         ],
-
                     ];
                 })
                 ->filter()

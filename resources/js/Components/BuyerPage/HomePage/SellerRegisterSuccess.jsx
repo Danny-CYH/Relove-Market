@@ -38,7 +38,7 @@ export function SellerRegisterSuccess({ isOpen, setIsOpen }) {
                         <div className="flex items-center justify-center gap-2 text-sm text-gray-500 mb-6">
                             <Clock className="w-4 h-4" />
                             <span>
-                                Please wait patiently, we’ll notify you once
+                                Please wait patiently, we’ll notify you via email once
                                 approved.
                             </span>
                         </div>

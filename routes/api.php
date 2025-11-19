@@ -85,7 +85,6 @@ Route::middleware(["is_admin"])->group(function () {
     // API for manage products
     Route::get('/api/admin/products', [ProductModerationController::class, 'get_allProducts'])->name('get-all-products');
     Route::get('/api/admin/products/stats', [ProductModerationController::class, 'get_product_stats'])->name('get-product-stats');
-    Route::post('/api/admin/products/{product}/{action}', [ProductModerationController::class, 'update_product_status'])->name('update-product-status');
     Route::post('/api/admin/products/{product}/block', [ProductModerationController::class, 'block_product'])->name("admin.products.block");
     Route::post('/api/admin/products/{product}/unblock', [ProductModerationController::class, 'unblock_product'])->name("admin.products.unblock");
     Route::post('/api/admin/products/{product}/flag', [ProductModerationController::class, 'flag_product'])->name("admin.products.flag");
