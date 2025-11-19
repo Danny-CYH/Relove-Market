@@ -473,18 +473,13 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                             {list_categoryItem.map((category) => (
-                                <button
+                                <div
                                     key={category.category_id}
-                                    onClick={() =>
-                                        setSelectedCategory(
-                                            category.category_name
-                                        )
-                                    }
                                     className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all ${
                                         selectedCategory ===
                                         category.category_name
                                             ? "border-green-500 bg-green-50 shadow-md"
-                                            : "border-gray-200 hover:border-green-300 hover:shadow-sm"
+                                            : "border-gray-200 bg-white hover:shadow-sm"
                                     }`}
                                 >
                                     <span className="mb-2">
@@ -494,10 +489,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                             <Boxes className="w-6 h-6 text-gray-400" />
                                         )}
                                     </span>
-                                    <span className="text-sm font-medium text-gray-700">
+                                    <span className="text-sm font-medium text-gray-700 text-center">
                                         {category.category_name}
                                     </span>
-                                </button>
+                                </div>
                             ))}
                         </div>
                     </div>
