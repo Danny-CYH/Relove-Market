@@ -836,8 +836,8 @@ export default function Wishlist({ user_wishlist }) {
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
                         <div className="flex items-center gap-4">
                             <div className="relative">
-                                <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                                    <Heart
+                                <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center shadow-lg">
+                                    <ShoppingCart
                                         className="text-white"
                                         size={24}
                                         fill="currentColor"
@@ -846,7 +846,7 @@ export default function Wishlist({ user_wishlist }) {
                             </div>
                             <div>
                                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                                    My Wishlist
+                                    My Cart
                                 </h1>
                                 <p className="text-gray-600 mt-1">
                                     {wishlist.length}{" "}

@@ -1,9 +1,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { FaArrowLeft, FaArrowRight, FaFire, FaClock } from "react-icons/fa";
 import Carousel from "react-multi-carousel";
-import { ProductCard } from "../ProductCard";
 import { Link } from "@inertiajs/react";
 import "react-multi-carousel/lib/styles.css";
+import { ProductCard } from "../ProductCard";
 
 export function Carousel_ProductData({ productData }) {
     // Fallback if productData is empty
@@ -59,8 +59,12 @@ export function Carousel_ProductData({ productData }) {
     }, [products.length]);
 
     return (
-        <section className="py-4 px-4">
-            <div className="max-w-7xl mx-auto relative">
+        <section className="py-4 px-4 relative z-0">
+            {" "}
+            {/* Added z-0 here */}
+            <div className="max-w-7xl mx-auto relative z-0">
+                {" "}
+                {/* Added z-0 here */}
                 {/* Header with countdown timer */}
                 <div className="flex flex-col md:flex-row justify-between items-center mb-8">
                     <div className="flex items-center">
@@ -103,9 +107,10 @@ export function Carousel_ProductData({ productData }) {
                         </div>
                     )}
                 </div>
-
-                {/* Carousel */}
-                <div className="relative">
+                {/* Carousel with z-index fix */}
+                <div className="relative z-0">
+                    {" "}
+                    {/* Added z-0 here */}
                     <Carousel
                         ref={carouselRef}
                         responsive={responsive}
@@ -113,8 +118,8 @@ export function Carousel_ProductData({ productData }) {
                         autoPlay={false}
                         arrows={false}
                         renderButtonGroupOutside={true}
-                        itemClass="px-2"
-                        containerClass="pb-6"
+                        itemClass="px-2 relative z-0" // Added z-0 here
+                        containerClass="pb-6 relative z-0" // Added z-0 here
                         partialVisible={true}
                         keyBoardControl={true}
                         swipeable={true}
@@ -122,7 +127,12 @@ export function Carousel_ProductData({ productData }) {
                         shouldResetAutoplay={false}
                     >
                         {products.map((product) => (
-                            <div key={product.product_id} className="h-full">
+                            <div
+                                key={product.product_id}
+                                className="h-full relative z-0"
+                            >
+                                {" "}
+                                {/* Added z-0 here */}
                                 <Link
                                     href={route(
                                         "product-details",
@@ -138,10 +148,11 @@ export function Carousel_ProductData({ productData }) {
                             </div>
                         ))}
                     </Carousel>
-
                     {/* Mobile navigation buttons */}
                     {showArrows && (
-                        <div className="flex justify-center mt-4 md:hidden">
+                        <div className="flex justify-center mt-4 md:hidden relative z-10">
+                            {" "}
+                            {/* Added z-10 for buttons */}
                             <button
                                 onClick={goToPrevious}
                                 className="bg-white text-gray-700 p-3 rounded-full shadow-md hover:bg-gray-50 mr-2"
@@ -159,9 +170,10 @@ export function Carousel_ProductData({ productData }) {
                         </div>
                     )}
                 </div>
-
                 {/* View all button */}
-                <div className="text-center mt-8">
+                <div className="text-center mt-8 relative z-0">
+                    {" "}
+                    {/* Added z-0 here */}
                     <Link href="#">
                         <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 rounded-full font-medium transition-colors shadow-md hover:shadow-lg">
                             View All Flash Sale Items

@@ -34,7 +34,7 @@ class ProfileManagementController extends Controller
     {
         $list_order = Order::with([
             "orderItems.product",
-            "orderItems.productImage",
+            "orderItems.product.productImage",
             "orderItems.product.seller.sellerStore",
             "user",
         ])

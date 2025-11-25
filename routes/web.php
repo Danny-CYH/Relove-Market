@@ -32,11 +32,15 @@ Route::get('/seller-shop', [UserController::class, 'sellerShop'])->name('seller-
 Route::post("/api/recommend", [ProductManagementController::class, "getRecommendations"])->name("recommend");
 Route::post('/camera-search', [HomePageController::class, 'cameraSearch'])->name("camera-search");
 
+// Code for calling the featured and flash sale products on the home page
+Route::get("/get-featured-products", [HomePageController::class, "get_featuredProducts"])->name("get-featured-products");
+Route::get("/get-flash-sale-products", [HomePageController::class, "get_flashSaleProducts"])->name("get-flash-sale-products");
+
 // Need to login account and is a buyer can access this all feature
 Route::middleware(["is_buyer"])->group(function () {
     Route::get("/seller-registration", [UserController::class, "sellerRegistration"])->name('seller-registration');
     Route::get("/profile", [UserController::class, "profile"])->name("profile");
-    Route::get('/wishlist', [UserController::class, 'wishlist'])->name('wishlist');
+    Route::get('/cart', [UserController::class, 'wishlist'])->name('cart');
     Route::get('/buyer-chat', [UserController::class, 'buyerChat'])->name('buyer-chat');
 
     Route::get('/checkout', [UserController::class, 'checkoutPage'])->name('checkout');

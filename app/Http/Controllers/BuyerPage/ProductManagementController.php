@@ -6,17 +6,12 @@ use App\Http\Controllers\Controller;
 
 use App\Events\BuyerPage\ProductDetails\ReviewsUpdate;
 
-use App\Mail\ProductBlockedNotification;
-use App\Mail\ProductFlaggedNotification;
-use App\Mail\ProductUnblockedNotification;
-
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Rating;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
 
 use Exception;
 

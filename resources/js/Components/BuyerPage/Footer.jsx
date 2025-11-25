@@ -23,11 +23,11 @@ import { FiSend } from "react-icons/fi";
 
 import { Link } from "@inertiajs/react";
 
-import { TermsConditions } from "./TermsConditions";
-import { HelpCenterModal } from "./HelpCenterModal";
-import { SafetyGuidelinesModal } from "./SafetyGuidelinesModal";
-import { ShippingInformationModal } from "./ShippingInformationModal";
-import { ReturnsRefundsModal } from "./ReturnsRefundModal";
+import { TermsConditions } from "./HomePage/TermsConditions";
+import { HelpCenterModal } from "./HomePage/HelpCenterModal";
+import { SafetyGuidelinesModal } from "./HomePage/SafetyGuidelinesModal";
+import { ShippingInformationModal } from "./HomePage/ShippingInformationModal";
+import { ReturnsRefundsModal } from "./HomePage/ReturnsRefundModal";
 
 export function Footer() {
     const [email, setEmail] = useState("");
@@ -375,31 +375,11 @@ export function Footer() {
             {/* Bottom Footer */}
             <div className="border-t border-gray-800">
                 <div className="container mx-auto px-4 py-6">
-                    <div className="flex flex-col md:flex-row justify-between items-center">
-                        <p className="text-gray-500 text-sm mb-3 md:mb-0">
+                    <div className="flex flex-col md:flex-row justify-center items-center">
+                        <p className="text-gray-500 text-sm text-center mb-3 md:mb-0">
                             © {new Date().getFullYear()} Relove Market. All
                             rights reserved.
                         </p>
-                        <div className="flex space-x-6 text-sm text-gray-500">
-                            <a
-                                href="#"
-                                className="hover:text-green-400 transition-colors"
-                            >
-                                Privacy Policy
-                            </a>
-                            <a
-                                href="#"
-                                className="hover:text-green-400 transition-colors"
-                            >
-                                Terms of Service
-                            </a>
-                            <a
-                                href="#"
-                                className="hover:text-green-400 transition-colors"
-                            >
-                                Cookie Policy
-                            </a>
-                        </div>
                     </div>
                 </div>
             </div>

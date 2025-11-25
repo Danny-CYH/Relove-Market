@@ -1,25 +1,23 @@
 import {
     FaBars,
     FaTimes,
-    FaHeart,
     FaUserCircle,
     FaSignOutAlt,
     FaStore,
-    FaSearch,
-    FaShoppingBag,
-    FaLeaf,
     FaSnapchat,
+    FaShoppingCart,
 } from "react-icons/fa";
+
 import { useState, useEffect } from "react";
+
 import { motion, AnimatePresence } from "framer-motion";
+
 import { usePage, Link } from "@inertiajs/react";
 
 export function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [scrolled, setScrolled] = useState(false);
-    const [searchOpen, setSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
 
     const { auth } = usePage().props;
 
@@ -38,19 +36,6 @@ export function Navbar() {
         hidden: { x: "-100%" },
         visible: { x: 0 },
         exit: { x: "-100%" },
-    };
-
-    const searchVariants = {
-        hidden: { opacity: 0, width: 0 },
-        visible: { opacity: 1, width: "100%" },
-    };
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-        // Implement search functionality
-        console.log("Searching for:", searchQuery);
-        setSearchOpen(false);
-        setSearchQuery("");
     };
 
     return (
@@ -219,9 +204,7 @@ export function Navbar() {
                                                             Seller Dashboard
                                                         </Link>
                                                         <Link
-                                                            href={route(
-                                                                "wishlist"
-                                                            )}
+                                                            href={route("cart")}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
@@ -229,8 +212,8 @@ export function Navbar() {
                                                                 )
                                                             }
                                                         >
-                                                            <FaHeart className="mr-3 text-gray-400" />
-                                                            Wishlist
+                                                            <FaShoppingCart className="mr-3 text-gray-400" />
+                                                            Cart
                                                         </Link>
                                                     </>
                                                 ) : (
@@ -250,9 +233,7 @@ export function Navbar() {
                                                             Profile
                                                         </Link>
                                                         <Link
-                                                            href={route(
-                                                                "wishlist"
-                                                            )}
+                                                            href={route("cart")}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
@@ -260,8 +241,8 @@ export function Navbar() {
                                                                 )
                                                             }
                                                         >
-                                                            <FaHeart className="mr-3 text-gray-400" />
-                                                            Wishlist
+                                                            <FaShoppingCart className="mr-3 text-gray-400" />
+                                                            Cart
                                                         </Link>
 
                                                         <Link
@@ -396,29 +377,6 @@ export function Navbar() {
 
                             {/* Navigation */}
                             <nav className="flex-1 p-4">
-                                {/* User Info Section - Only show if logged in */}
-                                {auth?.user && (
-                                    <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                                        <div className="flex items-center space-x-3">
-                                            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                                                <span className="text-green-600 font-semibold text-sm">
-                                                    {auth.user.name
-                                                        ?.charAt(0)
-                                                        .toUpperCase()}
-                                                </span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-medium text-gray-900 text-sm truncate">
-                                                    {auth.user.name}
-                                                </p>
-                                                <p className="text-xs text-gray-500 truncate">
-                                                    {auth.user.email}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
                                 {/* Main Navigation Grid */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <Link
@@ -437,6 +395,21 @@ export function Navbar() {
                                     </Link>
 
                                     <Link
+                                        href={route("about-us")}
+                                        onClick={() => setIsOpen(false)}
+                                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                                            route().current("about-us")
+                                                ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
+                                                : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
+                                        }`}
+                                    >
+                                        <span className="text-xl mb-2">📄</span>
+                                        <span className="text-xs font-medium text-center">
+                                            About
+                                        </span>
+                                    </Link>
+
+                                    <Link
                                         href={route("shopping")}
                                         onClick={() => setIsOpen(false)}
                                         className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
@@ -445,39 +418,9 @@ export function Navbar() {
                                                 : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
                                         }`}
                                     >
-                                        <span className="text-xl mb-2">🛒</span>
+                                        <span className="text-xl mb-2">🛍️</span>
                                         <span className="text-xs font-medium text-center">
                                             Shop
-                                        </span>
-                                    </Link>
-
-                                    <Link
-                                        href={route("wishlist")}
-                                        onClick={() => setIsOpen(false)}
-                                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                                            route().current("wishlist")
-                                                ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
-                                                : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
-                                        }`}
-                                    >
-                                        <span className="text-xl mb-2">❤️</span>
-                                        <span className="text-xs font-medium text-center">
-                                            Wishlist
-                                        </span>
-                                    </Link>
-
-                                    <Link
-                                        href={route("buyer-chat")}
-                                        onClick={() => setIsOpen(false)}
-                                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                                            route().current("buyer-chat")
-                                                ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
-                                                : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
-                                        }`}
-                                    >
-                                        <span className="text-xl mb-2">💬</span>
-                                        <span className="text-xs font-medium text-center">
-                                            Chat
                                         </span>
                                     </Link>
 
@@ -497,17 +440,32 @@ export function Navbar() {
                                     </Link>
 
                                     <Link
-                                        href={route("about-us")}
+                                        href={route("cart")}
                                         onClick={() => setIsOpen(false)}
                                         className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                                            route().current("about-us")
+                                            route().current("cart")
                                                 ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
                                                 : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
                                         }`}
                                     >
-                                        <span className="text-xl mb-2">📄</span>
+                                        <span className="text-xl mb-2">🛒</span>
                                         <span className="text-xs font-medium text-center">
-                                            About
+                                            Cart
+                                        </span>
+                                    </Link>
+
+                                    <Link
+                                        href={route("buyer-chat")}
+                                        onClick={() => setIsOpen(false)}
+                                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                                            route().current("buyer-chat")
+                                                ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
+                                                : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
+                                        }`}
+                                    >
+                                        <span className="text-xl mb-2">💬</span>
+                                        <span className="text-xs font-medium text-center">
+                                            Chat
                                         </span>
                                     </Link>
                                 </div>
@@ -516,57 +474,40 @@ export function Navbar() {
                                 <div className="mt-6 space-y-2">
                                     {/* Profile Link if logged in */}
                                     {auth?.user && (
-                                        <Link
-                                            href={route("profile")}
-                                            onClick={() => setIsOpen(false)}
-                                            className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
-                                                route().current("profile")
-                                                    ? "bg-blue-50 text-blue-600"
-                                                    : "text-gray-700 hover:bg-gray-50"
-                                            }`}
-                                        >
-                                            <span className="w-6 text-center">
-                                                👤
-                                            </span>
-                                            <span className="text-sm font-medium">
-                                                My Profile
-                                            </span>
-                                        </Link>
+                                        <>
+                                            <Link
+                                                href={route("profile")}
+                                                onClick={() => setIsOpen(false)}
+                                                className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
+                                                    route().current("profile")
+                                                        ? "bg-blue-50 text-blue-600"
+                                                        : "text-gray-700 hover:bg-gray-50"
+                                                }`}
+                                            >
+                                                <span className="w-6 text-center">
+                                                    👤
+                                                </span>
+                                                <span className="text-sm font-medium">
+                                                    My Profile
+                                                </span>
+                                            </Link>
+
+                                            <Link
+                                                href={route("logout")}
+                                                method="POST"
+                                                className="flex items-center space-x-3 p-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
+                                                onClick={() => setIsOpen(false)}
+                                            >
+                                                <span className="w-6 text-center">
+                                                    🚪
+                                                </span>
+                                                <span className="text-sm font-medium">
+                                                    Logout
+                                                </span>
+                                            </Link>
+                                        </>
                                     )}
-
-                                    {/* Support/Help Link */}
-                                    <Link
-                                        href="#"
-                                        onClick={() => setIsOpen(false)}
-                                        className="flex items-center space-x-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
-                                    >
-                                        <span className="w-6 text-center">
-                                            ❓
-                                        </span>
-                                        <span className="text-sm font-medium">
-                                            Help & Support
-                                        </span>
-                                    </Link>
                                 </div>
-
-                                {/* Logout Button - Fixed at bottom */}
-                                {auth?.user && (
-                                    <div className="mt-8 pt-6 border-t border-gray-200">
-                                        <Link
-                                            href={route("logout")}
-                                            method="POST"
-                                            className="flex items-center space-x-3 p-3 rounded-xl text-red-600 bg-red-50 hover:bg-red-100 transition-colors"
-                                            onClick={() => setIsOpen(false)}
-                                        >
-                                            <span className="w-6 text-center">
-                                                🚪
-                                            </span>
-                                            <span className="text-sm font-medium">
-                                                Logout
-                                            </span>
-                                        </Link>
-                                    </div>
-                                )}
                             </nav>
 
                             {/* Auth buttons if not logged in */}

@@ -38,6 +38,40 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
+        // ✅ Return JSON for non-Inertia requests (React Native)
+        if (!$request->inertia()) {
+            // Your existing checks
+            if ($user->status !== 'Active') {
+                Auth::logout();
+                return response()->json([
+                    'message' => 'Your account has been blocked. Please contact support.',
+                    'error' => 'account_blocked'
+                ], 403);
+            }
+
+            if (!$user->hasVerifiedEmail() && $user->last_login_at) {
+                Auth::logout();
+                return response()->json([
+                    'message' => 'You must verify your email address before logging in.',
+                    'error' => 'email_not_verified'
+                ], 403);
+            }
+
+            $user->update(['last_login_at' => now()]);
+            $user->load('role');
+
+            return response()->json([
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role_name' => $user->role->role_name,
+                ],
+                'message' => 'Login successful',
+                'session' => true
+            ]);
+        }
+
         // ✅ Block users if status is not active
         if ($user->status !== 'Active') {
             Auth::logout();

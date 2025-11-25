@@ -11,18 +11,15 @@ use App\Http\Controllers\BuyerPage\WishlistController;
 use App\Http\Controllers\BuyerPage\SellerRegistrationController;
 use App\Http\Controllers\BuyerPage\ProductManagementController;
 
-
 use App\Http\Controllers\SellerPage\SellerManageProfileController;
 use App\Http\Controllers\SellerPage\SellerDashboardController;
 use App\Http\Controllers\SellerPage\SellerManageEarningController;
 use App\Http\Controllers\SellerPage\SellerManageOrderController;
 use App\Http\Controllers\SellerPage\SellerManageProductController;
 
-Route::middleware(["is_buyer"])->group(function () {
-    // Code for calling the featured and flash sale products on the home page
-    Route::get("/api/get-featured-products", [HomePageController::class, "get_featuredProducts"])->name("get-featured-products");
-    Route::get("/api/get-flash-sale-products", [HomePageController::class, "get_flashSaleProducts"])->name("get-flash-sale-products");
+use Illuminate\Support\Facades\Route;
 
+Route::middleware(["is_buyer"])->group(function () {
     // COde for manage the profile on the profile page
     Route::get("/api/orders-history", [ProfileManagementController::class, "orderHistory"])->name("order-history");
     Route::post("/api/profile-update", [ProfileManagementController::class, "updateProfile"])->name("update-profile");

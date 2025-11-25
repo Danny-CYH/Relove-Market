@@ -26,7 +26,7 @@ import { ProfileTab } from "@/Components/BuyerPage/ProfilePage/ProfileTab";
 import { ReceiptModal } from "@/Components/BuyerPage/ProfilePage/ReceiptModal";
 
 export default function ProfilePage() {
-    const [activeTab, setActiveTab] = useState("profile");
+    const [activeTab, setActiveTab] = useState(active_tab || "profile");
     const [isEditing, setIsEditing] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
@@ -58,18 +58,6 @@ export default function ProfilePage() {
 
     const [orderHistory, setOrderHistory] = useState([]);
     const [confirmingOrderId, setConfirmingOrderId] = useState(null);
-
-    // Fetch data on component mount
-    useEffect(() => {
-        fetchOrderHistory();
-    }, []);
-
-    // NEW: Set initial image preview when component mounts
-    useEffect(() => {
-        if (userData.profile_image) {
-            setImagePreview(getProfileImageUrl(userData.profile_image));
-        }
-    }, [userData.profile_image]);
 
     // Helper function to get proper image URL
     const getProfileImageUrl = (imagePath) => {
@@ -240,22 +228,10 @@ export default function ProfilePage() {
                 console.log("ℹ️ No new file selected, keeping existing image");
             }
 
-            // Debug: Check FormData contents
-            for (let [key, value] of formDataToSend.entries()) {
-                console.log(
-                    `📋 FormData: ${key} =`,
-                    value instanceof File ? `File: ${value.name}` : value
-                );
-            }
-
-            console.log("📤 Sending profile update request...");
-
             const response = await axios.post(
                 route("update-profile"),
                 formDataToSend
             );
-
-            console.log("✅ Response:", response.data);
 
             if (response.data.success) {
                 const updatedUser = response.data.user;
@@ -328,15 +304,6 @@ export default function ProfilePage() {
             ...prev,
             [name]: value,
         }));
-    };
-
-    const handleSavePassword = () => {
-        setShowChangePassword(false);
-        setPasswordData({
-            currentPassword: "",
-            newPassword: "",
-            confirmPassword: "",
-        });
     };
 
     const triggerFileInput = () => {
@@ -456,13 +423,26 @@ export default function ProfilePage() {
         `;
     };
 
-    // Pagination calculations
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentOrders = orderHistory.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(orderHistory.length / itemsPerPage);
+    // Fetch data on component mount
+    useEffect(() => {
+        fetchOrderHistory();
+    }, []);
 
-    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+    // NEW: Set initial image preview when component mounts
+    useEffect(() => {
+        if (userData.profile_image) {
+            setImagePreview(getProfileImageUrl(userData.profile_image));
+        }
+    }, [userData.profile_image]);
+
+    useEffect(() => {
+        // Check if we have success data from props
+        if (payment_success || show_order_success) {
+            setActiveTab("orders");
+            setRecentOrderId(order_id);
+            setShowOrderSuccessModal(true);
+        }
+    }, [payment_success, show_order_success, order_id]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">

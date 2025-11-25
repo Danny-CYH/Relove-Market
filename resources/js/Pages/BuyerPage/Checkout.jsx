@@ -10,8 +10,7 @@ import {
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
-import { CheckoutForm } from "@/Components/BuyerPage/CheckoutForm";
-import { OrderSuccessModal } from "@/Components/BuyerPage/OrderSuccessModal";
+import { CheckoutForm } from "@/Components/BuyerPage/Checkout/CheckoutForm";
 
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
@@ -42,10 +41,8 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
             const productsArray = getProductsArray();
 
             if (productsArray.length === 0) {
-                console.warn(
-                    "No checkout data found, redirecting to wishlist..."
-                );
-                router.visit(route("wishlist"), {
+                console.warn("No checkout data found, redirecting to cart...");
+                router.visit(route("cart"), {
                     data: {
                         error: "Checkout session expired. Please select items again.",
                     },
@@ -101,8 +98,7 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
     // Redirect if no products
     useEffect(() => {
         if (isPageLoaded && !hasProducts) {
-            console.warn("No products found, redirecting to cart...");
-            router.visit(route("wishlist")); // or your cart page route
+            router.visit(route("cart"));
         }
     }, [isPageLoaded, hasProducts]);
 
@@ -442,10 +438,10 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                         selected.
                     </p>
                     <button
-                        onClick={() => router.visit(route("wishlist"))}
+                        onClick={() => router.visit(route("cart"))}
                         className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
                     >
-                        Return to Wishlist
+                        Return to Cart
                     </button>
                 </div>
             </div>
@@ -461,7 +457,7 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                 {/* Left Column */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Back to cart */}
-                    <Link href={route("wishlist")}>
+                    <Link href={route("cart")}>
                         <button className="flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium mb-2">
                             <ArrowLeft size={16} className="mr-1" />
                             Back to cart
@@ -534,15 +530,6 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                                 shipping={shipping}
                             />
                         </Elements>
-
-                        {/* Success Modal */}
-                        {showSuccessModal && orderData && (
-                            <OrderSuccessModal
-                                orderData={orderData}
-                                isOpen={showSuccessModal}
-                                onClose={() => setShowSuccessModal(false)}
-                            />
-                        )}
                     </>
                 </div>
 
@@ -555,7 +542,7 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
 
                         {/* Cart Items */}
                         <div className="space-y-4 max-h-72 overflow-y-auto pr-2 mb-6">
-                            {productsArray.map((product, index) => {
+                            {productsArray.map((product) => {
                                 const normalizedProduct =
                                     normalizeProductData(product);
                                 const selectedVariant =

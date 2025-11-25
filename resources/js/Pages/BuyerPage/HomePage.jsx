@@ -93,6 +93,77 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const fileInputRef = useRef(null);
 
+    // CORRECTED save_wishlist function
+    const save_wishlist = async (productId, selectedVariant = null) => {
+        try {
+            // Prepare the request data with proper structure
+            const requestData = {
+                product_id: productId,
+            };
+
+            if (selectedVariant) {
+                // Parse variant_combination if it's a string
+                let variantCombination = selectedVariant.variant_combination;
+                if (typeof variantCombination === "string") {
+                    try {
+                        variantCombination = JSON.parse(variantCombination);
+                    } catch (error) {
+                        console.error(
+                            "Error parsing variant combination:",
+                            error
+                        );
+                        // If parsing fails, create a basic structure
+                        variantCombination = {
+                            Colors: selectedVariant.variant_key,
+                        };
+                    }
+                }
+
+                // Format the selected variant data to match the desired structure
+                requestData.selected_variant = {
+                    variant_id: selectedVariant.variant_id,
+                    variant_combination: variantCombination,
+                    price:
+                        selectedVariant.price || selectedVariant.variant_price,
+                    quantity:
+                        selectedVariant.quantity ||
+                        selectedVariant.stock_quantity,
+                };
+            }
+
+            const response = await axios.post(
+                route("store-wishlist"),
+                requestData
+            );
+
+            if (response.status === 200) {
+                // ✅ SweetAlert popup on success
+                Swal.fire({
+                    title: "Added to Wishlist!",
+                    text: "This item has been successfully added to your wishlist.",
+                    icon: "success",
+                    confirmButtonText: "OK",
+                    timer: 2000,
+                    timerProgressBar: true,
+                });
+
+                return true;
+            }
+        } catch (error) {
+            console.error("💥 Error in save_wishlist:", error);
+
+            // Show error message to user
+            Swal.fire({
+                title: "Error",
+                text: "Failed to add product to wishlist. Please try again.",
+                icon: "error",
+                confirmButtonText: "OK",
+            });
+
+            return false;
+        }
+    };
+
     // Updated camera search handler
     const handleImageChange = async (e) => {
         const file = e.target.files[0];
@@ -169,38 +240,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             setFlashSaleProducts([]);
         } finally {
             setLoadingFlashSale(false);
-        }
-    };
-
-    const save_wishlist = async (product_id, variant_id = null) => {
-        try {
-            const response = await axios.post(route("store-wishlist"), {
-                product_id: product_id,
-                variant_id: variant_id,
-            });
-
-            Swal.fire({
-                icon: "success",
-                title: "Added to Wishlist",
-                text:
-                    response.data.message ||
-                    "This item has been added to your wishlist.",
-                timer: 1500,
-                showConfirmButton: false,
-            });
-        } catch (error) {
-            console.error(
-                "Error saving wishlist:",
-                error.response?.data || error
-            );
-
-            Swal.fire({
-                icon: "error",
-                title: "Failed",
-                text:
-                    error.response?.data?.message ||
-                    "Unable to add to wishlist.",
-            });
         }
     };
 
@@ -473,14 +512,22 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                             {list_categoryItem.map((category) => (
-                                <div
+                                <Link
                                     key={category.category_id}
-                                    className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all ${
+                                    href={route("shopping", {
+                                        categories: [category.category_name],
+                                    })}
+                                    className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all cursor-pointer ${
                                         selectedCategory ===
                                         category.category_name
                                             ? "border-green-500 bg-green-50 shadow-md"
-                                            : "border-gray-200 bg-white hover:shadow-sm"
+                                            : "border-gray-200 bg-white hover:shadow-sm hover:border-green-300"
                                     }`}
+                                    onClick={() =>
+                                        setSelectedCategory(
+                                            category.category_name
+                                        )
+                                    }
                                 >
                                     <span className="mb-2">
                                         {categoryIcons[
@@ -492,7 +539,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     <span className="text-sm font-medium text-gray-700 text-center">
                                         {category.category_name}
                                     </span>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </div>
@@ -592,7 +639,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                                 (product) => (
                                                     <div
                                                         key={product.product_id}
-                                                        className="w-full flex-shrink-0 px-3"
+                                                        className="w-full flex-shrink-0 px-3 z-10"
                                                     >
                                                         <FeaturedProductCard
                                                             product={product}

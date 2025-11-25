@@ -21,7 +21,6 @@ import { MobileProductCard } from "@/Components/BuyerPage/HomePage/MobileProduct
 import { MobileSortModal } from "@/Components/BuyerPage/ShopPage/MobileSortModal";
 
 export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
-    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const [priceRange, setPriceRange] = useState([0, 1000]);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [selectedConditions, setSelectedConditions] = useState([]);
@@ -36,7 +35,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     });
 
     // New mobile-specific states
+    const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
     const [mobileViewMode, setMobileViewMode] = useState("list");
+    const [isMobile, setIsMobile] = useState(false);
+
     const [showSortOptions, setShowSortOptions] = useState(false);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
 
@@ -49,34 +51,9 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [to, setTo] = useState(0);
     const [loading, setLoading] = useState(false);
 
-    // Mobile detection
-    const [isMobile, setIsMobile] = useState(false);
-
     // Refs for debounce
     const debounceTimeoutRef = useRef(null);
     const isInitialMount = useRef(true);
-
-    // Initialize with props data on component mount
-    useEffect(() => {
-        if (list_shoppingItem?.data) {
-            setProducts(list_shoppingItem.data || []);
-            setCurrentPage(list_shoppingItem.current_page || 1);
-            setLastPage(list_shoppingItem.last_page || 1);
-            setTotalProducts(list_shoppingItem.total || 0);
-            setFrom(list_shoppingItem.from || 0);
-            setTo(list_shoppingItem.to || 0);
-        }
-    }, [list_shoppingItem]);
-
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 1024);
-        };
-
-        checkMobile();
-        window.addEventListener("resize", checkMobile);
-        return () => window.removeEventListener("resize", checkMobile);
-    }, []);
 
     // Fixed fetchProducts function
     const fetchProducts = useCallback(
@@ -108,6 +85,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 params.append("price_range[]", priceRange[1].toString());
             }
 
+            // Filter condition
             try {
                 const response = await fetch(
                     `/api/shopping?${new URLSearchParams(params)}`,
@@ -190,104 +168,72 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     // Function to save to wishlist
     const save_wishlist = async (productId, selectedVariant = null) => {
         try {
-            const csrfToken = document
-                .querySelector('meta[name="csrf-token"]')
-                .getAttribute("content");
-
-            const requestData = { product_id: productId };
+            // Prepare the request data with proper structure
+            const requestData = {
+                product_id: productId,
+            };
 
             if (selectedVariant) {
+                // Parse variant_combination if it's a string
+                let variantCombination = selectedVariant.variant_combination;
+                if (typeof variantCombination === "string") {
+                    try {
+                        variantCombination = JSON.parse(variantCombination);
+                    } catch (error) {
+                        console.error(
+                            "Error parsing variant combination:",
+                            error
+                        );
+                        // If parsing fails, create a basic structure
+                        variantCombination = {
+                            Colors: selectedVariant.variant_key,
+                        };
+                    }
+                }
+
+                // Format the selected variant data to match the desired structure
                 requestData.selected_variant = {
-                    variant_id:
-                        selectedVariant.variant_id || selectedVariant.id,
-                    variant_combination:
-                        selectedVariant.variant_combination || selectedVariant,
+                    variant_id: selectedVariant.variant_id,
+                    variant_combination: variantCombination,
                     price:
-                        selectedVariant.variant_price || selectedVariant.price,
+                        selectedVariant.price || selectedVariant.variant_price,
                     quantity:
-                        selectedVariant.stock_quantity ||
-                        selectedVariant.quantity,
+                        selectedVariant.quantity ||
+                        selectedVariant.stock_quantity,
                 };
             }
 
-            const response = await fetch(route("store-wishlist"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-CSRF-TOKEN": csrfToken,
-                },
-                body: JSON.stringify(requestData),
-            });
+            const response = await axios.post(
+                route("store-wishlist"),
+                requestData
+            );
 
-            const responseText = await response.text();
-
-            // Check if response is HTML (login redirect)
-            if (
-                responseText.trim().startsWith("<!DOCTYPE") ||
-                responseText.trim().startsWith("<html")
-            ) {
-                const currentUrl = window.location.href;
-                window.location.href =
-                    route("login") +
-                    "?redirect=" +
-                    encodeURIComponent(currentUrl);
-                return false;
-            }
-
-            // Parse JSON
-            let result;
-            try {
-                result = JSON.parse(responseText);
-            } catch (parseError) {
-                console.error(
-                    "❌ Failed to parse response as JSON:",
-                    responseText
-                );
-                if (response.status === 401 || response.status === 403) {
-                    const currentUrl = window.location.href;
-                    window.location.href =
-                        route("login") +
-                        "?redirect=" +
-                        encodeURIComponent(currentUrl);
-                    return false;
-                }
-                return false;
-            }
-
-            if (response.ok) {
+            if (response.status === 200) {
                 // ✅ SweetAlert popup on success
                 Swal.fire({
                     title: "Added to Wishlist!",
                     text: "This item has been successfully added to your wishlist.",
                     icon: "success",
                     confirmButtonText: "OK",
-                    timer: 2000,
+                    timer: 4000,
                     timerProgressBar: true,
                 });
 
+                await get_wishlist(productId); // Refresh wishlist status
+
                 return true;
-            } else {
-                console.error("❌ Failed to add to wishlist", result);
-
-                if (
-                    response.status === 401 ||
-                    response.status === 403 ||
-                    result.error === "Unauthenticated" ||
-                    result.message === "Unauthenticated"
-                ) {
-                    const currentPath =
-                        window.location.pathname + window.location.search;
-                    window.location.href = `${route(
-                        "login"
-                    )}?redirect=${currentPath}`;
-                    return false;
-                }
-
-                return false;
             }
         } catch (error) {
             console.error("💥 Error in save_wishlist:", error);
+
+            // Show error message to user
+            Swal.fire({
+                title: "Error",
+                text: "Failed to add product to wishlist. Please try again.",
+                icon: "error",
+                confirmButtonText: "OK",
+            });
+
             return false;
         }
     };
@@ -359,33 +305,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         setPriceRange(newPriceRange);
     };
 
-    // FIXED: Handle price range quick selection
-    const handleQuickPriceRange = (newRange) => {
-        setPriceRange(newRange);
-    };
-
-    // FIXED: Use useEffect to trigger API calls when filters change
-    useEffect(() => {
-        if (isInitialMount.current) {
-            isInitialMount.current = false;
-            return;
-        }
-
-        // Clear any pending search timeout
-        if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-        }
-
-        // Fetch products with current filters
-        fetchProducts(1);
-    }, [
-        selectedCategories,
-        selectedConditions,
-        priceRange,
-        sortBy,
-        fetchProducts,
-    ]);
-
     // Determine if there are products to show
     const hasProducts = products && products.length > 0;
 
@@ -410,6 +329,49 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
         return pages;
     };
+
+    // Initialize with props data on component mount
+    useEffect(() => {
+        if (list_shoppingItem?.data) {
+            setProducts(list_shoppingItem.data || []);
+            setCurrentPage(list_shoppingItem.current_page || 1);
+            setLastPage(list_shoppingItem.last_page || 1);
+            setTotalProducts(list_shoppingItem.total || 0);
+            setFrom(list_shoppingItem.from || 0);
+            setTo(list_shoppingItem.to || 0);
+        }
+    }, [list_shoppingItem]);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 1024);
+        };
+
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+        return () => window.removeEventListener("resize", checkMobile);
+    }, []);
+
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+
+        // Clear any pending search timeout
+        if (debounceTimeoutRef.current) {
+            clearTimeout(debounceTimeoutRef.current);
+        }
+
+        // Fetch products with current filters
+        fetchProducts(1);
+    }, [
+        selectedCategories,
+        selectedConditions,
+        priceRange,
+        sortBy,
+        fetchProducts,
+    ]);
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
@@ -540,10 +502,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 <div className="absolute inset-0 bg-black/50"></div>
                 <div className="container mx-auto md:mt-10 px-4 text-center relative z-10">
                     <h1 className="text-3xl lg:text-4xl font-bold mb-4">
-                        Discover Amazing Products
+                        ReLove Your Shopping Experience
                     </h1>
                     <p className="text-lg lg:text-xl opacity-90 mb-6">
-                        Find exactly what you're looking for
+                        Discover items shared, loved, and ready for you
                     </p>
                     {/* Search Bar - Desktop ONLY */}
                     <div className="max-w-2xl mx-auto relative hidden lg:block">
