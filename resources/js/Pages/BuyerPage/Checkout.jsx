@@ -142,7 +142,15 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
 
         // Optional: Redirect to success page after a delay
         setTimeout(() => {
-            router.visit(route("profile"));
+            router.visit(route("profile"), {
+                data: {
+                    active_tab: "orders",
+                    show_order_success: true,
+                    order_id: orderInfo.orderId,
+                    payment_success: true,
+                },
+                preserveState: false,
+            });
         }, 7000);
     };
 

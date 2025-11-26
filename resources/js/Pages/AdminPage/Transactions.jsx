@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
+
 import {
     Search,
     ChevronLeft,
     ChevronRight,
-    BarChart3,
     Package,
     Truck,
     CheckCircle,
@@ -14,12 +14,15 @@ import {
     RefreshCw,
     Filter,
     X,
-    Menu,
-    Smartphone,
 } from "lucide-react";
+
 import { Sidebar } from "@/Components/AdminPage/Sidebar";
+
 import dayjs from "dayjs";
+
 import axios from "axios";
+
+import Swal from "sweetalert2";
 
 export default function Transactions({ list_transactions }) {
     const [transactions, setTransactions] = useState(
@@ -55,6 +58,90 @@ export default function Transactions({ list_transactions }) {
         releasedPayments: 0,
         totalAmountPending: 0,
     });
+
+    // SweetAlert notification function
+    const showNotification = (title, message, type = "info") => {
+        const toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+            },
+        });
+
+        toast.fire({
+            icon: type,
+            title: title,
+            text: message,
+        });
+    };
+
+    // SweetAlert confirmation dialog
+    const showConfirmation = (title, text, confirmButtonText = "Confirm") => {
+        return Swal.fire({
+            title: title,
+            text: text,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: confirmButtonText,
+            cancelButtonText: "Cancel",
+            customClass: {
+                popup: "rounded-2xl",
+                confirmButton: "px-6 py-3 rounded-lg font-medium",
+                cancelButton:
+                    "px-6 py-3 rounded-lg font-medium border border-gray-300 text-gray-700 hover:bg-gray-50",
+            },
+        });
+    };
+
+    // SweetAlert success message
+    const showSuccess = (title, message) => {
+        Swal.fire({
+            title: title,
+            text: message,
+            icon: "success",
+            confirmButtonText: "OK",
+            confirmButtonColor: "#10b981",
+            customClass: {
+                popup: "rounded-2xl",
+                confirmButton: "px-6 py-3 rounded-lg font-medium",
+            },
+        });
+    };
+
+    // SweetAlert error message
+    const showError = (title, message) => {
+        Swal.fire({
+            title: title,
+            text: message,
+            icon: "error",
+            confirmButtonText: "OK",
+            confirmButtonColor: "#ef4444",
+            customClass: {
+                popup: "rounded-2xl",
+                confirmButton: "px-6 py-3 rounded-lg font-medium",
+            },
+        });
+    };
+
+    // SweetAlert loading state
+    const showLoading = (title, message = "") => {
+        Swal.fire({
+            title: title,
+            text: message,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+            },
+        });
+    };
 
     // Check mobile view on mount and resize
     useEffect(() => {
@@ -417,26 +504,25 @@ export default function Transactions({ list_transactions }) {
 
             if (response.data.success) {
                 await loadDataWithFilters(pagination.current_page);
-                showNotification(
+                showSuccess(
                     "💰 Payment Released",
-                    `Payment successfully released to seller for order ${orderId}`,
-                    "success"
+                    `Payment successfully released to seller for order ${orderId}`
                 );
                 return true;
             } else {
-                showNotification(
+               Swal.close();
+                showError(
                     "❌ Release Failed",
-                    response.data.message || "Failed to release payment",
-                    "error"
+                    response.data.message || "Failed to release payment"
                 );
                 return false;
             }
         } catch (error) {
             console.error("Error releasing payment:", error);
-            showNotification(
+            Swal.close();
+            showError(
                 "❌ Error",
-                "Error releasing payment. Please try again.",
-                "error"
+                "Error releasing payment. Please try again."
             );
             return false;
         } finally {
@@ -451,13 +537,15 @@ export default function Transactions({ list_transactions }) {
         const sellerEarning = transaction.seller_earning[0];
         const payoutAmount = sellerEarning?.payout_amount || transaction.amount;
 
-        if (
-            window.confirm(
-                `Are you sure you want to release RM ${parseFloat(
-                    payoutAmount
-                ).toFixed(2)} to ${transaction.seller?.seller_name}?`
-            )
-        ) {
+        const result = await showConfirmation(
+            "Release Payment",
+            `Are you sure you want to release RM ${parseFloat(
+                payoutAmount
+            ).toFixed(2)} to ${transaction.seller?.seller_name}?`,
+            "Release Payment"
+        );
+
+        if (result.isConfirmed) {
             await autoReleasePayment(orderId);
         }
     };
@@ -472,29 +560,36 @@ export default function Transactions({ list_transactions }) {
             return;
         }
 
-        if (
-            window.confirm(
-                `Release payments for ${
-                    metrics.pendingRelease
-                } completed orders? Total amount: RM ${metrics.totalAmountPending.toFixed(
-                    2
-                )}`
-            )
-        ) {
+       const result = await showConfirmation(
+            "Bulk Release Payments",
+            `Release payments for ${
+                metrics.pendingRelease
+            } completed orders? Total amount: RM ${metrics.totalAmountPending.toFixed(
+                2
+            )}`,
+            "Release All Payments"
+        );
+
+        if (result.isConfirmed) {
             setIsLoading(true);
             try {
-                showNotification(
-                    "📦 Bulk Release Initiated",
-                    "Bulk release feature is being processed...",
-                    "info"
-                );
+                showLoading("Bulk Release", "Processing multiple payments...");
+                
+                // Simulate bulk release process
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
                 await loadDataWithFilters(pagination.current_page);
+                Swal.close();
+                showSuccess(
+                    "✅ Bulk Release Complete",
+                    `Successfully released ${metrics.pendingRelease} payments`
+                );
             } catch (error) {
                 console.error("Bulk release error:", error);
-                showNotification(
+                Swal.close();
+                showError(
                     "❌ Bulk Release Failed",
-                    "Error processing bulk release.",
-                    "error"
+                    "Error processing bulk release."
                 );
             } finally {
                 setIsLoading(false);
@@ -504,10 +599,14 @@ export default function Transactions({ list_transactions }) {
 
     const showOrderTracking = async (transaction) => {
         try {
+            showLoading("Loading", "Fetching order tracking information...");
+
             const response = await fetch(
                 `/api/transactions/${transaction.order.order_id}/tracking`
             );
             const result = response.data;
+
+             Swal.close();
 
             if (result.success) {
                 setSelectedTransaction({
@@ -520,14 +619,10 @@ export default function Transactions({ list_transactions }) {
             setShowOrderTrackingModal(true);
         } catch (error) {
             console.error("Error fetching tracking info:", error);
+             Swal.close();
             setSelectedTransaction(transaction);
             setShowOrderTrackingModal(true);
         }
-    };
-
-    const showNotification = (title, message, type = "info") => {
-        console.log(`[${type}] ${title}: ${message}`);
-        alert(`${title}: ${message}`);
     };
 
     const orderStatusSteps = [

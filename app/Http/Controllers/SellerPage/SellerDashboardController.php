@@ -8,7 +8,6 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Seller;
 
-use App\Models\SellerEarning;
 use Exception;
 
 class SellerDashboardController extends Controller
@@ -34,14 +33,13 @@ class SellerDashboardController extends Controller
             ->get();
 
         $order_data = Order::with([
-            "orderItems.product",
+            "orderItems.product" => function ($query) {
+                $query->orderBy('created_at', 'desc');
+            },
             "sellerEarning",
             "user",
         ])
-            ->where(
-                "seller_id",
-                $this->seller_id
-            )
+            ->where("seller_id", $this->seller_id)
             ->orderBy("created_at", "desc")
             ->get();
 
@@ -58,6 +56,7 @@ class SellerDashboardController extends Controller
             $featured_products = Product::with([
                 "productImage"
             ])
+                ->where("seller_id", $this->seller_id)
                 ->where("featured", True)
                 ->get();
 

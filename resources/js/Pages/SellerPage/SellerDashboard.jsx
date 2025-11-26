@@ -205,7 +205,9 @@ export default function SellerDashboard() {
             const ordersCount = calculateOrders(orders, filterType);
             const totalOrders = calculateTotalOrders(orders);
             const conversionRate = calculateConversionRate(orders);
-            const totalProducts = products.length || 0;
+            const totalProducts =
+                products?.filter((product) => product.product_status !== "blocked")
+                    .length || 0;
 
             return {
                 earnings,
@@ -232,9 +234,6 @@ export default function SellerDashboard() {
     // Add this function to refresh dashboard data
     const refreshDashboardData = useCallback(async () => {
         try {
-            console.log(
-                "🔄 Refreshing dashboard data after payment release..."
-            );
             const { data } = await axios.get(route("dashboard-data"));
             const featured_products = await axios.get(
                 route("featured-products")
@@ -260,6 +259,269 @@ export default function SellerDashboard() {
         } catch (error) {
             console.error("Error refreshing dashboard data:", error);
         }
+    }, [calculateAllKPIs, timeFilter]);
+
+    // GENERATE EARNINGS CHART DATA BASED ON TIME FILTER
+    const generateEarningsChartData = useCallback((orders, filterType) => {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+
+        switch (filterType) {
+            case "daily":
+                // Last 7 days
+                const days = [];
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    days.push({
+                        name: date.toLocaleDateString("en-US", {
+                            weekday: "short",
+                        }),
+                        fullDate: date.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                        }),
+                        date: new Date(date),
+                    });
+                }
+
+                return days.map((day) => {
+                    const dayOrders =
+                        orders?.filter((order) => {
+                            if (!order.created_at) return false;
+                            const orderDate = new Date(order.created_at);
+                            return (
+                                orderDate.getDate() === day.date.getDate() &&
+                                orderDate.getMonth() === day.date.getMonth() &&
+                                orderDate.getFullYear() ===
+                                    day.date.getFullYear()
+                            );
+                        }) || [];
+
+                    const earnings = dayOrders.reduce((sum, order) => {
+                        const orderAmount =
+                            parseFloat(
+                                order?.seller_earning[0]?.payout_amount
+                            ) || 0;
+                        return sum + orderAmount;
+                    }, 0);
+
+                    const ordersCount = dayOrders.length;
+
+                    return {
+                        name: day.name,
+                        fullName: day.fullDate,
+                        earnings: parseFloat(earnings.toFixed(2)),
+                        orders: ordersCount,
+                    };
+                });
+
+            case "monthly":
+                // Last 6 months
+                const months = [];
+                for (let i = 5; i >= 0; i--) {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() - i);
+                    months.push({
+                        name: date.toLocaleDateString("en-US", {
+                            month: "short",
+                        }),
+                        fullName: date.toLocaleDateString("en-US", {
+                            month: "long",
+                            year: "numeric",
+                        }),
+                        month: date.getMonth(),
+                        year: date.getFullYear(),
+                    });
+                }
+
+                return months.map((month) => {
+                    const monthOrders =
+                        orders?.filter((order) => {
+                            if (!order.created_at) return false;
+                            const orderDate = new Date(order.created_at);
+                            return (
+                                orderDate.getMonth() === month.month &&
+                                orderDate.getFullYear() === month.year
+                            );
+                        }) || [];
+
+                    const earnings = monthOrders.reduce((sum, order) => {
+                        if (
+                            order?.seller_earning?.[0]?.status !== "Released" ||
+                            !order?.seller_earning[0]?.payout_amount
+                        ) {
+                            return sum; // ✔ skip invalid order
+                        }
+
+                        const amount =
+                            parseFloat(order.seller_earning[0].payout_amount) ||
+                            0;
+                        return sum + amount;
+                    }, 0);
+
+                    const ordersCount = monthOrders.length;
+
+                    return {
+                        name: month.name,
+                        fullName: month.fullName,
+                        earnings: parseFloat(earnings.toFixed(2)),
+                        orders: ordersCount,
+                    };
+                });
+
+            case "yearly":
+                // Last 5 years
+                const years = [];
+                for (let i = 4; i >= 0; i--) {
+                    const year = currentYear - i;
+                    years.push({
+                        name: year.toString(),
+                        fullName: year.toString(),
+                        year: year,
+                    });
+                }
+
+                return years.map((yearData) => {
+                    const yearOrders =
+                        orders?.filter((order) => {
+                            if (!order.created_at) return false;
+                            const orderDate = new Date(order.created_at);
+                            return orderDate.getFullYear() === yearData.year;
+                        }) || [];
+
+                    const earnings = yearOrders.reduce((sum, order) => {
+                        if (
+                            order?.seller_earning?.[0]?.status !== "Released" ||
+                            !order?.seller_earning[0]?.payout_amount
+                        ) {
+                            return sum;
+                        }
+
+                        const amount =
+                            parseFloat(order.seller_earning[0].payout_amount) ||
+                            0;
+                        return sum + amount;
+                    }, 0);
+
+                    const ordersCount = yearOrders.length;
+
+                    return {
+                        name: yearData.name,
+                        fullName: yearData.fullName,
+                        earnings: parseFloat(earnings.toFixed(2)),
+                        orders: ordersCount,
+                    };
+                });
+
+            default:
+                return [];
+        }
+    }, []);
+
+    // Generate chart data with real order data and time filter
+    const earningsChartData = useMemo(() => {
+        return generateEarningsChartData(orderData, timeFilter);
+    }, [orderData, timeFilter, generateEarningsChartData]);
+
+    // Custom tooltip formatter for the charts
+    const CustomTooltip = ({ active, payload, label }) => {
+        if (active && payload && payload.length) {
+            const dataPoint = earningsChartData.find(
+                (item) => item.name === label
+            );
+            return (
+                <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+                    <p className="font-semibold text-gray-800">
+                        {dataPoint?.fullName || label}
+                    </p>
+                    {payload.map((entry, index) => (
+                        <p
+                            key={index}
+                            className="text-sm"
+                            style={{ color: entry.color }}
+                        >
+                            {entry.name === "earnings"
+                                ? "Earnings: "
+                                : "Orders: "}
+                            <span className="font-medium">
+                                {entry.name === "earnings"
+                                    ? `RM ${entry.value}`
+                                    : entry.value}
+                            </span>
+                        </p>
+                    ))}
+                </div>
+            );
+        }
+        return null;
+    };
+
+    // Get filter display name
+    const getFilterDisplayName = (filter) => {
+        switch (filter) {
+            case "daily":
+                return "Daily";
+            case "monthly":
+                return "Monthly";
+            case "yearly":
+                return "Yearly";
+            default:
+                return "Monthly";
+        }
+    };
+
+    // Update KPIs when time filter changes
+    useEffect(() => {
+        if (orderData.length > 0) {
+            const products = sellerData?.product || [];
+            const updatedKPIs = calculateAllKPIs(
+                orderData,
+                products,
+                timeFilter
+            );
+            setKpis(updatedKPIs);
+        }
+    }, [timeFilter, orderData, sellerData, calculateAllKPIs]);
+
+    // Fetch initial data
+    useEffect(() => {
+        let mounted = true;
+
+        (async () => {
+            try {
+                const { data } = await axios.get(route("dashboard-data"));
+                const featured_products = await axios.get(
+                    route("featured-products")
+                );
+
+                if (!mounted) return;
+
+                setSellerData(data.seller_storeInfo[0]);
+                setShop(data);
+                setFeaturedProducts(featured_products.data.featured_products);
+
+                const orders = data.order_data || [];
+                const products = data.seller_storeInfo[0]?.product || [];
+
+                const calculatedKPIs = calculateAllKPIs(
+                    orders,
+                    products,
+                    timeFilter
+                );
+                setKpis(calculatedKPIs);
+                setRealTimeOrders(orders);
+                setOrderData(orders);
+            } catch (e) {
+                console.error("Error fetching dashboard data:", e);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        })();
+
+        return () => {
+            mounted = false;
+        };
     }, [calculateAllKPIs, timeFilter]);
 
     // Real-time order updates with Echo - CORRECTED VERSION
@@ -366,263 +628,6 @@ export default function SellerDashboard() {
         }
     }, [sellerData?.seller_store?.store_id]);
 
-    // GENERATE EARNINGS CHART DATA BASED ON TIME FILTER
-    const generateEarningsChartData = useCallback((orders, filterType) => {
-        const currentDate = new Date();
-        const currentYear = currentDate.getFullYear();
-
-        switch (filterType) {
-            case "daily":
-                // Last 7 days
-                const days = [];
-                for (let i = 6; i >= 0; i--) {
-                    const date = new Date();
-                    date.setDate(date.getDate() - i);
-                    days.push({
-                        name: date.toLocaleDateString("en-US", {
-                            weekday: "short",
-                        }),
-                        fullDate: date.toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                        }),
-                        date: new Date(date),
-                    });
-                }
-
-                return days.map((day) => {
-                    const dayOrders =
-                        orders?.filter((order) => {
-                            if (
-                                !order.created_at ||
-                                !order?.seller_earning[0]?.payout_amount
-                            )
-                                return false;
-                            const orderDate = new Date(order.created_at);
-                            return (
-                                orderDate.getDate() === day.date.getDate() &&
-                                orderDate.getMonth() === day.date.getMonth() &&
-                                orderDate.getFullYear() ===
-                                    day.date.getFullYear()
-                            );
-                        }) || [];
-
-                    const earnings = dayOrders.reduce((sum, order) => {
-                        const orderAmount =
-                            parseFloat(
-                                order?.seller_earning[0]?.payout_amount
-                            ) || 0;
-                        return sum + orderAmount;
-                    }, 0);
-
-                    const ordersCount = dayOrders.length;
-
-                    return {
-                        name: day.name,
-                        fullName: day.fullDate,
-                        earnings: parseFloat(earnings.toFixed(2)),
-                        orders: ordersCount,
-                    };
-                });
-
-            case "monthly":
-                // Last 6 months
-                const months = [];
-                for (let i = 5; i >= 0; i--) {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    months.push({
-                        name: date.toLocaleDateString("en-US", {
-                            month: "short",
-                        }),
-                        fullName: date.toLocaleDateString("en-US", {
-                            month: "long",
-                            year: "numeric",
-                        }),
-                        month: date.getMonth(),
-                        year: date.getFullYear(),
-                    });
-                }
-
-                return months.map((month) => {
-                    const monthOrders =
-                        orders?.filter((order) => {
-                            if (!order.created_at || !order.amount)
-                                return false;
-                            const orderDate = new Date(order.created_at);
-                            return (
-                                orderDate.getMonth() === month.month &&
-                                orderDate.getFullYear() === month.year
-                            );
-                        }) || [];
-
-                    const earnings = monthOrders.reduce((sum, order) => {
-                        const orderAmount =
-                            parseFloat(
-                                order.seller_earning[0]?.payout_amount
-                            ) || 0;
-                        return sum + orderAmount;
-                    }, 0);
-
-                    const ordersCount = monthOrders.length;
-
-                    return {
-                        name: month.name,
-                        fullName: month.fullName,
-                        earnings: parseFloat(earnings.toFixed(2)),
-                        orders: ordersCount,
-                    };
-                });
-
-            case "yearly":
-                // Last 5 years
-                const years = [];
-                for (let i = 4; i >= 0; i--) {
-                    const year = currentYear - i;
-                    years.push({
-                        name: year.toString(),
-                        fullName: year.toString(),
-                        year: year,
-                    });
-                }
-
-                return years.map((yearData) => {
-                    const yearOrders =
-                        orders?.filter((order) => {
-                            if (!order.created_at || !order.amount)
-                                return false;
-                            const orderDate = new Date(order.created_at);
-                            return orderDate.getFullYear() === yearData.year;
-                        }) || [];
-
-                    const earnings = yearOrders.reduce((sum, order) => {
-                        const orderAmount =
-                            parseFloat(
-                                order?.seller_earning[0]?.payout_amount
-                            ) || 0;
-                        return sum + orderAmount;
-                    }, 0);
-
-                    const ordersCount = yearOrders.length;
-
-                    return {
-                        name: yearData.name,
-                        fullName: yearData.fullName,
-                        earnings: parseFloat(earnings.toFixed(2)),
-                        orders: ordersCount,
-                    };
-                });
-
-            default:
-                return [];
-        }
-    }, []);
-
-    // Update KPIs when time filter changes
-    useEffect(() => {
-        if (orderData.length > 0) {
-            const products = sellerData?.product || [];
-            const updatedKPIs = calculateAllKPIs(
-                orderData,
-                products,
-                timeFilter
-            );
-            setKpis(updatedKPIs);
-        }
-    }, [timeFilter, orderData, sellerData, calculateAllKPIs]);
-
-    // Fetch initial data
-    useEffect(() => {
-        let mounted = true;
-
-        (async () => {
-            try {
-                const { data } = await axios.get(route("dashboard-data"));
-                const featured_products = await axios.get(
-                    route("featured-products")
-                );
-
-                if (!mounted) return;
-
-                setSellerData(data.seller_storeInfo[0]);
-                setShop(data);
-                setFeaturedProducts(featured_products.data.featured_products);
-
-                const orders = data.order_data || [];
-                const products = data.seller_storeInfo[0]?.product || [];
-
-                const calculatedKPIs = calculateAllKPIs(
-                    orders,
-                    products,
-                    timeFilter
-                );
-                setKpis(calculatedKPIs);
-                setRealTimeOrders(orders);
-                setOrderData(orders);
-            } catch (e) {
-                console.error("Error fetching dashboard data:", e);
-            } finally {
-                if (mounted) setLoading(false);
-            }
-        })();
-
-        return () => {
-            mounted = false;
-        };
-    }, [calculateAllKPIs, timeFilter]);
-
-    // Generate chart data with real order data and time filter
-    const earningsChartData = useMemo(() => {
-        return generateEarningsChartData(orderData, timeFilter);
-    }, [orderData, timeFilter, generateEarningsChartData]);
-
-    // Custom tooltip formatter for the charts
-    const CustomTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            const dataPoint = earningsChartData.find(
-                (item) => item.name === label
-            );
-            return (
-                <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-                    <p className="font-semibold text-gray-800">
-                        {dataPoint?.fullName || label}
-                    </p>
-                    {payload.map((entry, index) => (
-                        <p
-                            key={index}
-                            className="text-sm"
-                            style={{ color: entry.color }}
-                        >
-                            {entry.name === "earnings"
-                                ? "Earnings: "
-                                : "Orders: "}
-                            <span className="font-medium">
-                                {entry.name === "earnings"
-                                    ? `RM ${entry.value}`
-                                    : entry.value}
-                            </span>
-                        </p>
-                    ))}
-                </div>
-            );
-        }
-        return null;
-    };
-
-    // Get filter display name
-    const getFilterDisplayName = (filter) => {
-        switch (filter) {
-            case "daily":
-                return "Daily";
-            case "monthly":
-                return "Monthly";
-            case "yearly":
-                return "Yearly";
-            default:
-                return "Monthly";
-        }
-    };
-
     if (loading || !shop) {
         return (
             <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -717,7 +722,7 @@ export default function SellerDashboard() {
                     />
                 </div>
 
-                {/* Charts with real data */}
+                {/* Charts with order and earning data */}
                 <div className="grid grid-cols-1 xl:grid-cols-1 gap-4 mb-6">
                     {/* Earnings Bar Chart */}
                     <div className="col-span-1 xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-5">

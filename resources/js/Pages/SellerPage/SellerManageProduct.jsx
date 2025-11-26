@@ -14,6 +14,8 @@ import { LoadingProgress } from "@/Components/AdminPage/LoadingProgress";
 
 import axios from "axios";
 
+import Swal from "sweetalert2";
+
 export default function SellerManageProduct({ list_categories }) {
     const [realTimeProducts, setRealTimeProducts] = useState([]);
     const [isViewOpen, setIsViewOpen] = useState(false);
@@ -55,6 +57,7 @@ export default function SellerManageProduct({ list_categories }) {
         unavailableProducts: 0,
         lowStockProducts: 0,
         outOfStockProducts: 0,
+        blockedProducts: 0,
     });
 
     const fetchMetrics = async (filters = {}) => {
@@ -106,6 +109,24 @@ export default function SellerManageProduct({ list_categories }) {
             (fp) => fp.product_id === productId
         );
         return isFeatured;
+    };
+
+    const isProductBlocked = (product) => {
+        return (
+            product.product_status === "blocked" ||
+            product.is_blocked === true ||
+            product.admin_status === "blocked"
+        );
+    };
+
+    // Add this function to get block reason
+    const getBlockReason = (product) => {
+        return (
+            product.block_reason ||
+            product.admin_notes ||
+            product.moderation_reason ||
+            "Violation of platform policies"
+        );
     };
 
     // Auto update product status when stock reaches 0
@@ -492,6 +513,70 @@ export default function SellerManageProduct({ list_categories }) {
         ]);
     };
 
+    // Add this function to handle contacting admin
+    const contactAdmin = (product) => {
+        Swal.fire({
+            title: "Contact Admin",
+            html: `
+            <div class="text-left">
+                <p class="text-sm text-gray-600 mb-4">
+                    Your product "<strong>${
+                        product.product_name
+                    }</strong>" has been blocked. 
+                    Please contact admin for more information or to appeal this decision.
+                </p>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-yellow-800 font-medium mb-1">Block Reason:</p>
+                    <p class="text-xs text-yellow-700">${getBlockReason(
+                        product
+                    )}</p>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <span class="text-sm text-gray-700">Email: admin@relovemarket.com</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        <span class="text-sm text-gray-700">Phone: +1 (555) 123-4567</span>
+                    </div>
+                </div>
+            </div>
+        `,
+            icon: "info",
+            confirmButtonText: "Copy Product Details",
+            confirmButtonColor: "#3b82f6",
+            showCancelButton: true,
+            cancelButtonText: "Close",
+            customClass: {
+                popup: "rounded-2xl",
+                confirmButton: "px-6 py-3 rounded-lg font-medium",
+                cancelButton:
+                    "px-6 py-3 rounded-lg font-medium border border-gray-300 text-white",
+            },
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Copy product details to clipboard
+                const productDetails = `Product: ${product.product_name}\nID: ${
+                    product.product_id
+                }\nBlock Reason: ${getBlockReason(product)}`;
+                navigator.clipboard.writeText(productDetails).then(() => {
+                    Swal.fire({
+                        title: "Copied!",
+                        text: "Product details copied to clipboard",
+                        icon: "success",
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
+                });
+            }
+        });
+    };
+
     // Real time update for product listing with Echo
     useEffect(() => {
         if (!window.Echo) return;
@@ -719,6 +804,7 @@ export default function SellerManageProduct({ list_categories }) {
                                 </div>
                             </div>
                         </div>
+
                         <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center">
                                 <div className="bg-green-100 p-2 rounded-lg mr-3">
@@ -751,6 +837,7 @@ export default function SellerManageProduct({ list_categories }) {
                                 </div>
                             </div>
                         </div>
+
                         <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center">
                                 <div className="bg-red-100 p-2 rounded-lg mr-3">
@@ -783,6 +870,7 @@ export default function SellerManageProduct({ list_categories }) {
                                 </div>
                             </div>
                         </div>
+
                         <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center">
                                 <div className="bg-yellow-100 p-2 rounded-lg mr-3">
@@ -815,6 +903,7 @@ export default function SellerManageProduct({ list_categories }) {
                                 </div>
                             </div>
                         </div>
+
                         <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
                             <div className="flex items-center">
                                 <div className="bg-orange-100 p-2 rounded-lg mr-3">
@@ -842,6 +931,38 @@ export default function SellerManageProduct({ list_categories }) {
                                             <div className="animate-pulse bg-gray-200 h-6 w-8 rounded"></div>
                                         ) : (
                                             metrics.outOfStockProducts
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex items-center">
+                                <div className="bg-red-100 p-2 rounded-lg mr-3">
+                                    <svg
+                                        className="w-4 h-4 md:w-5 md:h-5 text-red-600"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z"
+                                        />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p className="text-xs md:text-sm text-gray-600">
+                                        Blocked
+                                    </p>
+                                    <p className="text-base md:text-lg font-semibold text-gray-900">
+                                        {metricsLoading ? (
+                                            <div className="animate-pulse bg-gray-200 h-6 w-8 rounded"></div>
+                                        ) : (
+                                            metrics.blockedProducts || 0
                                         )}
                                     </p>
                                 </div>
@@ -998,7 +1119,11 @@ export default function SellerManageProduct({ list_categories }) {
                                         realTimeProducts.map((product) => (
                                             <tr
                                                 key={product.product_id}
-                                                className="hover:bg-gray-50"
+                                                className={`hover:bg-gray-50 ${
+                                                    isProductBlocked(product)
+                                                        ? "bg-red-50 border-l-4 border-l-red-500 hover:bg-red-100"
+                                                        : ""
+                                                }`}
                                             >
                                                 <td className="px-4 md:px-6 py-4">
                                                     <div className="flex items-center">
@@ -1049,6 +1174,16 @@ export default function SellerManageProduct({ list_categories }) {
                                                                     product.product_id
                                                                 }
                                                             </div>
+                                                            {isProductBlocked(
+                                                                product
+                                                            ) && (
+                                                                <div className="text-xs text-red-600 mt-1">
+                                                                    Reason:{" "}
+                                                                    {getBlockReason(
+                                                                        product
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1074,7 +1209,13 @@ export default function SellerManageProduct({ list_categories }) {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 md:px-6 py-4">
-                                                    {
+                                                    {isProductBlocked(
+                                                        product
+                                                    ) ? (
+                                                        <span className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded-full font-medium">
+                                                            BLOCKED
+                                                        </span>
+                                                    ) : (
                                                         <ListingToggleButton
                                                             product={product}
                                                             toggleProductListing={
@@ -1084,7 +1225,7 @@ export default function SellerManageProduct({ list_categories }) {
                                                                 togglingProduct
                                                             }
                                                         />
-                                                    }
+                                                    )}
                                                 </td>
                                                 <td className="px-4 md:px-6 py-4">
                                                     <span className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
@@ -1095,58 +1236,106 @@ export default function SellerManageProduct({ list_categories }) {
                                                     </span>
                                                 </td>
                                                 <td className="px-4 md:px-6 py-4">
-                                                    <FeaturedToggleButton
-                                                        product={product}
-                                                        isProductFeatured={
-                                                            isProductFeatured
-                                                        }
-                                                        toggleProductFeatured={
-                                                            toggleProductFeatured
-                                                        }
-                                                        togglingProduct={
-                                                            togglingProduct
-                                                        }
-                                                    />
+                                                    {isProductBlocked(
+                                                        product
+                                                    ) ? (
+                                                        <span className="text-xs text-gray-500">
+                                                            N/A
+                                                        </span>
+                                                    ) : (
+                                                        <FeaturedToggleButton
+                                                            product={product}
+                                                            isProductFeatured={
+                                                                isProductFeatured
+                                                            }
+                                                            toggleProductFeatured={
+                                                                toggleProductFeatured
+                                                            }
+                                                            togglingProduct={
+                                                                togglingProduct
+                                                            }
+                                                        />
+                                                    )}
                                                 </td>
+
                                                 <td className="px-4 md:px-6 py-4 text-right">
-                                                    <div className="flex justify-end space-x-1 md:space-x-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                setProductToView(
-                                                                    product
-                                                                );
-                                                                setIsViewOpen(
-                                                                    true
-                                                                );
-                                                            }}
-                                                            className="p-1.5 md:p-2 text-gray-400 hover:text-blue-600 transition-colors"
-                                                            title="View product"
-                                                        >
-                                                            <Eye size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() =>
-                                                                handleEditProductClick(
-                                                                    product
-                                                                )
-                                                            }
-                                                            className="p-1.5 md:p-2 text-gray-400 hover:text-green-600 transition-colors"
-                                                            title="Edit product"
-                                                        >
-                                                            <Edit size={16} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() =>
-                                                                handleDeleteProductClick(
-                                                                    product
-                                                                )
-                                                            }
-                                                            className="p-1.5 md:p-2 text-gray-400 hover:text-red-600 transition-colors"
-                                                            title="Delete product"
-                                                        >
-                                                            <Trash size={16} />
-                                                        </button>
-                                                    </div>
+                                                    {isProductBlocked(
+                                                        product
+                                                    ) ? (
+                                                        <div className="flex justify-end space-x-1 md:space-x-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    // Function to contact admin
+                                                                    contactAdmin(
+                                                                        product
+                                                                    );
+                                                                }}
+                                                                className="p-1.5 md:p-2 text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg"
+                                                                title="Contact Admin about this product"
+                                                            >
+                                                                <svg
+                                                                    className="w-4 h-4"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    viewBox="0 0 24 24"
+                                                                >
+                                                                    <path
+                                                                        strokeLinecap="round"
+                                                                        strokeLinejoin="round"
+                                                                        strokeWidth={
+                                                                            2
+                                                                        }
+                                                                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                                                    />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-end space-x-1 md:space-x-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setProductToView(
+                                                                        product
+                                                                    );
+                                                                    setIsViewOpen(
+                                                                        true
+                                                                    );
+                                                                }}
+                                                                className="p-1.5 md:p-2 text-gray-400 hover:text-blue-600 transition-colors"
+                                                                title="View product"
+                                                            >
+                                                                <Eye
+                                                                    size={16}
+                                                                />
+                                                            </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleEditProductClick(
+                                                                        product
+                                                                    )
+                                                                }
+                                                                className="p-1.5 md:p-2 text-gray-400 hover:text-green-600 transition-colors"
+                                                                title="Edit product"
+                                                            >
+                                                                <Edit
+                                                                    size={16}
+                                                                />
+                                                            </button>
+                                                            <button
+                                                                onClick={() =>
+                                                                    handleDeleteProductClick(
+                                                                        product
+                                                                    )
+                                                                }
+                                                                className="p-1.5 md:p-2 text-gray-400 hover:text-red-600 transition-colors"
+                                                                title="Delete product"
+                                                            >
+                                                                <Trash
+                                                                    size={16}
+                                                                />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))
@@ -1184,13 +1373,23 @@ export default function SellerManageProduct({ list_categories }) {
                         realTimeProducts.map((product) => (
                             <div
                                 key={product.product_id}
-                                className="bg-white p-3 md:p-4 rounded-lg border border-gray-200 shadow-sm"
+                                className={`bg-white p-3 md:p-4 rounded-lg border shadow-sm ${
+                                    isProductBlocked(product)
+                                        ? "border-red-300 bg-red-50 border-l-4 border-l-red-500"
+                                        : "border-gray-200"
+                                }`}
                             >
                                 {/* Product Header */}
                                 <div className="flex flex-col sm:flex-row sm:items-start sm:space-x-3 gap-3">
                                     {/* Product Image */}
                                     <div className="flex-shrink-0 self-center sm:self-start">
-                                        <div className="h-20 w-20 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                                        <div
+                                            className={`h-20 w-20 rounded-lg flex items-center justify-center overflow-hidden ${
+                                                isProductBlocked(product)
+                                                    ? "bg-red-100"
+                                                    : "bg-gray-200"
+                                            }`}
+                                        >
                                             {product.product_image?.[0]
                                                 ?.image_path ? (
                                                 <img
@@ -1227,8 +1426,9 @@ export default function SellerManageProduct({ list_categories }) {
                                         <h3 className="font-medium text-gray-900 truncate text-sm md:text-base">
                                             {product.product_name}
                                         </h3>
+
                                         <p className="text-xs md:text-sm text-gray-500">
-                                            SKU: {product.product_id}
+                                            ID: {product.product_id}
                                         </p>
 
                                         <div className="flex flex-wrap items-center mt-1 text-sm md:text-base">
@@ -1244,28 +1444,47 @@ export default function SellerManageProduct({ list_categories }) {
                                             </span>
                                         </div>
 
+                                        {isProductBlocked(product) && (
+                                            <div className="mt-2 p-2 bg-red-100 rounded-lg">
+                                                <p className="text-xs text-red-700 font-medium">
+                                                    Block Reason:
+                                                </p>
+                                                <p className="text-xs text-red-600">
+                                                    {getBlockReason(product)}
+                                                </p>
+                                            </div>
+                                        )}
+
                                         <div className="flex flex-wrap items-center mt-2 gap-2">
-                                            <ListingToggleButton
-                                                product={product}
-                                                toggleProductListing={
-                                                    toggleProductListing
-                                                }
-                                                togglingProduct={
-                                                    togglingProduct
-                                                }
-                                            />
-                                            <FeaturedToggleButton
-                                                product={product}
-                                                isProductFeatured={
-                                                    isProductFeatured
-                                                }
-                                                toggleProductFeatured={
-                                                    toggleProductFeatured
-                                                }
-                                                togglingProduct={
-                                                    togglingProduct
-                                                }
-                                            />
+                                            {isProductBlocked(product) ? (
+                                                <span className="px-3 py-1 text-xs bg-red-100 text-red-800 rounded-full font-medium">
+                                                    PRODUCT BLOCKED
+                                                </span>
+                                            ) : (
+                                                <>
+                                                    <ListingToggleButton
+                                                        product={product}
+                                                        toggleProductListing={
+                                                            toggleProductListing
+                                                        }
+                                                        togglingProduct={
+                                                            togglingProduct
+                                                        }
+                                                    />
+                                                    <FeaturedToggleButton
+                                                        product={product}
+                                                        isProductFeatured={
+                                                            isProductFeatured
+                                                        }
+                                                        toggleProductFeatured={
+                                                            toggleProductFeatured
+                                                        }
+                                                        togglingProduct={
+                                                            togglingProduct
+                                                        }
+                                                    />
+                                                </>
+                                            )}
                                             <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-full">
                                                 {product.category.category_name}
                                             </span>
@@ -1276,43 +1495,80 @@ export default function SellerManageProduct({ list_categories }) {
                                 {/* Product Footer */}
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-3 pt-3 border-t border-gray-100 gap-2">
                                     <div>
-                                        {product.product_quantity < 10 && (
-                                            <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                                                Low stock
-                                            </span>
-                                        )}
+                                        {!isProductBlocked(product) &&
+                                            product.product_quantity < 10 && (
+                                                <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                                                    Low stock
+                                                </span>
+                                            )}
                                     </div>
+
                                     <div className="flex justify-end w-full sm:w-auto space-x-3">
-                                        <button
-                                            onClick={() => {
-                                                setProductToView(product);
-                                                setIsViewOpen(true);
-                                            }}
-                                            className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
-                                            title="View product"
-                                        >
-                                            <Eye size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleEditProductClick(product)
-                                            }
-                                            className="p-1.5 text-gray-400 hover:text-green-600 transition-colors"
-                                            title="Edit product"
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() =>
-                                                handleDeleteProductClick(
-                                                    product
-                                                )
-                                            }
-                                            className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
-                                            title="Delete product"
-                                        >
-                                            <Trash size={16} />
-                                        </button>
+                                        {isProductBlocked(product) ? (
+                                            <>
+                                                <button
+                                                    onClick={() =>
+                                                        contactAdmin(product)
+                                                    }
+                                                    className="p-1.5 text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1"
+                                                    title="Contact Admin about this product"
+                                                >
+                                                    <svg
+                                                        className="w-4 h-4"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                                                        />
+                                                    </svg>
+                                                    <span className="text-xs">
+                                                        Contact Admin
+                                                    </span>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={() => {
+                                                        setProductToView(
+                                                            product
+                                                        );
+                                                        setIsViewOpen(true);
+                                                    }}
+                                                    className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
+                                                    title="View product"
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() =>
+                                                        handleEditProductClick(
+                                                            product
+                                                        )
+                                                    }
+                                                    className="p-1.5 text-gray-400 hover:text-green-600 transition-colors"
+                                                    title="Edit product"
+                                                >
+                                                    <Edit size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() =>
+                                                        handleDeleteProductClick(
+                                                            product
+                                                        )
+                                                    }
+                                                    className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                                                    title="Delete product"
+                                                >
+                                                    <Trash size={16} />
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>

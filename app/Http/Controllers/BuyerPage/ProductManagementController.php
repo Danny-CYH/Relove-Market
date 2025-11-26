@@ -59,6 +59,7 @@ class ProductManagementController extends Controller
                 'seller.sellerStore',
                 'orderItems'
             ])
+                ->where('product_status', 'available')
                 ->orderBy('featured', 'desc');
 
             if ($searchTerm !== null && trim($searchTerm) !== '') {

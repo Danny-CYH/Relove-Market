@@ -25,7 +25,12 @@ import { SecurityTab } from "@/Components/BuyerPage/ProfilePage/SecurityTab";
 import { ProfileTab } from "@/Components/BuyerPage/ProfilePage/ProfileTab";
 import { ReceiptModal } from "@/Components/BuyerPage/ProfilePage/ReceiptModal";
 
-export default function ProfilePage() {
+export default function ProfilePage({
+    active_tab,
+    show_order_success,
+    order_id,
+    payment_success,
+}) {
     const [activeTab, setActiveTab] = useState(active_tab || "profile");
     const [isEditing, setIsEditing] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
@@ -58,6 +63,134 @@ export default function ProfilePage() {
 
     const [orderHistory, setOrderHistory] = useState([]);
     const [confirmingOrderId, setConfirmingOrderId] = useState(null);
+
+    const [showOrderSuccessModal, setShowOrderSuccessModal] = useState(false);
+    const [recentOrderId, setRecentOrderId] = useState(null);
+
+    const totalPages = Math.ceil(orderHistory.length / itemsPerPage);
+    const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+    const checkForOrderSuccessRedirect = () => {
+        // Check URL parameters first
+        const urlParams = new URLSearchParams(window.location.search);
+        const showOrderSuccess = urlParams.get("show_order_success");
+        const orderId = urlParams.get("order_id");
+        const paymentSuccess = urlParams.get("payment_success");
+        const activeTabParam = urlParams.get("active_tab");
+
+        // Check if any success condition is met
+        if (showOrderSuccess === "true" || paymentSuccess === "true") {
+            console.log("✅ Order success detected, switching to orders tab");
+
+            // Set active tab to orders
+            setActiveTab("orders");
+
+            // Store the order ID and show modal
+            setRecentOrderId(orderId);
+            setShowOrderSuccessModal(true);
+
+            // Clean up the URL - remove the parameters
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            console.log("🧹 URL cleaned:", cleanUrl);
+        }
+
+        if (show_order_success || payment_success) {
+            console.log("✅ Order success detected from props");
+            setActiveTab("orders");
+            setRecentOrderId(order_id || null);
+            setShowOrderSuccessModal(true);
+        }
+    };
+
+    // NEW: Function to show the order success modal
+    const showOrderSuccessAlert = () => {
+        console.log("🎉 Showing order success alert");
+
+        Swal.fire({
+            title: "Order Confirmed! 🎉",
+            html: `
+                <div class="text-center">
+                    <div class="text-green-500 text-6xl mb-4">✓</div>
+                    <p class="text-lg font-semibold text-gray-800 mb-3">
+                        Your order has been successfully placed!
+                    </p>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                        <p class="text-sm text-blue-700">
+                            <strong>Your order receipt is available in this Orders tab.</strong><br>
+                            You can track your order status and view order details here.
+                        </p>
+                    </div>
+                </div>
+            `,
+            icon: "success",
+            confirmButtonText: "View My Orders",
+            confirmButtonColor: "#3085d6",
+            showCancelButton: true,
+            cancelButtonText: "Continue Shopping",
+            customClass: {
+                popup: "rounded-2xl",
+                confirmButton: "px-6 py-3 rounded-lg font-medium",
+                cancelButton:
+                    "px-6 py-3 rounded-lg font-medium border border-gray-300 text-white bg-green-700 hover:bg-green-600",
+            },
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                console.log("✅ User clicked 'View My Orders'");
+                // User wants to view orders (they're already in orders tab)
+                highlightRecentOrder();
+            } else {
+                console.log("🛍️ User clicked 'Continue Shopping'");
+                // User wants to continue shopping - redirect to home
+                router.visit(route("home"));
+            }
+            // Close the modal state
+            setShowOrderSuccessModal(false);
+        });
+    };
+
+    // NEW: Function to highlight the recent order in the list
+    const highlightRecentOrder = () => {
+        if (recentOrderId) {
+            // Find the recent order in the order history
+            const recentOrder = orderHistory.find(
+                (order) =>
+                    order.order_id == recentOrderId ||
+                    order.order_number == recentOrderId
+            );
+
+            if (recentOrder) {
+                // You can implement scrolling to the order or highlighting it
+                const orderElement = document.getElementById(
+                    `order-${recentOrder.order_id}`
+                );
+                if (orderElement) {
+                    orderElement.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    });
+                    orderElement.classList.add(
+                        "bg-green-50",
+                        "border",
+                        "border-green-200"
+                    );
+
+                    // Remove highlight after 3 seconds
+                    setTimeout(() => {
+                        orderElement.classList.remove(
+                            "bg-green-50",
+                            "border",
+                            "border-green-200"
+                        );
+                    }, 3000);
+                }
+            } else {
+                console.log("❌ Recent order not found in order history");
+            }
+        }
+    };
 
     // Helper function to get proper image URL
     const getProfileImageUrl = (imagePath) => {
@@ -259,8 +392,6 @@ export default function ProfilePage() {
                     profileImageFile: null,
                 }));
 
-                console.log("🎉 Profile updated successfully!");
-
                 // Show success message
                 alert("Profile updated successfully!");
             }
@@ -426,6 +557,7 @@ export default function ProfilePage() {
     // Fetch data on component mount
     useEffect(() => {
         fetchOrderHistory();
+        checkForOrderSuccessRedirect();
     }, []);
 
     // NEW: Set initial image preview when component mounts
@@ -436,13 +568,10 @@ export default function ProfilePage() {
     }, [userData.profile_image]);
 
     useEffect(() => {
-        // Check if we have success data from props
-        if (payment_success || show_order_success) {
-            setActiveTab("orders");
-            setRecentOrderId(order_id);
-            setShowOrderSuccessModal(true);
+        if (showOrderSuccessModal) {
+            showOrderSuccessAlert();
         }
-    }, [payment_success, show_order_success, order_id]);
+    }, [showOrderSuccessModal, recentOrderId]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -603,9 +732,9 @@ export default function ProfilePage() {
                                 viewReceipt={viewReceipt}
                                 printReceipt={printReceipt}
                                 loading={loading}
-                                // NEW: Pass confirmation function
                                 confirmOrderDelivery={confirmOrderDelivery}
                                 confirmingOrderId={confirmingOrderId}
+                                recentOrderId={recentOrderId}
                             />
                         )}
 

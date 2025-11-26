@@ -5,6 +5,7 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#ffffff">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" type="image/png" href="/relove_market.png">
     <link rel="apple-touch-icon" href="/public/logo.png">
 
     <link rel="manifest" href="/manifest.webmanifest">

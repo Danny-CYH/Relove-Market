@@ -28,7 +28,10 @@ export function OrdersTab({
     loading,
     confirmOrderDelivery,
     confirmingOrderId,
+    recentOrderId,
 }) {
+    console.log(recentOrderId);
+
     const [searchTerm, setSearchTerm] = useState("");
     const [dateFilter, setDateFilter] = useState("all");
     const [sortBy, setSortBy] = useState("date");
@@ -510,7 +513,12 @@ export function OrdersTab({
                             {currentFilteredOrders.map((order) => (
                                 <div
                                     key={order.order_id}
-                                    className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow bg-white"
+                                    className={`bg-white rounded-xl border border-gray-200 p-6 mb-4 transition-all duration-300 ${
+                                        recentOrderId &&
+                                        order.order_id === recentOrderId
+                                            ? "bg-green-50 border-green-200 shadow-md"
+                                            : "hover:shadow-md"
+                                    }`}
                                 >
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
@@ -588,7 +596,12 @@ export function OrdersTab({
                                         {currentFilteredOrders.map((order) => (
                                             <tr
                                                 key={order.order_id}
-                                                className="hover:bg-gray-50 transition-colors"
+                                                className={`bg-white rounded-xl border border-gray-200 p-6 mb-4 transition-all duration-300 ${
+                                                    order.order_id ===
+                                                    recentOrderId
+                                                        ? "bg-green-50 border-green-200 shadow-md"
+                                                        : "hover:shadow-md"
+                                                }`}
                                             >
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-4">

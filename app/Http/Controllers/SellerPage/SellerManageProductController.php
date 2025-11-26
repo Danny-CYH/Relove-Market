@@ -133,6 +133,7 @@ class SellerManageProductController extends Controller
             $totalProducts = $allProducts->count();
             $availableProducts = $allProducts->where('product_status', 'available')->count();
             $unavailableProducts = $allProducts->where('product_status', 'unavailable')->count();
+            $blockedProducts = $allProducts->where('product_status', 'blocked')->count();
             $lowStockProducts = $allProducts->where('product_quantity', '<', 10)->where('product_quantity', '>', 0)->count();
             $outOfStockProducts = $allProducts->where('product_quantity', 0)->count();
 
@@ -144,6 +145,7 @@ class SellerManageProductController extends Controller
                     'unavailableProducts' => $unavailableProducts,
                     'lowStockProducts' => $lowStockProducts,
                     'outOfStockProducts' => $outOfStockProducts,
+                    'blockedProducts' => $blockedProducts
                 ]
             ]);
         } catch (Exception $e) {
