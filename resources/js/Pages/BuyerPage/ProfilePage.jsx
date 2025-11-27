@@ -105,48 +105,35 @@ export default function ProfilePage({
 
     // NEW: Function to show the order success modal
     const showOrderSuccessAlert = () => {
-        console.log("🎉 Showing order success alert");
-
         Swal.fire({
             title: "Order Confirmed! 🎉",
             html: `
-                <div class="text-center">
-                    <div class="text-green-500 text-6xl mb-4">✓</div>
-                    <p class="text-lg font-semibold text-gray-800 mb-3">
-                        Your order has been successfully placed!
+            <div class="text-center">
+                <div class="text-green-500 text-6xl mb-4">✓</div>
+                <p class="text-lg font-semibold text-gray-800 mb-3">
+                    Your order has been successfully placed!
+                </p>
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                    <p class="text-sm text-blue-700">
+                        <strong>Your order receipt is available in the Orders tab.</strong><br>
+                        You can track your order status and view your order details here.
                     </p>
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
-                        <p class="text-sm text-blue-700">
-                            <strong>Your order receipt is available in this Orders tab.</strong><br>
-                            You can track your order status and view order details here.
-                        </p>
-                    </div>
                 </div>
-            `,
+            </div>
+        `,
             icon: "success",
-            confirmButtonText: "View My Orders",
+            confirmButtonText: "OK",
             confirmButtonColor: "#3085d6",
-            showCancelButton: true,
-            cancelButtonText: "Continue Shopping",
+            showCancelButton: false, // ❌ remove cancel button
+            allowOutsideClick: false,
+            allowEscapeKey: false,
             customClass: {
                 popup: "rounded-2xl",
                 confirmButton: "px-6 py-3 rounded-lg font-medium",
-                cancelButton:
-                    "px-6 py-3 rounded-lg font-medium border border-gray-300 text-white bg-green-700 hover:bg-green-600",
             },
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-        }).then((result) => {
-            if (result.isConfirmed) {
-                console.log("✅ User clicked 'View My Orders'");
-                // User wants to view orders (they're already in orders tab)
-                highlightRecentOrder();
-            } else {
-                console.log("🛍️ User clicked 'Continue Shopping'");
-                // User wants to continue shopping - redirect to home
-                router.visit(route("home"));
-            }
-            // Close the modal state
+        }).then(() => {
+            // When user clicks OK
+            highlightRecentOrder();
             setShowOrderSuccessModal(false);
         });
     };

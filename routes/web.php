@@ -4,16 +4,13 @@ use App\Http\Controllers\BuyerPage\HomePageController;
 use App\Http\Controllers\BuyerPage\ProductManagementController;
 use App\Http\Controllers\BuyerPage\UserController;
 
-use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SellerPage\SellerController;
+use App\Http\Controllers\AdminPage\AdminController;
 
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\SellerController;
-use App\Http\Controllers\AdminController;
 use App\Http\Controllers\ChatController;
 
 use Illuminate\Support\Facades\Route;
-
-use Inertia\Inertia;
 
 Route::get('/', function () {
     return redirect()->route('homepage');
@@ -62,8 +59,6 @@ Route::middleware(['is_seller'])->group(function () {
     Route::get("/seller-help-support", [SellerController::class, "sellerHelpSupportPage"])->name("seller-help-support");
     Route::get('/seller-manage-profile', [SellerController::class, 'getProfile'])->name("seller-manage-profile");
     Route::get('/seller-chat', [ChatController::class, "sellerChat"])->name('seller-chat');
-
-    Route::post('/profile-update', [SellerController::class, 'updateProfile']);
 });
 
 // need to login account and is a admin can access all this feature
@@ -74,9 +69,6 @@ Route::middleware(["is_admin"])->group(function () {
     Route::get("/list-transaction", [AdminController::class, 'transactionPage'])->name("list-transaction");
     Route::get("/product-moderation", [AdminController::class, "productModeration"])->name("product-moderation");
     Route::get("/user-management", [AdminController::class, "userManagement"])->name("user-management");
-
-    Route::get('/admin/dashboard/pending-seller-list', [AdminController::class, 'getSellerList']);
-    Route::post('/admin/pending-seller/{id}/action', [AdminController::class, 'handleAction']);
 });
 
 // code for calling and setting the chat communication between buyer and seller

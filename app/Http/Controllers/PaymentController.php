@@ -298,18 +298,12 @@ class PaymentController extends Controller
         }
 
         try {
-            // For Cash on Delivery, we don't need to check Stripe
-            if ($request->payment_method === 'cod') {
-                $paymentStatus = 'Pending';
-                $orderStatus = 'Pending';
-            } else {
-                Stripe::setApiKey(env('STRIPE_SECRET'));
-                Log::info('Retrieving payment intent: ' . $request->payment_intent_id);
-                $paymentIntent = PaymentIntent::retrieve($request->payment_intent_id);
-                Log::info('Payment intent status: ' . $paymentIntent->status);
-                $paymentStatus = $paymentIntent->status === 'succeeded' ? 'paid' : 'failed';
-                $orderStatus = $paymentIntent->status === 'succeeded' ? 'Pending' : 'incomplete';
-            }
+            Stripe::setApiKey(env('STRIPE_SECRET'));
+            Log::info('Retrieving payment intent: ' . $request->payment_intent_id);
+            $paymentIntent = PaymentIntent::retrieve($request->payment_intent_id);
+            Log::info('Payment intent status: ' . $paymentIntent->status);
+            $paymentStatus = $paymentIntent->status === 'succeeded' ? 'paid' : 'failed';
+            $orderStatus = $paymentIntent->status === 'succeeded' ? 'Pending' : 'incomplete';
 
             // For successful payments or COD
             if ($paymentStatus === 'paid' || $request->payment_method === 'cod') {
@@ -516,7 +510,7 @@ class PaymentController extends Controller
                 'currency' => strtoupper($order->currency),
                 'order_items' => [],
                 'subtotal' => 0,
-                'shipping_fee' => 0, // You can add shipping fee to your order model
+                'shipping_fee' => 5,
                 'total' => $order->amount,
             ];
 
@@ -616,7 +610,9 @@ class PaymentController extends Controller
     public function getOrder($orderId)
     {
         try {
-            $order = Order::with('orderItems')->where('order_id', $orderId)->firstOrFail();
+            $order = Order::with('orderItems')
+                ->where('order_id', $orderId)
+                ->firstOrFail();
 
             return response()->json([
                 'success' => true,

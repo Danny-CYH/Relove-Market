@@ -433,7 +433,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     )}
                                     {cameraSearchLoading
                                         ? "Searching..."
-                                        : "Camera Search"}
+                                        : "Visual Search"}
                                 </button>
 
                                 <input

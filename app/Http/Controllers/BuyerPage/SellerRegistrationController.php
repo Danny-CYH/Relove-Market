@@ -4,7 +4,8 @@ namespace App\Http\Controllers\BuyerPage;
 
 use App\Http\Controllers\Controller;
 
-use App\Events\SellerRegistered;
+use App\Events\BuyerPage\SellerRegistration\SellerRegistered;
+
 use App\Models\SellerRegistration;
 
 use Illuminate\Http\Request;

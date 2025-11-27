@@ -17,7 +17,6 @@ import {
     Pause,
     Volume2,
     VolumeX,
-    MapPin,
 } from "lucide-react";
 
 import { Link, router, usePage } from "@inertiajs/react";
@@ -96,6 +95,8 @@ export default function ProductDetails({ product_info }) {
         return initialReviews;
     });
 
+    const [showPageContent, setShowPageContent] = useState(false);
+
     const { auth } = usePage().props;
 
     const reviewCount = reviews.length;
@@ -111,68 +112,155 @@ export default function ProductDetails({ product_info }) {
     const hasVideos = product_info[0]?.product_video?.length > 0;
     const videos = product_info[0]?.product_video || [];
 
-    // NEW: Function to check if user has a valid address
+    // NEW: Enhanced function to check if user has a valid address
     const checkUserAddress = useCallback(async () => {
         if (!auth.user) {
             setHasValidAddress(false);
-            return;
+            return false;
         }
 
         setIsCheckingAddress(true);
         try {
             const response = await axios.get(route("check-address"));
-            setHasValidAddress(response.data.hasValidAddress);
+            const hasAddress = response.data.hasValidAddress;
+            setHasValidAddress(hasAddress);
+            return hasAddress;
         } catch (error) {
             console.error("Error checking user address:", error);
             setHasValidAddress(false);
+            return false;
         } finally {
             setIsCheckingAddress(false);
         }
     }, [auth.user]);
 
-    // NEW: Function to handle address update prompt
-    const promptAddressUpdate = () => {
-        if (typeof Swal !== "undefined") {
+    const showImmediateAddressAlert = useCallback(async () => {
+        if (!auth.user) {
+            setShowPageContent(true);
+            return;
+        }
+
+        // Check if user has valid address
+        const hasAddress = await checkUserAddress();
+
+        if (!hasAddress) {
+            // Show SweetAlert immediately
             Swal.fire({
-                title: "Address Required",
+                title: "📍 Setup Your Shipping Address",
                 html: `
-                    <div class="text-left">
-                        <p class="mb-4">Please update your shipping address before making a purchase.</p>
-                        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                            <div class="flex items-start gap-2">
-                                <MapPin size={18} class="text-yellow-600 mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <p class="text-yellow-800 font-medium text-sm">Shipping address needed</p>
-                                    <p class="text-yellow-700 text-xs">We need your address to calculate shipping and deliver your order</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `,
-                icon: "warning",
+                <div class="text-left">
+                    <p class="mb-4 text-gray-700">Before you start shopping, please set up your shipping address to enable purchases.</p>
+                    <p class="text-sm text-gray-600">You can update this anytime in your profile settings.</p>
+                </div>
+            `,
+                icon: "info",
                 showCancelButton: true,
-                confirmButtonText: "Update Address",
-                cancelButtonText: "Later",
+                confirmButtonText: "📝 Setup Address Now",
+                cancelButtonText: "✕ I'll Do It Later",
+                confirmButtonColor: "#3B82F6",
+                cancelButtonColor: "#6B7280",
                 allowOutsideClick: false,
-                allowEscapeKey: false,
+                allowEscapeKey: true,
+                customClass: {
+                    popup: "rounded-2xl",
+                    confirmButton: "px-6 py-3 rounded-lg font-semibold",
+                    cancelButton: "px-6 py-3 rounded-lg font-semibold",
+                },
             }).then((result) => {
                 if (result.isConfirmed) {
                     // Redirect to profile page with address tab focused
                     router.visit(route("profile"), {
-                        data: { focus: "address" },
+                        data: {
+                            focus: "address",
+                            redirect_back: window.location.href,
+                        },
+                    });
+                } else {
+                    // User chose "I'll Do It Later" - show the page content
+                    setShowPageContent(true);
+                    // Show a smaller reminder
+                    Swal.fire({
+                        title: "Reminder",
+                        text: "You can update your address anytime in your profile to enable purchases.",
+                        icon: "info",
+                        confirmButtonText: "OK",
+                        confirmButtonColor: "#3B82F6",
+                        timer: 3000,
+                        showConfirmButton: true,
                     });
                 }
             });
         } else {
-            // Fallback alert
-            if (
-                window.confirm(
-                    "Please update your shipping address in your profile before making a purchase. Go to profile page now?"
-                )
-            ) {
-                router.visit(route("profile"));
-            }
+            // User has address, show page content immediately
+            setShowPageContent(true);
         }
+    }, [auth.user, checkUserAddress, router]);
+
+    // NEW: Enhanced function to handle address update prompt with SweetAlert
+    const promptAddressUpdate = (actionType = "purchase") => {
+        const actionText =
+            actionType === "purchase" ? "making a purchase" : "checking out";
+
+        Swal.fire({
+            title: "📍 Shipping Address Required",
+            html: `
+            <div class="text-left">
+                <p class="mb-4 text-gray-700">Please update your shipping address to complete your ${actionText}.</p>
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                    <div class="flex items-start gap-3">
+                        <div class="flex-shrink-0">
+                            <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-yellow-800 font-medium text-sm">Why we need your address?</p>
+                            <ul class="text-yellow-700 text-xs mt-1 space-y-1">
+                                <li>• Calculate accurate shipping costs</li>
+                                <li>• Ensure timely delivery</li>
+                                <li>• Provide order tracking</li>
+                                <li>• Process returns if needed</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "📝 Update Address Now",
+            cancelButtonText: "✕ Maybe Later",
+            confirmButtonColor: "#3B82F6",
+            cancelButtonColor: "#6B7280",
+            allowOutsideClick: false,
+            allowEscapeKey: true,
+            customClass: {
+                popup: "rounded-2xl",
+                confirmButton: "px-6 py-3 rounded-lg font-semibold",
+                cancelButton: "px-6 py-3 rounded-lg font-semibold",
+            },
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Redirect to profile page with address tab focused
+                router.visit(route("profile"), {
+                    data: {
+                        focus: "address",
+                        redirect_back: window.location.href, // Return here after updating address
+                    },
+                });
+            } else {
+                // User chose "Maybe Later" - show informative message
+                Swal.fire({
+                    title: "No Problem!",
+                    text: `You can update your address anytime in your profile. You'll need it before ${actionText}.`,
+                    icon: "info",
+                    confirmButtonText: "OK",
+                    confirmButtonColor: "#3B82F6",
+                    timer: 3000,
+                    showConfirmButton: true,
+                });
+            }
+        });
     };
 
     // Video controls
@@ -357,58 +445,79 @@ export default function ProductDetails({ product_info }) {
         return [checkoutItem]; // Return as array to match wishlist structure
     };
 
-    // UPDATED: Handle Buy Now - with address validation
-    const handleBuyNow = () => {
+    // UPDATED: Enhanced Handle Buy Now - with comprehensive address validation
+    const handleBuyNow = async () => {
         // Check if user is authenticated
         if (!auth.user) {
-            if (typeof Swal !== "undefined") {
-                Swal.fire({
-                    title: "Login Required",
-                    text: "Please login to continue with your purchase",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Login Now",
-                    cancelButtonText: "Cancel",
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const currentUrl = window.location.href;
-                        console.log("Redirecting to login...");
-                        router.visit(route("login"), {
-                            data: { redirect: currentUrl },
-                        });
-                    }
-                });
-            } else {
-                if (
-                    window.confirm(
-                        "Please login to continue with your purchase."
-                    )
-                ) {
+            Swal.fire({
+                title: "🔐 Login Required",
+                text: "Please login to continue with your purchase",
+                icon: "warning",
+                showCancelButton: true,
+                confirmButtonText: "Login Now",
+                cancelButtonText: "Cancel",
+                confirmButtonColor: "#3B82F6",
+                cancelButtonColor: "#6B7280",
+                allowOutsideClick: false,
+            }).then((result) => {
+                if (result.isConfirmed) {
                     const currentUrl = window.location.href;
                     router.visit(route("login"), {
                         data: { redirect: currentUrl },
                     });
                 }
-            }
+            });
             return;
         }
 
-        // NEW: Check if user has valid address
-        if (!hasValidAddress) {
-            promptAddressUpdate();
+        // NEW: Check if user has valid address with loading state
+        const hasAddress = await checkUserAddress();
+
+        if (!hasAddress) {
+            promptAddressUpdate("purchase");
             return;
         }
 
+        // Validate variant selection
         if (!validateVariant("buying")) {
             return;
         }
 
-        const checkoutData = prepareCheckoutData();
-        router.post(route("checkout-process"), {
-            items: checkoutData,
-        });
+        // Show loading state for buy now
+        setLoadingStates((prev) => ({ ...prev, buyNow: true }));
+
+        try {
+            const checkoutData = prepareCheckoutData();
+
+            // Show processing alert
+            Swal.fire({
+                title: "Processing Your Order...",
+                text: "Please wait while we prepare your purchase",
+                icon: "info",
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
+
+            // Proceed with checkout
+            router.post(route("checkout-process"), {
+                items: checkoutData,
+            });
+        } catch (error) {
+            console.error("Error during buy now:", error);
+            Swal.fire({
+                title: "Error",
+                text: "Something went wrong. Please try again.",
+                icon: "error",
+                confirmButtonText: "OK",
+                confirmButtonColor: "#EF4444",
+            });
+        } finally {
+            setLoadingStates((prev) => ({ ...prev, buyNow: false }));
+            Swal.close();
+        }
     };
 
     // NEW: Determine if Buy Now button should be disabled
@@ -416,16 +525,19 @@ export default function ProductDetails({ product_info }) {
         !auth.user ||
         !hasValidAddress ||
         (hasVariants && !selectedVariant) ||
-        availableStock === 0;
+        availableStock === 0 ||
+        isCheckingAddress;
 
     // NEW: Get Buy Now button title
     const getBuyNowButtonTitle = () => {
         if (!auth.user) return "Please login to purchase";
-        if (!hasValidAddress) return "Please update your address in profile";
+        if (!hasValidAddress)
+            return "Shipping address required - Click to setup";
         if (hasVariants && !selectedVariant)
             return "Please select a variant first";
         if (availableStock === 0) return "Out of stock";
-        return "";
+        if (isCheckingAddress) return "Checking address...";
+        return "Proceed to checkout - Fast & Secure";
     };
 
     // Review and comment handlers
@@ -755,6 +867,31 @@ export default function ProductDetails({ product_info }) {
         }
     };
 
+    useEffect(() => {
+        if (!showPageContent && auth.user) {
+            Swal.fire({
+                title: "Loading...",
+                text: "Please wait while we load the page.",
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+            });
+        } else {
+            Swal.close();
+        }
+    }, [showPageContent, auth.user]);
+
+    useEffect(() => {
+        if (auth.user) {
+            showImmediateAddressAlert();
+        } else {
+            // If not logged in, show page content immediately
+            setShowPageContent(true);
+        }
+    }, [auth.user, showImmediateAddressAlert]);
+
     // Auto-select first variant if none selected and variants exist
     useEffect(() => {
         if (hasVariants && !selectedVariant && variants.length > 0) {
@@ -774,12 +911,12 @@ export default function ProductDetails({ product_info }) {
 
     // NEW: Check user address on component mount and when auth changes
     useEffect(() => {
-        if (auth.user) {
+        if (auth.user && showPageContent) {
             checkUserAddress();
         } else {
             setHasValidAddress(false);
         }
-    }, [auth.user, checkUserAddress]);
+    }, [auth.user, showPageContent, checkUserAddress]);
 
     // WebSocket and other preserved effects
     useEffect(() => {
@@ -873,6 +1010,7 @@ export default function ProductDetails({ product_info }) {
             <Navbar />
 
             {/* Main Product Section */}
+
             <div className="max-w-7xl mx-auto mt-14 md:mt-16 px-4 sm:px-6 py-4 lg:py-6">
                 <div className="flex items-center mb-4">
                     <Link
@@ -883,6 +1021,7 @@ export default function ProductDetails({ product_info }) {
                         <span className="font-medium">Back to Shop</span>
                     </Link>
                 </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8">
                     {/* Media Gallery - Updated with Video Support */}
                     <div className="lg:col-span-5">
@@ -1062,35 +1201,36 @@ export default function ProductDetails({ product_info }) {
                             </div>
                         )}
 
-                        {/* NEW: Address Warning Message */}
+                        {/* // In your JSX, enhance the address warning message: */}
                         {auth.user && !hasValidAddress && (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3">
-                                <MapPin
-                                    className="text-yellow-600 mt-0.5 flex-shrink-0"
-                                    size={18}
-                                />
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start gap-3 mb-4">
+                                <svg
+                                    className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                >
+                                    <path
+                                        fillRule="evenodd"
+                                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                                        clipRule="evenodd"
+                                    ></path>
+                                </svg>
                                 <div className="flex-1">
                                     <p className="text-yellow-800 font-medium text-sm">
-                                        Shipping address required
+                                        Shipping Address Required
                                     </p>
                                     <p className="text-yellow-700 text-sm mt-1">
-                                        Please update your address in your
-                                        profile to enable purchases
+                                        You need to set up your shipping address
+                                        before making purchases
                                     </p>
-                                    <button
-                                        onClick={() =>
-                                            router.visit(route("profile"), {
-                                                data: { focus: "address" },
-                                            })
-                                        }
-                                        className="text-yellow-800 underline text-sm mt-2 hover:text-yellow-900"
-                                    >
-                                        Update Address Now
-                                    </button>
+                                    <Link href={route("profile")}>
+                                        <button className="text-yellow-800 underline text-sm mt-2 hover:text-yellow-900 font-medium">
+                                            📝 Set Up Address Now
+                                        </button>
+                                    </Link>
                                 </div>
                             </div>
                         )}
-
                         {/* Product Header */}
                         <div className="bg-white rounded-xl lg:rounded-2xl p-4 lg:p-6 border">
                             <div className="flex items-start justify-between mb-3 lg:mb-4">
@@ -1437,10 +1577,44 @@ export default function ProductDetails({ product_info }) {
                                                 Processing...
                                             </>
                                         ) : (
-                                            "Buy Now"
+                                            <div className="flex items-center justify-center gap-2">
+                                                <ShoppingCart size={18} />
+                                                <span>Buy Now</span>
+                                                {isBuyNowDisabled && (
+                                                    <svg
+                                                        className="w-4 h-4"
+                                                        fill="currentColor"
+                                                        viewBox="0 0 20 20"
+                                                    >
+                                                        <path
+                                                            fillRule="evenodd"
+                                                            d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
+                                                            clipRule="evenodd"
+                                                        ></path>
+                                                    </svg>
+                                                )}
+                                            </div>
                                         )}
                                     </button>
                                 </div>
+
+                                {/* Enhanced Disabled State Messages */}
+                                {isBuyNowDisabled && (
+                                    <div className="text-center space-y-2">
+                                        {hasVariants && !selectedVariant && (
+                                            <p className="text-red-500 font-medium text-sm">
+                                                Please select a variant to
+                                                continue
+                                            </p>
+                                        )}
+                                        {availableStock === 0 && (
+                                            <p className="text-red-500 font-medium text-sm">
+                                                This product is currently out of
+                                                stock
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
 
                                 {/* Variant requirement note */}
                                 {hasVariants && !selectedVariant && (
@@ -1503,7 +1677,6 @@ export default function ProductDetails({ product_info }) {
                                 </div>
                             </div>
                         </div>
-
                         {/* Seller Info */}
                         <div className="bg-white rounded-xl lg:rounded-2xl p-4 lg:p-6 border">
                             <div className="flex items-center gap-3 lg:gap-4 mb-3 lg:mb-4">

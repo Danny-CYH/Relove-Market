@@ -132,6 +132,7 @@ class HomePageController extends Controller
             foreach ($products as $product) {
                 \Log::info('Product seller info', [
                     'product_id' => $product->product_id,
+                    'product_variant' => $product->productVariant,
                     'seller' => $product->seller ? $product->seller->toArray() : null,
                     'sellerStore' => $product->seller && $product->seller->sellerStore ? $product->seller->sellerStore->toArray() : null
                 ]);
@@ -152,12 +153,8 @@ class HomePageController extends Controller
                     $imagePath = $productImage ? $productImage->image_path : null;
 
                     return [
-                        'product_id' => $product->product_id,
-                        'name' => $product->product_name,
-                        'category' => $product->category->category_name ?? 'unknown',
                         'similarity' => $rec['similarity'],
                         'similarity_percentage' => round($rec['similarity'] * 100, 1), // Add percentage
-                        'image_path' => $imagePath,
                         'product' => [
                             'product_id' => $product->product_id,
                             'product_name' => $product->product_name,
@@ -170,18 +167,27 @@ class HomePageController extends Controller
                                 'category_id' => $product->category->category_id,
                                 'category_name' => $product->category->category_name
                             ] : null,
+                            'product_variant' => $product->productVariant->map(function ($variant) {
+                                return [
+                                    'variant_id' => $variant->variant_id,
+                                    'variant_key' => $variant->variant_key,
+                                    'variant_combination' => $variant->variant_combination,
+                                    'variant_quantity' => $variant->quantity,
+                                    'variant_price' => $variant->price,
+                                ];
+                            })->toArray(),
+                            'product_image' => $product->productImage->map(function ($image) {
+                                return [
+                                    'image_path' => $image->image_path,
+                                ];
+                            })->toArray(),
+                            'main_image' => $imagePath,
                             'seller' => $product->seller ? [
                                 'seller_id' => $product->seller->seller_id,
                                 'store_name' => $product->seller->seller_store->store_name
                                     ?? $product->seller->sellerStore->store_name
                                     ?? 'Unknown Store'
                             ] : null,
-                            'images' => $product->productImage->map(function ($image) {
-                                return [
-                                    'image_path' => $image->image_path,
-                                ];
-                            })->toArray(),
-                            'main_image' => $imagePath,
                         ],
                     ];
                 })
@@ -216,168 +222,6 @@ class HomePageController extends Controller
         } catch (Exception $e) {
             \Log::error('Camera search error: ' . $e->getMessage());
             return response()->json(['error' => 'Search failed: ' . $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Manual vector search using raw SQL
-     */
-    private function manualVectorSearch($embeddingArray)
-    {
-        try {
-            // Convert array to pgvector string format: [1.0, 2.0, 3.0, ...]
-            $vectorString = '[' . implode(',', $embeddingArray) . ']';
-
-            // Use raw SQL with proper casting
-            $results = DB::select("
-            SELECT 
-                product_id,
-                name,
-                category,
-                (1 - (embedding <=> ?::vector)) as similarity
-            FROM product_embeddings 
-            WHERE (1 - (embedding <=> ?::vector)) >= 0.6
-            ORDER BY similarity DESC
-            LIMIT 10
-        ", [$vectorString, $vectorString]);
-
-            return $results;
-
-        } catch (Exception $e) {
-            \Log::error('Manual vector search failed: ' . $e->getMessage());
-
-            // Fallback to PHP-based similarity calculation
-            return $this->phpSimilaritySearch($embeddingArray);
-        }
-    }
-
-    /**
-     * PHP-based similarity search as fallback
-     */
-    private function phpSimilaritySearch($queryEmbedding, $threshold = 0.6, $limit = 10)
-    {
-        // Get all embeddings
-        $embeddings = DB::table('product_embeddings')
-            ->select('product_id', 'name', 'category', 'embedding')
-            ->get();
-
-        $similarProducts = [];
-
-        foreach ($embeddings as $embedding) {
-            $productVector = json_decode($embedding->embedding, true);
-
-            if (!is_array($productVector)) {
-                continue;
-            }
-
-            $similarity = $this->cosineSimilarity($queryEmbedding, $productVector);
-
-            if ($similarity >= $threshold) {
-                $similarProducts[] = [
-                    'product_id' => $embedding->product_id,
-                    'name' => $embedding->name,
-                    'category' => $embedding->category,
-                    'similarity' => $similarity
-                ];
-            }
-        }
-
-        // Sort by similarity
-        usort($similarProducts, function ($a, $b) {
-            return $b['similarity'] <=> $a['similarity'];
-        });
-
-        return array_slice($similarProducts, 0, $limit);
-    }
-
-    /**
-     * Convert hex string to float array
-     */
-    private function hexToFloatArray($hexString)
-    {
-        $binaryData = hex2bin($hexString);
-        $floatArray = [];
-
-        // Convert every 4 bytes to a float
-        for ($i = 0; $i < strlen($binaryData); $i += 4) {
-            $float = unpack('f', substr($binaryData, $i, 4));
-            $floatArray[] = $float[1];
-        }
-
-        return $floatArray;
-    }
-
-    /**
-     * Calculate cosine similarity
-     */
-    private function cosineSimilarity($vecA, $vecB)
-    {
-        $dotProduct = 0;
-        $normA = 0;
-        $normB = 0;
-
-        $length = min(count($vecA), count($vecB));
-
-        for ($i = 0; $i < $length; $i++) {
-            $dotProduct += $vecA[$i] * $vecB[$i];
-            $normA += $vecA[$i] * $vecA[$i];
-            $normB += $vecB[$i] * $vecB[$i];
-        }
-
-        if ($normA == 0 || $normB == 0) {
-            return 0;
-        }
-
-        return $dotProduct / (sqrt($normA) * sqrt($normB));
-    }
-
-    /**
-     * Helper function to add embeddings to database
-     */
-    public function addProductEmbedding($productId, $name, $category, $embeddingArray)
-    {
-        $vectorString = '[' . implode(',', $embeddingArray) . ']';
-
-        DB::table('product_embeddings')->updateOrInsert(
-            ['product_id' => $productId],
-            [
-                'name' => $name,
-                'category' => $category,
-                'embedding' => json_encode($embeddingArray),
-                'updated_at' => now()
-            ]
-        );
-    }
-
-    public static function testPgVector()
-    {
-        try {
-            // Test 1: Check if extension exists
-            $extension = DB::select("SELECT * FROM pg_extension WHERE extname = 'vector'");
-            if (empty($extension)) {
-                return response()->json(['error' => 'Vector extension not installed'], 500);
-            }
-
-            // Test 2: Simple vector operation
-            $test = DB::select("SELECT vector '[1,1,1]' <=> vector '[1,1,1]' as distance");
-            $distance = $test[0]->distance;
-
-            // Test 3: Check our table structure
-            $tableInfo = DB::select("
-            SELECT column_name, data_type 
-            FROM information_schema.columns 
-            WHERE table_name = 'product_embeddings' 
-            AND column_name = 'embedding'
-        ");
-
-            return response()->json([
-                'vector_extension' => 'installed',
-                'vector_test' => $distance === 0.0 ? 'working' : 'problem',
-                'table_column_type' => $tableInfo[0]->data_type ?? 'not_found'
-            ]);
-
-        } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 

@@ -30,8 +30,6 @@ export function OrdersTab({
     confirmingOrderId,
     recentOrderId,
 }) {
-    console.log(recentOrderId);
-
     const [searchTerm, setSearchTerm] = useState("");
     const [dateFilter, setDateFilter] = useState("all");
     const [sortBy, setSortBy] = useState("date");

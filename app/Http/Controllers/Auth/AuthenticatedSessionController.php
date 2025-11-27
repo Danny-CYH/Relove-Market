@@ -30,7 +30,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request)
     {
         $request->authenticate();
 
@@ -52,30 +52,29 @@ class AuthenticatedSessionController extends Controller
             }
         }
 
-        // 📝 Update last login timestamp (to track if user already logged in once)
+        // 📝 Update last login timestamp
         $user->update(['last_login_at' => now()]);
 
-        // load the role table
+        // Load the role table
         $user->load('role');
         $role_name = $user->role->role_name;
 
-        // // Redirect based on role
+        // Set session data
+        session(['user_id' => $user->user_id]);
         if ($role_name === 'Seller') {
-            session(['user_id' => $user->user_id]);
             session(['seller_id' => $user->seller_id]);
-
-            return redirect()->intended(route('seller-dashboard'));
-
-        } elseif ($role_name === 'Buyer') {
-            session(['user_id' => $user->user_id]);
-
-            return redirect()->intended(route('homepage'));
-
-        } elseif ($role_name === 'Admin') {
-            return redirect()->intended(route('admin-dashboard'));
         }
 
-        return redirect()->intended(route('homepage'));
+        // Use Inertia::location for redirects to avoid CSRF issues
+        if ($role_name === 'Seller') {
+            return Inertia::location(route('seller-dashboard'));
+        } elseif ($role_name === 'Buyer') {
+            return Inertia::location(route('homepage'));
+        } elseif ($role_name === 'Admin') {
+            return Inertia::location(route('admin-dashboard'));
+        }
+
+        return Inertia::location(route('homepage'));
     }
 
     /**
@@ -87,8 +86,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->invalidate();
 
-        $request->session()->regenerateToken();
-
-        return redirect('/relove-market');
+        return redirect(route("homepage"));
     }
 }

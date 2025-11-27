@@ -2,10 +2,10 @@
 
 use App\Http\Controllers\AdminPage\AdminDashboardController;
 use App\Http\Controllers\AdminPage\ProductModerationController;
+use App\Http\Controllers\AdminPage\SellerPendingController;
 use App\Http\Controllers\AdminPage\TransactionManagementController;
 use App\Http\Controllers\AdminPage\UserManagementController;
 
-use App\Http\Controllers\BuyerPage\HomePageController;
 use App\Http\Controllers\BuyerPage\ProfileManagementController;
 use App\Http\Controllers\BuyerPage\WishlistController;
 use App\Http\Controllers\BuyerPage\SellerRegistrationController;
@@ -79,6 +79,9 @@ Route::middleware(["is_admin"])->group(function () {
     Route::get('/api/admin/dashboard/stats', [AdminDashboardController::class, 'getStats'])->name('admin.dashboard.stats');
     Route::get('/api/admin/dashboard/notifications', [AdminDashboardController::class, 'getNotifications']);
 
+    Route::get('/api/admin/dashboard/seller-list', [SellerPendingController::class, 'getSellerList'])->name("seller-list");
+    Route::post('/api/admin/pending-seller/{id}/action', [SellerPendingController::class, 'handleAction'])->name("handle-action");
+
     // API for manage products
     Route::get('/api/admin/products', [ProductModerationController::class, 'get_allProducts'])->name('get-all-products');
     Route::get('/api/admin/products/stats', [ProductModerationController::class, 'get_product_stats'])->name('get-product-stats');
@@ -89,10 +92,8 @@ Route::middleware(["is_admin"])->group(function () {
     Route::get("/api/transactions", [TransactionManagementController::class, 'filterFunction'])->name("filter-functions");
     Route::get("/api/transactions/metrics", [TransactionManagementController::class, "getData"])->name("get-data");
     Route::post('/api/transactions/{orderId}/release-payment', [TransactionManagementController::class, 'releasePayment'])->name('release-payment');
-    Route::put('/api/transactions{orderId}/status', [TransactionManagementController::class, 'updateOrderStatus'])->name('update-order-status');
     Route::get('/api/transactions/{orderId}/tracking', [TransactionManagementController::class, 'getOrderTracking']);
     Route::post('/{orderId}/manual-release', [TransactionManagementController::class, 'manualReleasePayment']);
-    Route::get('/stats', [TransactionManagementController::class, 'getTransactionStats']);
 
     // API for manage users.
     Route::get("/api/admin/user-management/list", [UserManagementController::class, "getUserList"])->name("list-user");

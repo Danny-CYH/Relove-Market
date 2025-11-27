@@ -48,7 +48,7 @@ export function CameraSearchModal({
                 const productData = item.product || {};
 
                 return {
-                    product_id: item.product_id || `ai-${index}`,
+                    product_id: productData.product_id || `ai-${index}`,
                     product_name:
                         item.name ||
                         productData.product_name ||
@@ -72,6 +72,7 @@ export function CameraSearchModal({
                         product_quantity: productData.product_quantity || 1,
                         product_status:
                             productData.product_status || "available",
+                        product_variant: productData.product_variant || [],
                         product_image: [
                             {
                                 image_path:
@@ -370,7 +371,7 @@ export function CameraSearchModal({
 
                             {/* Products Grid */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                {displayedResults.map((product, index) => {
+                                {displayedResults.map((product) => {
                                     return (
                                         <ProductCard
                                             key={product.product_id}

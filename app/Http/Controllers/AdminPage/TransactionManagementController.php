@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\AdminPage;
 
-use App\Events\PaymentReleased;
+use App\Events\AdminPage\Transactions\PaymentReleased;
+
 use App\Http\Controllers\Controller;
+
 use App\Models\Order;
 use App\Models\SellerEarning;
-use App\Models\Transaction;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -252,63 +254,6 @@ class TransactionManagementController extends Controller
     }
 
     /**
-     * Update order status
-     */
-    public function updateOrderStatus($orderId, Request $request)
-    {
-        try {
-            DB::beginTransaction();
-
-            $transaction = Transaction::where('order_id', $orderId)->firstOrFail();
-            $newStatus = $request->input('status');
-
-            $validStatuses = ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Completed', 'Cancelled'];
-
-            if (!in_array($newStatus, $validStatuses)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid order status.'
-                ], 400);
-            }
-
-            // Update order status
-            $transaction->update([
-                'order_status' => $newStatus,
-                'status_updated_at' => now()
-            ]);
-
-            $response = [
-                'success' => true,
-                'message' => 'Order status updated successfully.',
-                'data' => $transaction
-            ];
-
-            // Auto-release payment when order is completed
-            if ($newStatus === 'Completed' && $transaction->payment_status === 'paid') {
-                $releaseResponse = $this->releasePayment($orderId);
-
-                if ($releaseResponse->getData()->success) {
-                    $response['message'] = 'Order completed and payment released to seller.';
-                    $response['payment_released'] = true;
-                }
-            }
-
-            DB::commit();
-
-            return response()->json($response);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Order status update failed: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update order status: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
      * Get order tracking information
      */
     public function getOrderTracking($orderId)
@@ -375,49 +320,5 @@ class TransactionManagementController extends Controller
     public function manualReleasePayment($orderId)
     {
         return $this->releasePayment($orderId);
-    }
-
-    /**
-     * Get transactions statistics
-     */
-    public function getTransactionStats()
-    {
-        $totalRevenue = Transaction::where('order_status', 'Completed')
-            ->get()
-            ->sum(function ($transaction) {
-                $earning = $transaction->sellerEarnings->first();
-                return $earning ? floatval($earning->commission_deducted) : 0;
-            });
-
-        $completedTransactions = Transaction::where('order_status', 'Completed')->count();
-
-        $pendingRelease = Transaction::where('order_status', 'Completed')
-            ->whereHas('sellerEarnings', function ($query) {
-                $query->where('status', 'Pending');
-            })
-            ->count();
-
-        $releasedPayments = Transaction::where('payment_status', 'released')->count();
-
-        $totalAmountPending = Transaction::where('order_status', 'Completed')
-            ->whereHas('sellerEarnings', function ($query) {
-                $query->where('status', 'Pending');
-            })
-            ->get()
-            ->sum(function ($transaction) {
-                $earning = $transaction->sellerEarnings->first();
-                return $earning ? floatval($earning->payout_amount) : 0;
-            });
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'total_revenue' => $totalRevenue,
-                'completed_transactions' => $completedTransactions,
-                'pending_release' => $pendingRelease,
-                'released_payments' => $releasedPayments,
-                'total_amount_pending' => $totalAmountPending
-            ]
-        ]);
     }
 }

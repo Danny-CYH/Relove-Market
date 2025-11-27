@@ -59,6 +59,7 @@ class UserController extends Controller
             'seller.sellerStore',
             "orderItems"
         ])
+            ->where("product_status", '!=', "blocked")
             ->orderBy('featured', 'DESC');
 
         // Apply search filter
@@ -218,9 +219,9 @@ class UserController extends Controller
             $list_product = $single_checkoutData;
         }
 
-        // If no data found, redirect back to cart/wishlist
+        // If no data found, redirect back to cart
         if (!$list_product) {
-            return redirect()->route('wishlist')->with('error', 'Please select items to checkout first.');
+            return redirect()->route('cart')->with('error', 'Please select items to checkout first.');
         }
 
         return Inertia::render('BuyerPage/Checkout', [

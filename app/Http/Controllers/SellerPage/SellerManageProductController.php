@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers\SellerPage;
 
-use App\Events\ProductUpdated;
+use App\Events\SellerPage\SellerManageProduct\ProductUpdated;
+
 use App\Http\Controllers\Controller;
 
 use App\Models\Category;
@@ -13,6 +14,7 @@ use App\Models\ProductImage;
 use App\Models\ProductIncludeItem;
 use App\Models\ProductVariant;
 use App\Models\ProductVideo;
+
 use Exception;
 
 use Illuminate\Http\Request;

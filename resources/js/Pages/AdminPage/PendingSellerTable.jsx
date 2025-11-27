@@ -224,7 +224,7 @@ export default function PendingSellerTable() {
             }
 
             const res = await axios.get(
-                `/admin/dashboard/pending-seller-list?${params}`
+                `/api/admin/dashboard/seller-list?${params}`
             );
             const responseData = res.data;
 
@@ -295,7 +295,7 @@ export default function PendingSellerTable() {
             setLoadingProgress(true);
 
             const response = await axios.post(
-                `/admin/pending-seller/${registrationId}/action`,
+                `/api/admin/pending-seller/${registrationId}/action`,
                 { action, reason }
             );
 

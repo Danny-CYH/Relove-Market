@@ -139,19 +139,6 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
 
         // Remove the beforeunload listener after successful payment
         window.removeEventListener("beforeunload", () => {});
-
-        // Optional: Redirect to success page after a delay
-        setTimeout(() => {
-            router.visit(route("profile"), {
-                data: {
-                    active_tab: "orders",
-                    show_order_success: true,
-                    order_id: orderInfo.orderId,
-                    payment_success: true,
-                },
-                preserveState: false,
-            });
-        }, 7000);
     };
 
     const handlePaymentError = (error) => {
