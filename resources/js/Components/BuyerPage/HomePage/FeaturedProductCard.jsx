@@ -1,13 +1,33 @@
 import { FaStar, FaHeart, FaShoppingCart } from "react-icons/fa";
 import { useState, useEffect } from "react";
-import { Link } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
+import Swal from "sweetalert2";
+
+// SweetAlert configuration
+const showAlert = (icon, title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
 
 export function FeaturedProductCard({ product, save_wishlist }) {
+    const { auth } = usePage().props;
     const [isHovered, setIsHovered] = useState(false);
     const [isLiked, setIsLiked] = useState(false);
     const [showVariantModal, setShowVariantModal] = useState(false);
     const [selectedVariant, setSelectedVariant] = useState(null);
     const [selectedOptions, setSelectedOptions] = useState({});
+
+    // Check if user is logged in
+    const isLoggedIn = auth && auth.user;
 
     // Prevent body scroll when modal is open
     useEffect(() => {
@@ -142,6 +162,22 @@ export function FeaturedProductCard({ product, save_wishlist }) {
     };
 
     const handleWishlistClick = () => {
+        // Check if user is logged in
+        if (!isLoggedIn) {
+            showAlert(
+                "warning",
+                "Login Required",
+                "Please log in to add items to your wishlist.",
+                "Go to Login"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = route("login");
+                }
+            });
+            return;
+        }
+
+        // If logged in, proceed with wishlist action
         if (hasVariants) {
             setShowVariantModal(true);
         } else {
@@ -151,6 +187,22 @@ export function FeaturedProductCard({ product, save_wishlist }) {
     };
 
     const handleAddToWishlistWithVariant = () => {
+        // Double check if user is logged in (in case session expired)
+        if (!isLoggedIn) {
+            showAlert(
+                "warning",
+                "Session Expired",
+                "Please log in again to add items to your wishlist.",
+                "Go to Login"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = route("login");
+                }
+            });
+            setShowVariantModal(false);
+            return;
+        }
+
         const variant = findVariant();
 
         if (variant) {
@@ -163,6 +215,21 @@ export function FeaturedProductCard({ product, save_wishlist }) {
     };
 
     const handleOptionSelect = (type, option) => {
+        // Check if user is logged in before allowing option selection
+        if (!isLoggedIn) {
+            showAlert(
+                "warning",
+                "Login Required",
+                "Please log in to select product options.",
+                "Go to Login"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = route("login");
+                }
+            });
+            return;
+        }
+
         const newSelectedOptions = { ...selectedOptions, [type]: option };
         setSelectedOptions(newSelectedOptions);
         const variant = findVariant(newSelectedOptions);
@@ -246,7 +313,42 @@ export function FeaturedProductCard({ product, save_wishlist }) {
 
                     {/* Variant Selection - Scrollable */}
                     <div className="flex-1 overflow-y-auto p-4">
-                        {variantTypes.length > 0 ? (
+                        {/* Login Prompt if not logged in */}
+                        {!isLoggedIn && (
+                            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                                <div className="text-yellow-700 mb-3">
+                                    <svg
+                                        className="w-12 h-12 mx-auto mb-2 text-yellow-500"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                        />
+                                    </svg>
+                                    <h4 className="font-semibold text-lg mb-1">
+                                        Login Required
+                                    </h4>
+                                    <p className="text-sm">
+                                        Please log in to select product options
+                                        and add items to your wishlist.
+                                    </p>
+                                </div>
+                                <Link
+                                    href={route("login")}
+                                    className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                >
+                                    Go to Login
+                                </Link>
+                            </div>
+                        )}
+
+                        {/* Variant options (only show if logged in) */}
+                        {isLoggedIn && variantTypes.length > 0 ? (
                             variantTypes.map((type) => (
                                 <div key={type} className="mb-6 last:mb-0">
                                     <h4 className="font-semibold text-gray-900 mb-3 capitalize text-base">
@@ -284,14 +386,15 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                                     </div>
                                 </div>
                             ))
-                        ) : (
+                        ) : isLoggedIn ? (
                             <div className="text-center py-4 text-gray-500">
                                 No variants available
                             </div>
-                        )}
+                        ) : null}
 
-                        {/* Help Text */}
-                        {hasVariants &&
+                        {/* Help Text (only show if logged in) */}
+                        {isLoggedIn &&
+                            hasVariants &&
                             variantTypes.length > 0 &&
                             !selectedVariant && (
                                 <div className="text-center py-4 text-gray-500 text-sm">
@@ -299,8 +402,8 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                                 </div>
                             )}
 
-                        {/* Stock Status */}
-                        {selectedVariant && (
+                        {/* Stock Status (only show if logged in and variant selected) */}
+                        {isLoggedIn && selectedVariant && (
                             <div
                                 className={`mt-4 p-3 rounded-lg text-sm font-medium ${
                                     isVariantInStock
@@ -330,11 +433,17 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                             </button>
                             <button
                                 onClick={handleAddToWishlistWithVariant}
-                                disabled={!selectedVariant || !isVariantInStock}
+                                disabled={
+                                    !isLoggedIn ||
+                                    !selectedVariant ||
+                                    !isVariantInStock
+                                }
                                 className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm"
                             >
                                 <FaHeart className="w-4 h-4" />
-                                Add to Wishlist
+                                {!isLoggedIn
+                                    ? "Login Required"
+                                    : "Add to Wishlist"}
                             </button>
                         </div>
                     </div>
@@ -369,20 +478,35 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                             onClick={handleWishlistClick}
                             className="absolute top-3 right-3 bg-white hover:bg-gray-50 p-2 rounded-full shadow-md transition-colors duration-200 z-10"
                             title={
-                                hasVariants
+                                !isLoggedIn
+                                    ? "Login to add to wishlist"
+                                    : hasVariants
                                     ? "Add to Wishlist (Select Options)"
                                     : "Add to Wishlist"
                             }
                         >
                             <FaHeart
                                 className={`w-4 h-4 ${
-                                    isLiked ? "text-red-500" : "text-gray-600"
+                                    isLiked
+                                        ? "text-red-500"
+                                        : !isLoggedIn
+                                        ? "text-gray-400"
+                                        : "text-gray-600"
                                 }`}
                             />
                         </button>
 
+                        {/* Login Required Badge for Wishlist */}
+                        {!isLoggedIn && (
+                            <div className="absolute top-12 right-3 z-10">
+                                <div className="bg-yellow-100 text-yellow-700 text-xs font-medium px-2 py-1 rounded shadow-sm">
+                                    Login to Wishlist
+                                </div>
+                            </div>
+                        )}
+
                         {/* Variant Indicator Badge */}
-                        {hasVariants && (
+                        {hasVariants && isLoggedIn && (
                             <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
                                 <div className="bg-white bg-opacity-95 backdrop-blur-sm text-gray-700 text-xs font-medium px-2 py-1 rounded">
                                     {category.category_name}
@@ -393,8 +517,8 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                             </div>
                         )}
 
-                        {/* Category Badge (when no variants) */}
-                        {!hasVariants && (
+                        {/* Category Badge (when no variants or not logged in) */}
+                        {(!hasVariants || !isLoggedIn) && (
                             <div className="absolute top-3 left-3 z-10">
                                 <div className="bg-white bg-opacity-95 backdrop-blur-sm text-gray-700 text-xs font-medium px-2 py-1 rounded">
                                     {category.category_name}
@@ -411,11 +535,20 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                         {product.product_name}
                     </h3>
 
-                    {/* Variant Info */}
-                    {hasVariants && (
+                    {/* Variant Info (only show if logged in) */}
+                    {hasVariants && isLoggedIn && (
                         <div className="mb-2">
                             <p className="text-xs text-blue-600 font-medium">
                                 ⓘ Multiple options available
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Login Prompt for Variants */}
+                    {hasVariants && !isLoggedIn && (
+                        <div className="mb-2">
+                            <p className="text-xs text-yellow-600 font-medium">
+                                ⓘ Login to see options
                             </p>
                         </div>
                     )}

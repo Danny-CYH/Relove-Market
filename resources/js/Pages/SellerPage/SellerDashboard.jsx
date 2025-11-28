@@ -206,8 +206,9 @@ export default function SellerDashboard() {
             const totalOrders = calculateTotalOrders(orders);
             const conversionRate = calculateConversionRate(orders);
             const totalProducts =
-                products?.filter((product) => product.product_status !== "blocked")
-                    .length || 0;
+                products?.filter(
+                    (product) => product.product_status !== "blocked"
+                ).length || 0;
 
             return {
                 earnings,
@@ -254,8 +255,6 @@ export default function SellerDashboard() {
             setKpis(calculatedKPIs);
             setRealTimeOrders(orders);
             setOrderData(orders);
-
-            console.log("✅ Dashboard data refreshed successfully");
         } catch (error) {
             console.error("Error refreshing dashboard data:", error);
         }

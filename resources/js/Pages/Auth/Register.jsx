@@ -264,12 +264,13 @@ export default function Register() {
             return;
         }
 
-        // Validate password strength
+        // Validate password strength - Show SweetAlert if requirements not met
         if (!passwordValidation.isValid) {
             showAlert(
                 "warning",
-                "Weak Password",
-                "Please create a stronger password that meets all requirements."
+                "Password Requirements Not Met",
+                "Please create a password that meets all the requirements:\n\n• At least 8 characters long\n• Contains uppercase letters\n• Contains lowercase letters\n• Contains numbers\n• Contains special characters",
+                "OK"
             );
             return;
         }
@@ -659,14 +660,10 @@ export default function Register() {
                                 </label>
                             </div>
 
+                            {/* CHANGED: Button is no longer disabled based on password validation */}
                             <button
                                 type="submit"
-                                disabled={
-                                    processingRegister ||
-                                    !passwordValidation.isValid ||
-                                    registerData.password !==
-                                        registerData.password_confirmation
-                                }
+                                disabled={processingRegister}
                                 className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 {processingRegister ? (

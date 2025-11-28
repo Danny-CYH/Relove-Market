@@ -25,6 +25,98 @@ import { SecurityTab } from "@/Components/BuyerPage/ProfilePage/SecurityTab";
 import { ProfileTab } from "@/Components/BuyerPage/ProfilePage/ProfileTab";
 import { ReceiptModal } from "@/Components/BuyerPage/ProfilePage/ReceiptModal";
 
+// SweetAlert configuration
+const showAlert = (icon, title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showConfirmationAlert = (
+    title,
+    text,
+    confirmButtonText = "Yes",
+    cancelButtonText = "Cancel"
+) => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText,
+        cancelButtonText,
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+            cancelButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showLoadingAlert = (title, text = "") => {
+    return Swal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+};
+
+const showSuccessAlert = (title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "success",
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showErrorAlert = (title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "error",
+        confirmButtonText,
+        confirmButtonColor: "#d33",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showWarningAlert = (title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "warning",
+        confirmButtonText,
+        confirmButtonColor: "#f59e0b",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
 export default function ProfilePage({
     active_tab,
     show_order_success,
@@ -70,6 +162,38 @@ export default function ProfilePage({
     const totalPages = Math.ceil(orderHistory.length / itemsPerPage);
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+    // FIXED: Enhanced helper function to get proper image URL
+    const getProfileImageUrl = (imagePath) => {
+        // If no image path, return default image
+        if (!imagePath) {
+            return "/image/user.png";
+        }
+
+        // If it's already a full URL or data URL, return as is
+        if (imagePath.startsWith("http") || imagePath.startsWith("data:")) {
+            return imagePath;
+        }
+
+        // If it's a storage path (like 'profile_images/123/filename.jpg'), prepend storage URL
+        if (imagePath.startsWith("profile_images/")) {
+            const fullUrl = `${import.meta.env.VITE_BASE_URL}${imagePath}`;
+
+            return fullUrl;
+        }
+
+        // If it's a relative path starting with /, prepend base URL
+        if (imagePath.startsWith("/")) {
+            const fullUrl = import.meta.env.VITE_BASE_URL + imagePath;
+
+            return fullUrl;
+        }
+
+        // For any other case, try with storage prefix
+        const fullUrl = `${import.meta.env.VITE_BASE_URL}${imagePath}`;
+
+        return fullUrl;
+    };
+
     const checkForOrderSuccessRedirect = () => {
         // Check URL parameters first
         const urlParams = new URLSearchParams(window.location.search);
@@ -80,8 +204,6 @@ export default function ProfilePage({
 
         // Check if any success condition is met
         if (showOrderSuccess === "true" || paymentSuccess === "true") {
-            console.log("✅ Order success detected, switching to orders tab");
-
             // Set active tab to orders
             setActiveTab("orders");
 
@@ -96,7 +218,6 @@ export default function ProfilePage({
         }
 
         if (show_order_success || payment_success) {
-            console.log("✅ Order success detected from props");
             setActiveTab("orders");
             setRecentOrderId(order_id || null);
             setShowOrderSuccessModal(true);
@@ -179,24 +300,6 @@ export default function ProfilePage({
         }
     };
 
-    // Helper function to get proper image URL
-    const getProfileImageUrl = (imagePath) => {
-        if (!imagePath) return "/image/user.png";
-
-        // If it's already a full URL or data URL, return as is
-        if (imagePath.startsWith("http") || imagePath.startsWith("data:")) {
-            return imagePath;
-        }
-
-        // If it's a relative path, prepend base URL
-        if (imagePath.startsWith("/")) {
-            return import.meta.env.VITE_BASE_URL + imagePath;
-        }
-
-        // For storage paths
-        return `${import.meta.env.VITE_BASE_URL}${auth.user.profile_image}`;
-    };
-
     // Fetch order history from API
     const fetchOrderHistory = async () => {
         try {
@@ -212,6 +315,10 @@ export default function ProfilePage({
             setOrderHistory(response.data || []);
         } catch (error) {
             console.error("Error fetching order history:", error);
+            showErrorAlert(
+                "Error",
+                "Failed to load order history. Please try again."
+            );
         } finally {
             setLoading(false);
         }
@@ -220,15 +327,12 @@ export default function ProfilePage({
     // NEW: Order Confirmation Function (SweetAlert Version)
     const confirmOrderDelivery = async (orderId) => {
         // SweetAlert Confirmation Popup
-        const result = await Swal.fire({
-            title: "Confirm Delivery?",
-            text: "Have you received your order in good condition? This will release payment to the seller.",
-            icon: "warning",
-            showCancelButton: true,
-            confirmButtonText: "Yes, I have received it",
-            cancelButtonText: "Cancel",
-            allowOutsideClick: false,
-        });
+        const result = await showConfirmationAlert(
+            "Confirm Delivery?",
+            "Have you received your order in good condition? This will release payment to the seller.",
+            "Yes, I have received it",
+            "Cancel"
+        );
 
         // If user cancels, stop the function
         if (!result.isConfirmed) {
@@ -262,23 +366,21 @@ export default function ProfilePage({
                 );
 
                 // SweetAlert Success Popup
-                await Swal.fire({
-                    title: "Delivery Confirmed!",
-                    text: "Payment has been released to the seller.",
-                    icon: "success",
-                });
+                await showSuccessAlert(
+                    "Delivery Confirmed!",
+                    "Payment has been released to the seller."
+                );
             }
         } catch (error) {
             console.error("Error confirming delivery:", error);
 
             // SweetAlert Error Popup
-            Swal.fire({
-                title: "Error",
-                text: error.response?.data?.message
+            showErrorAlert(
+                "Error",
+                error.response?.data?.message
                     ? error.response.data.message
-                    : "Failed to confirm delivery. Please try again.",
-                icon: "error",
-            });
+                    : "Failed to confirm delivery. Please try again."
+            );
         } finally {
             setConfirmingOrderId(null);
         }
@@ -290,31 +392,40 @@ export default function ProfilePage({
         if (file) {
             // Validate file type
             if (!file.type.startsWith("image/")) {
-                alert("Please select a valid image file");
+                showErrorAlert(
+                    "Invalid File",
+                    "Please select a valid image file (JPEG, PNG, etc.)"
+                );
                 return;
             }
 
             // Validate file size (max 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                alert("Image size should be less than 5MB");
+                showErrorAlert(
+                    "File Too Large",
+                    "Image size should be less than 5MB"
+                );
                 return;
             }
 
             const reader = new FileReader();
             reader.onload = (e) => {
-                // Set preview immediately
+                // Set preview immediately with data URL
                 setImagePreview(e.target.result);
 
                 // Update form data with file for upload
                 setFormData((prev) => ({
                     ...prev,
                     profileImageFile: file, // Store file for upload
-                    profile_image: e.target.result, // Store preview URL
+                    profile_image: e.target.result, // Store preview URL for immediate display
                 }));
             };
             reader.onerror = () => {
                 console.error("Error reading file");
-                alert("Error reading image file");
+                showErrorAlert(
+                    "Error",
+                    "Error reading image file. Please try another image."
+                );
             };
             reader.readAsDataURL(file);
         }
@@ -324,6 +435,12 @@ export default function ProfilePage({
     const handleSave = async () => {
         try {
             setLoading(true);
+
+            // Show loading alert
+            const loadingAlert = showLoadingAlert(
+                "Updating Profile",
+                "Please wait while we save your changes..."
+            );
 
             // Create FormData for all fields
             const formDataToSend = new FormData();
@@ -340,37 +457,64 @@ export default function ProfilePage({
                     "profile_image",
                     formData.profileImageFile
                 );
-                console.log(
-                    "✅ File appended to FormData:",
-                    formData.profileImageFile.name
-                );
+                console.log("📤 Uploading new profile image file");
             } else {
                 console.log("ℹ️ No new file selected, keeping existing image");
             }
 
             const response = await axios.post(
                 route("update-profile"),
-                formDataToSend
+                formDataToSend,
+                {
+                    headers: {
+                        "Content-Type": "multipart/form-data",
+                    },
+                }
             );
+
+            // Close loading alert
+            loadingAlert.close();
 
             if (response.data.success) {
                 const updatedUser = response.data.user;
+                console.log("✅ Profile update response:", updatedUser);
 
-                // FIXED: Properly update the image URL from response
-                if (response.data.user.profile_image) {
-                    // Use the path returned by the server
-                    updatedUser.profile_image =
-                        response.data.user.profile_image;
+                // FIXED: Handle the server response properly
+                // The server returns both profile_image (path) and profile_image_url (full URL)
+                let finalImageUrl = null;
 
-                    // Update preview with the new server path
-                    setImagePreview(
-                        getProfileImageUrl(updatedUser.profile_image)
+                if (updatedUser.profile_image_url) {
+                    // Use the full URL provided by server
+                    finalImageUrl = updatedUser.profile_image_url;
+                    console.log(
+                        "🖼️ Using profile_image_url from server:",
+                        finalImageUrl
+                    );
+                } else if (updatedUser.profile_image) {
+                    // Convert path to full URL
+                    finalImageUrl = getProfileImageUrl(
+                        updatedUser.profile_image
+                    );
+                    console.log(
+                        "🖼️ Converted profile_image to URL:",
+                        finalImageUrl
                     );
                 }
 
-                // Update React states
+                // Update all states with the new data
                 setUserData(updatedUser);
                 setFormData(updatedUser);
+
+                // Set the image preview to the final URL
+                if (finalImageUrl) {
+                    setImagePreview(finalImageUrl);
+                    console.log("🖼️ Image preview updated to:", finalImageUrl);
+                } else {
+                    // If no image, set to default
+                    setImagePreview("/image/user.png");
+                    console.log("🖼️ No image, using default");
+                }
+
                 setIsEditing(false);
 
                 // Clear the file object since it's been uploaded
@@ -380,20 +524,29 @@ export default function ProfilePage({
                 }));
 
                 // Show success message
-                alert("Profile updated successfully!");
+                showSuccessAlert(
+                    "Success!",
+                    "Your profile has been updated successfully."
+                );
             }
         } catch (error) {
             console.error("❌ Error updating profile:", error);
+
+            // Close any existing loading alerts
+            Swal.close();
+
             if (error.response?.data) {
                 console.error("Server response:", error.response.data);
-                alert(
-                    `Error: ${
-                        error.response.data.message ||
-                        "Failed to update profile"
-                    }`
+                showErrorAlert(
+                    "Update Failed",
+                    error.response.data.message ||
+                        "Failed to update profile. Please try again."
                 );
             } else {
-                alert("Error updating profile. Please try again.");
+                showErrorAlert(
+                    "Update Failed",
+                    "Error updating profile. Please check your connection and try again."
+                );
             }
         } finally {
             setLoading(false);
@@ -402,8 +555,36 @@ export default function ProfilePage({
 
     // FIXED: Handle cancel with proper image reset
     const handleCancel = () => {
+        // Show confirmation if there are unsaved changes
+        const hasChanges =
+            formData.name !== userData.name ||
+            formData.email !== userData.email ||
+            formData.phone !== userData.phone ||
+            formData.address !== userData.address ||
+            formData.city !== userData.city ||
+            formData.zip_code !== userData.zip_code ||
+            formData.profileImageFile;
+
+        if (hasChanges) {
+            showConfirmationAlert(
+                "Discard Changes?",
+                "You have unsaved changes. Are you sure you want to discard them?",
+                "Yes, Discard",
+                "Continue Editing"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    resetForm();
+                }
+            });
+        } else {
+            resetForm();
+        }
+    };
+
+    const resetForm = () => {
         setFormData({ ...userData });
-        setImagePreview(getProfileImageUrl(userData.profile_image)); // Reset to original image
+        // Reset to the current user's profile image
+        setImagePreview(getProfileImageUrl(userData.profile_image));
         setIsEditing(false);
 
         // Clear any selected file
@@ -547,10 +728,13 @@ export default function ProfilePage({
         checkForOrderSuccessRedirect();
     }, []);
 
-    // NEW: Set initial image preview when component mounts
+    // FIXED: Set initial image preview when component mounts
     useEffect(() => {
         if (userData.profile_image) {
-            setImagePreview(getProfileImageUrl(userData.profile_image));
+            const initialImageUrl = getProfileImageUrl(userData.profile_image);
+            setImagePreview(initialImageUrl);
+        } else {
+            setImagePreview("/image/user.png");
         }
     }, [userData.profile_image]);
 
@@ -572,19 +756,17 @@ export default function ProfilePage({
                             <div className="flex flex-col items-center mb-6 pb-6 border-b border-gray-100">
                                 <div className="relative mb-4 group">
                                     <div className="w-28 max-h-28 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center overflow-hidden border-4 border-white shadow-lg">
+                                        {/* FIXED: Simplified image source logic */}
                                         <img
                                             src={
                                                 imagePreview ||
-                                                getProfileImageUrl(
-                                                    userData.profile_image
-                                                ) ||
-                                                auth.user.profile_image
+                                                "/image/user.png"
                                             }
                                             alt="Profile"
                                             className="w-full h-full object-cover"
                                             onError={(e) => {
                                                 console.error(
-                                                    "Error loading image:",
+                                                    "❌ Error loading image:",
                                                     e.target.src
                                                 );
                                                 e.target.src =

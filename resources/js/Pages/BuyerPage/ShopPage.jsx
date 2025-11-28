@@ -19,6 +19,8 @@ import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { ShopProductCard } from "@/Components/BuyerPage/HomePage/ShopProductCard";
 import { MobileProductCard } from "@/Components/BuyerPage/HomePage/MobileProductCard";
 import { MobileSortModal } from "@/Components/BuyerPage/ShopPage/MobileSortModal";
+import { MobileFilterModal } from "@/Components/BuyerPage/ShopPage/MobileFilterModal";
+import { FilterModal } from "@/Components/BuyerPage/ShopPage/FilterModal";
 
 export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [priceRange, setPriceRange] = useState([0, 1000]);
@@ -526,216 +528,21 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
                     {/* Filters Sidebar - Desktop */}
                     <aside className="hidden lg:block w-80 flex-shrink-0">
-                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-24">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                    Filters
-                                </h3>
-                                <button
-                                    onClick={resetFilters}
-                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                                >
-                                    <RefreshCw className="w-4 h-4" />
-                                    Reset
-                                </button>
-                            </div>
-
-                            {/* Categories Filter */}
-                            <div className="mb-6">
-                                <button
-                                    onClick={() =>
-                                        toggleFilterSection("categories")
-                                    }
-                                    className="flex items-center justify-between w-full mb-3"
-                                >
-                                    <span className="font-semibold text-gray-900">
-                                        Categories
-                                    </span>
-                                    {expandedFilters.categories ? (
-                                        <Minus className="w-4 h-4" />
-                                    ) : (
-                                        <Plus className="w-4 h-4" />
-                                    )}
-                                </button>
-                                {expandedFilters.categories && (
-                                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                                        {list_categoryItem?.map(
-                                            (category, index) => {
-                                                const count = products.filter(
-                                                    (p) =>
-                                                        p.category
-                                                            ?.category_name ===
-                                                        category.category_name
-                                                ).length;
-
-                                                return (
-                                                    <label
-                                                        key={index}
-                                                        className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                                    >
-                                                        <div className="flex items-center gap-3">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={selectedCategories.includes(
-                                                                    category.category_name
-                                                                )}
-                                                                onChange={() =>
-                                                                    toggleCategory(
-                                                                        category.category_name
-                                                                    )
-                                                                }
-                                                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                            />
-                                                            <span className="text-sm text-gray-700">
-                                                                {
-                                                                    category.category_name
-                                                                }
-                                                            </span>
-                                                        </div>
-
-                                                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                                            {count}
-                                                        </span>
-                                                    </label>
-                                                );
-                                            }
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Price Range Filter */}
-                            <div className="mb-6">
-                                <button
-                                    onClick={() => toggleFilterSection("price")}
-                                    className="flex items-center justify-between w-full mb-3"
-                                >
-                                    <span className="font-semibold text-gray-900">
-                                        Price Range
-                                    </span>
-                                    {expandedFilters.price ? (
-                                        <Minus className="w-4 h-4" />
-                                    ) : (
-                                        <Plus className="w-4 h-4" />
-                                    )}
-                                </button>
-                                {expandedFilters.price && (
-                                    <div className="space-y-4">
-                                        {/* Price Input Fields */}
-                                        <div className="flex items-center gap-3">
-                                            <div className="flex-1">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Min Price
-                                                </label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
-                                                        RM
-                                                    </span>
-                                                    <input
-                                                        type="text"
-                                                        value={priceRange[0]}
-                                                        onChange={(e) =>
-                                                            handlePriceInputChange(
-                                                                0,
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        onBlur={() =>
-                                                            fetchProducts(1)
-                                                        }
-                                                        className="text-black w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        placeholder="0"
-                                                    />
-                                                </div>
-                                            </div>
-
-                                            <div className="flex-1">
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Max Price
-                                                </label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">
-                                                        RM
-                                                    </span>
-                                                    <input
-                                                        type="text"
-                                                        value={priceRange[1]}
-                                                        onChange={(e) =>
-                                                            handlePriceInputChange(
-                                                                1,
-                                                                e.target.value
-                                                            )
-                                                        }
-                                                        onBlur={() =>
-                                                            fetchProducts(1)
-                                                        }
-                                                        className="text-black w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                        placeholder="1000"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Condition Filter */}
-                            <div className="mb-6">
-                                <button
-                                    onClick={() =>
-                                        toggleFilterSection("condition")
-                                    }
-                                    className="flex items-center justify-between w-full mb-3"
-                                >
-                                    <span className="font-semibold text-gray-900">
-                                        Condition
-                                    </span>
-                                    {expandedFilters.condition ? (
-                                        <Minus className="w-4 h-4" />
-                                    ) : (
-                                        <Plus className="w-4 h-4" />
-                                    )}
-                                </button>
-                                {expandedFilters.condition && (
-                                    <div className="space-y-2">
-                                        {[
-                                            "New",
-                                            "Excellent",
-                                            "Good",
-                                            "Fair",
-                                        ].map((condition, index) => (
-                                            <label
-                                                key={index}
-                                                className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedConditions.includes(
-                                                        condition
-                                                    )}
-                                                    onChange={() =>
-                                                        toggleCondition(
-                                                            condition
-                                                        )
-                                                    }
-                                                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                                />
-                                                <span className="text-sm text-gray-700">
-                                                    {condition}
-                                                </span>
-                                            </label>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <button
-                                onClick={applyFilters}
-                                className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors shadow-sm"
-                            >
-                                Apply Filters
-                            </button>
-                        </div>
+                        <FilterModal
+                            applyFilters={applyFilters}
+                            expandedFilters={expandedFilters}
+                            fetchProducts={fetchProducts}
+                            handlePriceInputChange={handlePriceInputChange}
+                            list_categoryItem={list_categoryItem}
+                            priceRange={priceRange}
+                            products={products}
+                            resetFilters={resetFilters}
+                            selectedCategories={selectedCategories}
+                            selectedConditions={selectedConditions}
+                            toggleCategory={toggleCategory}
+                            toggleCondition={toggleCondition}
+                            toggleFilterSection={toggleFilterSection}
+                        />
                     </aside>
 
                     {/* Products Section */}
@@ -882,192 +689,18 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
             {/* Mobile Filters Modal */}
             {mobileFiltersOpen && (
-                <div className="fixed inset-0 z-50 lg:hidden">
-                    <div
-                        className="absolute inset-0 bg-black bg-opacity-50"
-                        onClick={() => setMobileFiltersOpen(false)}
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl max-h-[85vh] overflow-y-auto">
-                        <div className="p-6 sticky top-0 bg-white border-b border-gray-200 flex items-center justify-between">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                                Filters
-                            </h3>
-                            <div className="flex items-center gap-4">
-                                <button
-                                    onClick={resetFilters}
-                                    className="text-sm text-blue-600 font-medium"
-                                >
-                                    Reset
-                                </button>
-                                <button
-                                    onClick={() => setMobileFiltersOpen(false)}
-                                >
-                                    <X className="w-6 h-6 text-gray-600" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="p-6 space-y-6">
-                            {/* Categories */}
-                            <div>
-                                <h4 className="font-semibold mb-3 text-gray-900">
-                                    Categories
-                                </h4>
-                                <div className="space-y-2 max-h-60 overflow-y-auto">
-                                    {list_categoryItem?.map(
-                                        (category, index) => (
-                                            <label
-                                                key={index}
-                                                className="flex items-center gap-3 p-3 rounded-lg border border-gray-200"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedCategories.includes(
-                                                        category.category_name
-                                                    )}
-                                                    onChange={() =>
-                                                        toggleCategory(
-                                                            category.category_name
-                                                        )
-                                                    }
-                                                    className="w-5 h-5 text-blue-600 rounded border-gray-300"
-                                                />
-                                                <span className="text-sm text-gray-700 flex-1">
-                                                    {category.category_name}
-                                                </span>
-                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                                    {
-                                                        products.filter(
-                                                            (p) =>
-                                                                p.category
-                                                                    ?.category_name ===
-                                                                category.category_name
-                                                        ).length
-                                                    }
-                                                </span>
-                                            </label>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Price Range */}
-                            <div>
-                                <h4 className="font-semibold mb-3 text-gray-900">
-                                    Price Range
-                                </h4>
-                                <div className="space-y-4">
-                                    <div className="flex flex-row sm:flex-row sm:items-center gap-3">
-                                        {/* Min Price */}
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Min Price
-                                            </label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                                                    RM
-                                                </span>
-                                                <input
-                                                    type="text"
-                                                    value={priceRange[0]}
-                                                    onChange={(e) =>
-                                                        handlePriceInputChange(
-                                                            0,
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    onBlur={() =>
-                                                        fetchProducts(1)
-                                                    }
-                                                    className="w-full text-black pl-10 pr-3 py-2 border border-gray-300 
-                           rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="0"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Max Price */}
-                                        <div className="flex-1">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Max Price
-                                            </label>
-                                            <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-                                                    RM
-                                                </span>
-                                                <input
-                                                    type="text"
-                                                    value={priceRange[1]}
-                                                    onChange={(e) =>
-                                                        handlePriceInputChange(
-                                                            1,
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                    onBlur={() =>
-                                                        fetchProducts(1)
-                                                    }
-                                                    className="w-full text-black pl-10 pr-3 py-2 border border-gray-300 
-                           rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder="1000"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Condition Filter */}
-                            <div>
-                                <h4 className="font-semibold mb-3 text-gray-900">
-                                    Condition
-                                </h4>
-                                <div className="space-y-2">
-                                    {["New", "Excellent", "Good", "Fair"].map(
-                                        (condition, index) => (
-                                            <label
-                                                key={index}
-                                                className="flex items-center gap-3 p-3 rounded-lg border border-gray-200"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedConditions.includes(
-                                                        condition
-                                                    )}
-                                                    onChange={() =>
-                                                        toggleCondition(
-                                                            condition
-                                                        )
-                                                    }
-                                                    className="w-5 h-5 text-blue-600 rounded border-gray-300"
-                                                />
-                                                <span className="text-sm text-gray-700 flex-1">
-                                                    {condition}
-                                                </span>
-                                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                                    {
-                                                        products.filter(
-                                                            (p) =>
-                                                                p.product_condition ===
-                                                                condition
-                                                        ).length
-                                                    }
-                                                </span>
-                                            </label>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={applyFilters}
-                                className="w-full bg-blue-600 text-white py-4 rounded-xl font-semibold hover:bg-blue-700 transition-colors text-lg"
-                            >
-                                Show Results
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <MobileFilterModal
+                    applyFilters={applyFilters}
+                    fetchProducts={fetchProducts}
+                    handlePriceInputChange={handlePriceInputChange}
+                    list_categoryItem={list_categoryItem}
+                    priceRange={priceRange}
+                    products={products}
+                    resetFilters={resetFilters}
+                    selectedCategories={selectedCategories}
+                    selectedConditions={selectedConditions}
+                    setMobileFiltersOpen={setMobileFiltersOpen}
+                />
             )}
 
             {/* Mobile Sort Modal */}

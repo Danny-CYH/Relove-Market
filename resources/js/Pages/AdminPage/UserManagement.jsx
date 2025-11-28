@@ -18,7 +18,6 @@ import {
 } from "react-icons/fa";
 
 export default function UserManagement() {
-    const { auth } = usePage().props;
     const [users, setUsers] = useState([]);
     const [filter, setFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
@@ -555,14 +554,17 @@ export default function UserManagement() {
                                                             <div className="flex-shrink-0 h-10 w-10">
                                                                 <img
                                                                     src={
-                                                                        user.avatar
-                                                                            ? `/storage/avatars/${user.avatar}`
-                                                                            : "../image/shania_yan.png"
+                                                                        user.profile_image
+                                                                            ? import.meta
+                                                                                  .env
+                                                                                  .VITE_BASE_URL +
+                                                                              user.profile_image
+                                                                            : "../image/user.png"
                                                                     }
                                                                     alt={
                                                                         user.name
                                                                     }
-                                                                    className="h-10 w-10 rounded-full object-cover"
+                                                                    className="max-h-8 w-10 rounded-full object-cover"
                                                                 />
                                                             </div>
                                                             <div className="ml-4">
@@ -707,12 +709,15 @@ export default function UserManagement() {
                                                         />
                                                         <img
                                                             src={
-                                                                user.avatar
-                                                                    ? `/storage/avatars/${user.avatar}`
-                                                                    : "../image/shania_yan.png"
+                                                                user.profile_image
+                                                                    ? import.meta
+                                                                          .env
+                                                                          .VITE_BASE_URL +
+                                                                      user.profile_image
+                                                                    : "../image/user.png"
                                                             }
                                                             alt={user.name}
-                                                            className="h-12 w-12 rounded-full object-cover"
+                                                            className="max-h-8 w-12 rounded-full object-cover"
                                                         />
                                                     </div>
                                                     <div className="flex space-x-2">

@@ -277,12 +277,6 @@ class ProfileManagementController extends Controller
             'password' => Hash::make($request->new_password),
         ]);
 
-        // Optional: Update password_changed_at timestamp if you have that column
-        // $user->update([
-        //     'password' => Hash::make($request->new_password),
-        //     'password_changed_at' => now(),
-        // ]);
-
         return response()->json([
             'message' => 'Password updated successfully!',
         ]);
@@ -291,7 +285,7 @@ class ProfileManagementController extends Controller
     public function confirmDelivery($orderId)
     {
         try {
-            $order = Order::with('orderItems.product.seller')->findOrFail($orderId);
+            $order = Order::with('orderItems.product.seller', 'orderItems.product')->findOrFail($orderId);
 
             // Verify the order belongs to the authenticated buyer
             if ($order->user_id !== auth()->id()) {
@@ -309,6 +303,32 @@ class ProfileManagementController extends Controller
                 ], 400);
             }
 
+            // Check if order is already completed
+            if ($order->order_status === 'Completed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order has already been completed'
+                ], 400);
+            }
+
+            // Validate order items exist
+            if ($order->orderItems->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Order does not contain any items'
+                ], 400);
+            }
+
+            // Validate seller information
+            foreach ($order->orderItems as $orderItem) {
+                if (!$orderItem->product || !$orderItem->product->seller) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Invalid product or seller information in order items'
+                    ], 400);
+                }
+            }
+
             // Start database transaction
             DB::beginTransaction();
 
@@ -318,18 +338,27 @@ class ProfileManagementController extends Controller
                 'completed_at' => now()
             ]);
 
-            // Calculate and process commission
-            $this->processCommission($order);
+            // Calculate and process commission with featured product validation
+            $commissionResult = $this->processCommission($order);
 
             DB::commit();
 
             // Notify seller about completed order and commission
             event(new OrderCompleted($order));
 
+            // Prepare response message based on commission type
+            $message = 'Delivery confirmed successfully. ';
+            if ($commissionResult['has_featured_products']) {
+                $message .= "Commission processed: 10% for featured products, 8% for standard products. Total commission: {$commissionResult['total_commission']}.";
+            } else {
+                $message .= "8% commission applied. Total commission: {$commissionResult['total_commission']}.";
+            }
+
             return response()->json([
                 'success' => true,
-                'message' => 'Delivery confirmed successfully. Commission processed and funds released to seller.',
-                'order' => $order
+                'message' => $message,
+                'order' => $order,
+                'commission_details' => $commissionResult
             ]);
 
         } catch (Exception $e) {
@@ -345,23 +374,81 @@ class ProfileManagementController extends Controller
 
     protected function processCommission($order)
     {
-        $commissionRate = 0.08; // 8%
+        $standardCommissionRate = 0.08; // 8% for standard products
+        $featuredCommissionRate = 0.10; // 10% for featured products
+
         $totalAmount = floatval($order->amount);
-        $commissionAmount = $totalAmount * $commissionRate;
-        $payoutAmount = $totalAmount - $commissionAmount;
+
+        // Analyze order items to calculate commission separately
+        $featuredProductsTotal = 0;
+        $standardProductsTotal = 0;
+        $featuredProducts = [];
+        $standardProducts = [];
+
+        foreach ($order->orderItems as $orderItem) {
+            $itemTotal = floatval($orderItem->price) * intval($orderItem->quantity);
+
+            if ($orderItem->product->featured) {
+                $featuredProductsTotal = $totalAmount;
+                $featuredProducts[] = [
+                    'product_id' => $orderItem->product->product_id,
+                    'product_name' => $orderItem->product->product_name,
+                    'amount' => $itemTotal,
+                    'commission_rate' => '10%'
+                ];
+            } else {
+                $standardProductsTotal = $totalAmount;
+                $standardProducts[] = [
+                    'product_id' => $orderItem->product->product_id,
+                    'product_name' => $orderItem->product->product_name,
+                    'amount' => $itemTotal,
+                    'commission_rate' => '8%'
+                ];
+            }
+        }
+
+        // Calculate commission separately for featured and standard products
+        $featuredCommission = $featuredProductsTotal * $featuredCommissionRate;
+        $standardCommission = $standardProductsTotal * $standardCommissionRate;
+        $totalCommission = $featuredCommission + $standardCommission;
+        $payoutAmount = $totalAmount - $totalCommission;
+
+        $hasFeaturedProducts = $featuredProductsTotal > 0;
 
         $seller = $order->orderItems->first()->product->seller;
 
         // Create earnings record
-        SellerEarning::create([
+        $earning = SellerEarning::create([
             'seller_id' => $seller->seller_id,
             'order_id' => $order->order_id,
             'amount' => $totalAmount,
-            'commission_rate' => $commissionRate,
-            'commission_deducted' => $commissionAmount,
+            'commission_rate' => $hasFeaturedProducts ? $featuredCommissionRate : $standardCommissionRate, // Primary rate
+            'commission_deducted' => $totalCommission,
             'payout_amount' => $payoutAmount,
             'status' => 'Pending',
             'processed_at' => now()
         ]);
+
+        // Return commission details for response
+        return [
+            'has_featured_products' => $hasFeaturedProducts,
+            'total_commission' => 'RM ' . number_format($totalCommission, 2),
+            'commission_breakdown' => [
+                'featured_products' => [
+                    'amount' => $featuredProductsTotal,
+                    'commission_rate' => '10%',
+                    'commission_amount' => $featuredCommission,
+                    'count' => count($featuredProducts)
+                ],
+                'standard_products' => [
+                    'amount' => $standardProductsTotal,
+                    'commission_rate' => '8%',
+                    'commission_amount' => $standardCommission,
+                    'count' => count($standardProducts)
+                ]
+            ],
+            'payout_amount' => $payoutAmount,
+            'earning_id' => $earning->id
+        ];
     }
 }

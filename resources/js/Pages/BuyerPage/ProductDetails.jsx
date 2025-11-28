@@ -37,6 +37,56 @@ import { ShowConversationModal } from "@/Components/BuyerPage/ProductDetails/Sho
 import { ShowAllReviewsModal } from "@/Components/BuyerPage/ProductDetails/ShowAllReviewsModal";
 import { ProductCarousel } from "@/Components/BuyerPage/ProductDetails/ProductCarousel";
 
+// SweetAlert configuration
+const showAlert = (icon, title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        icon,
+        title,
+        text,
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showConfirmationAlert = (
+    title,
+    text,
+    confirmButtonText = "Yes",
+    cancelButtonText = "Cancel"
+) => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText,
+        cancelButtonText,
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+            cancelButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+const showLoadingAlert = (title, text = "") => {
+    return Swal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+};
+
 export default function ProductDetails({ product_info }) {
     const [selectedImage, setSelectedImage] = useState(
         product_info[0]?.product_image[0]?.image_path || ""
@@ -445,21 +495,16 @@ export default function ProductDetails({ product_info }) {
         return [checkoutItem]; // Return as array to match wishlist structure
     };
 
-    // UPDATED: Enhanced Handle Buy Now - with comprehensive address validation
+    // UPDATED: Enhanced Handle Buy Now - with comprehensive validation using SweetAlert
     const handleBuyNow = async () => {
         // Check if user is authenticated
         if (!auth.user) {
-            Swal.fire({
-                title: "🔐 Login Required",
-                text: "Please login to continue with your purchase",
-                icon: "warning",
-                showCancelButton: true,
-                confirmButtonText: "Login Now",
-                cancelButtonText: "Cancel",
-                confirmButtonColor: "#3B82F6",
-                cancelButtonColor: "#6B7280",
-                allowOutsideClick: false,
-            }).then((result) => {
+            showAlert(
+                "warning",
+                "🔐 Login Required",
+                "Please login to continue with your purchase",
+                "Login Now"
+            ).then((result) => {
                 if (result.isConfirmed) {
                     const currentUrl = window.location.href;
                     router.visit(route("login"), {
@@ -467,6 +512,28 @@ export default function ProductDetails({ product_info }) {
                     });
                 }
             });
+            return;
+        }
+
+        // Check if product is in stock
+        if (availableStock === 0) {
+            showAlert(
+                "error",
+                "Out of Stock",
+                "This product is currently out of stock. Please check back later.",
+                "OK"
+            );
+            return;
+        }
+
+        // Validate variant selection for products with variants
+        if (hasVariants && !selectedVariant) {
+            showAlert(
+                "warning",
+                "Variant Selection Required",
+                "Please select a product variant before proceeding with your purchase.",
+                "Select Variant"
+            );
             return;
         }
 
@@ -478,11 +545,6 @@ export default function ProductDetails({ product_info }) {
             return;
         }
 
-        // Validate variant selection
-        if (!validateVariant("buying")) {
-            return;
-        }
-
         // Show loading state for buy now
         setLoadingStates((prev) => ({ ...prev, buyNow: true }));
 
@@ -490,55 +552,53 @@ export default function ProductDetails({ product_info }) {
             const checkoutData = prepareCheckoutData();
 
             // Show processing alert
-            Swal.fire({
-                title: "Processing Your Order...",
-                text: "Please wait while we prepare your purchase",
-                icon: "info",
-                showConfirmButton: false,
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                },
-            });
+            const loadingAlert = showLoadingAlert(
+                "Processing Your Order...",
+                "Please wait while we prepare your purchase"
+            );
 
             // Proceed with checkout
             router.post(route("checkout-process"), {
                 items: checkoutData,
+                onSuccess: () => {
+                    loadingAlert.close();
+                    // Success is handled by the redirect in the controller
+                },
+                onError: (errors) => {
+                    loadingAlert.close();
+                    console.error("Error during buy now:", errors);
+
+                    let errorMessage =
+                        "Something went wrong. Please try again.";
+
+                    // Handle specific error cases
+                    if (errors.items) {
+                        errorMessage = errors.items;
+                    } else if (errors.product_id) {
+                        errorMessage =
+                            "Product validation failed. Please refresh the page and try again.";
+                    } else if (errors.quantity) {
+                        errorMessage =
+                            "Invalid quantity selected. Please adjust the quantity and try again.";
+                    }
+
+                    showAlert("error", "Checkout Error", errorMessage, "OK");
+                },
             });
         } catch (error) {
             console.error("Error during buy now:", error);
-            Swal.fire({
-                title: "Error",
-                text: "Something went wrong. Please try again.",
-                icon: "error",
-                confirmButtonText: "OK",
-                confirmButtonColor: "#EF4444",
-            });
+            showAlert(
+                "error",
+                "Unexpected Error",
+                "An unexpected error occurred. Please try again later.",
+                "OK"
+            );
         } finally {
             setLoadingStates((prev) => ({ ...prev, buyNow: false }));
-            Swal.close();
         }
     };
 
-    // NEW: Determine if Buy Now button should be disabled
-    const isBuyNowDisabled =
-        !auth.user ||
-        !hasValidAddress ||
-        (hasVariants && !selectedVariant) ||
-        availableStock === 0 ||
-        isCheckingAddress;
-
-    // NEW: Get Buy Now button title
-    const getBuyNowButtonTitle = () => {
-        if (!auth.user) return "Please login to purchase";
-        if (!hasValidAddress)
-            return "Shipping address required - Click to setup";
-        if (hasVariants && !selectedVariant)
-            return "Please select a variant first";
-        if (availableStock === 0) return "Out of stock";
-        if (isCheckingAddress) return "Checking address...";
-        return "Proceed to checkout - Fast & Secure";
-    };
+    // REMOVED: isBuyNowDisabled and getBuyNowButtonTitle since button is never disabled
 
     // Review and comment handlers
     const handleAddReview = async (e) => {
@@ -593,22 +653,20 @@ export default function ProductDetails({ product_info }) {
 
             setShowReviewModal(false);
 
-            Swal.fire({
-                icon: "success",
-                title: "Success",
-                text: "Review submitted successfully!",
-                timer: 2000,
-                showConfirmButton: false,
-            });
+            showAlert(
+                "success",
+                "Success",
+                "Review submitted successfully!",
+                "OK"
+            );
         } catch (error) {
             console.error("Error submitting review:", error);
-            Swal.fire({
-                icon: "error",
-                title: "Error",
-                text: "Something error! Please try again later...",
-                timer: 2000,
-                showConfirmButton: false,
-            });
+            showAlert(
+                "error",
+                "Error",
+                "Something error! Please try again later...",
+                "OK"
+            );
         }
     };
 
@@ -616,26 +674,20 @@ export default function ProductDetails({ product_info }) {
     const handleAddToCart = async () => {
         // Check if user is authenticated
         if (!auth.user) {
-            if (typeof Swal !== "undefined") {
-                Swal.fire({
-                    title: "Login Required",
-                    text: "Please login to add items to your cart",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Login Now",
-                    cancelButtonText: "Cancel",
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const currentUrl = window.location.href;
-                        console.log("Redirecting to login...");
-                        router.visit(route("login"), {
-                            data: { redirect: currentUrl },
-                        });
-                    }
-                });
-            }
+            showAlert(
+                "warning",
+                "Login Required",
+                "Please login to add items to your cart",
+                "Login Now"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    const currentUrl = window.location.href;
+                    console.log("Redirecting to login...");
+                    router.visit(route("login"), {
+                        data: { redirect: currentUrl },
+                    });
+                }
+            });
             return;
         }
 
@@ -658,19 +710,12 @@ export default function ProductDetails({ product_info }) {
 
             if (response.data.successMessage) {
                 // Show success SweetAlert
-                Swal.fire({
-                    title: "Success!",
-                    text: "Item has been added to your cart",
-                    icon: "success",
-                    confirmButtonText: "OK",
-                    timer: 3000,
-                    timerProgressBar: true,
-                    showConfirmButton: false,
-                    // position: "top-end",
-                    // toast: true,
-                    background: "#f0f9f0",
-                    iconColor: "#22c55e",
-                });
+                showAlert(
+                    "success",
+                    "Success!",
+                    "Item has been added to your cart",
+                    "OK"
+                );
 
                 // Show success state
                 setActionSuccess((prev) => ({ ...prev, addToCart: true }));
@@ -682,27 +727,23 @@ export default function ProductDetails({ product_info }) {
             } else {
                 console.error("Failed to add to cart:", response.data);
                 // Show error SweetAlert
-                Swal.fire({
-                    title: "Error!",
-                    text: "Failed to add item to cart. Please try again.",
-                    icon: "error",
-                    confirmButtonText: "OK",
-                    timer: 3000,
-                    timerProgressBar: true,
-                });
+                showAlert(
+                    "error",
+                    "Error!",
+                    "Failed to add item to cart. Please try again.",
+                    "OK"
+                );
             }
         } catch (error) {
             console.error("Error adding to cart:", error);
 
             // Show error SweetAlert
-            Swal.fire({
-                title: "Error!",
-                text: "An error occurred while adding item to cart. Please try again.",
-                icon: "error",
-                confirmButtonText: "OK",
-                timer: 3000,
-                timerProgressBar: true,
-            });
+            showAlert(
+                "error",
+                "Error!",
+                "An error occurred while adding item to cart. Please try again.",
+                "OK"
+            );
         } finally {
             setLoadingStates((prev) => ({ ...prev, addToCart: false }));
         }
@@ -712,34 +753,26 @@ export default function ProductDetails({ product_info }) {
     const handleWishlistToggle = async (product_id) => {
         // Check if user is authenticated
         if (!auth.user) {
-            if (typeof Swal !== "undefined") {
-                Swal.fire({
-                    title: "Login Required",
-                    text: "Please login to add items to your wishlist",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Login Now",
-                    cancelButtonText: "Cancel",
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        router.visit(route("login"));
-                    }
-                });
-            }
+            showAlert(
+                "warning",
+                "Login Required",
+                "Please login to add items to your wishlist",
+                "Login Now"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    router.visit(route("login"));
+                }
+            });
             return;
         }
 
         if (product_info[0].product_quantity <= 0) {
-            Swal.fire({
-                title: "Product Out of Stock",
-                text: "Items not available currently",
-                icon: "warning",
-                confirmButtonText: "OK",
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-            });
+            showAlert(
+                "warning",
+                "Product Out of Stock",
+                "Items not available currently",
+                "OK"
+            );
             return;
         }
 
@@ -781,6 +814,12 @@ export default function ProductDetails({ product_info }) {
             }, 2000);
         } catch (error) {
             console.error("Error updating wishlist:", error);
+            showAlert(
+                "error",
+                "Error",
+                "Failed to update wishlist. Please try again.",
+                "OK"
+            );
         } finally {
             setLoadingStates((prev) => ({ ...prev, wishlist: false }));
         }
@@ -801,22 +840,16 @@ export default function ProductDetails({ product_info }) {
 
         // 1️⃣ If user NOT logged in → show alert first
         if (!auth.user) {
-            if (typeof Swal !== "undefined") {
-                Swal.fire({
-                    title: "Login Required",
-                    text: "Please login to chat with the seller",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Login Now",
-                    cancelButtonText: "Cancel",
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        router.visit(route("login"));
-                    }
-                });
-            }
+            showAlert(
+                "warning",
+                "Login Required",
+                "Please login to chat with the seller",
+                "Login Now"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    router.visit(route("login"));
+                }
+            });
             return;
         }
 
@@ -834,21 +867,24 @@ export default function ProductDetails({ product_info }) {
             setInitialMessage("");
 
             // 3️⃣ Show success alert
-            if (typeof Swal !== "undefined") {
-                Swal.fire({
-                    title: "Conversation started",
-                    text: "Redirecting you to chat...",
-                    icon: "success",
-                    allowOutsideClick: false,
-                    allowEscapeKey: false,
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        router.visit(route("buyer-chat"));
-                    }
-                });
-            }
+            showAlert(
+                "success",
+                "Conversation started",
+                "Redirecting you to chat...",
+                "OK"
+            ).then((result) => {
+                if (result.isConfirmed) {
+                    router.visit(route("buyer-chat"));
+                }
+            });
         } catch (error) {
             console.error("Conversation error:", error);
+            showAlert(
+                "error",
+                "Error",
+                "Failed to start conversation. Please try again.",
+                "OK"
+            );
         } finally {
             setIsStartingConversation(false);
         }
@@ -1558,15 +1594,11 @@ export default function ProductDetails({ product_info }) {
                                         )}
                                     </button>
 
+                                    {/* UPDATED: Buy Now button - never disabled, uses SweetAlert for validation */}
                                     <button
                                         onClick={handleBuyNow}
-                                        disabled={isBuyNowDisabled}
-                                        className={`flex-1 py-3 rounded-lg font-semibold ${
-                                            isBuyNowDisabled
-                                                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                                : "bg-orange-400 text-white hover:bg-orange-600"
-                                        }`}
-                                        title={getBuyNowButtonTitle()}
+                                        className="flex-1 py-3 rounded-lg font-semibold bg-orange-400 text-white hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
+                                        title="Proceed to checkout - Fast & Secure"
                                     >
                                         {loadingStates.buyNow ? (
                                             <>
@@ -1577,46 +1609,15 @@ export default function ProductDetails({ product_info }) {
                                                 Processing...
                                             </>
                                         ) : (
-                                            <div className="flex items-center justify-center gap-2">
+                                            <>
                                                 <ShoppingCart size={18} />
                                                 <span>Buy Now</span>
-                                                {isBuyNowDisabled && (
-                                                    <svg
-                                                        className="w-4 h-4"
-                                                        fill="currentColor"
-                                                        viewBox="0 0 20 20"
-                                                    >
-                                                        <path
-                                                            fillRule="evenodd"
-                                                            d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
-                                                            clipRule="evenodd"
-                                                        ></path>
-                                                    </svg>
-                                                )}
-                                            </div>
+                                            </>
                                         )}
                                     </button>
                                 </div>
 
                                 {/* Enhanced Disabled State Messages */}
-                                {isBuyNowDisabled && (
-                                    <div className="text-center space-y-2">
-                                        {hasVariants && !selectedVariant && (
-                                            <p className="text-red-500 font-medium text-sm">
-                                                Please select a variant to
-                                                continue
-                                            </p>
-                                        )}
-                                        {availableStock === 0 && (
-                                            <p className="text-red-500 font-medium text-sm">
-                                                This product is currently out of
-                                                stock
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Variant requirement note */}
                                 {hasVariants && !selectedVariant && (
                                     <div className="text-center">
                                         <p className="text-sm text-red-500 font-medium">
