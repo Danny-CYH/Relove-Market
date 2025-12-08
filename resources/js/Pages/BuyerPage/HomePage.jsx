@@ -265,16 +265,15 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     };
 
     // Carousel functions
+    // For mobile (1 product per slide)
     const nextSlide = () => {
-        setCurrentSlide((prev) =>
-            prev === Math.ceil(featured_products.length / 2) - 1 ? 0 : prev + 1
-        );
+        const totalSlides = featured_products.length; // 8 slides total for mobile
+        setCurrentSlide((prev) => (prev === totalSlides - 1 ? 0 : prev + 1));
     };
 
     const prevSlide = () => {
-        setCurrentSlide((prev) =>
-            prev === 0 ? Math.ceil(featured_products.length / 2) - 1 : prev - 1
-        );
+        const totalSlides = featured_products.length; // 8 slides total for mobile
+        setCurrentSlide((prev) => (prev === 0 ? totalSlides - 1 : prev - 1));
     };
 
     // listen to the success message after user register as seller success
@@ -618,13 +617,12 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                         <FeaturedProductCard
                                             key={product.product_id}
                                             product={product}
-                                            isFlashSale={false}
                                             save_wishlist={save_wishlist}
                                         />
                                     ))}
                                 </div>
 
-                                {/* Mobile Carousel View */}
+                                {/* Mobile Carousel View - One product per slide */}
                                 <div className="md:hidden relative">
                                     <div className="overflow-hidden rounded-xl">
                                         <div
@@ -641,9 +639,9 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                                         key={product.product_id}
                                                         className="w-full flex-shrink-0 px-3 z-10"
                                                     >
+                                                        {/* Single product card per slide */}
                                                         <FeaturedProductCard
                                                             product={product}
-                                                            isFlashSale={false}
                                                             save_wishlist={
                                                                 save_wishlist
                                                             }
@@ -671,9 +669,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     {/* Carousel Indicators */}
                                     <div className="flex justify-center mt-6 space-x-2">
                                         {Array.from({
-                                            length: Math.ceil(
-                                                featured_products.length / 1
-                                            ), // 1 item per slide on mobile
+                                            length: featured_products.length, // One slide per product
                                         }).map((_, index) => (
                                             <button
                                                 key={index}

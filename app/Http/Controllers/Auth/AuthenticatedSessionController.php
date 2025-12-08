@@ -32,11 +32,25 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request)
     {
-        $request->authenticate();
+        \Log::info('LOGIN ATTEMPT START - Current auth status', [
+            'already_logged_in' => Auth::check(),
+            'auth_user_id' => Auth::id(),
+            'session_id' => session()->getId(),
+        ]);
 
+        $request->authenticate();
         $request->session()->regenerate();
 
         $user = Auth::user();
+
+        \Log::info('LOGIN ATTEMPT - User authenticated', [
+            'user_id' => $user->user_id,
+            'email' => $user->email,
+            'email_verified_at' => $user->email_verified_at,
+            'hasVerifiedEmail' => $user->hasVerifiedEmail(),
+            'status' => $user->status,
+            'last_login_at' => $user->last_login_at,
+        ]);
 
         // ✅ Block users if status is not active
         if ($user->status !== 'Active') {
@@ -44,12 +58,10 @@ class AuthenticatedSessionController extends Controller
             return back()->with('errorMessage', 'Your account has been blocked. Please contact support.');
         }
 
-        // ✅ If email not verified
+        // ✅ BLOCK ALL LOGINS if email is not verified (remove the last_login_at check)
         if (!$user->hasVerifiedEmail()) {
-            if ($user->last_login_at) {
-                Auth::logout();
-                return back()->with("errorMessage", "You must verify your email address before logging in.");
-            }
+            Auth::logout();
+            return back()->with("errorMessage", "You must verify your email address before logging in.");
         }
 
         // 📝 Update last login timestamp
@@ -59,11 +71,7 @@ class AuthenticatedSessionController extends Controller
         $user->load('role');
         $role_name = $user->role->role_name;
 
-        // Set session data
-        session(['user_id' => $user->user_id]);
-        if ($role_name === 'Seller') {
-            session(['seller_id' => $user->seller_id]);
-        }
+       
 
         // Use Inertia::location for redirects to avoid CSRF issues
         if ($role_name === 'Seller') {

@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
+use Auth;
 
 use Inertia\Inertia;
 use Inertia\Response;
@@ -34,6 +35,10 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        Auth::logout();
+        session()->invalidate();
+        session()->regenerateToken();
+
         // Validate first - this will automatically throw ValidationException
         $request->validate([
             'name' => 'required|string|max:255',
@@ -59,7 +64,18 @@ class RegisteredUserController extends Controller
                 'status' => "Active"
             ]);
 
-            event(new Registered($user));
+            \Log::info('BEFORE sending verification email', [
+                'user_id' => $user->user_id,
+                'email' => $user->email,
+            ]);
+
+            // Method 2: Send manually (to be sure)
+            try {
+                $user->sendEmailVerificationNotification();
+                \Log::info('Manual verification email sent');
+            } catch (Exception $e) {
+                \Log::error('Failed to send verification email: ' . $e->getMessage());
+            }
 
             return redirect(route("register"))->with('successMessage', true);
         } catch (\Throwable $e) {

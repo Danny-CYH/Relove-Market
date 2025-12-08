@@ -3,9 +3,6 @@ import {
     ChevronLeft,
     ChevronRight,
     X,
-    RefreshCw,
-    Plus,
-    Minus,
     SlidersHorizontal,
 } from "lucide-react";
 
@@ -21,6 +18,7 @@ import { MobileProductCard } from "@/Components/BuyerPage/HomePage/MobileProduct
 import { MobileSortModal } from "@/Components/BuyerPage/ShopPage/MobileSortModal";
 import { MobileFilterModal } from "@/Components/BuyerPage/ShopPage/MobileFilterModal";
 import { FilterModal } from "@/Components/BuyerPage/ShopPage/FilterModal";
+import { usePage } from "@inertiajs/react";
 
 export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [priceRange, setPriceRange] = useState([0, 1000]);
@@ -56,6 +54,8 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     // Refs for debounce
     const debounceTimeoutRef = useRef(null);
     const isInitialMount = useRef(true);
+
+    const { auth } = usePage().props;
 
     // Fixed fetchProducts function
     const fetchProducts = useCallback(
@@ -170,6 +170,23 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     // Function to save to wishlist
     const save_wishlist = async (productId, selectedVariant = null) => {
         try {
+            if (!auth.user) {
+                Swal.fire({
+                    title: "Login Required",
+                    text: "You need to log in to add items to your wishlist.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Go to Login",
+                    cancelButtonText: "Cancel",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Redirect to login page
+                        window.location.href = route("login");
+                    }
+                });
+                return false;
+            }
+
             // Prepare the request data with proper structure
             const requestData = {
                 product_id: productId,
@@ -227,6 +244,21 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             }
         } catch (error) {
             console.error("💥 Error in save_wishlist:", error);
+
+            // Check if error is due to authentication
+            if (error.response?.status === 401) {
+                Swal.fire({
+                    title: "Session Expired",
+                    text: "Your session has expired. Please log in again.",
+                    icon: "warning",
+                    confirmButtonText: "Login",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = route("login");
+                    }
+                });
+                return false;
+            }
 
             // Show error message to user
             Swal.fire({
