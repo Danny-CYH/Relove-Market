@@ -19,7 +19,7 @@ export function ListingToggleButton({
                     : "cursor-pointer hover:scale-105"
             }`}
             title={`Click to ${
-                product.product_status === "available" ? "unlist" : "list"
+                product.product_status === "available" ? "unavailable" : "available"
             } product`}
         >
             {togglingProduct === product.product_id ? (
@@ -30,7 +30,7 @@ export function ListingToggleButton({
                 <ToggleLeft size={14} className="mr-1" />
             )}
             <span className="font-medium">
-                {product.product_status === "available" ? "Listed" : "Unlisted"}
+                {product.product_status === "available" ? "Available" : "Unavailable"}
             </span>
         </button>
     );

@@ -52,6 +52,7 @@ export default function SellerDashboard() {
     const [readNotifications, setReadNotifications] = useState(new Set());
 
     const { auth } = usePage().props;
+    console.log(auth);
 
     // Function to show notification
     const showNotification = useCallback(
@@ -649,7 +650,7 @@ export default function SellerDashboard() {
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3">
                     <div>
                         <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-                            Welcome back, {sellerData?.seller_name || ""}!
+                            Welcome back, {auth.seller.name || ""}!
                         </h1>
                         <div className="text-sm text-gray-500">
                             Here's what's happening today.

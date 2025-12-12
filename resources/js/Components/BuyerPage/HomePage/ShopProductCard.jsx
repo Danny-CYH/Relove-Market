@@ -412,38 +412,6 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                                 View Details
                             </button>
                         </Link>
-                        <button
-                            onClick={handleWishlistClick}
-                            disabled={
-                                loadingWishlist ||
-                                isLiked ||
-                                (hasVariants && !allVariantsSelected)
-                            }
-                            className={`w-full py-2 px-4 rounded-lg text-white transition-colors text-sm font-medium flex items-center justify-center space-x-2 ${
-                                loadingWishlist ||
-                                isLiked ||
-                                (hasVariants && !allVariantsSelected)
-                                    ? "bg-gray-400 cursor-not-allowed"
-                                    : "bg-gray-900 hover:bg-gray-800"
-                            }`}
-                        >
-                            {loadingWishlist ? (
-                                <>
-                                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                    <span>Checking...</span>
-                                </>
-                            ) : isLiked ? (
-                                <>
-                                    <FaHeart className="w-3 h-3 text-red-500" />
-                                    <span>In Wishlist</span>
-                                </>
-                            ) : (
-                                <>
-                                    <FaHeart className="w-3 h-3" />
-                                    <span>Add to Wishlist</span>
-                                </>
-                            )}
-                        </button>
                     </div>
 
                     {/* Seller Info */}

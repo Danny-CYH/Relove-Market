@@ -7,11 +7,7 @@ import {
     FaHome,
     FaFileInvoiceDollar,
     FaUserCheck,
-    FaCreditCard,
-    FaUsers,
     FaSignOutAlt,
-    FaBell,
-    FaExclamationTriangle,
     FaBox,
     FaUserCog,
     FaMobile, // Added for smartphone icon
@@ -292,7 +288,7 @@ export function Sidebar({ pendingCount = 0 }) {
                 {auth?.user && (
                     <div className="mb-4 flex items-center space-x-3">
                         <img
-                            src="../image/shania_yan.png"
+                            src="../image/shania_yan_5.jpg"
                             alt={auth.user.name}
                             className="w-8 h-8 rounded-full object-cover border-2 border-indigo-200 flex-shrink-0"
                         />

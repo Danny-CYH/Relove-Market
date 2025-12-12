@@ -191,7 +191,7 @@ export default function SellerManageProduct({ list_categories }) {
 
                 setModalMessage(
                     `Product ${
-                        newStatus === "available" ? "listed" : "unlisted"
+                        newStatus === "available" ? "active" : "unactive"
                     } successfully`
                 );
                 setModalType("success");
@@ -677,17 +677,6 @@ export default function SellerManageProduct({ list_categories }) {
         });
     }, [realTimeProducts]);
 
-    // Count products by status
-    const productCounts = {
-        all: realTimeProducts.length,
-        available: realTimeProducts.filter(
-            (p) => p.product_status === "available"
-        ).length,
-        unavailable: realTimeProducts.filter(
-            (p) => p.product_status === "unavailable"
-        ).length,
-    };
-
     return (
         <div className="min-h-screen bg-gray-50 flex">
             {/* Modal for view the product */}
@@ -1163,13 +1152,13 @@ export default function SellerManageProduct({ list_categories }) {
                                                             )}
                                                         </div>
                                                         <div>
-                                                            <div className="font-medium text-gray-900 text-sm md:text-base">
+                                                            <div className="font-medium text-gray-900 text-sm md:text-base truncate">
                                                                 {
                                                                     product.product_name
                                                                 }
                                                             </div>
                                                             <div className="text-xs md:text-sm text-gray-500">
-                                                                SKU:{" "}
+                                                                ID:{" "}
                                                                 {
                                                                     product.product_id
                                                                 }

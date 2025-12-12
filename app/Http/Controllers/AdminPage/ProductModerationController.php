@@ -23,7 +23,7 @@ class ProductModerationController extends Controller
             if ($request->has('search') && $request->search) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
-                    $q->where('product_name', 'like', "%{$search}%")
+                    $q->where('product_name', 'ILIKE', "%{$search}%")
                         ->orWhereHas('seller', function ($q) use ($search) {
                             $q->where('seller_name', 'like', "%{$search}%");
                         })

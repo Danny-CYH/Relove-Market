@@ -117,7 +117,7 @@ class SellerManageProductController extends Controller
 
             // Apply the same filters as the main query
             if (!empty($searchTerm)) {
-                $query->where('product_name', 'like', '%' . $searchTerm . '%');
+                $query->where('product_name', 'LIKE', '%' . $searchTerm . '%');
             }
 
             if ($statusFilter !== 'all') {

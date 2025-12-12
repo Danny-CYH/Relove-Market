@@ -905,15 +905,15 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Store Address *
+                                Store Address (Street) *
                             </label>
-                            <textarea
+                            <input
+                                type="text"
                                 name="storeAddress"
-                                placeholder="Full store address"
+                                placeholder="Example: 12 Jalan Bukit Bintang"
                                 autoComplete="off"
                                 value={formData.storeAddress}
                                 onChange={handleChange}
-                                rows={2}
                                 className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
                                     highlightedField === "storeAddress"
                                         ? "border-red-500 ring-2 ring-red-100"
@@ -921,6 +921,10 @@ export function SellerRegisterForm({ step, setStep, list_business }) {
                                 }`}
                                 required
                             />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Enter street address, building name/number, and
+                                area
+                            </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
