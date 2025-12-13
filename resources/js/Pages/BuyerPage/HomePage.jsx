@@ -88,6 +88,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [currentSlide, setCurrentSlide] = useState(0);
 
     const { flash } = usePage().props;
+    const { auth } = usePage().props;
 
     const featured_products = featuredProducts.slice(0, 8);
 
@@ -96,6 +97,24 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     // CORRECTED save_wishlist function
     const save_wishlist = async (productId, selectedVariant = null) => {
         try {
+            // Check if user is authenticated
+            if (!auth.user) {
+                Swal.fire({
+                    title: "Login Required",
+                    text: "You need to log in to add items to your wishlist.",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "Go to Login",
+                    cancelButtonText: "Cancel",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Redirect to login page
+                        window.location.href = route("login");
+                    }
+                });
+                return false;
+            }
+
             // Prepare the request data with proper structure
             const requestData = {
                 product_id: productId,
@@ -143,19 +162,56 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                     text: "This item has been successfully added to your wishlist.",
                     icon: "success",
                     confirmButtonText: "OK",
-                    timer: 2000,
+                    timer: 4000,
                     timerProgressBar: true,
                 });
+
+                // Refresh wishlist status if get_wishlist function exists
+                if (typeof get_wishlist === "function") {
+                    await get_wishlist(productId);
+                } else {
+                    // Alternatively, refresh the page or update UI state
+                    console.log("Wishlist updated successfully");
+                    // You might want to trigger a state update or emit an event here
+                }
 
                 return true;
             }
         } catch (error) {
             console.error("💥 Error in save_wishlist:", error);
 
-            // Show error message to user
+            // Check if error is due to authentication
+            if (error.response?.status === 401) {
+                Swal.fire({
+                    title: "Session Expired",
+                    text: "Your session has expired. Please log in again.",
+                    icon: "warning",
+                    confirmButtonText: "Login",
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = route("login");
+                    }
+                });
+                return false;
+            }
+
+            // Handle other specific error cases
+            if (error.response?.status === 409) {
+                Swal.fire({
+                    title: "Already in Wishlist",
+                    text: "This item is already in your wishlist.",
+                    icon: "info",
+                    confirmButtonText: "OK",
+                });
+                return false;
+            }
+
+            // Show generic error message to user
             Swal.fire({
                 title: "Error",
-                text: "Failed to add product to wishlist. Please try again.",
+                text:
+                    error.response?.data?.message ||
+                    "Failed to add product to wishlist. Please try again.",
                 icon: "error",
                 confirmButtonText: "OK",
             });

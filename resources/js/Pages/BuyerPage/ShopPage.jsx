@@ -51,11 +51,25 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [to, setTo] = useState(0);
     const [loading, setLoading] = useState(false);
 
+    const [categoryCounts, setCategoryCounts] = useState([]);
+
     // Refs for debounce
     const debounceTimeoutRef = useRef(null);
     const isInitialMount = useRef(true);
 
     const { auth } = usePage().props;
+
+    const fetchCategoryCounts = async () => {
+        try {
+            const response = await fetch(
+                `/api/shopping/category-counts?search=${searchQuery}`
+            );
+            const data = await response.json();
+            setCategoryCounts(data.categoryCounts || {});
+        } catch (error) {
+            console.error("Error fetching category counts:", error);
+        }
+    };
 
     // Fixed fetchProducts function
     const fetchProducts = useCallback(
@@ -106,6 +120,8 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
                 if (response.ok) {
                     const data = await response.json();
+
+                    console.log(data.list_shoppingItem);
 
                     if (data.success) {
                         setProducts(data.list_shoppingItem.data || []);
@@ -364,6 +380,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         return pages;
     };
 
+    useEffect(() => {
+        fetchCategoryCounts();
+    }, [searchQuery, selectedCategories]);
+
     // Initialize with props data on component mount
     useEffect(() => {
         if (list_shoppingItem?.data) {
@@ -568,6 +588,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                             list_categoryItem={list_categoryItem}
                             priceRange={priceRange}
                             products={products}
+                            categoryCounts={categoryCounts}
                             resetFilters={resetFilters}
                             selectedCategories={selectedCategories}
                             selectedConditions={selectedConditions}

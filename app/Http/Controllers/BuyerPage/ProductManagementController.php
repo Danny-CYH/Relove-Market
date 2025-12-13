@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 
 use Exception;
+use DB;
 
 class ProductManagementController extends Controller
 {
@@ -22,6 +23,30 @@ class ProductManagementController extends Controller
     public function __construct()
     {
         $this->user_id = session('user_id');
+    }
+
+    public function getCategoryCounts(Request $request)
+    {
+        $search = $request->input('search');
+
+        $query = DB::table('products')
+            ->join('categories', 'products.category_id', '=', 'categories.category_id')
+            ->where('products.product_status', '!=', 'blocked');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('products.product_name', 'like', '%' . $search . '%')
+                    ->orWhere('products.product_description', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Get counts by category with search filter
+        $counts = $query->selectRaw('categories.category_name, COUNT(products.product_id) as count')
+            ->groupBy('categories.category_id', 'categories.category_name')
+            ->get()
+            ->pluck('count', 'category_name');
+
+        return response()->json(['categoryCounts' => $counts]);
     }
 
     // Code for API/filter requests
@@ -151,7 +176,7 @@ class ProductManagementController extends Controller
     {
         $productId = $request->input('product_id');
         $topK = $request->input('top_k', 8);
-        $similarityThreshold = $request->input('similarity_threshold', 0.70);
+        $similarityThreshold = $request->input('similarity_threshold', 0.50);
 
         \Log::info('Starting recommendation process', [
             'product_id' => $productId,
@@ -162,7 +187,7 @@ class ProductManagementController extends Controller
         try {
             $response = Http::timeout(30)->post(env('ML_SERVICE_URL') . '/recommend/', [
                 'product_id' => $productId,
-                'top_k' => $topK + 5, // Request more to account for filtering
+                'top_k' => $topK + 10, // Request more to account for filtering
                 'similarity_threshold' => $similarityThreshold
             ]);
 

@@ -71,15 +71,15 @@ class AuthenticatedSessionController extends Controller
         $user->load('role');
         $role_name = $user->role->role_name;
 
-        session(['user_id' => $user->user_id]);
-
         // Use Inertia::location for redirects to avoid CSRF issues
         if ($role_name === 'Seller') {
             session(['seller_id' => $user->seller_id]);
             return redirect()->route('seller-dashboard');
         } elseif ($role_name === 'Buyer') {
+            session(['user_id' => $user->user_id]);
             return redirect()->route('homepage');
         } elseif ($role_name === 'Admin') {
+            session(['user_id' => $user->user_id]);
             return redirect()->route('admin-dashboard');
         }
 

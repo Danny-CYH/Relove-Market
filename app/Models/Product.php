@@ -48,11 +48,6 @@ class Product extends Model
         return $this->HasOne(Category::class, "category_id", "category_id");
     }
 
-    public function promotions()
-    {
-        return $this->hasMany(Promotions::class, 'promotion_id', 'promotion_id');
-    }
-
     public function orderItems()
     {
         return $this->hasMany(OrderItem::class, "product_id", "product_id");
@@ -81,11 +76,6 @@ class Product extends Model
     public function productVideo()
     {
         return $this->hasMany(ProductVideo::class, 'product_id', 'product_id');
-    }
-
-    public function productPromotion()
-    {
-        return $this->belongsTo(ProductPromotion::class, "product_id", "product_id");
     }
 
     public function ratings()

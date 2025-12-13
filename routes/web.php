@@ -20,6 +20,7 @@ Route::get('/', function () {
 Route::get('/relove-market', [UserController::class, 'homepage'])->name('homepage');
 Route::get("/about-us", [UserController::class, 'aboutus'])->name("about-us");
 Route::get("/shopping", [UserController::class, 'shopping'])->name("shopping");
+Route::get('/api/shopping/category-counts', [ProductManagementController::class, 'getCategoryCounts']);
 Route::get('/api/shopping', [ProductManagementController::class, 'shoppingApi']);
 Route::get("/seller-benefit", [UserController::class, 'sellerBenefit'])->name("seller-benefit");
 Route::get("/product-details/{productId}", [UserController::class, "productDetails"])->name('product-details');

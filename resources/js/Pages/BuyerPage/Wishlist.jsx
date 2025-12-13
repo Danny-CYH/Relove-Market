@@ -1004,21 +1004,6 @@ export default function Wishlist({ user_wishlist }) {
                                                             }
                                                             className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                                                         />
-                                                        {/* Rating Badge on Image */}
-                                                        {ratingInfo.total >
-                                                            0 && (
-                                                            <div className="absolute top-2 left-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded-full flex items-center gap-1">
-                                                                <Star
-                                                                    size={12}
-                                                                    className="text-yellow-400 fill-current"
-                                                                />
-                                                                <span className="text-xs font-medium">
-                                                                    {
-                                                                        ratingInfo.average
-                                                                    }
-                                                                </span>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </Link>
 

@@ -1,4 +1,4 @@
-import { FaStar, FaHeart, FaShoppingCart } from "react-icons/fa";
+import { FaStar, FaHeart, FaShoppingCart, FaCartPlus } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import Swal from "sweetalert2";
@@ -440,10 +440,10 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                                 }
                                 className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm"
                             >
-                                <FaHeart className="w-4 h-4" />
+                                <FaCartPlus className="w-4 h-4" />
                                 {!isLoggedIn
                                     ? "Login Required"
-                                    : "Add to Wishlist"}
+                                    : "Add to Cart"}
                             </button>
                         </div>
                     </div>
@@ -479,10 +479,10 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                             className="absolute top-3 right-3 bg-white hover:bg-gray-50 p-2 rounded-full shadow-md transition-colors duration-200 z-10"
                             title={
                                 !isLoggedIn
-                                    ? "Login to add to wishlist"
+                                    ? "Login to add to cart"
                                     : hasVariants
-                                    ? "Add to Wishlist (Select Options)"
-                                    : "Add to Wishlist"
+                                    ? "Add to Cart (Select Options)"
+                                    : "Add to Cart"
                             }
                         >
                             <FaHeart
