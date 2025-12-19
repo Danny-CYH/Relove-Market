@@ -12,11 +12,12 @@ import {
     FaExclamationTriangle,
     FaChevronLeft,
     FaChevronRight,
+    FaPause,
+    FaPlay,
 } from "react-icons/fa";
 
 import {
     Shirt,
-    Watch,
     Laptop,
     Baby,
     Book,
@@ -32,7 +33,7 @@ import {
 
 import { FaSpinner } from "react-icons/fa";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
 
@@ -63,7 +64,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         "Jewelry & Watches": <Gem className="w-6 h-6 text-teal-600" />,
         "Vehicles & Bikes": <Car className="w-6 h-6 text-gray-600" />,
         "Eco-Friendly Items": <Recycle className="w-6 h-6 text-green-500" />,
-        Others: <Watch className="w-6 h-6 text-gray-400" />,
     };
 
     const [selectedCategory, setSelectedCategory] = useState("All");
@@ -84,20 +84,81 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [cameraSearchLoading, setCameraSearchLoading] = useState(false);
     const [searchImage, setSearchImage] = useState(null);
 
-    // Carousel state
-    const [currentSlide, setCurrentSlide] = useState(0);
+    // NEW: Infinite carousel states
+    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+    const [carouselProducts, setCarouselProducts] = useState([]);
+    const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+    const carouselIntervalRef = useRef(null);
+    const carouselContainerRef = useRef(null);
 
     const { flash } = usePage().props;
     const { auth } = usePage().props;
 
-    const featured_products = featuredProducts.slice(0, 8);
-
     const fileInputRef = useRef(null);
+
+    // 4 items per slide
+    const itemsPerSlide = 4;
+
+    const startAutoPlay = useCallback(() => {
+        if (carouselProducts.length <= itemsPerSlide) return;
+
+        clearInterval(carouselIntervalRef.current);
+        carouselIntervalRef.current = setInterval(() => {
+            setCurrentCarouselIndex((prevIndex) => {
+                const nextIndex = prevIndex + itemsPerSlide;
+                if (nextIndex >= carouselProducts.length) {
+                    // Smooth transition to beginning
+                    setTimeout(() => {
+                        setCurrentCarouselIndex(0);
+                    }, 300);
+                    return carouselProducts.length - itemsPerSlide;
+                }
+                return nextIndex;
+            });
+        }, 5000);
+    }, [carouselProducts.length]);
+
+    const stopAutoPlay = () => {
+        clearInterval(carouselIntervalRef.current);
+    };
+
+    const nextCarouselSlide = () => {
+        if (carouselProducts.length <= itemsPerSlide) return;
+
+        setCurrentCarouselIndex((prevIndex) => {
+            const nextIndex = prevIndex + itemsPerSlide;
+            if (nextIndex >= carouselProducts.length) {
+                // Smooth transition to beginning
+                setTimeout(() => {
+                    setCurrentCarouselIndex(0);
+                }, 300);
+                return carouselProducts.length - itemsPerSlide;
+            }
+            return nextIndex;
+        });
+    };
+
+    const prevCarouselSlide = () => {
+        if (carouselProducts.length <= itemsPerSlide) return;
+
+        setCurrentCarouselIndex((prevIndex) => {
+            const prevIndexValue = prevIndex - itemsPerSlide;
+            if (prevIndexValue < 0) {
+                // Smooth transition to end
+                setTimeout(() => {
+                    setCurrentCarouselIndex(
+                        carouselProducts.length - itemsPerSlide
+                    );
+                }, 300);
+                return 0;
+            }
+            return prevIndexValue;
+        });
+    };
 
     // CORRECTED save_wishlist function
     const save_wishlist = async (productId, selectedVariant = null) => {
         try {
-            // Check if user is authenticated
             if (!auth.user) {
                 Swal.fire({
                     title: "Login Required",
@@ -156,7 +217,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             );
 
             if (response.status === 200) {
-                // ✅ SweetAlert popup on success
+                // popup on success
                 Swal.fire({
                     title: "Added to Wishlist!",
                     text: "This item has been successfully added to your wishlist.",
@@ -169,10 +230,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 // Refresh wishlist status if get_wishlist function exists
                 if (typeof get_wishlist === "function") {
                     await get_wishlist(productId);
-                } else {
-                    // Alternatively, refresh the page or update UI state
-                    console.log("Wishlist updated successfully");
-                    // You might want to trigger a state update or emit an event here
                 }
 
                 return true;
@@ -275,10 +332,14 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             setLoadingFeatured(true);
             const response = await axios.get(route("get-featured-products"));
 
-            setFeaturedProducts(response.data.featured_products || []);
+            const products = response.data.featured_products || [];
+            setFeaturedProducts(products);
+            // Initialize carousel with all products
+            setCarouselProducts(products);
         } catch (error) {
             console.log(error);
             setFeaturedProducts([]);
+            setCarouselProducts([]);
         } finally {
             setLoadingFeatured(false);
         }
@@ -320,17 +381,24 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    // Carousel functions
-    // For mobile (1 product per slide)
-    const nextSlide = () => {
-        const totalSlides = featured_products.length; // 8 slides total for mobile
-        setCurrentSlide((prev) => (prev === totalSlides - 1 ? 0 : prev + 1));
+    const toggleAutoPlay = () => {
+        setIsAutoPlaying(!isAutoPlaying);
+        if (!isAutoPlaying) {
+            startAutoPlay();
+        } else {
+            stopAutoPlay();
+        }
     };
 
-    const prevSlide = () => {
-        const totalSlides = featured_products.length; // 8 slides total for mobile
-        setCurrentSlide((prev) => (prev === 0 ? totalSlides - 1 : prev - 1));
-    };
+    // Initialize and cleanup autoplay
+    useEffect(() => {
+        if (carouselProducts.length > 1 && isAutoPlaying) {
+            startAutoPlay();
+        }
+        return () => {
+            stopAutoPlay();
+        };
+    }, [carouselProducts.length, isAutoPlaying, startAutoPlay]);
 
     // listen to the success message after user register as seller success
     useEffect(() => {
@@ -343,6 +411,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     useEffect(() => {
         get_featuredProducts();
         get_flashSaleProducts();
+        toggleAutoPlay();
     }, []);
 
     return (
@@ -351,6 +420,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
             {/* Modal for displaying the success register message for users */}
             <SellerRegisterSuccess isOpen={isOpen} setIsOpen={setIsOpen} />
+
+            {/* Modal for showing the camera search result */}
             <CameraSearchModal
                 isOpen={cameraSearchOpen}
                 onClose={closeCameraSearch}
@@ -640,108 +711,135 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                     </div>
                 </section>
 
-                {/* Featured Products */}
+                {/* NEW: Infinite Carousel Section - "Recommended for You" */}
                 <section className="py-12 bg-white px-4">
                     <div className="max-w-7xl mx-auto">
                         <div className="flex flex-col md:flex-row md:justify-between items-center mb-8">
                             <h2 className="text-2xl font-bold text-gray-900 text-center">
-                                Recommended for You
+                                Second Life, First Choice
                             </h2>
-                            <Link
-                                href={route("shopping")}
-                                className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium mt-3 md:mt-0"
-                            >
-                                View all{" "}
-                                <FaArrowRight className="ml-1 text-xs" />
-                            </Link>
+                            <div className="flex items-center gap-3 mt-3 md:mt-0">
+                                <Link
+                                    href={route("shopping")}
+                                    className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium"
+                                >
+                                    View all{" "}
+                                    <FaArrowRight className="ml-1 text-xs" />
+                                </Link>
+                            </div>
                         </div>
 
                         {/* Loading State */}
                         {loadingFeatured && <FeaturedProductsLoading />}
 
                         {/* No Featured Products State */}
-                        {!loadingFeatured && featuredProducts.length === 0 && (
+                        {!loadingFeatured && carouselProducts.length === 0 && (
                             <NoFeaturedProducts />
                         )}
 
-                        {/* Featured Products Grid - Desktop */}
-                        {!loadingFeatured && featuredProducts.length > 0 && (
-                            <>
-                                {/* Desktop Grid View */}
-                                <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                                    {featured_products.map((product) => (
-                                        <FeaturedProductCard
-                                            key={product.product_id}
-                                            product={product}
-                                            save_wishlist={save_wishlist}
-                                        />
-                                    ))}
+                        {/* Infinite Carousel */}
+                        {!loadingFeatured && carouselProducts.length > 0 && (
+                            <div className="relative">
+                                {/* Carousel Container */}
+                                <div
+                                    ref={carouselContainerRef}
+                                    className="overflow-hidden rounded-xl"
+                                >
+                                    <div
+                                        className="flex transition-transform duration-500 ease-in-out"
+                                        style={{
+                                            transform: `translateX(-${
+                                                currentCarouselIndex *
+                                                (100 /
+                                                    Math.min(
+                                                        4,
+                                                        carouselProducts.length
+                                                    ))
+                                            }%)`,
+                                        }}
+                                    >
+                                        {carouselProducts.map(
+                                            (product, index) => (
+                                                <div
+                                                    key={`${product.product_id}-${index}`}
+                                                    className="w-full sm:w-1/2 md:w-1/3 lg:w-1/4 flex-shrink-0 px-2 sm:px-3"
+                                                >
+                                                    {/* Use your original FeaturedProductCard without modifications */}
+                                                    <FeaturedProductCard
+                                                        product={product}
+                                                        save_wishlist={
+                                                            save_wishlist
+                                                        }
+                                                    />
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* Mobile Carousel View - One product per slide */}
-                                <div className="md:hidden relative">
-                                    <div className="overflow-hidden rounded-xl">
-                                        <div
-                                            className="flex transition-transform duration-300 ease-in-out"
-                                            style={{
-                                                transform: `translateX(-${
-                                                    currentSlide * 100
-                                                }%)`,
-                                            }}
+                                {/* Navigation Buttons - Only show if there are more than 4 products */}
+                                {carouselProducts.length > 4 && (
+                                    <>
+                                        <button
+                                            onClick={prevCarouselSlide}
+                                            className="absolute -left-3 sm:-left-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 sm:p-3 rounded-full shadow-lg border border-gray-200 transition-all z-10"
+                                            aria-label="Previous product"
                                         >
-                                            {featured_products.map(
-                                                (product) => (
-                                                    <div
-                                                        key={product.product_id}
-                                                        className="w-full flex-shrink-0 px-3 z-10"
-                                                    >
-                                                        {/* Single product card per slide */}
-                                                        <FeaturedProductCard
-                                                            product={product}
-                                                            save_wishlist={
-                                                                save_wishlist
-                                                            }
-                                                        />
-                                                    </div>
-                                                )
-                                            )}
-                                        </div>
-                                    </div>
+                                            <FaChevronLeft className="text-gray-700 w-4 h-4 sm:w-5 sm:h-5" />
+                                        </button>
+                                        <button
+                                            onClick={nextCarouselSlide}
+                                            className="absolute -right-3 sm:-right-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 sm:p-3 rounded-full shadow-lg border border-gray-200 transition-all z-10"
+                                            aria-label="Next product"
+                                        >
+                                            <FaChevronRight className="text-gray-700 w-4 h-4 sm:w-5 sm:h-5" />
+                                        </button>
+                                    </>
+                                )}
 
-                                    {/* Carousel Navigation */}
-                                    <button
-                                        onClick={prevSlide}
-                                        className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-xl transition-all backdrop-blur-sm"
-                                    >
-                                        <FaChevronLeft className="text-gray-700 w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={nextSlide}
-                                        className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/90 hover:bg-white p-3 rounded-full shadow-xl transition-all backdrop-blur-sm"
-                                    >
-                                        <FaChevronRight className="text-gray-700 w-4 h-4" />
-                                    </button>
-
-                                    {/* Carousel Indicators */}
+                                {/* Progress Dots */}
+                                {carouselProducts.length > 4 && (
                                     <div className="flex justify-center mt-6 space-x-2">
                                         {Array.from({
-                                            length: featured_products.length, // One slide per product
+                                            length: Math.ceil(
+                                                carouselProducts.length / 4
+                                            ),
                                         }).map((_, index) => (
                                             <button
                                                 key={index}
                                                 onClick={() =>
-                                                    setCurrentSlide(index)
+                                                    setCurrentCarouselIndex(
+                                                        index * 4
+                                                    )
                                                 }
-                                                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                                                    index === currentSlide
-                                                        ? "bg-gradient-to-r from-gray-900 to-gray-800 w-8"
+                                                className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
+                                                    Math.floor(
+                                                        currentCarouselIndex / 4
+                                                    ) === index
+                                                        ? "bg-green-600 w-4 sm:w-6"
                                                         : "bg-gray-300 hover:bg-gray-400"
+                                                }`}
+                                                aria-label={`Go to page ${
+                                                    index + 1
                                                 }`}
                                             />
                                         ))}
                                     </div>
-                                </div>
-                            </>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Original Desktop Grid View (Fallback for small number of products) */}
+                        {!loadingFeatured && carouselProducts.length <= 4 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                                {carouselProducts.map((product) => (
+                                    <FeaturedProductCard
+                                        key={product.product_id}
+                                        product={product}
+                                        save_wishlist={save_wishlist}
+                                    />
+                                ))}
+                            </div>
                         )}
                     </div>
                 </section>
@@ -781,8 +879,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 },
                                 {
                                     icon: <FaCamera className="text-3xl" />,
-                                    title: "Smart Listing",
-                                    text: "List items in seconds using our AI-powered image recognition.",
+                                    title: "Smart Search",
+                                    text: "Search items in seconds using our AI-powered visual search recognition.",
                                     color: "text-orange-600",
                                 },
                             ].map((feature, idx) => (
@@ -843,7 +941,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 href={route("seller-benefit")}
                                 className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-green-700 transition"
                             >
-                                How It Works
+                               Learn More
                             </Link>
                         </div>
                         <div className="mt-10 grid grid-cols-3 gap-8 max-w-xl mx-auto">

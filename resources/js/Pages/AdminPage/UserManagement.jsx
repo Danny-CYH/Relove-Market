@@ -15,6 +15,15 @@ import {
     FaUserShield,
     FaUser,
     FaStore,
+    FaEnvelope,
+    FaPhone,
+    FaMapMarkerAlt,
+    FaCalendarAlt,
+    FaClock,
+    FaIdCard,
+    FaGlobe,
+    FaTimes,
+    FaExternalLinkAlt,
 } from "react-icons/fa";
 
 export default function UserManagement() {
@@ -31,6 +40,11 @@ export default function UserManagement() {
     const [modalAction, setModalAction] = useState(null);
     const [selectedUser, setSelectedUser] = useState(null);
     const [bulkAction, setBulkAction] = useState(false);
+
+    // NEW: State for user details modal
+    const [showUserDetailsModal, setShowUserDetailsModal] = useState(false);
+    const [userDetails, setUserDetails] = useState(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
 
     // Debounced search function
     const useDebounce = (value, delay) => {
@@ -113,6 +127,28 @@ export default function UserManagement() {
         [filter, statusFilter, roleFilter]
     );
 
+    // NEW: Fetch user details
+    const fetchUserDetails = async (userId) => {
+        setLoadingDetails(true);
+        try {
+            const response = await fetch(
+                `/api/admin/user-management/details/${userId}`
+            );
+
+            if (!response.ok) {
+                throw new Error("Failed to fetch user details");
+            }
+
+            const data = await response.json();
+            setUserDetails(data.data || data);
+        } catch (err) {
+            console.error("Error fetching user details:", err);
+            setUserDetails(null);
+        } finally {
+            setLoadingDetails(false);
+        }
+    };
+
     // Fetch users when filters or page change
     useEffect(() => {
         fetchUsers(currentPage, debouncedFilter, statusFilter, roleFilter);
@@ -122,6 +158,20 @@ export default function UserManagement() {
     useEffect(() => {
         setCurrentPage(1);
     }, [debouncedFilter, statusFilter, roleFilter]);
+
+    // NEW: Open user details modal
+    const openUserDetailsModal = async (user) => {
+        setSelectedUser(user);
+        await fetchUserDetails(user.user_id || user.id);
+        setShowUserDetailsModal(true);
+    };
+
+    // NEW: Close user details modal
+    const closeUserDetailsModal = () => {
+        setShowUserDetailsModal(false);
+        setUserDetails(null);
+        setSelectedUser(null);
+    };
 
     // Handle user selection
     const toggleUserSelection = (userId) => {
@@ -237,10 +287,30 @@ export default function UserManagement() {
         );
     };
 
+    // NEW: Format date for display
+    const formatDate = (dateString) => {
+        if (!dateString) return "N/A";
+        return dayjs(dateString).format("DD/MM/YYYY HH:mm");
+    };
+
+    // NEW: Get user activity status
+    const getUserActivityStatus = (lastLogin) => {
+        if (!lastLogin) return "Never logged in";
+
+        const now = dayjs();
+        const lastLoginDate = dayjs(lastLogin);
+        const diffHours = now.diff(lastLoginDate, "hour");
+
+        if (diffHours < 1) return "Active now";
+        if (diffHours < 24) return "Today";
+        if (diffHours < 48) return "Yesterday";
+        return `${Math.floor(diffHours / 24)} days ago`;
+    };
+
     // Render pagination buttons
     const renderPaginationButtons = () => {
         const buttons = [];
-        const maxVisiblePages = window.innerWidth < 768 ? 3 : 5; // Reduced to 3 on mobile
+        const maxVisiblePages = window.innerWidth < 768 ? 3 : 5;
 
         let startPage = Math.max(
             1,
@@ -252,7 +322,7 @@ export default function UserManagement() {
             startPage = Math.max(1, endPage - maxVisiblePages + 1);
         }
 
-        // Previous button - with icon for mobile
+        // Previous button
         buttons.push(
             <button
                 key="prev"
@@ -277,7 +347,7 @@ export default function UserManagement() {
             </button>
         );
 
-        // First page - show on desktop, hide on mobile if too many pages
+        // First page
         if (startPage > 1 && (window.innerWidth >= 768 || lastPage <= 10)) {
             buttons.push(
                 <button
@@ -300,7 +370,7 @@ export default function UserManagement() {
             }
         }
 
-        // Page numbers - responsive sizing
+        // Page numbers
         for (let i = startPage; i <= endPage; i++) {
             buttons.push(
                 <button
@@ -317,7 +387,7 @@ export default function UserManagement() {
             );
         }
 
-        // Last page - show on desktop, hide on mobile if too many pages
+        // Last page
         if (
             endPage < lastPage &&
             (window.innerWidth >= 768 || lastPage <= 10)
@@ -343,7 +413,7 @@ export default function UserManagement() {
             );
         }
 
-        // Next button - with icon for mobile
+        // Next button
         buttons.push(
             <button
                 key="next"
@@ -597,34 +667,29 @@ export default function UserManagement() {
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        {dayjs(
+                                                        {formatDate(
                                                             user.created_at
-                                                        ).format(
-                                                            "DD/MM/YYYY HH:mm"
                                                         )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                         {user.last_login_at
-                                                            ? dayjs(
+                                                            ? formatDate(
                                                                   user.last_login_at
-                                                              ).format(
-                                                                  "DD/MM/YYYY HH:mm"
                                                               )
                                                             : "Never"}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <div className="flex justify-end space-x-2">
                                                             <button
+                                                                onClick={() =>
+                                                                    openUserDetailsModal(
+                                                                        user
+                                                                    )
+                                                                }
                                                                 className="text-indigo-600 hover:text-indigo-900 p-1"
                                                                 title="View Details"
                                                             >
                                                                 <FaEye className="w-4 h-4" />
-                                                            </button>
-                                                            <button
-                                                                className="text-blue-600 hover:text-blue-900 p-1"
-                                                                title="Edit User"
-                                                            >
-                                                                <FaEdit className="w-4 h-4" />
                                                             </button>
                                                             {user.status ===
                                                                 "Active" ||
@@ -721,11 +786,15 @@ export default function UserManagement() {
                                                         />
                                                     </div>
                                                     <div className="flex space-x-2">
-                                                        <button className="text-indigo-600 hover:text-indigo-900 p-1">
+                                                        <button
+                                                            onClick={() =>
+                                                                openUserDetailsModal(
+                                                                    user
+                                                                )
+                                                            }
+                                                            className="text-indigo-600 hover:text-indigo-900 p-1"
+                                                        >
                                                             <FaEye className="w-4 h-4" />
-                                                        </button>
-                                                        <button className="text-blue-600 hover:text-blue-900 p-1">
-                                                            <FaEdit className="w-4 h-4" />
                                                         </button>
                                                         {user.status ===
                                                             "Active" ||
@@ -789,10 +858,8 @@ export default function UserManagement() {
                                                             Registered:
                                                         </span>
                                                         <div className="text-gray-700 text-sm">
-                                                            {dayjs(
+                                                            {formatDate(
                                                                 user.created_at
-                                                            ).format(
-                                                                "DD/MM/YYYY"
                                                             )}
                                                         </div>
                                                     </div>
@@ -802,10 +869,8 @@ export default function UserManagement() {
                                                         </span>
                                                         <div className="text-gray-700 text-sm">
                                                             {user.last_login_at
-                                                                ? dayjs(
+                                                                ? formatDate(
                                                                       user.last_login_at
-                                                                  ).format(
-                                                                      "DD/MM/YYYY"
                                                                   )
                                                                 : "Never"}
                                                         </div>
@@ -912,6 +977,276 @@ export default function UserManagement() {
                                 >
                                     Confirm {modalAction}
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* NEW: User Details Modal */}
+                {showUserDetailsModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+                        <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                            {/* Modal Header */}
+                            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-gray-800">
+                                        User Details
+                                    </h3>
+                                    <p className="text-gray-600 text-sm mt-1">
+                                        View detailed information about{" "}
+                                        {selectedUser?.name}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={closeUserDetailsModal}
+                                    className="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100"
+                                >
+                                    <FaTimes className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            {/* Modal Content */}
+                            <div className="p-6">
+                                {loadingDetails ? (
+                                    <div className="flex justify-center items-center h-64">
+                                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                                    </div>
+                                ) : userDetails ? (
+                                    <div className="space-y-6">
+                                        {/* Profile Section */}
+                                        <div className="bg-gray-50 rounded-xl p-6">
+                                            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+                                                <div className="flex-1">
+                                                    <div className="flex flex-col md:flex-row items-center justify-between mb-4">
+                                                        <div>
+                                                            <h4 className="text-2xl font-bold text-gray-900">
+                                                                {
+                                                                    userDetails.name
+                                                                }
+                                                            </h4>
+                                                            <div className="flex items-center gap-4 mt-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    {getRoleIcon(
+                                                                        userDetails
+                                                                            .role
+                                                                            ?.role_name
+                                                                    )}
+                                                                    <span className="text-lg font-medium text-gray-700">
+                                                                        {userDetails
+                                                                            .role
+                                                                            ?.role_name ||
+                                                                            "User"}
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-sm text-gray-500">
+                                                                    ID:{" "}
+                                                                    {userDetails.user_id ||
+                                                                        userDetails.id}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <FaEnvelope className="w-5 h-5 text-gray-400" />
+                                                            <div>
+                                                                <p className="text-sm text-gray-500">
+                                                                    Email
+                                                                </p>
+                                                                <p className="font-medium text-black">
+                                                                    {
+                                                                        userDetails.email
+                                                                    }
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        {userDetails.phone_number && (
+                                                            <div className="flex items-center gap-3">
+                                                                <FaPhone className="w-5 h-5 text-gray-400" />
+                                                                <div>
+                                                                    <p className="text-sm text-gray-500">
+                                                                        Phone
+                                                                    </p>
+                                                                    <p className="font-medium text-black">
+                                                                        {
+                                                                            userDetails.phone
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {userDetails.address && (
+                                                            <div className="flex items-center gap-3">
+                                                                <FaMapMarkerAlt className="w-5 h-5 text-gray-400" />
+                                                                <div>
+                                                                    <p className="text-sm text-gray-500">
+                                                                        Address
+                                                                    </p>
+                                                                    <p className="font-medium text-black">
+                                                                        {
+                                                                            userDetails.address
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {userDetails.country && (
+                                                            <div className="flex items-center gap-3">
+                                                                <FaGlobe className="w-5 h-5 text-gray-400" />
+                                                                <div>
+                                                                    <p className="text-sm text-gray-500">
+                                                                        Country
+                                                                    </p>
+                                                                    <p className="font-medium">
+                                                                        {
+                                                                            userDetails.country
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Activity & Stats Section */}
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            {/* Registration Info */}
+                                            <div className="bg-white border border-gray-200 rounded-lg p-5">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <FaCalendarAlt className="w-6 h-6 text-indigo-600" />
+                                                    <h5 className="font-semibold text-gray-800">
+                                                        Registration
+                                                    </h5>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">
+                                                            Date Registered
+                                                        </p>
+                                                        <p className="font-medium text-black">
+                                                            {formatDate(
+                                                                userDetails.created_at
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">
+                                                            Account Age
+                                                        </p>
+                                                        <p className="font-medium text-black">
+                                                            {dayjs().diff(
+                                                                dayjs(
+                                                                    userDetails.created_at
+                                                                ),
+                                                                "day"
+                                                            )}{" "}
+                                                            days
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">
+                                                            Email Verified
+                                                        </p>
+                                                        <p
+                                                            className={`font-medium ${
+                                                                userDetails.email_verified_at
+                                                                    ? "text-green-600"
+                                                                    : "text-red-600"
+                                                            }`}
+                                                        >
+                                                            {userDetails.email_verified_at
+                                                                ? "Yes"
+                                                                : "No"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Login Activity */}
+                                            <div className="bg-white border border-gray-200 rounded-lg p-5">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <FaClock className="w-6 h-6 text-green-600" />
+                                                    <h5 className="font-semibold text-gray-800">
+                                                        Login Activity
+                                                    </h5>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <p className="text-sm text-gray-500">
+                                                            Last Login
+                                                        </p>
+                                                        <p className="font-medium text-black">
+                                                            {userDetails.last_login_at
+                                                                ? formatDate(
+                                                                      userDetails.last_login_at
+                                                                  )
+                                                                : "Never"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Actions Footer */}
+                                        <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+                                            <button
+                                                onClick={closeUserDetailsModal}
+                                                className="px-5 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                                            >
+                                                Close
+                                            </button>
+                                            {userDetails.status === "active" ||
+                                            userDetails.status === "Active" ? (
+                                                <button
+                                                    onClick={() => {
+                                                        openModal(
+                                                            "block",
+                                                            selectedUser
+                                                        );
+                                                        closeUserDetailsModal();
+                                                    }}
+                                                    className="px-5 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                                >
+                                                    Block User
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        openModal(
+                                                            "unblock",
+                                                            selectedUser
+                                                        );
+                                                        closeUserDetailsModal();
+                                                    }}
+                                                    className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                                                >
+                                                    Unblock User
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <FaExclamationTriangle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                                        <p className="text-gray-600">
+                                            Failed to load user details.
+                                        </p>
+                                        <button
+                                            onClick={() =>
+                                                fetchUserDetails(
+                                                    selectedUser?.user_id ||
+                                                        selectedUser?.id
+                                                )
+                                            }
+                                            className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                        >
+                                            Retry
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

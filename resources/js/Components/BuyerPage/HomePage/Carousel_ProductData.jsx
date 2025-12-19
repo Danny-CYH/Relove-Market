@@ -1,8 +1,11 @@
 import React, { useRef, useState, useEffect } from "react";
+import { Link } from "@inertiajs/react";
+
 import { FaArrowLeft, FaArrowRight, FaFire, FaClock } from "react-icons/fa";
 import Carousel from "react-multi-carousel";
-import { Link } from "@inertiajs/react";
+
 import "react-multi-carousel/lib/styles.css";
+
 import { ProductCard } from "../ProductCard";
 
 export function Carousel_ProductData({ productData }) {

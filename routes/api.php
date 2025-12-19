@@ -88,6 +88,7 @@ Route::middleware(["is_admin"])->group(function () {
     Route::post('/api/admin/products/{product}/block', [ProductModerationController::class, 'block_product'])->name("admin.products.block");
     Route::post('/api/admin/products/{product}/unblock', [ProductModerationController::class, 'unblock_product'])->name("admin.products.unblock");
     Route::post('/api/admin/products/{product}/flag', [ProductModerationController::class, 'flag_product'])->name("admin.products.flag");
+    Route::get('/api/admin/products/{product}/analysis', [ProductModerationController::class, 'getProductAnalysis'])->name('admin.product-analysis');
 
     Route::get("/api/transactions", [TransactionManagementController::class, 'filterFunction'])->name("filter-functions");
     Route::get("/api/transactions/metrics", [TransactionManagementController::class, "getData"])->name("get-data");
@@ -97,6 +98,7 @@ Route::middleware(["is_admin"])->group(function () {
 
     // API for manage users.
     Route::get("/api/admin/user-management/list", [UserManagementController::class, "getUserList"])->name("list-user");
+    Route::get('/api/admin/user-management/details/{id}', [UserManagementController::class, 'getUserDetails']);
     Route::post('/api/admin/user-management/actions', [UserManagementController::class, 'handleUserActions'])->name('user-management.actions');
     Route::get('/api/admin/user-management/stats', [UserManagementController::class, 'getUserStats'])->name('user-management.stats');
 });

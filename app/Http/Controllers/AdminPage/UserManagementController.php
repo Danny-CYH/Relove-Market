@@ -50,6 +50,33 @@ class UserManagementController extends Controller
         }
     }
 
+    public function getUserDetails($id)
+    {
+        $user = User::with(['role'])->findOrFail($id);
+
+        return response()->json([
+            'data' => [
+                'id' => $user->user_id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'profile_image' => $user->profile_image,
+                'status' => $user->status,
+                'role' => $user->role,
+                'phone' => $user->phone,
+                'address' => $user->address,
+                'country' => $user->country,
+                'created_at' => $user->created_at,
+                'email_verified_at' => $user->email_verified_at,
+                'last_login_at' => $user->last_login_at,
+                'last_login_ip' => $user->last_login_ip,
+                'login_count' => $user->login_count,
+                'date_of_birth' => $user->date_of_birth,
+                'gender' => $user->gender,
+                'preferences' => $user->preferences,
+            ]
+        ]);
+    }
+
     public function handleUserActions(Request $request)
     {
         try {

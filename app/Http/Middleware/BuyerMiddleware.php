@@ -22,8 +22,8 @@ class BuyerMiddleware
 
         $user = Auth::user();
 
-        if (!in_array($user->role_id, ["ReLo-B0001", "ReLo-S0001"])) {
-            abort(403, 'Unauthorized access.');
+        if ($user->role_id !== "ReLo-B0001") {
+            abort(403, 'Unauthorized access. Buyer access only.');
         }
 
         return $next($request);

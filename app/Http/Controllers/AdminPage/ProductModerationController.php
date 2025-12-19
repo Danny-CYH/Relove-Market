@@ -7,6 +7,7 @@ use App\Mail\ProductFlaggedNotification;
 use App\Mail\ProductUnblockedNotification;
 use App\Models\Product;
 use App\Http\Controllers\Controller;
+use App\Models\Rating;
 use Illuminate\Http\Request;
 use Exception;
 use Illuminate\Support\Facades\Mail;
@@ -107,6 +108,69 @@ class ProductModerationController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function getProductAnalysis($id)
+    {
+        $product = Product::with(['seller', 'category'])
+            ->findOrFail($id);
+
+        // Get ratings with user info
+        $ratings = Rating::with('user')
+            ->where('product_id', $id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Basic stats
+        $totalReviews = $ratings->count();
+        $averageRating = $ratings->avg('rating') ?? 0;
+        $negativeReviews = $ratings->where('rating', '<', 3)->count();
+        $positiveReviews = $ratings->where('rating', '>=', 4)->count();
+
+        // Get recent reviews (last 30 days) as collection
+        $recentReviews = $ratings->where('created_at', '>=', now()->subDays(30));
+
+        // Monthly averages (last 6 months) - PostgreSQL version
+        $ratingHistory = Rating::where('product_id', $id)
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->selectRaw("to_char(created_at, 'YYYY-MM') as month, AVG(rating::float) as average_rating")
+            ->groupByRaw("to_char(created_at, 'YYYY-MM')")
+            ->orderBy('month')
+            ->get();
+
+        return response()->json([
+            'product' => [
+                'product_id' => $product->product_id,
+                'product_name' => $product->product_name,
+                'product_status' => $product->product_status,
+                'seller' => $product->seller,
+                'category' => $product->category,
+            ],
+            'average_rating' => round($averageRating, 1),
+            'total_reviews' => $totalReviews,
+            'negative_reviews' => $negativeReviews,
+            'positive_reviews' => $positiveReviews,
+            'recent_reviews' => $recentReviews->map(function ($rating) {
+                return [
+                    'rating' => $rating->rating,
+                    'created_at' => $rating->created_at->toISOString(),
+                ];
+            })->values()->all(), // Convert to array
+            'recent_reviews_count' => $recentReviews->count(), // Add count separately
+            'rating_history' => $ratingHistory,
+            'reviews' => $ratings->take(20)->map(function ($rating) {
+                return [
+                    'id' => $rating->id,
+                    'rating' => $rating->rating,
+                    'comment' => $rating->comment,
+                    'created_at' => $rating->created_at->toISOString(),
+                    'user' => $rating->user ? [
+                        'name' => $rating->user->name,
+                        'profile_image' => $rating->user->profile_image,
+                    ] : null,
+                ];
+            })->values()->all(),
+        ]);
     }
 
     public function block_product(Request $request, $productId)

@@ -244,7 +244,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             );
 
             if (response.status === 200) {
-                // ✅ SweetAlert popup on success
+                // popup on success
                 Swal.fire({
                     title: "Added to Wishlist!",
                     text: "This item has been successfully added to your wishlist.",
@@ -317,7 +317,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         setSelectedConditions([]);
         setSortBy("recommended");
         setSearchQuery("");
-        // The useEffect below will handle fetching initial data
     };
 
     // Toggle filter sections
@@ -581,13 +580,11 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                     {/* Filters Sidebar - Desktop */}
                     <aside className="hidden lg:block w-80 flex-shrink-0">
                         <FilterModal
-                            applyFilters={applyFilters}
                             expandedFilters={expandedFilters}
                             fetchProducts={fetchProducts}
                             handlePriceInputChange={handlePriceInputChange}
                             list_categoryItem={list_categoryItem}
                             priceRange={priceRange}
-                            products={products}
                             categoryCounts={categoryCounts}
                             resetFilters={resetFilters}
                             selectedCategories={selectedCategories}

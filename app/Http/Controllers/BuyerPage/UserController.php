@@ -29,6 +29,7 @@ class UserController extends Controller
             'productImage',
             'category'
         ])
+            ->where("product_status", '!=', "blocked")
             ->get();
 
         $list_categoryItem = Category::all();

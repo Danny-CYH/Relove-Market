@@ -290,7 +290,7 @@ export function Sidebar({ pendingCount = 0 }) {
                         <img
                             src="../image/shania_yan_5.jpg"
                             alt={auth.user.name}
-                            className="w-8 h-8 rounded-full object-cover border-2 border-indigo-200 flex-shrink-0"
+                            className="w-14 max-h-12 rounded-full object-cover border-2 border-indigo-200 flex-shrink-0"
                         />
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-white truncate">

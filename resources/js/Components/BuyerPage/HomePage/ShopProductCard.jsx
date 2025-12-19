@@ -408,7 +408,7 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                         <Link
                             href={route("product-details", product.product_id)}
                         >
-                            <button className="w-full py-2 px-4 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                            <button className="w-full py-2.5 px-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg font-medium hover:from-green-600 hover:to-emerald-700 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                                 View Details
                             </button>
                         </Link>

@@ -52,29 +52,6 @@ const showAlert = (icon, title, text, confirmButtonText = "OK") => {
     });
 };
 
-const showConfirmationAlert = (
-    title,
-    text,
-    confirmButtonText = "Yes",
-    cancelButtonText = "Cancel"
-) => {
-    return Swal.fire({
-        title,
-        text,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText,
-        cancelButtonText,
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-            cancelButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
-
 const showLoadingAlert = (title, text = "") => {
     return Swal.fire({
         title,
@@ -562,7 +539,6 @@ export default function ProductDetails({ product_info }) {
                 items: checkoutData,
                 onSuccess: () => {
                     loadingAlert.close();
-                    // Success is handled by the redirect in the controller
                 },
                 onError: (errors) => {
                     loadingAlert.close();
@@ -598,8 +574,6 @@ export default function ProductDetails({ product_info }) {
         }
     };
 
-    // REMOVED: isBuyNowDisabled and getBuyNowButtonTitle since button is never disabled
-
     // Review and comment handlers
     const handleAddReview = async (e) => {
         e.preventDefault();
@@ -613,8 +587,6 @@ export default function ProductDetails({ product_info }) {
             };
 
             const response = await axios.post(route("make-review"), payload);
-
-            // Fix: Immediately update the UI with the new review
             const newReviewData = response.data.review;
 
             // Transform the API response to match your frontend structure
@@ -622,8 +594,8 @@ export default function ProductDetails({ product_info }) {
                 id: newReviewData.id,
                 rating: newReviewData.rating,
                 comment: newReviewData.comment,
-                user: "You", // Since the user just submitted this
-                avatar: "YU",
+                user: "You",
+                avatar: auth.user.profile_image,
                 date: new Date(newReviewData.created_at)
                     .toISOString()
                     .split("T")[0],
@@ -636,13 +608,6 @@ export default function ProductDetails({ product_info }) {
             // Update both reviews states immediately
             setReviews((prev) => [transformedReview, ...prev]);
             setAllReviews((prev) => [transformedReview, ...prev]);
-
-            const updatedReviews = [transformedReview, ...reviews];
-            const newAverageRating =
-                updatedReviews.reduce(
-                    (acc, review) => acc + (review.rating || 0),
-                    0
-                ) / updatedReviews.length;
 
             // Clear the form
             setNewReview({
@@ -672,7 +637,6 @@ export default function ProductDetails({ product_info }) {
 
     // Handle Add to Cart
     const handleAddToCart = async () => {
-        // Check if user is authenticated
         if (!auth.user) {
             showAlert(
                 "warning",
@@ -833,12 +797,27 @@ export default function ProductDetails({ product_info }) {
         }
     };
 
-    // Preserved existing functions
+    // UPDATED: Improved startConversation function
     const startConversation = async (e) => {
         e.preventDefault();
-        if (!initialMessage.trim()) return;
 
-        // 1️⃣ If user NOT logged in → show alert first
+        // Prevent multiple submissions
+        if (isStartingConversation) {
+            console.log("Already starting conversation, ignoring click");
+            return;
+        }
+
+        if (!initialMessage.trim()) {
+            showAlert(
+                "warning",
+                "Message Required",
+                "Please enter a message to start the conversation.",
+                "OK"
+            );
+            return;
+        }
+
+        // Check authentication
         if (!auth.user) {
             showAlert(
                 "warning",
@@ -853,38 +832,78 @@ export default function ProductDetails({ product_info }) {
             return;
         }
 
-        // 2️⃣ User is authenticated → now allow conversation start
-        setIsStartingConversation(true);
-
-        try {
-            await axios.post("/start-conversation", {
-                seller_id: product_info[0].seller_id,
-                product_id: product_info[0].product_id,
-                message: initialMessage,
-            });
-
-            setShowConversationModal(false);
-            setInitialMessage("");
-
-            // 3️⃣ Show success alert
+        // Check if user is trying to chat with themselves
+        if (auth.user.user_id === product_info[0]?.seller?.user_id) {
             showAlert(
-                "success",
-                "Conversation started",
-                "Redirecting you to chat...",
-                "OK"
-            ).then((result) => {
-                if (result.isConfirmed) {
-                    router.visit(route("buyer-chat"));
-                }
-            });
-        } catch (error) {
-            console.error("Conversation error:", error);
-            showAlert(
-                "error",
-                "Error",
-                "Failed to start conversation. Please try again.",
+                "info",
+                "Own Product",
+                "This is your own product listing.",
                 "OK"
             );
+            return;
+        }
+
+        setIsStartingConversation(true);
+        console.log("Starting conversation with seller:", {
+            seller_id: product_info[0]?.seller_id,
+            product_id: product_info[0]?.product_id,
+            message_length: initialMessage.length,
+        });
+
+        try {
+            const response = await axios.post(
+                "/start-conversation",
+                {
+                    seller_id: product_info[0]?.seller_id,
+                    product_id: product_info[0]?.product_id,
+                    message: initialMessage,
+                },
+                {
+                    timeout: 10000, // 10 second timeout
+                    headers: {
+                        "X-CSRF-TOKEN": document.querySelector(
+                            'meta[name="csrf-token"]'
+                        )?.content,
+                    },
+                }
+            );
+
+            console.log("Conversation response:", response.data);
+
+            // Show success and redirect
+            showAlert(
+                "success",
+                "Conversation Started",
+                "Redirecting to chat...",
+                "OK"
+            ).then(() => {
+                setShowConversationModal(false);
+                setInitialMessage("");
+                // Redirect to chat page
+                router.visit(route("buyer-chat"));
+            });
+        } catch (error) {
+            console.error("Conversation error details:", {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                config: error.config,
+            });
+
+            let errorMessage =
+                "Failed to start conversation. Please try again.";
+
+            if (error.response?.status === 401) {
+                errorMessage = "Your session has expired. Please login again.";
+            } else if (error.response?.status === 404) {
+                errorMessage = "Seller not found.";
+            } else if (error.response?.status === 422) {
+                errorMessage = error.response.data.message || "Invalid input.";
+            } else if (error.code === "ECONNABORTED") {
+                errorMessage = "Request timeout. Please check your connection.";
+            }
+
+            showAlert("error", "Error", errorMessage, "OK");
         } finally {
             setIsStartingConversation(false);
         }
@@ -1699,9 +1718,20 @@ export default function ProductDetails({ product_info }) {
                                     onClick={() =>
                                         setShowConversationModal(true)
                                     }
-                                    className="px-3 lg:px-4 py-2 border border-gray-300 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors text-sm font-medium"
+                                    disabled={isStartingConversation}
+                                    className="px-3 lg:px-4 py-2 border border-gray-300 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                 >
-                                    Chat
+                                    {isStartingConversation ? (
+                                        <>
+                                            <Loader2
+                                                size={16}
+                                                className="animate-spin"
+                                            />
+                                            Starting...
+                                        </>
+                                    ) : (
+                                        "Chat"
+                                    )}
                                 </button>
                             </div>
                         </div>

@@ -426,12 +426,6 @@ export default function AboutUs() {
                                         Go to Homepage
                                     </button>
                                 </Link>
-                            ) : auth.user.role_name === "Admin" ? (
-                                <Link href={route("admin-dashboard")}>
-                                    <button className="w-full bg-white text-green-700 px-8 py-3 rounded-full font-semibold hover:bg-gray-100 transition shadow-md">
-                                        Go to Admin Dashboard
-                                    </button>
-                                </Link>
                             ) : null
                         ) : (
                             <Link href={route("register")}>
@@ -440,10 +434,6 @@ export default function AboutUs() {
                                 </button>
                             </Link>
                         )}
-
-                        <button className="border-2 border-white text-white px-8 py-3 rounded-full font-semibold hover:bg-white hover:text-green-700 transition">
-                            Learn More
-                        </button>
                     </div>
                 </div>
             </section>
