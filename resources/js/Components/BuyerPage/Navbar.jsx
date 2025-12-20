@@ -6,6 +6,7 @@ import {
     FaStore,
     FaSnapchat,
     FaShoppingCart,
+    FaComment,
 } from "react-icons/fa";
 
 import { useState, useEffect } from "react";
@@ -256,8 +257,8 @@ export function Navbar() {
                                                                 )
                                                             }
                                                         >
-                                                            <FaSnapchat className="mr-3 text-gray-400" />
-                                                            Chat
+                                                            <FaComment className="mr-3 text-gray-400" />
+                                                            Messaging
                                                         </Link>
                                                     </>
                                                 )}

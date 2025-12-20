@@ -12,8 +12,7 @@ import {
     FaExclamationTriangle,
     FaChevronLeft,
     FaChevronRight,
-    FaPause,
-    FaPlay,
+    FaSpinner,
 } from "react-icons/fa";
 
 import {
@@ -31,8 +30,6 @@ import {
     Gem,
 } from "lucide-react";
 
-import { FaSpinner } from "react-icons/fa";
-
 import { useState, useEffect, useRef, useCallback } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
@@ -45,10 +42,13 @@ import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
 
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
+
 import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
+
 import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
-import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
+
 import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
+import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
 import { FeaturedProductCard } from "@/Components/BuyerPage/HomePage/FeaturedProductCard";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
@@ -156,7 +156,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         });
     };
 
-    // CORRECTED save_wishlist function
+    // save_wishlist function
     const save_wishlist = async (productId, selectedVariant = null) => {
         try {
             if (!auth.user) {
@@ -411,7 +411,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     useEffect(() => {
         get_featuredProducts();
         get_flashSaleProducts();
-        toggleAutoPlay();
     }, []);
 
     return (
@@ -941,7 +940,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 href={route("seller-benefit")}
                                 className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-green-700 transition"
                             >
-                               Learn More
+                                Learn More
                             </Link>
                         </div>
                         <div className="mt-10 grid grid-cols-3 gap-8 max-w-xl mx-auto">

@@ -151,7 +151,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         ]
     );
 
-    // FIXED: Proper debounced search function
+    // Proper debounced search function
     const handleSearchChange = (e) => {
         const query = e.target.value;
         setSearchQuery(query); // Update UI immediately

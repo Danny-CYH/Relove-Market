@@ -45,7 +45,7 @@ export function CameraSearchModal({
                 }
 
                 // Use the actual product data from the response
-                const productData = item.product || {};
+                const productData = item || {};
 
                 return {
                     product_id: productData.product_id || `ai-${index}`,
@@ -55,56 +55,19 @@ export function CameraSearchModal({
                         "Unnamed Product",
                     product_price: productData.product_price || item.price || 0,
                     product_quantity: productData.product_quantity || 1,
-                    category: {
-                        category_name:
-                            item.category ||
-                            productData.category?.category_name ||
-                            "General",
-                    },
-                    product: {
-                        product_id: item.product_id || `ai-${index}`,
-                        product_name:
-                            item.name ||
-                            productData.product_name ||
-                            "Unnamed Product",
-                        product_price:
-                            productData.product_price || item.price || 0,
-                        product_quantity: productData.product_quantity || 1,
-                        product_status:
-                            productData.product_status || "available",
-                        product_variant: productData.product_variant || [],
-                        product_image: [
-                            {
-                                image_path:
-                                    item.image_path ||
-                                    productData.main_image ||
-                                    (productData.images &&
-                                        productData.images[0]?.image_path) ||
-                                    "/default-product-image.jpg",
-                            },
-                        ],
-                        product_ratings: productData.total_ratings || 0,
-                        category: productData.category || {
-                            category_name: item.category || "General",
+                    category: productData.category || "No Category",
+                    product_status: productData.product_status || "available",
+                    product_variant: productData.product_variant || [],
+                    product_image: productData.main_image,
+                    product_total_ratings: productData.total_ratings || 0,
+                    seller: productData.seller || {
+                        seller_store: {
+                            store_name:
+                                productData.seller?.store_name ||
+                                "AI Recommended",
                         },
-                        seller: productData.seller || {
-                            seller_store: {
-                                store_name:
-                                    productData.seller?.store_name ||
-                                    "AI Recommended",
-                            },
-                        },
-                        ratings: productData.ratings.length || 0,
                     },
-                    ai_similarity: similarity,
-                    ai_similarity_percentage: Math.round(similarity * 100),
-                    ai_confidence:
-                        similarity >= 0.8
-                            ? "high"
-                            : similarity >= 0.6
-                            ? "medium"
-                            : "low",
-                    is_ai_result: true,
+                    ratings: productData.ratings.length || 0,
                 };
             })
             .filter(Boolean); // Remove null items (those below threshold)
@@ -378,7 +341,6 @@ export function CameraSearchModal({
                                             product={product}
                                             isFlashSale={false}
                                             save_wishlist={save_wishlist}
-                                            isAiResult={true}
                                         />
                                     );
                                 })}

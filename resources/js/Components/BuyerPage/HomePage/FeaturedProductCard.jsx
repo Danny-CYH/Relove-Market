@@ -1,5 +1,6 @@
 import { FaStar, FaHeart, FaShoppingCart, FaCartPlus } from "react-icons/fa";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom"; // Import from react-dom
 import { Link, usePage } from "@inertiajs/react";
 import Swal from "sweetalert2";
 
@@ -16,6 +17,20 @@ const showAlert = (icon, title, text, confirmButtonText = "OK") => {
             confirmButton: "px-4 py-2 rounded-lg font-medium",
         },
     });
+};
+
+// Create a Portal component for the modal
+const ModalPortal = ({ children }) => {
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
+
+    if (!mounted) return null;
+
+    return createPortal(children, document.body);
 };
 
 export function FeaturedProductCard({ product, save_wishlist }) {
@@ -49,8 +64,8 @@ export function FeaturedProductCard({ product, save_wishlist }) {
 
     const { category } = product;
     const currentPrice = product.product_price;
-    const rating = product.ratings[0]?.rating || 0;
-    const reviewCount = product.ratings.length || 0;
+    const rating = product.ratings?.[0]?.rating || 0;
+    const reviewCount = product.ratings?.length || 0;
     const isInStock = product.product_quantity > 0;
 
     // Check if product has variants
@@ -249,206 +264,211 @@ export function FeaturedProductCard({ product, save_wishlist }) {
             : true;
 
         return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[10000]">
-                {/* Mobile Bottom Sheet / Desktop Centered Modal */}
-                <div className="bg-white w-full sm:max-w-md sm:rounded-2xl shadow-xl max-h-[85vh] overflow-hidden flex flex-col transform transition-transform duration-300 translate-y-0">
-                    {/* Header - Compact */}
-                    <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
-                        <div className="flex-1 min-w-0">
-                            <h2 className="text-lg font-bold text-gray-900">
-                                Select Options
-                            </h2>
-                            <p className="text-gray-600 text-sm mt-1">
-                                Choose your preferred variant
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => {
-                                setShowVariantModal(false);
-                                setSelectedOptions({});
-                                setSelectedVariant(null);
-                            }}
-                            className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors ml-2"
-                        >
-                            <svg
-                                className="w-5 h-5 text-gray-500"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                        </button>
-                    </div>
-
-                    {/* Product Info - Compact */}
-                    <div className="p-4 border-b border-gray-200 flex-shrink-0">
-                        <div className="flex items-center gap-3">
-                            <img
-                                src={
-                                    import.meta.env.VITE_BASE_URL +
-                                    product.product_image[0].image_path
-                                }
-                                alt={product.product_name}
-                                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                            />
+            <ModalPortal>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[9999]">
+                    {/* Mobile Bottom Sheet / Desktop Centered Modal */}
+                    <div className="bg-white w-full sm:max-w-md sm:rounded-2xl shadow-xl max-h-[85vh] overflow-hidden flex flex-col transform transition-transform duration-300 translate-y-0">
+                        {/* Header - Compact */}
+                        <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 text-base">
-                                    {product.product_name}
-                                </h3>
-                                <p className="text-gray-600 text-sm">
-                                    {category.category_name}
-                                </p>
-                                <p className="text-lg font-bold text-green-600">
-                                    RM {selectedVariantPrice}
+                                <h2 className="text-lg font-bold text-gray-900">
+                                    Select Options
+                                </h2>
+                                <p className="text-gray-600 text-sm mt-1">
+                                    Choose your preferred variant
                                 </p>
                             </div>
-                        </div>
-                    </div>
-
-                    {/* Variant Selection - Scrollable */}
-                    <div className="flex-1 overflow-y-auto p-4">
-                        {/* Login Prompt if not logged in */}
-                        {!isLoggedIn && (
-                            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-                                <div className="text-yellow-700 mb-3">
-                                    <svg
-                                        className="w-12 h-12 mx-auto mb-2 text-yellow-500"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                        />
-                                    </svg>
-                                    <h4 className="font-semibold text-lg mb-1">
-                                        Login Required
-                                    </h4>
-                                    <p className="text-sm">
-                                        Please log in to select product options
-                                        and add items to your wishlist.
-                                    </p>
-                                </div>
-                                <Link
-                                    href={route("login")}
-                                    className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                                >
-                                    Go to Login
-                                </Link>
-                            </div>
-                        )}
-
-                        {/* Variant options (only show if logged in) */}
-                        {isLoggedIn && variantTypes.length > 0 ? (
-                            variantTypes.map((type) => (
-                                <div key={type} className="mb-6 last:mb-0">
-                                    <h4 className="font-semibold text-gray-900 mb-3 capitalize text-base">
-                                        {type}
-                                    </h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {getOptionsForType(type).map(
-                                            (option) => {
-                                                const isSelected =
-                                                    selectedOptions[type] ===
-                                                    option;
-                                                return (
-                                                    <button
-                                                        key={option}
-                                                        onClick={() =>
-                                                            handleOptionSelect(
-                                                                type,
-                                                                option
-                                                            )
-                                                        }
-                                                        className={`
-                                                            px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all flex-shrink-0 min-w-[80px]
-                                                            ${
-                                                                isSelected
-                                                                    ? "border-green-500 bg-green-50 text-green-700"
-                                                                    : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
-                                                            }
-                                                        `}
-                                                    >
-                                                        {option}
-                                                    </button>
-                                                );
-                                            }
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        ) : isLoggedIn ? (
-                            <div className="text-center py-4 text-gray-500">
-                                No variants available
-                            </div>
-                        ) : null}
-
-                        {/* Help Text (only show if logged in) */}
-                        {isLoggedIn &&
-                            hasVariants &&
-                            variantTypes.length > 0 &&
-                            !selectedVariant && (
-                                <div className="text-center py-4 text-gray-500 text-sm">
-                                    Please select options to see availability
-                                </div>
-                            )}
-
-                        {/* Stock Status (only show if logged in and variant selected) */}
-                        {isLoggedIn && selectedVariant && (
-                            <div
-                                className={`mt-4 p-3 rounded-lg text-sm font-medium ${
-                                    isVariantInStock
-                                        ? "bg-green-50 text-green-700 border border-green-200"
-                                        : "bg-red-50 text-red-700 border border-red-200"
-                                }`}
-                            >
-                                {isVariantInStock
-                                    ? "✓ In Stock"
-                                    : "✗ Out of Stock"}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Footer - Fixed at bottom */}
-                    <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-                        <div className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={() => {
                                     setShowVariantModal(false);
                                     setSelectedOptions({});
                                     setSelectedVariant(null);
                                 }}
-                                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm"
+                                className="flex-shrink-0 p-2 hover:bg-gray-100 rounded-lg transition-colors ml-2"
                             >
-                                Cancel
+                                <svg
+                                    className="w-5 h-5 text-gray-500"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
                             </button>
-                            <button
-                                onClick={handleAddToWishlistWithVariant}
-                                disabled={
-                                    !isLoggedIn ||
-                                    !selectedVariant ||
-                                    !isVariantInStock
-                                }
-                                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm"
-                            >
-                                <FaCartPlus className="w-4 h-4" />
-                                {!isLoggedIn
-                                    ? "Login Required"
-                                    : "Add to Cart"}
-                            </button>
+                        </div>
+
+                        {/* Product Info - Compact */}
+                        <div className="p-4 border-b border-gray-200 flex-shrink-0">
+                            <div className="flex items-center gap-3">
+                                <img
+                                    src={
+                                        import.meta.env.VITE_BASE_URL +
+                                        product.product_image[0].image_path
+                                    }
+                                    alt={product.product_name}
+                                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                                />
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-gray-900 text-base">
+                                        {product.product_name}
+                                    </h3>
+                                    <p className="text-gray-600 text-sm">
+                                        {category.category_name}
+                                    </p>
+                                    <p className="text-lg font-bold text-green-600">
+                                        RM {selectedVariantPrice}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Variant Selection - Scrollable */}
+                        <div className="flex-1 overflow-y-auto p-4">
+                            {/* Login Prompt if not logged in */}
+                            {!isLoggedIn && (
+                                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+                                    <div className="text-yellow-700 mb-3">
+                                        <svg
+                                            className="w-12 h-12 mx-auto mb-2 text-yellow-500"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                            />
+                                        </svg>
+                                        <h4 className="font-semibold text-lg mb-1">
+                                            Login Required
+                                        </h4>
+                                        <p className="text-sm">
+                                            Please log in to select product
+                                            options and add items to your
+                                            wishlist.
+                                        </p>
+                                    </div>
+                                    <Link
+                                        href={route("login")}
+                                        className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                                    >
+                                        Go to Login
+                                    </Link>
+                                </div>
+                            )}
+
+                            {/* Variant options (only show if logged in) */}
+                            {isLoggedIn && variantTypes.length > 0 ? (
+                                variantTypes.map((type) => (
+                                    <div key={type} className="mb-6 last:mb-0">
+                                        <h4 className="font-semibold text-gray-900 mb-3 capitalize text-base">
+                                            {type}
+                                        </h4>
+                                        <div className="flex flex-wrap gap-2">
+                                            {getOptionsForType(type).map(
+                                                (option) => {
+                                                    const isSelected =
+                                                        selectedOptions[
+                                                            type
+                                                        ] === option;
+                                                    return (
+                                                        <button
+                                                            key={option}
+                                                            onClick={() =>
+                                                                handleOptionSelect(
+                                                                    type,
+                                                                    option
+                                                                )
+                                                            }
+                                                            className={`
+                                                                px-4 py-3 rounded-lg border-2 text-sm font-medium transition-all flex-shrink-0 min-w-[80px]
+                                                                ${
+                                                                    isSelected
+                                                                        ? "border-green-500 bg-green-50 text-green-700"
+                                                                        : "border-gray-300 bg-white text-gray-700 hover:border-gray-400"
+                                                                }
+                                                            `}
+                                                        >
+                                                            {option}
+                                                        </button>
+                                                    );
+                                                }
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            ) : isLoggedIn ? (
+                                <div className="text-center py-4 text-gray-500">
+                                    No variants available
+                                </div>
+                            ) : null}
+
+                            {/* Help Text (only show if logged in) */}
+                            {isLoggedIn &&
+                                hasVariants &&
+                                variantTypes.length > 0 &&
+                                !selectedVariant && (
+                                    <div className="text-center py-4 text-gray-500 text-sm">
+                                        Please select options to see
+                                        availability
+                                    </div>
+                                )}
+
+                            {/* Stock Status (only show if logged in and variant selected) */}
+                            {isLoggedIn && selectedVariant && (
+                                <div
+                                    className={`mt-4 p-3 rounded-lg text-sm font-medium ${
+                                        isVariantInStock
+                                            ? "bg-green-50 text-green-700 border border-green-200"
+                                            : "bg-red-50 text-red-700 border border-red-200"
+                                    }`}
+                                >
+                                    {isVariantInStock
+                                        ? "✓ In Stock"
+                                        : "✗ Out of Stock"}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer - Fixed at bottom */}
+                        <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                    onClick={() => {
+                                        setShowVariantModal(false);
+                                        setSelectedOptions({});
+                                        setSelectedVariant(null);
+                                    }}
+                                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleAddToWishlistWithVariant}
+                                    disabled={
+                                        !isLoggedIn ||
+                                        !selectedVariant ||
+                                        !isVariantInStock
+                                    }
+                                    className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 text-sm"
+                                >
+                                    <FaCartPlus className="w-4 h-4" />
+                                    {!isLoggedIn
+                                        ? "Login Required"
+                                        : "Add to Cart"}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </ModalPortal>
         );
     };
 
@@ -616,7 +636,7 @@ export function FeaturedProductCard({ product, save_wishlist }) {
                                 "Seller"}
                         </span>
                         <span className="flex font-bold items-center">
-                            Sold: {product.order_items.length}
+                            Sold: {product.order_items?.length || 0}
                         </span>
                     </div>
                 </div>

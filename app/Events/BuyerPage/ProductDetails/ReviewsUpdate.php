@@ -42,6 +42,7 @@ class ReviewsUpdate implements ShouldBroadcast
             'rating' => $this->review->rating,
             'comment' => $this->review->comment,
             'user_id' => $this->review->user_id,
+            'profile_image' => $this->review->user->profile_image,
             'created_at' => $this->review->created_at->toDateTimeString(),
         ];
     }

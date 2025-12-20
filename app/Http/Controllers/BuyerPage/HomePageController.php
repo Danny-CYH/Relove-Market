@@ -57,7 +57,7 @@ class HomePageController extends Controller
 
             \Log::info('Found ML recommendations', ['count' => count($recommendations)]);
 
-            // ✅ ADD SIMILARITY THRESHOLD - Filter out low similarity matches
+            // ADD SIMILARITY THRESHOLD - Filter out low similarity matches
             $similarityThreshold = 0.70; // 70% similarity threshold
             $filteredRecommendations = collect($recommendations)
                 ->filter(function ($rec) use ($similarityThreshold) {
@@ -96,7 +96,10 @@ class HomePageController extends Controller
             $recommendations = $filteredRecommendations;
 
             // Extract product IDs from filtered ML recommendations
-            $productIds = collect($recommendations)->pluck('product_id')->filter()->toArray();
+            $productIds = collect($recommendations)
+                ->pluck('product_id')
+                ->filter()
+                ->toArray();
 
             \Log::info('Product IDs to fetch after filtering', $productIds);
 
@@ -112,6 +115,7 @@ class HomePageController extends Controller
                 'seller.sellerStore'
             ])
                 ->whereIn('product_id', $productIds)
+                ->where('product_status', '!=', 'blocked')
                 ->get();
 
             \Log::info('Products found in Laravel', ['count' => $products->count()]);
@@ -155,40 +159,28 @@ class HomePageController extends Controller
                     return [
                         'similarity' => $rec['similarity'],
                         'similarity_percentage' => round($rec['similarity'] * 100, 1), // Add percentage
-                        'product' => [
-                            'product_id' => $product->product_id,
-                            'product_name' => $product->product_name,
-                            'product_price' => $product->product_price,
-                            'product_quantity' => $product->product_quantity,
-                            'product_status' => $product->product_status,
-                            'total_ratings' => $product->total_ratings,
-                            "ratings" => $product->ratings,
-                            'category' => $product->category ? [
-                                'category_id' => $product->category->category_id,
-                                'category_name' => $product->category->category_name
-                            ] : null,
-                            'product_variant' => $product->productVariant->map(function ($variant) {
-                                return [
-                                    'variant_id' => $variant->variant_id,
-                                    'variant_key' => $variant->variant_key,
-                                    'variant_combination' => $variant->variant_combination,
-                                    'variant_quantity' => $variant->quantity,
-                                    'variant_price' => $variant->price,
-                                ];
-                            })->toArray(),
-                            'product_image' => $product->productImage->map(function ($image) {
-                                return [
-                                    'image_path' => $image->image_path,
-                                ];
-                            })->toArray(),
-                            'main_image' => $imagePath,
-                            'seller' => $product->seller ? [
-                                'seller_id' => $product->seller->seller_id,
-                                'store_name' => $product->seller->seller_store->store_name
-                                    ?? $product->seller->sellerStore->store_name
-                                    ?? 'Unknown Store'
-                            ] : null,
-                        ],
+                        'product_id' => $product->product_id,
+                        'product_name' => $product->product_name,
+                        'product_price' => $product->product_price,
+                        'product_quantity' => $product->product_quantity,
+                        'product_status' => $product->product_status,
+                        'total_ratings' => $product->total_ratings,
+                        "ratings" => $product->ratings,
+                        'category' => $product->category->category_name ?? 'Uncategorized',
+                        'product_variant' => $product->productVariant->map(function ($variant) {
+                            return [
+                                'variant_combination' => $variant->variant_combination,
+                                'variant_quantity' => $variant->quantity,
+                                'variant_price' => $variant->price,
+                            ];
+                        })->toArray(),
+                        'main_image' => $imagePath,
+                        'seller' => $product->seller ? [
+                            'seller_id' => $product->seller->seller_id,
+                            'store_name' => $product->seller->seller_store->store_name
+                                ?? $product->seller->sellerStore->store_name
+                                ?? 'Unknown Store'
+                        ] : null,
                     ];
                 })
                 ->filter()
@@ -215,8 +207,8 @@ class HomePageController extends Controller
                 'recommendations' => $finalResults,
                 'total_found' => $finalResults->count(),
                 'search_metrics' => $data['search_metrics'] ?? [],
-                'similarity_threshold' => $similarityThreshold, // Include threshold in response
-                'top_similarity' => collect($finalResults)->max('similarity') ?? 0
+                // 'similarity_threshold' => $similarityThreshold, // Include threshold in response
+                // 'top_similarity' => collect($finalResults)->max('similarity') ?? 0
             ]);
 
         } catch (Exception $e) {

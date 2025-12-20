@@ -3,12 +3,7 @@ import { FaStar, FaHeart, FaShoppingBag, FaEye } from "react-icons/fa";
 import { useState } from "react";
 import { Link } from "@inertiajs/react";
 
-export function ProductCard({
-    product,
-    isFlashSale = false,
-    save_wishlist,
-    isAiResult = false,
-}) {
+export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
     const [isHovered, setIsHovered] = useState(false);
     const [isLiked, setIsLiked] = useState(false);
     const [showVariantModal, setShowVariantModal] = useState(false);
@@ -23,7 +18,7 @@ export function ProductCard({
     }
 
     // Safe data extraction with fallbacks
-    const productData = product.product || product;
+    const productData = product || {};
 
     const productName =
         productData.product_name || productData.name || "Unnamed Product";
@@ -35,12 +30,10 @@ export function ProductCard({
     const originalPrice = productData.original_price
         ? parseFloat(productData.original_price)
         : null;
-    const productImages = productData.product_image || [];
-    const primaryImage =
-        productImages[0]?.image_path || "/default-product-image.jpg";
+    const primaryImage = productData.product_image || "/default-product-image.jpg";
     const category = productData.category ||
         product.category || { category_name: "General" };
-    const ratings = productData.product_ratings || 0;
+    const ratings = productData.product_total_ratings || 0;
     const rating = parseFloat(ratings[0]?.rating ?? ratings ?? 0);
     const reviewCount = ratings[0]?.review_count || productData.ratings || 0;
     const seller = productData.seller || { store_name: "Unknown Seller" };
@@ -284,7 +277,7 @@ export function ProductCard({
 
                             {/* Category badge */}
                             <div className="bg-white/95 backdrop-blur-sm text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm">
-                                {category.category_name}
+                                {category}
                             </div>
 
                             {/* Variant indicator */}

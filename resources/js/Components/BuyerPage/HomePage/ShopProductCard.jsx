@@ -277,7 +277,7 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
 
                             {isLiked && (
                                 <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-medium px-2 py-1 rounded">
-                                    In Wishlist
+                                    In Cart
                                 </div>
                             )}
                         </div>
@@ -593,7 +593,7 @@ export function ShopProductCard({ product, save_wishlist, get_wishlist }) {
                                             Adding...
                                         </>
                                     ) : (
-                                        "Add to Wishlist"
+                                        "Add to Cart"
                                     )}
                                 </button>
                             </div>

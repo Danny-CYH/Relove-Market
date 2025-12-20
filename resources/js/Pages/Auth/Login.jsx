@@ -1,8 +1,3 @@
-import { ForgetPasswordModal } from "@/Components/Auth/Login/ForgetPasswordModal";
-import { ResetPasswordModal } from "@/Components/Auth/Login/ResetPasswordModal";
-import { Footer } from "@/Components/BuyerPage/Footer";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
-import TextInput from "@/Components/TextInput";
 import { Link, useForm, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import {
@@ -12,7 +7,14 @@ import {
     FaLock,
     FaCheckCircle,
 } from "react-icons/fa";
+
 import Swal from "sweetalert2";
+
+import { ForgetPasswordModal } from "@/Components/Auth/Login/ForgetPasswordModal";
+import { ResetPasswordModal } from "@/Components/Auth/Login/ResetPasswordModal";
+import { Footer } from "@/Components/BuyerPage/Footer";
+import { Navbar } from "@/Components/BuyerPage/Navbar";
+import TextInput from "@/Components/TextInput";
 
 // SweetAlert configuration
 const showAlert = (icon, title, text, confirmButtonText = "OK") => {
@@ -37,29 +39,6 @@ const showLoadingAlert = (title, text = "") => {
         allowEscapeKey: false,
         didOpen: () => {
             Swal.showLoading();
-        },
-    });
-};
-
-const showConfirmationAlert = (
-    title,
-    text,
-    confirmButtonText = "Yes",
-    cancelButtonText = "Cancel"
-) => {
-    return Swal.fire({
-        title,
-        text,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText,
-        cancelButtonText,
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-            cancelButton: "px-4 py-2 rounded-lg font-medium",
         },
     });
 };
@@ -159,27 +138,81 @@ export default function Login() {
             "Please wait while we sign you in..."
         );
 
-        postLogin(route("login"), {
-            onSuccess: () => {
-                loadingAlert.close();
-            },
-            onError: (errors) => {
-                loadingAlert.close();
+        try {
+            const response = await fetch(route("login"), {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRF-TOKEN": document.querySelector(
+                        'meta[name="csrf-token"]'
+                    ).content,
+                    "X-Requested-With": "XMLHttpRequest",
+                    "X-Inertia": "true",
+                },
+                credentials: "include", // Important for session cookies
+                body: JSON.stringify(loginData),
+            });
 
-                let errorMessage =
-                    "Invalid email or password. Please try again.";
-                if (errors.email) {
-                    errorMessage = errors.email;
-                } else if (errors.password) {
-                    errorMessage = errors.password;
+            const data = await response.json();
+            loadingAlert.close();
+
+            if (response.ok && data.success) {
+                // Update CSRF token in meta tag
+                if (data.csrf_token) {
+                    const metaTag = document.querySelector(
+                        'meta[name="csrf-token"]'
+                    );
+                    if (metaTag) {
+                        metaTag.content = data.csrf_token;
+                        console.log("CSRF token updated in meta tag");
+                    }
+
+                    // Update global variable
+                    window.__csrfToken = data.csrf_token;
+
+                    // Update axios if available
+                    if (window.axios) {
+                        window.axios.defaults.headers.common["X-CSRF-TOKEN"] =
+                            data.csrf_token;
+                    }
                 }
 
-                showAlert("error", "Login Failed", errorMessage);
-                reset("email", "password");
-            },
-        });
+                // Show success message
+                showAlert("success", "Login Successful!", "Redirecting...");
+
+                // Redirect after a short delay
+                setTimeout(() => {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        window.location.href = "/";
+                    }
+                }, 1000);
+            } else {
+                throw new Error(data.message || "Login failed");
+            }
+        } catch (error) {
+            loadingAlert.close();
+            console.error("Login error:", error);
+
+            let errorMessage =
+                error.message || "Invalid email or password. Please try again.";
+
+            // Check for validation errors
+            if (error.errors) {
+                if (error.errors.email) {
+                    errorMessage = error.errors.email[0];
+                } else if (error.errors.password) {
+                    errorMessage = error.errors.password[0];
+                }
+            }
+
+            showAlert("error", "Login Failed", errorMessage);
+            reset("password"); // Only reset password, keep email
+        }
     };
 
+    // forgot password
     const resetLink_submit = async (e) => {
         e.preventDefault();
 
@@ -219,6 +252,7 @@ export default function Login() {
         });
     };
 
+    // reset password
     const updatePassword_submit = async (e) => {
         e.preventDefault();
 
@@ -289,25 +323,6 @@ export default function Login() {
     const handleCloseForgetModal = () => {
         setShowForgetModal(false);
         setForgetData("email", "");
-    };
-
-    const handleCloseResetModal = async () => {
-        const result = await showConfirmationAlert(
-            "Cancel Password Reset?",
-            "Are you sure you want to cancel the password reset process?",
-            "Yes, Cancel",
-            "Continue Reset"
-        );
-
-        if (result.isConfirmed) {
-            setShowResetModal(false);
-            setResetData({
-                token: "",
-                email: "",
-                password: "",
-                password_confirmation: "",
-            });
-        }
     };
 
     return (

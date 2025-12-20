@@ -175,8 +175,8 @@ class ProductManagementController extends Controller
     public function getRecommendations(Request $request)
     {
         $productId = $request->input('product_id');
-        $topK = $request->input('top_k', 8);
-        $similarityThreshold = $request->input('similarity_threshold', 0.50);
+        $topK = 20;
+        $similarityThreshold = $request->input('similarity_threshold', 0.70);
 
         \Log::info('Starting recommendation process', [
             'product_id' => $productId,
@@ -187,7 +187,7 @@ class ProductManagementController extends Controller
         try {
             $response = Http::timeout(30)->post(env('ML_SERVICE_URL') . '/recommend/', [
                 'product_id' => $productId,
-                'top_k' => $topK + 10, // Request more to account for filtering
+                'top_k' => $topK,
                 'similarity_threshold' => $similarityThreshold
             ]);
 
@@ -276,6 +276,7 @@ class ProductManagementController extends Controller
                 "category",
             ])
                 ->whereIn('product_id', $productIds)
+                ->where('product_status', '!=', 'blocked')
                 ->get()
                 ->keyBy('product_id'); // Key by product_id for easy lookup
 
@@ -351,9 +352,13 @@ class ProductManagementController extends Controller
                 'comment' => $validated['comment'],
             ]);
 
-            $review->load("user");
+            $review->load([
+                'user' => function ($query) {
+                    $query->select('user_id', 'name', 'profile_image');
+                }
+            ]);
 
-            // ✅ NEW: Update product ratings summary
+            // Update product ratings summary
             $this->updateProductRatings($validated['product_id']);
 
             // Broadcast event

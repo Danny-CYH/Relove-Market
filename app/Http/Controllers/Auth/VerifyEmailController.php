@@ -7,7 +7,7 @@ use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Models\User;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 
 class VerifyEmailController extends Controller
 {
@@ -20,16 +20,16 @@ class VerifyEmailController extends Controller
             'id' => $id,
             'hash' => $hash,
             'full_url' => $request->fullUrl(),
+            'has_session' => $request->hasSession(),
+            'is_authenticated' => Auth::check(),
         ]);
-
-        \Log::info('=== VERIFICATION CONTROLLER HIT! ===');
-        \Log::info('Basic info', ['id' => $id, 'hash' => $hash]);
 
         $user = User::find($id);
 
         if (!$user) {
             \Log::error('User not found', ['id' => $id]);
-            abort(404, 'User not found.');
+            return redirect()->route('homepage')
+                ->with('errorMessage', 'User not found.');
         }
 
         \Log::info('User found', [
@@ -50,17 +50,22 @@ class VerifyEmailController extends Controller
 
         if (!hash_equals((string) $hash, $expectedHash)) {
             \Log::error('Hash mismatch!');
-            abort(403, 'Invalid verification link.');
+            return redirect()->route('homepage')
+                ->with('errorMessage', 'Invalid verification link.');
         }
 
         if ($user->hasVerifiedEmail()) {
             \Log::info('Email already verified');
+
+            // Log the user in since they're verified
             Auth::login($user);
+            $request->session()->regenerate();
+
             return redirect()->route('homepage')
-                ->with('successMessage', 'Email already verified!');
+                ->with('successMessage', 'Your email is already verified! You are now logged in.');
         }
 
-        // Try to mark as verified
+        // Mark email as verified
         $result = $user->markEmailAsVerified();
 
         \Log::info('markEmailAsVerified result', [
@@ -72,14 +77,34 @@ class VerifyEmailController extends Controller
         if ($result) {
             event(new Verified($user));
             \Log::info('Verified event fired');
+
+            // Update user status to Active if it's not already
+            if ($user->status !== 'Active') {
+                $user->status = 'Active';
+                $user->save();
+                \Log::info('User status updated to Active');
+            }
         } else {
             \Log::error('Failed to mark email as verified!');
+            return redirect()->route('homepage')
+                ->with('errorMessage', 'Failed to verify email. Please try again.');
         }
 
+        // Log the user in after verification
         Auth::login($user);
+        $request->session()->regenerate();
 
-        \Log::info('=== VERIFICATION END ===', [
+        // Store basic user info in session
+        session([
+            'user_id' => $user->user_id,
+            'user_email' => $user->email,
+            'user_name' => $user->name,
+            'email_verified' => true,
+        ]);
+
+        \Log::info('User logged in after verification', [
             'user_logged_in' => Auth::check(),
+            'session_id' => session()->getId(),
             'final_email_verified_at' => $user->email_verified_at,
         ]);
 

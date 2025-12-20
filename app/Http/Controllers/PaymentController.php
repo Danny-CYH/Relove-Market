@@ -28,6 +28,13 @@ class PaymentController extends Controller
 {
     public function validateStock(Request $request)
     {
+        Log::info('Stock validation request received', [
+            'session_id' => session()->getId(),
+            'csrf_token' => csrf_token(),
+            'user_id' => auth()->id(),
+            'has_valid_token' => $request->header('X-CSRF-TOKEN') === csrf_token(),
+        ]);
+
         // Validate input (outside any transaction)
         $validator = Validator::make(
             $request->all(),

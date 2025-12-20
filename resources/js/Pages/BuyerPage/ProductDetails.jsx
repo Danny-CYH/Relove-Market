@@ -1,6 +1,5 @@
 import {
     ShoppingCart,
-    Truck,
     Heart,
     Star,
     Check,
@@ -17,6 +16,7 @@ import {
     Pause,
     Volume2,
     VolumeX,
+    DollarSign,
 } from "lucide-react";
 
 import { Link, router, usePage } from "@inertiajs/react";
@@ -139,7 +139,7 @@ export default function ProductDetails({ product_info }) {
     const hasVideos = product_info[0]?.product_video?.length > 0;
     const videos = product_info[0]?.product_video || [];
 
-    // NEW: Enhanced function to check if user has a valid address
+    // function to check if user has a valid address
     const checkUserAddress = useCallback(async () => {
         if (!auth.user) {
             setHasValidAddress(false);
@@ -380,7 +380,6 @@ export default function ProductDetails({ product_info }) {
                 );
 
                 const newReviews = response.data.reviews || [];
-                console.log("Loaded reviews page", page, ":", newReviews);
 
                 if (page === 1) {
                     setAllReviews(newReviews);
@@ -465,7 +464,6 @@ export default function ProductDetails({ product_info }) {
                 product_quantity: product_info[0].product_quantity,
                 product_image: product_info[0].product_image[0] || {},
                 seller_id: product_info[0].seller_id,
-                // Add any other product fields that are used in wishlist
             },
         };
 
@@ -594,13 +592,13 @@ export default function ProductDetails({ product_info }) {
                 id: newReviewData.id,
                 rating: newReviewData.rating,
                 comment: newReviewData.comment,
-                user: "You",
-                avatar: auth.user.profile_image,
+                user: {
+                    profile_image: auth.user.profile_image || null,
+                    name: "You",
+                },
                 date: new Date(newReviewData.created_at)
                     .toISOString()
                     .split("T")[0],
-                verified: true,
-                helpful: 0,
                 created_at: newReviewData.created_at,
                 user_id: newReviewData.user_id,
             };
@@ -909,11 +907,11 @@ export default function ProductDetails({ product_info }) {
         }
     };
 
+    // Fetch product recommendations
     const getRecommendations = async () => {
         try {
             const res = await axios.post(route("recommend"), {
                 product_id: product_info[0].product_id,
-                top_k: 4,
             });
 
             setRecommendations(res.data.recommendations);
@@ -996,14 +994,12 @@ export default function ProductDetails({ product_info }) {
                 rating: newReviewData.rating,
                 comment: newReviewData.comment,
                 user: newReviewData.user?.name || "Anonymous",
-                avatar: (newReviewData.user?.name || "A")
-                    .charAt(0)
-                    .toUpperCase(),
+                profile_image:
+                    newReviewData.user.profile_image ||
+                    (newReviewData.user?.name || "A").charAt(0).toUpperCase(),
                 date: new Date(newReviewData.created_at)
                     .toISOString()
                     .split("T")[0],
-                verified: true,
-                helpful: 0,
                 created_at: newReviewData.created_at,
                 user_id: newReviewData.user_id,
             };
@@ -1669,12 +1665,12 @@ export default function ProductDetails({ product_info }) {
                             {/* Quick Info */}
                             <div className="mt-4 lg:mt-6 grid grid-cols-3 gap-2 lg:gap-4 text-center">
                                 <div className="p-2 lg:p-3 bg-gray-50 rounded-lg">
-                                    <Truck
+                                    <DollarSign
                                         size={16}
-                                        className="text-blue-600 mx-auto mb-1"
+                                        className="text-green-600 mx-auto mb-1"
                                     />
                                     <p className="text-xs text-gray-600">
-                                        Free Shipping
+                                        Price Match
                                     </p>
                                 </div>
                                 <div className="p-2 lg:p-3 bg-gray-50 rounded-lg">
@@ -1692,7 +1688,7 @@ export default function ProductDetails({ product_info }) {
                                         className="text-purple-600 mx-auto mb-1"
                                     />
                                     <p className="text-xs text-gray-600">
-                                        2-Year Warranty
+                                        Secure Packaging
                                     </p>
                                 </div>
                             </div>
@@ -1923,7 +1919,7 @@ export default function ProductDetails({ product_info }) {
                                                                                 {review.user_id ===
                                                                                 auth
                                                                                     .user
-                                                                                    .user_id
+                                                                                    ?.user_id
                                                                                     ? "You"
                                                                                     : review
                                                                                           .user
@@ -1969,17 +1965,19 @@ export default function ProductDetails({ product_info }) {
                                                                         <div className="flex items-center gap-3 lg:gap-4 text-xs lg:text-sm text-gray-500">
                                                                             <span>
                                                                                 {new Date(
-                                                                                    review.date ||
-                                                                                        review.created_at ||
+                                                                                    review.created_at ||
                                                                                         Date.now()
                                                                                 ).toLocaleString(
-                                                                                    "en-US",
+                                                                                    "en-MY",
                                                                                     {
+                                                                                        timeZone:
+                                                                                            "Asia/Kuala_Lumpur",
                                                                                         year: "numeric",
                                                                                         month: "short",
                                                                                         day: "numeric",
                                                                                         hour: "2-digit",
                                                                                         minute: "2-digit",
+                                                                                        hour12: true,
                                                                                     }
                                                                                 )}
                                                                             </span>
