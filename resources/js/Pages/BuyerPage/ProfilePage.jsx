@@ -329,7 +329,7 @@ export default function ProfilePage({
         // SweetAlert Confirmation Popup
         const result = await showConfirmationAlert(
             "Confirm Delivery?",
-            "Have you received your order in good condition? This will release payment to the seller.",
+            "Have you received your order in good condition? The order will be considered as completed by the seller.",
             "Yes, I have received it",
             "Cancel"
         );

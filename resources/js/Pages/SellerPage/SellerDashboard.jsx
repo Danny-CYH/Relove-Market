@@ -52,7 +52,6 @@ export default function SellerDashboard() {
     const [readNotifications, setReadNotifications] = useState(new Set());
 
     const { auth } = usePage().props;
-    console.log(auth);
 
     // Function to show notification
     const showNotification = useCallback(
@@ -82,6 +81,21 @@ export default function SellerDashboard() {
         },
         []
     );
+
+    // Function to filter orders for current date only
+    const getTodayOrders = useCallback((orders) => {
+        if (!orders || !Array.isArray(orders)) return [];
+
+        const currentDate = new Date();
+        const todayString = currentDate.toDateString();
+
+        return orders.filter((order) => {
+            if (!order.created_at) return false;
+
+            const orderDate = new Date(order.created_at);
+            return orderDate.toDateString() === todayString;
+        });
+    }, []);
 
     const handleOpenNotificationModal = () => {
         setShowNotificationModal(true);
@@ -289,6 +303,7 @@ export default function SellerDashboard() {
                     const dayOrders =
                         orders?.filter((order) => {
                             if (!order.created_at) return false;
+
                             const orderDate = new Date(order.created_at);
                             return (
                                 orderDate.getDate() === day.date.getDate() &&
@@ -298,12 +313,40 @@ export default function SellerDashboard() {
                             );
                         }) || [];
 
-                    const earnings = dayOrders.reduce((sum, order) => {
-                        const orderAmount =
-                            parseFloat(
-                                order?.seller_earning[0]?.payout_amount
-                            ) || 0;
-                        return sum + orderAmount;
+                    // Calculate released earnings
+                    const releasedEarnings = dayOrders.reduce((sum, order) => {
+                        if (
+                            order.order_status === "Completed" &&
+                            order?.seller_earning?.[0]?.status === "Released" &&
+                            order?.seller_earning[0]?.payout_amount
+                        ) {
+                            return (
+                                sum +
+                                parseFloat(
+                                    order.seller_earning[0].payout_amount
+                                )
+                            );
+                        }
+                        return sum;
+                    }, 0);
+
+                    // Calculate pending earnings (completed but not released)
+                    const pendingEarnings = dayOrders.reduce((sum, order) => {
+                        if (
+                            order.order_status === "Completed" &&
+                            (!order?.seller_earning?.[0]?.status ||
+                                order?.seller_earning?.[0]?.status !==
+                                    "Released")
+                        ) {
+                            const amount =
+                                parseFloat(
+                                    order?.seller_earning?.[0]?.payout_amount
+                                ) ||
+                                parseFloat(order.amount) ||
+                                0;
+                            return sum + amount;
+                        }
+                        return sum;
                     }, 0);
 
                     const ordersCount = dayOrders.length;
@@ -311,7 +354,8 @@ export default function SellerDashboard() {
                     return {
                         name: day.name,
                         fullName: day.fullDate,
-                        earnings: parseFloat(earnings.toFixed(2)),
+                        earnings: parseFloat(releasedEarnings.toFixed(2)),
+                        pending: parseFloat(pendingEarnings.toFixed(2)),
                         orders: ordersCount,
                     };
                 });
@@ -346,18 +390,44 @@ export default function SellerDashboard() {
                             );
                         }) || [];
 
-                    const earnings = monthOrders.reduce((sum, order) => {
-                        if (
-                            order?.seller_earning?.[0]?.status !== "Released" ||
-                            !order?.seller_earning[0]?.payout_amount
-                        ) {
-                            return sum; // ✔ skip invalid order
-                        }
+                    // Calculate released earnings
+                    const releasedEarnings = monthOrders.reduce(
+                        (sum, order) => {
+                            if (
+                                order.order_status === "Completed" &&
+                                order?.seller_earning?.[0]?.status ===
+                                    "Released" &&
+                                order?.seller_earning[0]?.payout_amount
+                            ) {
+                                return (
+                                    sum +
+                                    parseFloat(
+                                        order.seller_earning[0].payout_amount
+                                    )
+                                );
+                            }
+                            return sum;
+                        },
+                        0
+                    );
 
-                        const amount =
-                            parseFloat(order.seller_earning[0].payout_amount) ||
-                            0;
-                        return sum + amount;
+                    // Calculate pending earnings (completed but not released)
+                    const pendingEarnings = monthOrders.reduce((sum, order) => {
+                        if (
+                            order.order_status === "Completed" &&
+                            (!order?.seller_earning?.[0]?.status ||
+                                order?.seller_earning?.[0]?.status !==
+                                    "Released")
+                        ) {
+                            const amount =
+                                parseFloat(
+                                    order?.seller_earning?.[0]?.payout_amount
+                                ) ||
+                                parseFloat(order.amount) ||
+                                0;
+                            return sum + amount;
+                        }
+                        return sum;
                     }, 0);
 
                     const ordersCount = monthOrders.length;
@@ -365,7 +435,8 @@ export default function SellerDashboard() {
                     return {
                         name: month.name,
                         fullName: month.fullName,
-                        earnings: parseFloat(earnings.toFixed(2)),
+                        earnings: parseFloat(releasedEarnings.toFixed(2)),
+                        pending: parseFloat(pendingEarnings.toFixed(2)),
                         orders: ordersCount,
                     };
                 });
@@ -390,18 +461,40 @@ export default function SellerDashboard() {
                             return orderDate.getFullYear() === yearData.year;
                         }) || [];
 
-                    const earnings = yearOrders.reduce((sum, order) => {
+                    // Calculate released earnings
+                    const releasedEarnings = yearOrders.reduce((sum, order) => {
                         if (
-                            order?.seller_earning?.[0]?.status !== "Released" ||
-                            !order?.seller_earning[0]?.payout_amount
+                            order.order_status === "Completed" &&
+                            order?.seller_earning?.[0]?.status === "Released" &&
+                            order?.seller_earning[0]?.payout_amount
                         ) {
-                            return sum;
+                            return (
+                                sum +
+                                parseFloat(
+                                    order.seller_earning[0].payout_amount
+                                )
+                            );
                         }
+                        return sum;
+                    }, 0);
 
-                        const amount =
-                            parseFloat(order.seller_earning[0].payout_amount) ||
-                            0;
-                        return sum + amount;
+                    // Calculate pending earnings (completed but not released)
+                    const pendingEarnings = yearOrders.reduce((sum, order) => {
+                        if (
+                            order.order_status === "Completed" &&
+                            (!order?.seller_earning?.[0]?.status ||
+                                order?.seller_earning?.[0]?.status !==
+                                    "Released")
+                        ) {
+                            const amount =
+                                parseFloat(
+                                    order?.seller_earning?.[0]?.payout_amount
+                                ) ||
+                                parseFloat(order.amount) ||
+                                0;
+                            return sum + amount;
+                        }
+                        return sum;
                     }, 0);
 
                     const ordersCount = yearOrders.length;
@@ -409,7 +502,8 @@ export default function SellerDashboard() {
                     return {
                         name: yearData.name,
                         fullName: yearData.fullName,
-                        earnings: parseFloat(earnings.toFixed(2)),
+                        earnings: parseFloat(releasedEarnings.toFixed(2)),
+                        pending: parseFloat(pendingEarnings.toFixed(2)),
                         orders: ordersCount,
                     };
                 });
@@ -442,10 +536,13 @@ export default function SellerDashboard() {
                             style={{ color: entry.color }}
                         >
                             {entry.name === "earnings"
-                                ? "Earnings: "
+                                ? "Released: "
+                                : entry.name === "pending"
+                                ? "Pending: "
                                 : "Orders: "}
                             <span className="font-medium">
-                                {entry.name === "earnings"
+                                {entry.name === "earnings" ||
+                                entry.name === "pending"
                                     ? `RM ${entry.value}`
                                     : entry.value}
                             </span>
@@ -808,6 +905,14 @@ export default function SellerDashboard() {
                                             maxBarSize={40}
                                         />
                                         <Bar
+                                            yAxisId="left"
+                                            dataKey="pending"
+                                            fill="#f59e0b"
+                                            radius={[4, 4, 0, 0]}
+                                            name="pending"
+                                            maxBarSize={40}
+                                        />
+                                        <Bar
                                             yAxisId="right"
                                             dataKey="orders"
                                             fill="#10b981"
@@ -839,7 +944,13 @@ export default function SellerDashboard() {
                                 <div className="flex items-center gap-2">
                                     <div className="w-3 h-3 bg-indigo-600 rounded min-h-[1rem]"></div>
                                     <span className="text-xs text-gray-600">
-                                        Earnings (RM)
+                                        Released Earnings (RM)
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 bg-amber-500 rounded min-h-[1rem]"></div>
+                                    <span className="text-xs text-gray-600">
+                                        Pending Earnings (RM)
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -942,87 +1053,100 @@ export default function SellerDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {realTimeOrders.length > 0 ? (
-                                        realTimeOrders
-                                            .slice(0, 5)
-                                            .map((order) => (
-                                                <tr
-                                                    key={order.order_id}
-                                                    className={`border-t hover:bg-gray-50 transition-colors ${
-                                                        newOrders.has(
-                                                            order.order_id
-                                                        )
-                                                            ? "bg-green-50 border-l-4 border-l-green-500"
-                                                            : ""
-                                                    }`}
-                                                >
-                                                    <td className="p-2 font-medium text-gray-700 whitespace-nowrap">
-                                                        {order.order_id}
-                                                        {newOrders.has(
-                                                            order.order_id
-                                                        ) && (
-                                                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                                New
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-2 text-black whitespace-nowrap">
-                                                        {order.user?.name ||
-                                                            "N/A"}
-                                                    </td>
-                                                    <td className="p-2">
-                                                        <OrderStatusBadge
-                                                            status={
-                                                                order.order_status
-                                                            }
-                                                        />
-                                                    </td>
-                                                    <td className="p-2">
-                                                        {order.payment_status ? (
-                                                            <Badge color="green">
-                                                                Paid
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge color="orange">
-                                                                Pending
-                                                            </Badge>
-                                                        )}
-                                                    </td>
-                                                    <td className="p-2 whitespace-nowrap">
-                                                        <Money>
-                                                            {order.amount}
-                                                        </Money>
-                                                    </td>
-                                                    <td className="p-2 text-black whitespace-nowrap">
-                                                        {new Date(
-                                                            order.created_at
-                                                        ).toLocaleDateString()}
+                                    {(() => {
+                                        const todayOrders =
+                                            getTodayOrders(realTimeOrders);
+                                        const displayOrders = todayOrders.slice(
+                                            0,
+                                            5
+                                        );
+
+                                        if (displayOrders.length > 0) {
+                                            return displayOrders.map(
+                                                (order) => (
+                                                    <tr
+                                                        key={order.order_id}
+                                                        className={`border-t hover:bg-gray-50 transition-colors ${
+                                                            newOrders.has(
+                                                                order.order_id
+                                                            )
+                                                                ? "bg-green-50 border-l-4 border-l-green-500"
+                                                                : ""
+                                                        }`}
+                                                    >
+                                                        <td className="p-2 font-medium text-gray-700 whitespace-nowrap">
+                                                            {order.order_id}
+                                                            {newOrders.has(
+                                                                order.order_id
+                                                            ) && (
+                                                                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                                    New
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-2 text-black whitespace-nowrap">
+                                                            {order.user?.name ||
+                                                                "N/A"}
+                                                        </td>
+                                                        <td className="p-2">
+                                                            <OrderStatusBadge
+                                                                status={
+                                                                    order.order_status
+                                                                }
+                                                            />
+                                                        </td>
+                                                        <td className="p-2">
+                                                            {order.payment_status ? (
+                                                                <Badge color="green">
+                                                                    Paid
+                                                                </Badge>
+                                                            ) : (
+                                                                <Badge color="orange">
+                                                                    Pending
+                                                                </Badge>
+                                                            )}
+                                                        </td>
+                                                        <td className="p-2 whitespace-nowrap">
+                                                            <Money>
+                                                                {order.amount}
+                                                            </Money>
+                                                        </td>
+                                                        <td className="p-2 text-black whitespace-nowrap">
+                                                            {new Date(
+                                                                order.created_at
+                                                            ).toLocaleDateString()}
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            );
+                                        } else {
+                                            return (
+                                                <tr>
+                                                    <td
+                                                        colSpan="6"
+                                                        className="p-4 text-center text-gray-500"
+                                                    >
+                                                        <div className="flex flex-col items-center justify-center py-8">
+                                                            <FontAwesomeIcon
+                                                                icon={
+                                                                    faCartShopping
+                                                                }
+                                                                className="text-gray-300 h-12 w-12 mb-3"
+                                                            />
+                                                            <p className="text-sm font-medium text-gray-900 mb-1">
+                                                                No orders today
+                                                            </p>
+                                                            <p className="text-xs text-gray-500">
+                                                                Orders placed
+                                                                today will
+                                                                appear here
+                                                            </p>
+                                                        </div>
                                                     </td>
                                                 </tr>
-                                            ))
-                                    ) : (
-                                        <tr>
-                                            <td
-                                                colSpan="6"
-                                                className="p-4 text-center text-gray-500"
-                                            >
-                                                <div className="flex flex-col items-center justify-center py-8">
-                                                    <FontAwesomeIcon
-                                                        icon={faCartShopping}
-                                                        className="text-gray-300 h-12 w-12 mb-3"
-                                                    />
-                                                    <p className="text-sm font-medium text-gray-900 mb-1">
-                                                        No orders yet
-                                                    </p>
-                                                    <p className="text-xs text-gray-500">
-                                                        Your orders will appear
-                                                        here once customers
-                                                        start purchasing
-                                                    </p>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    )}
+                                            );
+                                        }
+                                    })()}
                                 </tbody>
                             </table>
                         </div>
