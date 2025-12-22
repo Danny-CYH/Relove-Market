@@ -24,7 +24,6 @@ _A modern SaaS platform for Malaysian preloved goods exchange_
 -   [Configuration](#-configuration)
 -   [API Documentation](#-api-documentation)
 -   [Deployment](#-deployment)
--   [Contributing](#-contributing)
 -   [License](#-license)
 
 ## 🚀 Overview
@@ -35,9 +34,12 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 
 -   **🇲🇾 Malaysian Focus**: Tailored for local users and market needs
 -   **🤝 Community Driven**: Everyone can become an approved seller
+-   **🔍 Smart Search & Filtering**: Advanced filters (price range, category, condition)
 -   **💸 Revenue Model**: 8% commission on successful transactions
--   **🤖 AI Powered**: Visual search and intelligent recommendations
--   **⚡ Real-time Updates**: Live dashboard and instant notifications
+-   **🤖 AI Powered**: Visual search and image based recommendations
+-   **⚡ Real-time Updates**: Live dashboard, receive earning and order in real-time
+-   **⭐ Featured Products**: Promoted listings appear on top for higher visibility
+-   **📝 Reviews & Comments**: Buyers can rate item and leave feedback
 -   **📱 PWA Ready**: Progressive Web App for mobile experience
 
 ## ✨ Key Features
@@ -48,7 +50,6 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 -   **Advanced Product Listings** with real-time management
 -   **Secure Payment Processing** via Stripe integration
 -   **Commission Management** (8% platform fee)
--   **Order & Escrow Management**
 
 ### 🤖 AI-Powered Enhancements
 
@@ -61,15 +62,14 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
 ### 💬 Communication System
 
 -   **Real-time Chat** between buyers and sellers
--   **Pusher-powered notifications**
 -   **Order progress updates**
--   **Review and rating system**
+-   **Rating and comment system**
 
 ### 📊 Seller Dashboard
 
--   **Real-time Earnings Tracking** (5-minute refresh)
+-   **Earnings Tracking** (5-minute refresh)
 -   **Order Management System**
--   **Product Inventory Management**
+-   **Product Management**
 -   **Sales Analytics & Reports**
 
 ### 👑 Admin Features
@@ -117,12 +117,12 @@ Relove Market is a comprehensive Software as a Service (SaaS) platform designed 
          │                        │                        │
          ▼                        ▼                        ▼
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   AI Services    │    │   Real-time      │    │   Database      │
-│   (Python)       │    │   Features       │    │   Layer         │
-│                  │    │                  │    │                 │
-│ • Visual Search  │    │ • Live Chat      │    │ • Supabase      │
-│ • Recommendations│    │ • Notifications  │    │                 │
-│ • Image Analysis │    │ • Order Updates  │    │                 │
+│   AI Services   │    │   Real-time      │    │   Database      │
+│   (Python)      │    │   Features       │    │   Layer         │
+│                 │    │                  │    │                 │
+│ • Visual Search │    │ • Live Chat      │    │ • Supabase      │
+│ • Recommendation│    │ • Order Updates  │    |                 │
+│ • Image Analysis│    │                  │    │                 │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
 ```
 
@@ -317,27 +317,6 @@ npm run build
 # Deploy to your web server
 ```
 
-3. **PWA Configuration**
-
-```javascript
-// vite.config.js
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import { VitePWA } from "vite-plugin-pwa";
-
-export default defineConfig({
-    plugins: [
-        react(),
-        VitePWA({
-            registerType: "autoUpdate",
-            workbox: {
-                globPatterns: ["**/*.{js,css,html,ico,png,svg}"],
-            },
-        }),
-    ],
-});
-```
-
 ## 🎥 Media & Demo
 
 ### Project Video
@@ -354,44 +333,7 @@ export default defineConfig({
 | ---------------------------------------------------- | -------------------------------------- | --------------------------------------- |
 | ![AI Search](./project%20resource/visual_search.png) | ![Chat](./project%20resource/chat.png) | ![Mobile](./project%20resource/pwa.png) |
 
-## 👥 Contributing
-
-We welcome contributions from the community! Please read our [Contributing Guidelines](CONTRIBUTING.md) for details.
-
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
-
-## 📞 Support
-
-For support and questions:
-
--   📧 Email: chengyangho14@gmail.com
--   🐛 Issues: [GitHub Issues](https://github.com/Danny-CYH/Relove-Market/issues)
-
-## 🙏 Acknowledgments
-
--   Malaysian e-commerce community
--   Laravel & React open-source communities
--   Stripe for payment processing
--   Pusher for real-time features
--   All our beta testers and early adopters
-
+See the [LICENSE.md](LICENSE.md) file for details.
 ---
-
-<div align="center">
-
-**Built with ❤️ for the Malaysian preloved community**
-
-[![GitHub stars](https://img.shields.io/github/stars/Danny-CYH/Relove-Market?style=social)](https://github.com/Danny-CYH/Relove-Market)
-
-</div>
-```
