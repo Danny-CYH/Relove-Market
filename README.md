@@ -1,4 +1,4 @@
-# Relove Market - E-Preloved Exchange Store Using Software as a Service Model 🛍️
+# Relove Market – E-Preloved Exchanged Store (SaaS) 🛍️
 
 <div align="center">
 
@@ -6,334 +6,104 @@
 ![SaaS Platform](https://img.shields.io/badge/Model-Software%20as%20a%20Service-blue)
 ![Laravel React](https://img.shields.io/badge/Stack-Laravel%20%2B%20React%20Vite-orange)
 
-_A modern SaaS platform for Malaysian preloved goods exchange_
+*A modern SaaS platform for buying and selling preloved goods in Malaysia*
 
-[Features](#-key-features) • [Installation](#-installation) • [Tech Stack](#-tech-stack) • [API Documentation](#-api-documentation)
+[Features](#✨-key-features) • [Tech Stack](#-tech-stack) • [Demo](#-demo) • [Architecture](#-architecture)
 
 </div>
 
-![Platform Overview](./project%20resource/home_page.png)
+---
 
-## 📋 Table of Contents
+## 📖 Overview
 
--   [Overview](#-overview)
--   [Key Features](#-key-features)
--   [Tech Stack](#-tech-stack)
--   [Architecture](#-architecture)
--   [Installation](#-installation)
--   [Configuration](#-configuration)
--   [API Documentation](#-api-documentation)
--   [Deployment](#-deployment)
--   [License](#-license)
+**Relove Market** is a full-featured, multi-tenant SaaS platform designed to facilitate secure and seamless preloved goods exchange in Malaysia. The platform supports a three-tier user model (Buyer, Seller, Admin) and integrates modern tools such as AI-powered visual search, real-time communication, and secure payment processing via Stripe.
 
-## 🚀 Overview
-
-Relove Market is a comprehensive Software as a Service (SaaS) platform designed specifically for the Malaysian market, enabling individuals to buy and sell preloved items securely. Our platform combines modern technology with user-friendly features to create the ultimate second-hand shopping experience.
-
-### 🌟 Key Highlights
-
--   **🇲🇾 Malaysian Focus**: Tailored for local users and market needs
--   **🤝 Community Driven**: Everyone can become an approved seller
--   **🔍 Smart Search & Filtering**: Advanced filters (price range, category, condition)
--   **💸 Revenue Model**: 8% commission on successful transactions
--   **🤖 AI Powered**: Visual search and image based recommendations
--   **⚡ Real-time Updates**: Live dashboard, receive earning and order in real-time
--   **⭐ Featured Products**: Promoted listings appear on top for higher visibility
--   **📝 Reviews & Comments**: Buyers can rate item and leave feedback
--   **📱 PWA Ready**: Progressive Web App for mobile experience
+---
 
 ## ✨ Key Features
 
-### 🛍️ Core Marketplace Features
+### 👤 **Buyer Features**
+- **🔍 Smart Search & Filtering** – Filter by price, category, condition, and location
+- **🛒 AI-Powered Recommendations** – Personalized product suggestions based on product image similarity
+- **🖼️ Visual Search** – Upload images to find similar products
+- **💬 Real-Time Chat** – Communicate directly with sellers
+- **⭐ Reviews & Ratings** – Leave feedback on purchased items
+- **📦 Order Tracking** – Monitor order status
+- **🔐 Secure Payments** – Integrated Stripe checkout
+- **📱 PWA Support** – Install as a mobile app for better UX
 
--   **Multi-vendor Marketplace** with admin approval system
--   **Advanced Product Listings** with real-time management
--   **Secure Payment Processing** via Stripe integration
--   **Commission Management** (8% platform fee)
+### 🛠️ **Seller Features**
+- **📊 Dashboard Analytics** – Visualize sales, earnings, and order metrics with charts in real-time
+- **📈 Earnings Tracker** – Real-time revenue updates (5-minute refresh)
+- **📦 Product Management** – Add, edit, view, feature, and manage listings
+- **🧾 Order Management** – Process, update, and print order receipts
+- **📄 Report Generation** – Export earning reports by date range
 
-### 🤖 AI-Powered Enhancements
+### 👑 **Admin Features**
+- **📊 Admin Dashboard** – Platform-wide stats, revenue monitoring, and KPIs
+- **✅ Seller Approval System** – Review and approve/reject seller applications
+- **💰 Payment Release** – Approve and release earnings to sellers
+- **🛡️ Content Moderation** – Manage users, products, and flagged content
+- **📈 Transaction Oversight** – Monitor all platform transactions and commissions (8% fee)
 
-```python
-# AI Visual Search & Recommendation System
-- Image-based product search
-- Product recommendations
-```
-
-### 💬 Communication System
-
--   **Real-time Chat** between buyers and sellers
--   **Order progress updates**
--   **Rating and comment system**
-
-### 📊 Seller Dashboard
-
--   **Earnings Tracking** (5-minute refresh)
--   **Order Management System**
--   **Product Management**
--   **Sales Analytics & Reports**
-
-### 👑 Admin Features
-
--   **Admin Dashboard**
--   **Seller Approval Workflow**
--   **Transaction Management**
--   **Product Moderation**
--   **User Management**
+---
 
 ## 🛠️ Tech Stack
 
-### Backend
+| Layer        | Technology                          |
+|--------------|-------------------------------------|
+| **Backend**  | Laravel 11, PHP 8.2, Supabase       |
+| **Frontend** | React 18, Vite, TailwindCSS         |
+| **AI/ML**    | Python (Flask API), Clip Model      |
+| **Real-Time**| Pusher (WebSockets)                 |
+| **Payments** | Stripe API                          |
+| **Database** | Supabase (PostgreSQL)               |
+| **Tools**    | Git, Figma, Postman, SweetAlert2    |
 
--   **Laravel 11+** - PHP Framework (MVC Architecture)
--   **Supabase** - Primary Database
--   **Python** - AI/ML Services
--   **Stripe** - Payment Processing
-
-### Frontend
-
--   **React 18** - UI Library
--   **Vite** - Build Tool & Dev Server
--   **TailwindCSS** - Utility-first CSS Framework
--   **SweetAlert2** - Beautiful Alerts & Modals
--   **PWA** - Progressive Web App Features
-
-### Real-time & Services
-
--   **Pusher** - Real-time WebSocket communications
--   **Supabase** - Additional database services
+---
 
 ## 🏗️ Architecture
 
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend        │    │   External      │
-│   (React+Vite)  │◄──►│   (Laravel)      │◄──►│   Services      │
-│                 │    │                  │    │                 │
-│ • PWA           │    │ • MVC Pattern    │    │ • Stripe        │
-│ • TailwindCSS   │    │ • API Routes     │    │ • Pusher        │
-│ • SweetAlert    │    │ • Authentication │    │ • Supabase      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                        │                        │
-         │                        │                        │
-         ▼                        ▼                        ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   AI Services   │    │   Real-time      │    │   Database      │
-│   (Python)      │    │   Features       │    │   Layer         │
-│                 │    │                  │    │                 │
-│ • Visual Search │    │ • Live Chat      │    │ • Supabase      │
-│ • Recommendation│    │ • Order Updates  │    |                 │
-│ • Image Analysis│    │                  │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-```
+The platform follows a **modular SaaS architecture** with clear separation between frontend, backend, and external services:
 
-## 📥 Installation
+- **Frontend**: React PWA with Vite and TailwindCSS for responsive UI
+- **Backend**: Laravel REST API with MVC structure and role-based auth
+- **Real-Time**: Pusher channels for chat, notifications, and live updates
+- **AI Module**: Python microservice for visual search and recommendations
+- **Database**: Supabase for relational data and real-time subscriptions
 
-### Prerequisites
+---
 
--   PHP 8.2+
--   Node.js 18+
--   MySQL 8.0+
--   Composer
--   Python 3.8+
+## 📸 Demo & Screenshots
 
-### Backend Setup (Laravel)
+### Homepage
+![Homepage](./project%20resource/home_page.png)
 
-```bash
-# Clone the repository
-git clone https://github.com/Danny-CYH/Relove-Market.git
-cd Relove_Market
+### Buyer Experience
+| Product Listing & Filtering          | AI Visual Search                     | Secure Checkout                    |
+|--------------------------------------|--------------------------------------|------------------------------------|
+| ![Shopping](./project%20resource/shopping.png) | ![Visual Search](./project%20resource/visual_search.png) | ![Checkout](./project%20resource/checkout.png) |
 
-# Install PHP dependencies
-composer install
+### Seller Dashboard
+![Seller Dashboard](./project%20resource/seller_dashboard.png)
 
-# Environment configuration
-cp .env.example .env
-php artisan key:generate
+### Real-Time Chat & Mobile PWA
+| Live Chat                         | Mobile PWA View                     |
+|-----------------------------------|-------------------------------------|
+| ![Chat](./project%20resource/chat.png) | ![PWA](./project%20resource/pwa.png) |
 
-# Configure database in .env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=relove_market
-DB_USERNAME=your_username
-DB_PASSWORD=your_password
+---
 
-# Run migrations and seeders
-php artisan migrate --seed
-php artisan passport:install
+## 📌 Project Context
 
-# Start the development server
-php artisan serve
-```
+This project was developed as my **Final Year Degree Project** (BSc in Information Technology), showcasing full-stack development skills, system design, and integration of modern SaaS tools.
 
-### Frontend Setup (React + Vite)
+---
 
-```bash
-# Install dependencies
-npm install
+## 📫 Contact
 
-# Environment configuration
-cp .env.example .env.local
+If you'd like to discuss this project, collaborate, or learn more:
 
-# Start development server
-npm run dev
-```
+- **Email**: [chengyangho14@gmail.com](mailto:chengyangho14@gmail.com)
 
-### AI Services Setup (Python)
-
-```bash
-cd ml_service
-
-# Install dependencies
-.\venv\Scripts\python.exe -m pip install -r requirements.txt
-
-# Start AI services
-.\venv\Scripts\uvicorn.exe recommendation_service:app --host 127.0.0.1 --port 5000 --reload
-```
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-#### Laravel (.env)
-
-```env
-APP_NAME="Relove Market"
-APP_ENV=production
-APP_DEBUG=false
-
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=relove_market
-DB_USERNAME=username
-DB_PASSWORD=password
-
-STRIPE_KEY=your_stripe_secret_key
-STRIPE_SECRET=your_stripe_secret
-
-PUSHER_APP_ID=your_pusher_app_id
-PUSHER_APP_KEY=your_pusher_app_key
-PUSHER_APP_SECRET=your_pusher_app_secret
-
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_key
-```
-
-## 📡 API Documentation
-
-### Authentication Endpoints
-
-```http
-POST /api/register
-POST /api/login
-POST /api/logout
-GET  /api/user
-```
-
-### Buyer Endpoints
-
-```http
-GET     /api/get-featured-products
-GET     /api/orders-history
-POST    /api/profile-update
-GET     /api/check-address
-POST    /api/orders/{orderId}/confirm-delivery
-GET     /api/get-all-wishlist
-GET     /api/get-wishlist/{product_id}
-POST    /api/store-wishlist
-POST    /api/update-wishlist-variant
-DELETE  /api/remove-wishlist
-POST    /api/seller-registration-process
-POST    /api/make-reviews
-```
-
-### Seller Endpoints
-
-```http
-GET    /api/dashboard-data
-GET    /api/featured-products
-GET    /api/seller-manage-product/get-product
-POST   /api/seller-manage-product/add-product
-POST   /api/seller-manage-product/edit-product
-POST   /api/seller-manage-product/delete-product
-POST   /api/seller/toggle-listing
-POST   /api/seller/toggle-product-featured
-GET    /api/products/metrics
-POST   /api/products/auto-update-status
-GET    /api/get-list-order
-PUT    /api/update-order/{orderId}/status
-GET    /api/seller-earnings
-POST   /api/generate-income-report
-GET    /api/seller/profile
-POST   /api/seller/profile/user/update
-POST   /api/seller/profile/store/update
-POST   /api/seller/profile/image
-DELETE /api/seller/store/image
-```
-
-### Admin Endpoints
-
-```http
-GET     /api/admin/dashboard/stats
-GET     /api/admin/dashboard/notifications
-GET     /api/admin/products
-GET     /api/admin/products/stats
-POST    /api/admin/products/{product}/block
-POST    /api/admin/products/{product}/unblock
-POST    /api/admin/products/{product}/flag
-POST    /api/admin/dashboard/stats
-GET     /api/transactions
-GET     /api/transactions/metrics
-POST    /api/transactions/{orderId}/release-payment
-PUT     /api/transactions/{orderId}/status
-GET     /api/transactions/{orderId}/tracking
-POST    /api/{orderId}/manual-release
-GET     /api/stats
-GET     /api/admin/user-management/list
-POST    /api/admin/user-management/actions
-GET     /api/admin/user-management/stats
-```
-
-## 🚀 Deployment
-
-### Production Deployment Steps
-
-1. **Backend Deployment**
-
-```bash
-# Optimize for production
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-```
-
-2. **Frontend Deployment**
-
-```bash
-# Build for production
-npm run build
-
-# Deploy to your web server
-```
-
-## 🎥 Media & Demo
-
-### Project Video
-
-[![Platform Demo Video](./project%20resource/home_page.png)](https://youtu.be/kQ_tLq3dBuU)
-
-### Platform Screenshots
-
-| Checkout                                       | Seller Dashboard                                               | Product Listing                                |
-| ---------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------- |
-| ![Checkout](./project%20resource/checkout.png) | ![Seller Dashboard](./project%20resource/seller_dashboard.png) | ![Products](./project%20resource/shopping.png) |
-
-| AI Search                                            | Real-time Chat                         | Mobile PWA                              |
-| ---------------------------------------------------- | -------------------------------------- | --------------------------------------- |
-| ![AI Search](./project%20resource/visual_search.png) | ![Chat](./project%20resource/chat.png) | ![Mobile](./project%20resource/pwa.png) |
-
-## 📄 License
-
-See the [LICENSE.md](LICENSE.md) file for details.
 ---
