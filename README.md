@@ -5,10 +5,11 @@
 ![Malaysia Preloved Marketplace](https://img.shields.io/badge/Malaysia-Preloved%20Exchange-green)
 ![SaaS Platform](https://img.shields.io/badge/Model-Software%20as%20a%20Service-blue)
 ![Laravel React](https://img.shields.io/badge/Stack-Laravel%20%2B%20React%20Vite-orange)
+**License: Source Available for Review**
 
-*A modern SaaS platform for buying and selling preloved goods in Malaysia*
+_A modern SaaS platform for buying and selling preloved goods in Malaysia_
 
-[Features](#✨-key-features) • [Tech Stack](#-tech-stack) • [Demo](#-demo) • [Architecture](#-architecture)
+[Features](#✨-key-features) • [Tech Stack](#-tech-stack) • [Demo](#-demo) • [Architecture](#-architecture) • [License](#-license)
 
 </div>
 
@@ -18,47 +19,52 @@
 
 **Relove Market** is a full-featured, multi-tenant SaaS platform designed to facilitate secure and seamless preloved goods exchange in Malaysia. The platform supports a three-tier user model (Buyer, Seller, Admin) and integrates modern tools such as AI-powered visual search, real-time communication, and secure payment processing via Stripe.
 
+> **Important Licensing Notice:** This repository contains the source code for Relove Market, shared for **portfolio, educational, and review purposes only**. The code is **not licensed for commercial use, hosting, or redistribution as a competing service**. All rights to the Relove Market brand and commercial application are reserved.
+
 ---
 
 ## ✨ Key Features
 
 ### 👤 **Buyer Features**
-- **🔍 Smart Search & Filtering** – Filter by price, category, condition, and location
-- **🛒 AI-Powered Recommendations** – Personalized product suggestions based on product image similarity
-- **🖼️ Visual Search** – Upload images to find similar products
-- **💬 Real-Time Chat** – Communicate directly with sellers
-- **⭐ Reviews & Ratings** – Leave feedback on purchased items
-- **📦 Order Tracking** – Monitor order status
-- **🔐 Secure Payments** – Integrated Stripe checkout
-- **📱 PWA Support** – Install as a mobile app for better UX
+
+-   **🔍 Smart Search & Filtering** – Filter by price, category, condition, and location
+-   **🛒 AI-Powered Recommendations** – Personalized product suggestions based on product image similarity
+-   **🖼️ Visual Search** – Upload images to find similar products
+-   **💬 Real-Time Chat** – Communicate directly with sellers
+-   **⭐ Reviews & Ratings** – Leave feedback on purchased items
+-   **📦 Order Tracking** – Monitor order status
+-   **🔐 Secure Payments** – Integrated Stripe checkout
+-   **📱 PWA Support** – Install as a mobile app for better UX
 
 ### 🛠️ **Seller Features**
-- **📊 Dashboard Analytics** – Visualize sales, earnings, and order metrics with charts in real-time
-- **📈 Earnings Tracker** – Real-time revenue updates (5-minute refresh)
-- **📦 Product Management** – Add, edit, view, feature, and manage listings
-- **🧾 Order Management** – Process, update, and print order receipts
-- **📄 Report Generation** – Export earning reports by date range
+
+-   **📊 Dashboard Analytics** – Visualize sales, earnings, and order metrics with charts in real-time
+-   **📈 Earnings Tracker** – Real-time revenue updates (5-minute refresh)
+-   **📦 Product Management** – Add, edit, view, feature, and manage listings
+-   **🧾 Order Management** – Process, update, and print order receipts
+-   **📄 Report Generation** – Export earning reports by date range
 
 ### 👑 **Admin Features**
-- **📊 Admin Dashboard** – Platform-wide stats, revenue monitoring, and KPIs
-- **✅ Seller Approval System** – Review and approve/reject seller applications
-- **💰 Payment Release** – Approve and release earnings to sellers
-- **🛡️ Content Moderation** – Manage users, products, and flagged content
-- **📈 Transaction Oversight** – Monitor all platform transactions and commissions (8% fee)
+
+-   **📊 Admin Dashboard** – Platform-wide stats, revenue monitoring, and KPIs
+-   **✅ Seller Approval System** – Review and approve/reject seller applications
+-   **💰 Payment Release** – Approve and release earnings to sellers
+-   **🛡️ Content Moderation** – Manage users, products, and flagged content
+-   **📈 Transaction Oversight** – Monitor all platform transactions and commissions (8% fee)
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer        | Technology                          |
-|--------------|-------------------------------------|
-| **Backend**  | Laravel 11, PHP 8.2, Supabase       |
-| **Frontend** | React 18, Vite, TailwindCSS         |
-| **AI/ML**    | Python (Flask API), Clip Model      |
-| **Real-Time**| Pusher (WebSockets)                 |
-| **Payments** | Stripe API                          |
-| **Database** | Supabase (PostgreSQL)               |
-| **Tools**    | Git, Figma, Postman, SweetAlert2    |
+| Layer         | Technology                       |
+| ------------- | -------------------------------- |
+| **Backend**   | Laravel 11, PHP 8.2, Supabase    |
+| **Frontend**  | React 18, Vite, TailwindCSS      |
+| **AI/ML**     | Python Clip Model   |
+| **Real-Time** | Pusher (WebSockets)              |
+| **Payments**  | Stripe API                       |
+| **Database**  | Supabase (PostgreSQL)            |
+| **Tools**     | Git, Figma, Postman, SweetAlert2 |
 
 ---
 
@@ -66,31 +72,60 @@
 
 The platform follows a **modular SaaS architecture** with clear separation between frontend, backend, and external services:
 
-- **Frontend**: React PWA with Vite and TailwindCSS for responsive UI
-- **Backend**: Laravel REST API with MVC structure and role-based auth
-- **Real-Time**: Pusher channels for chat, notifications, and live updates
-- **AI Module**: Python microservice for visual search and recommendations
-- **Database**: Supabase for relational data and real-time subscriptions
+-   **Frontend**: React PWA with Vite and TailwindCSS for responsive UI
+-   **Backend**: Laravel REST API with MVC structure and role-based auth
+-   **Real-Time**: Pusher channels for chat, notifications, and live updates
+-   **AI Module**: Python Clip Model for visual search and recommendations
+-   **Database**: Supabase for relational data
 
 ---
 
 ## 📸 Demo & Screenshots
 
 ### Homepage
+
 ![Homepage](./project%20resource/home_page.png)
 
 ### Buyer Experience
-| Product Listing & Filtering          | AI Visual Search                     | Secure Checkout                    |
-|--------------------------------------|--------------------------------------|------------------------------------|
+
+| Product Listing & Filtering                    | AI Visual Search                                         | Secure Checkout                                |
+| ---------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------- |
 | ![Shopping](./project%20resource/shopping.png) | ![Visual Search](./project%20resource/visual_search.png) | ![Checkout](./project%20resource/checkout.png) |
 
 ### Seller Dashboard
+
 ![Seller Dashboard](./project%20resource/seller_dashboard.png)
 
 ### Real-Time Chat & Mobile PWA
-| Live Chat                         | Mobile PWA View                     |
-|-----------------------------------|-------------------------------------|
+
+| Live Chat                              | Mobile PWA View                      |
+| -------------------------------------- | ------------------------------------ |
 | ![Chat](./project%20resource/chat.png) | ![PWA](./project%20resource/pwa.png) |
+
+---
+
+## 📜 License
+
+**Copyright (c) 2026 [Danny-CYH]**
+
+This repository contains proprietary source code for the **Relove Market** platform. The code is made available for the following purposes only:
+
+1.  **Portfolio Review**: To demonstrate technical skills and project implementation to potential employers or collaborators.
+2.  **Educational Use**: For students and developers to study system architecture, code structure, and integration patterns.
+3.  **Code Review**: For receiving feedback on implementation approaches and code quality.
+
+### **Restrictions:**
+
+-   ❌ **Commercial Use Prohibited**: You may not use this code to run a commercial service, SaaS platform, or any competing marketplace.
+-   ❌ **Redistribution Prohibited**: You may not copy, reproduce, distribute, or create derivative works for public or commercial purposes.
+-   ❌ **Production Hosting Prohibited**: You may not deploy this code to a publicly accessible server or application.
+
+### **Permitted Use:**
+
+-   ✅ **Local Development**: You may run the code locally for learning and experimentation.
+-   ✅ **Code Reference**: You may reference architectural patterns and solutions for your own educational projects (with attribution).
+
+For inquiries about commercial licensing, collaboration, or use rights, please contact the repository owner.
 
 ---
 
@@ -102,8 +137,7 @@ This project was developed as my **Final Year Degree Project** (BSc in Informati
 
 ## 📫 Contact
 
-If you'd like to discuss this project, collaborate, or learn more:
+If you'd like to discuss this project, collaborate, or learn more about licensing:
 
-- **Email**: [chengyangho14@gmail.com](mailto:chengyangho14@gmail.com)
-
+-   **Email**: [chengyangho14@gmail.com](mailto:chengyangho14@gmail.com)
 ---
