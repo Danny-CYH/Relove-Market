@@ -82,10 +82,6 @@ The platform follows a **modular SaaS architecture** with clear separation betwe
 
 ## 📸 Demo & Screenshots
 
-### Homepage
-
-![Homepage](./project%20resource/home_page.png)
-
 ### Buyer Experience
 
 | Product Listing & Filtering                    | AI Visual Search                                         | Secure Checkout                                |
@@ -101,6 +97,11 @@ The platform follows a **modular SaaS architecture** with clear separation betwe
 | Live Chat                              | Mobile PWA View                      |
 | -------------------------------------- | ------------------------------------ |
 | ![Chat](./project%20resource/chat.png) | ![PWA](./project%20resource/pwa.png) |
+
+---
+
+## 🔗 Youtube Link for Demostration
+[![Watch the video](./project%20resource/home_page.png)](https://www.youtube.com/playlist?list=PL1g-r8O3UZXMblL-TWcMFa7Sa-A9IYHP5)
 
 ---
 
