@@ -18,9 +18,6 @@ _A modern SaaS platform for buying and selling preloved goods in Malaysia_
 ## 📖 Overview
 
 **Relove Market** is a full-featured, multi-tenant SaaS platform designed to facilitate secure and seamless preloved goods exchange in Malaysia. The platform supports a three-tier user model (Buyer, Seller, Admin) and integrates modern tools such as AI-powered visual search, real-time communication, and secure payment processing via Stripe.
-
-> **Important Licensing Notice:** This repository contains the source code for Relove Market, shared for **portfolio, educational, and review purposes only**. The code is **not licensed for commercial use, hosting, or redistribution as a competing service**. All rights to the Relove Market brand and commercial application are reserved.
-
 ---
 
 ## ✨ Key Features
@@ -102,31 +99,6 @@ The platform follows a **modular SaaS architecture** with clear separation betwe
 
 ## 🔗 Youtube Link for Demostration
 [![Watch the video](./project%20resource/home_page.png)](https://www.youtube.com/playlist?list=PL1g-r8O3UZXMblL-TWcMFa7Sa-A9IYHP5)
-
----
-
-## 📜 License
-
-**Copyright (c) 2026 [Danny-CYH]**
-
-This repository contains proprietary source code for the **Relove Market** platform. The code is made available for the following purposes only:
-
-1.  **Portfolio Review**: To demonstrate technical skills and project implementation to potential employers or collaborators.
-2.  **Educational Use**: For students and developers to study system architecture, code structure, and integration patterns.
-3.  **Code Review**: For receiving feedback on implementation approaches and code quality.
-
-### **Restrictions:**
-
--   ❌ **Commercial Use Prohibited**: You may not use this code to run a commercial service, SaaS platform, or any competing marketplace.
--   ❌ **Redistribution Prohibited**: You may not copy, reproduce, distribute, or create derivative works for public or commercial purposes.
--   ❌ **Production Hosting Prohibited**: You may not deploy this code to a publicly accessible server or application.
-
-### **Permitted Use:**
-
--   ✅ **Local Development**: You may run the code locally for learning and experimentation.
--   ✅ **Code Reference**: You may reference architectural patterns and solutions for your own educational projects (with attribution).
-
-For inquiries about commercial licensing, collaboration, or use rights, please contact the repository owner.
 
 ---
 
