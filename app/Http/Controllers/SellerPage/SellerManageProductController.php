@@ -344,7 +344,7 @@ class SellerManageProductController extends Controller
                     $fullPath = storage_path("app/public/{$path}");
                     $category = Category::where("category_id", $request->category_id)->first();
 
-                    $mlServiceUrl = env('ML_SERVICE_URL') . '/add_product/';
+                    $mlServiceUrl = config('services.ml_service.url') . '/add_product/';
 
                     Http::attach(
                         'image',

@@ -185,7 +185,7 @@ class ProductManagementController extends Controller
         ]);
 
         try {
-            $response = Http::timeout(30)->post(env('ML_SERVICE_URL') . '/recommend/', [
+            $response = Http::timeout(30)->post(config('services.ml_service.url') . '/recommend/', [
                 'product_id' => $productId,
                 'top_k' => $topK,
                 'similarity_threshold' => $similarityThreshold

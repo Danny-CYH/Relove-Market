@@ -188,7 +188,7 @@ class PaymentController extends Controller
         DB::beginTransaction();
 
         try {
-            Stripe::setApiKey(env('STRIPE_SECRET'));
+            Stripe::setApiKey(config('services.stripe.secret'));
 
             $validator = Validator::make($request->all(), [
                 'amount' => 'required|numeric|min:1',
@@ -305,7 +305,7 @@ class PaymentController extends Controller
         }
 
         try {
-            Stripe::setApiKey(env('STRIPE_SECRET'));
+            Stripe::setApiKey(config('services.stripe.secret'));
             Log::info('Retrieving payment intent: ' . $request->payment_intent_id);
             $paymentIntent = PaymentIntent::retrieve($request->payment_intent_id);
             Log::info('Payment intent status: ' . $paymentIntent->status);

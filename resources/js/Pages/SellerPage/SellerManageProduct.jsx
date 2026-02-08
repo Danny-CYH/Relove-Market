@@ -16,7 +16,7 @@ import axios from "axios";
 
 import Swal from "sweetalert2";
 
-export default function SellerManageProduct({ list_categories }) {
+export default function SellerManageProduct({ list_categories = [] }) {
     const [realTimeProducts, setRealTimeProducts] = useState([]);
     const [isViewOpen, setIsViewOpen] = useState(false);
     const [isAddOpen, setIsAddOpen] = useState(false);
@@ -1003,7 +1003,7 @@ export default function SellerManageProduct({ list_categories }) {
                                     className="text-black px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base"
                                 >
                                     <option value="all">All Categories</option>
-                                    {list_categories.map((category) => (
+                                    {(list_categories || []).map((category) => (
                                         <option
                                             key={category.category_id}
                                             value={category.category_id}

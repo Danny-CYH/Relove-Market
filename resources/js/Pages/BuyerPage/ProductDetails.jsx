@@ -914,7 +914,24 @@ export default function ProductDetails({ product_info }) {
                 product_id: product_info[0].product_id,
             });
 
-            setRecommendations(res.data.recommendations);
+            const incoming = res.data.recommendations || [];
+            const normalized = incoming
+                .map((item) => {
+                    const product = item.product || item;
+                    if (!product) return null;
+                    return {
+                        ...product,
+                        similarity: item.similarity ?? product.similarity,
+                        similarity_percentage:
+                            item.similarity_percentage ??
+                            product.similarity_percentage,
+                        ai_confidence:
+                            item.ai_confidence ?? product.ai_confidence,
+                    };
+                })
+                .filter(Boolean);
+
+            setRecommendations(normalized);
         } catch (error) {
             console.error("Error fetching recommendations:", error);
         }

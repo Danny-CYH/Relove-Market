@@ -30,12 +30,19 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
     const originalPrice = productData.original_price
         ? parseFloat(productData.original_price)
         : null;
-    const primaryImage = productData.product_image || "/default-product-image.jpg";
-    const category = productData.category ||
-        product.category || { category_name: "General" };
+    const primaryImage =
+        productData.product_image?.[0]?.image_path ||
+        "/default-product-image.jpg";
+    const rawCategory = productData.category || product.category || null;
+    const category =
+        typeof rawCategory === "string"
+            ? rawCategory
+            : rawCategory?.category_name || "General";
     const ratings = productData.product_total_ratings || 0;
     const rating = parseFloat(ratings[0]?.rating ?? ratings ?? 0);
-    const reviewCount = ratings[0]?.review_count || productData.ratings || 0;
+    const reviewCount = Array.isArray(productData.ratings)
+        ? productData.ratings.length
+        : (ratings[0]?.review_count ?? 0);
     const seller = productData.seller || { store_name: "Unknown Seller" };
 
     // Check if product has variants and process them according to your data structure
@@ -66,7 +73,7 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                 console.error(
                     "Error parsing variant combination:",
                     error,
-                    variant
+                    variant,
                 );
                 // Fallback: use variant_key as a single variant type
                 if (variant.variant_key) {
@@ -100,7 +107,7 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                         : variant.variant_combination || {};
 
                 return Object.keys(selectedVariants).every(
-                    (type) => combination[type] === selectedVariants[type]
+                    (type) => combination[type] === selectedVariants[type],
                 );
             } catch (error) {
                 console.error("Error matching variant:", error);
@@ -360,7 +367,7 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                                     {value}
                                                 </span>
                                             </span>
-                                        )
+                                        ),
                                     )}
                                 </div>
                             </div>
@@ -404,7 +411,7 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                     <span className="text-xs font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded">
                                         Save RM{" "}
                                         {(originalPrice - displayPrice).toFixed(
-                                            2
+                                            2,
                                         )}
                                     </span>
                                 </>
@@ -425,8 +432,8 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                     isFlashSale
                                         ? "bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white"
                                         : isInStock
-                                        ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
-                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                          ? "bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+                                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
                                 }`}
                                 disabled={!isInStock}
                             >
@@ -558,12 +565,12 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                             {values.map((value) => {
                                                 const stock = getVariantStock(
                                                     value,
-                                                    type
+                                                    type,
                                                 );
                                                 const variantPrice =
                                                     getVariantPrice(
                                                         value,
-                                                        type
+                                                        type,
                                                     );
                                                 const isAvailable = stock > 0;
                                                 const priceDifference =
@@ -578,7 +585,7 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                                         onClick={() =>
                                                             handleVariantSelect(
                                                                 type,
-                                                                value
+                                                                value,
                                                             )
                                                         }
                                                         disabled={!isAvailable}
@@ -586,8 +593,8 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                                             isSelected
                                                                 ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md"
                                                                 : isAvailable
-                                                                ? "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-sm"
-                                                                : "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                                                  ? "border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-sm"
+                                                                  : "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed"
                                                         }`}
                                                     >
                                                         <div className="text-left">
@@ -610,9 +617,9 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                                                         : ""}
                                                                     RM{" "}
                                                                     {Math.abs(
-                                                                        priceDifference
+                                                                        priceDifference,
                                                                     ).toFixed(
-                                                                        2
+                                                                        2,
                                                                     )}
                                                                 </div>
                                                             )}
@@ -627,7 +634,7 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                             })}
                                         </div>
                                     </div>
-                                )
+                                ),
                             )}
 
                             {/* Selected Variants Summary */}
@@ -650,7 +657,7 @@ export function ProductCard({ product, isFlashSale = false, save_wishlist }) {
                                         </h4>
                                         <div className="space-y-2">
                                             {Object.entries(
-                                                selectedVariants
+                                                selectedVariants,
                                             ).map(([type, value]) => (
                                                 <div
                                                     key={type}

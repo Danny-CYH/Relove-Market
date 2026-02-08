@@ -26,7 +26,7 @@ class HomePageController extends Controller
             // Send image to ML service
             $response = Http::timeout(60)
                 ->attach('image', file_get_contents($request->file('image')->getRealPath()), 'photo.jpg')
-                ->post(env('ML_SERVICE_URL') . '/camera_recommend/', ['top_k' => 10]);
+                ->post(config('services.ml_service.url') . '/camera_recommend/', ['top_k' => 10]);
 
             if (!$response->successful()) {
                 \Log::error('ML service error: ' . $response->body());

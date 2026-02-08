@@ -22,10 +22,10 @@ def get_conn():
     """Connect to Supabase PostgreSQL"""
     return psycopg2.connect(
         dbname="postgres",
-        user="postgres.zavcdgxjqbkpsafishmg",
+        user="postgres",
         password="gLdv4DObzlTii1RV",
-        host="aws-0-ap-southeast-1.pooler.supabase.com",
-        port="6543"
+        host="db.zavcdgxjqbkpsafishmg.supabase.co",
+        port="5432"
     )
 
 # ============================================================

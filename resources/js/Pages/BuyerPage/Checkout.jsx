@@ -139,6 +139,9 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
 
         // Remove the beforeunload listener after successful payment
         window.removeEventListener("beforeunload", () => {});
+
+        // Redirect to profile page after successful payment
+        router.visit(route("profile"));
     };
 
     const handlePaymentError = (error) => {
