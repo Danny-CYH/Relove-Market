@@ -4,6 +4,9 @@ import {
     ChevronRight,
     X,
     SlidersHorizontal,
+    Heart,
+    Star,
+    Filter,
 } from "lucide-react";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -13,30 +16,32 @@ import Swal from "sweetalert2";
 
 import { Footer } from "@/Components/BuyerPage/Footer";
 import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { ShopProductCard } from "@/Components/BuyerPage/HomePage/ShopProductCard";
-import { MobileProductCard } from "@/Components/BuyerPage/HomePage/MobileProductCard";
+import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
 import { MobileSortModal } from "@/Components/BuyerPage/ShopPage/MobileSortModal";
 import { MobileFilterModal } from "@/Components/BuyerPage/ShopPage/MobileFilterModal";
-import { FilterModal } from "@/Components/BuyerPage/ShopPage/FilterModal";
 import { usePage } from "@inertiajs/react";
 
 export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [priceRange, setPriceRange] = useState([0, 1000]);
     const [selectedCategories, setSelectedCategories] = useState([]);
     const [selectedConditions, setSelectedConditions] = useState([]);
-    const [sortBy, setSortBy] = useState("recommended");
+    const [selectedSizes, setSelectedSizes] = useState([]);
+    const [selectedColors, setSelectedColors] = useState([]);
+    const [selectedBrands, setSelectedBrands] = useState([]);
+    const [sortBy, setSortBy] = useState("newest");
     const [searchQuery, setSearchQuery] = useState("");
     const [expandedFilters, setExpandedFilters] = useState({
         categories: true,
         price: true,
         condition: true,
-        rating: false,
-        shipping: false,
+        size: false,
+        color: false,
+        brand: false,
     });
 
     // New mobile-specific states
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-    const [mobileViewMode, setMobileViewMode] = useState("list");
+    const [mobileViewMode, setMobileViewMode] = useState("grid"); // Changed to grid for vertical cards
     const [isMobile, setIsMobile] = useState(false);
 
     const [showSortOptions, setShowSortOptions] = useState(false);
@@ -59,10 +64,22 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
     const { auth } = usePage().props;
 
+    // Extract unique values for filters from products
+    const getUniqueValues = (key) => {
+        if (!products.length) return [];
+        const values = products.map((p) => p[key]).filter(Boolean);
+        return [...new Set(values)];
+    };
+
+    const sizes = getUniqueValues("size");
+    const colors = getUniqueValues("color");
+    const brands = getUniqueValues("brand");
+    const conditions = ["like-new", "good", "excellent", "fair"]; // Standard conditions
+
     const fetchCategoryCounts = async () => {
         try {
             const response = await fetch(
-                `/api/shopping/category-counts?search=${searchQuery}`
+                `/api/shopping/category-counts?search=${searchQuery}`,
             );
             const data = await response.json();
             setCategoryCounts(data.categoryCounts || {});
@@ -83,7 +100,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             if (searchQuery) params.append("search", searchQuery);
             if (sortBy) params.append("sort_by", sortBy);
 
-            // PROPERLY handle arrays - use categories[] for each item
+            // Handle arrays
             if (selectedCategories.length > 0) {
                 selectedCategories.forEach((category) => {
                     params.append("categories[]", category);
@@ -96,12 +113,29 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 });
             }
 
+            if (selectedSizes.length > 0) {
+                selectedSizes.forEach((size) => {
+                    params.append("sizes[]", size);
+                });
+            }
+
+            if (selectedColors.length > 0) {
+                selectedColors.forEach((color) => {
+                    params.append("colors[]", color);
+                });
+            }
+
+            if (selectedBrands.length > 0) {
+                selectedBrands.forEach((brand) => {
+                    params.append("brands[]", brand);
+                });
+            }
+
             if (priceRange && priceRange.length === 2) {
                 params.append("price_range[]", priceRange[0].toString());
                 params.append("price_range[]", priceRange[1].toString());
             }
 
-            // Filter condition
             try {
                 const response = await fetch(
                     `/api/shopping?${new URLSearchParams(params)}`,
@@ -115,18 +149,16 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                     .querySelector('meta[name="csrf-token"]')
                                     ?.getAttribute("content") || "",
                         },
-                    }
+                    },
                 );
 
                 if (response.ok) {
                     const data = await response.json();
 
-                    console.log(data.list_shoppingItem);
-
                     if (data.success) {
                         setProducts(data.list_shoppingItem.data || []);
                         setCurrentPage(
-                            data.list_shoppingItem.current_page || 1
+                            data.list_shoppingItem.current_page || 1,
                         );
                         setLastPage(data.list_shoppingItem.last_page || 1);
                         setTotalProducts(data.list_shoppingItem.total || 0);
@@ -147,26 +179,26 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             sortBy,
             selectedCategories,
             selectedConditions,
+            selectedSizes,
+            selectedColors,
+            selectedBrands,
             priceRange,
-        ]
+        ],
     );
 
     // Proper debounced search function
     const handleSearchChange = (e) => {
         const query = e.target.value;
-        setSearchQuery(query); // Update UI immediately
+        setSearchQuery(query);
 
-        // Clear previous timeout
         if (debounceTimeoutRef.current) {
             clearTimeout(debounceTimeoutRef.current);
         }
 
         debounceTimeoutRef.current = setTimeout(() => {
             if (query.trim() === "") {
-                // 👉 If search cleared, fetch all products
                 fetchProducts(1, {});
             } else {
-                // 👉 Normal search request
                 fetchProducts(1, { search: query });
             }
         }, 500);
@@ -196,20 +228,17 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                     cancelButtonText: "Cancel",
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Redirect to login page
                         window.location.href = route("login");
                     }
                 });
                 return false;
             }
 
-            // Prepare the request data with proper structure
             const requestData = {
                 product_id: productId,
             };
 
             if (selectedVariant) {
-                // Parse variant_combination if it's a string
                 let variantCombination = selectedVariant.variant_combination;
                 if (typeof variantCombination === "string") {
                     try {
@@ -217,16 +246,14 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                     } catch (error) {
                         console.error(
                             "Error parsing variant combination:",
-                            error
+                            error,
                         );
-                        // If parsing fails, create a basic structure
                         variantCombination = {
                             Colors: selectedVariant.variant_key,
                         };
                     }
                 }
 
-                // Format the selected variant data to match the desired structure
                 requestData.selected_variant = {
                     variant_id: selectedVariant.variant_id,
                     variant_combination: variantCombination,
@@ -240,11 +267,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
             const response = await axios.post(
                 route("store-wishlist"),
-                requestData
+                requestData,
             );
 
             if (response.status === 200) {
-                // popup on success
                 Swal.fire({
                     title: "Added to Wishlist!",
                     text: "This item has been successfully added to your wishlist.",
@@ -254,14 +280,12 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                     timerProgressBar: true,
                 });
 
-                await get_wishlist(productId); // Refresh wishlist status
-
+                await get_wishlist(productId);
                 return true;
             }
         } catch (error) {
             console.error("💥 Error in save_wishlist:", error);
 
-            // Check if error is due to authentication
             if (error.response?.status === 401) {
                 Swal.fire({
                     title: "Session Expired",
@@ -276,7 +300,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 return false;
             }
 
-            // Show error message to user
             Swal.fire({
                 title: "Error",
                 text: "Failed to add product to wishlist. Please try again.",
@@ -288,20 +311,45 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    // Toggle category filter
+    // Toggle functions for filters
     const toggleCategory = (category) => {
-        const newCategories = selectedCategories.includes(category)
-            ? selectedCategories.filter((c) => c !== category)
-            : [...selectedCategories, category];
-        setSelectedCategories(newCategories);
+        setSelectedCategories((prev) =>
+            prev.includes(category)
+                ? prev.filter((c) => c !== category)
+                : [...prev, category],
+        );
     };
 
-    // Toggle condition filter
     const toggleCondition = (condition) => {
-        const newConditions = selectedConditions.includes(condition)
-            ? selectedConditions.filter((c) => c !== condition)
-            : [...selectedConditions, condition];
-        setSelectedConditions(newConditions);
+        setSelectedConditions((prev) =>
+            prev.includes(condition)
+                ? prev.filter((c) => c !== condition)
+                : [...prev, condition],
+        );
+    };
+
+    const toggleSize = (size) => {
+        setSelectedSizes((prev) =>
+            prev.includes(size)
+                ? prev.filter((s) => s !== size)
+                : [...prev, size],
+        );
+    };
+
+    const toggleColor = (color) => {
+        setSelectedColors((prev) =>
+            prev.includes(color)
+                ? prev.filter((c) => c !== color)
+                : [...prev, color],
+        );
+    };
+
+    const toggleBrand = (brand) => {
+        setSelectedBrands((prev) =>
+            prev.includes(brand)
+                ? prev.filter((b) => b !== brand)
+                : [...prev, brand],
+        );
     };
 
     // Apply filters (for mobile)
@@ -315,8 +363,12 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         setPriceRange([0, 1000]);
         setSelectedCategories([]);
         setSelectedConditions([]);
-        setSortBy("recommended");
+        setSelectedSizes([]);
+        setSelectedColors([]);
+        setSelectedBrands([]);
+        setSortBy("newest");
         setSearchQuery("");
+        fetchProducts(1);
     };
 
     // Toggle filter sections
@@ -344,9 +396,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const handleSortChange = (sort) => {
         setSortBy(sort);
         setShowSortOptions(false);
+        fetchProducts(1);
     };
 
-    // FIXED: Handle price range input changes
+    // Handle price range input changes
     const handlePriceInputChange = (index, value) => {
         const newPriceRange = [...priceRange];
         const numValue = value === "" ? 0 : parseInt(value) || 0;
@@ -354,7 +407,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         setPriceRange(newPriceRange);
     };
 
-    // Determine if there are products to show
     const hasProducts = products && products.length > 0;
 
     // Generate page numbers for pagination
@@ -364,7 +416,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
         let startPage = Math.max(
             1,
-            currentPage - Math.floor(maxVisiblePages / 2)
+            currentPage - Math.floor(maxVisiblePages / 2),
         );
         let endPage = Math.min(lastPage, startPage + maxVisiblePages - 1);
 
@@ -378,6 +430,60 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
         return pages;
     };
+
+    // Filter Section Component for Desktop
+    const FilterSection = ({
+        title,
+        items,
+        selectedItems,
+        toggleFunction,
+        filterType,
+    }) => (
+        <div className="border-b border-gray-200 py-4">
+            <button
+                onClick={() => toggleFilterSection(filterType)}
+                className="flex items-center justify-between w-full text-left"
+            >
+                <h3 className="font-medium text-gray-900">{title}</h3>
+                <svg
+                    className={`w-5 h-5 text-gray-500 transform transition-transform ${
+                        expandedFilters[filterType] ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 9l-7 7-7-7"
+                    />
+                </svg>
+            </button>
+
+            {expandedFilters[filterType] && (
+                <div className="mt-3 space-y-2">
+                    {items.map((item) => (
+                        <label
+                            key={item}
+                            className="flex items-center space-x-2 cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                checked={selectedItems.includes(item)}
+                                onChange={() => toggleFunction(item)}
+                                className="rounded border-gray-300 text-pink-500 focus:ring-pink-500"
+                            />
+                            <span className="text-sm text-gray-600 capitalize">
+                                {item}
+                            </span>
+                        </label>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 
     useEffect(() => {
         fetchCategoryCounts();
@@ -411,16 +517,17 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             return;
         }
 
-        // Clear any pending search timeout
         if (debounceTimeoutRef.current) {
             clearTimeout(debounceTimeoutRef.current);
         }
 
-        // Fetch products with current filters
         fetchProducts(1);
     }, [
         selectedCategories,
         selectedConditions,
+        selectedSizes,
+        selectedColors,
+        selectedBrands,
         priceRange,
         sortBy,
         fetchProducts,
@@ -430,35 +537,29 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         <div className="min-h-screen flex flex-col bg-gray-50">
             <Navbar />
 
-            {/* Search Icon Button */}
+            {/* Search Icon Button - Mobile */}
             <button
                 onClick={() => setIsSearchFocused(true)}
-                className="fixed bottom-6 right-6 z-30 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-colors lg:hidden"
+                className="fixed bottom-6 right-6 z-30 bg-pink-500 text-white p-3 rounded-full shadow-lg hover:bg-pink-600 transition-colors lg:hidden"
             >
                 <Search className="w-5 h-5" />
             </button>
 
-            {/* Search Modal - Bottom Sheet Style */}
+            {/* Search Modal - Mobile */}
             {isSearchFocused && (
                 <div className="fixed inset-0 z-50 lg:hidden">
-                    {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-black bg-opacity-50"
                         onClick={() => setIsSearchFocused(false)}
                     />
-
-                    {/* Bottom Sheet */}
                     <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[70vh] flex flex-col">
-                        {/* Drag Handle */}
                         <div className="flex justify-center pt-3 pb-2">
                             <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
                         </div>
-
-                        {/* Header */}
                         <div className="px-6 py-4 border-b border-gray-200">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-gray-900">
-                                    Search
+                                    Search Reloved Items
                                 </h3>
                                 <button
                                     onClick={() => setIsSearchFocused(false)}
@@ -468,25 +569,20 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                 </button>
                             </div>
                         </div>
-
-                        {/* Search Input */}
                         <div className="px-6 py-4 border-b border-gray-200">
                             <div className="relative">
                                 <input
                                     type="text"
-                                    placeholder="What are you looking for?"
+                                    placeholder="What pre-loved treasure are you looking for?"
                                     value={searchQuery}
                                     onChange={handleSearchChange}
                                     autoFocus
-                                    className="text-black w-full px-4 py-3 pl-12 rounded-2xl bg-gray-100 border-0 focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                                    className="text-black w-full px-4 py-3 pl-12 rounded-2xl bg-gray-100 border-0 focus:ring-2 focus:ring-pink-500 focus:bg-white"
                                 />
                                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                             </div>
                         </div>
-
-                        {/* Content Area - Scrollable */}
                         <div className="flex-1 overflow-y-auto">
-                            {/* Quick Filters */}
                             <div className="px-6 py-4">
                                 <div className="flex items-center justify-between mb-4">
                                     <h4 className="font-semibold text-gray-900">
@@ -497,14 +593,12 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                             setIsSearchFocused(false);
                                             setMobileFiltersOpen(true);
                                         }}
-                                        className="flex items-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"
+                                        className="flex items-center space-x-2 px-3 py-2 bg-pink-500 text-white rounded-lg text-sm font-medium hover:bg-pink-600"
                                     >
                                         <SlidersHorizontal className="w-4 h-4" />
                                         <span>All Filters</span>
                                     </button>
                                 </div>
-
-                                {/* Popular Categories */}
                                 <div className="mb-6">
                                     <h5 className="text-sm font-medium text-gray-700 mb-3">
                                         Popular Categories
@@ -517,17 +611,17 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                                     key={index}
                                                     onClick={() => {
                                                         toggleCategory(
-                                                            category.category_name
+                                                            category.category_name,
                                                         );
                                                         setIsSearchFocused(
-                                                            false
+                                                            false,
                                                         );
                                                     }}
                                                     className={`px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                                                         selectedCategories.includes(
-                                                            category.category_name
+                                                            category.category_name,
                                                         )
-                                                            ? "bg-blue-500 text-white"
+                                                            ? "bg-pink-500 text-white"
                                                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                                     }`}
                                                 >
@@ -542,134 +636,237 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 </div>
             )}
 
-            {/* Promotional Banner */}
-            <div
-                className="relative text-white py-16 mt-10 md:mt-16 lg:mt-0 bg-fixed bg-cover bg-center bg-no-repeat"
-                style={{
-                    backgroundImage: "url(../image/shopping_bg.jpg)",
-                    backgroundPosition: "center",
-                    backgroundSize: "cover",
-                    backgroundPositionY: "center",
-                }}
-            >
-                <div className="absolute inset-0 bg-black/50"></div>
-                <div className="container mx-auto md:mt-10 px-4 text-center relative z-10">
-                    <h1 className="text-3xl lg:text-4xl font-bold mb-4">
-                        ReLove Your Shopping Experience
-                    </h1>
-                    <p className="text-lg lg:text-xl opacity-90 mb-6">
-                        Discover items shared, loved, and ready for you
-                    </p>
-                    {/* Search Bar - Desktop ONLY */}
-                    <div className="max-w-2xl mx-auto relative hidden lg:block">
-                        <input
-                            type="text"
-                            placeholder="Search for products, brands, or categories..."
-                            value={searchQuery}
-                            onChange={handleSearchChange}
-                            className="text-black w-full px-6 py-4 rounded-2xl focus:outline-none focus:ring-4 focus:ring-blue-300 shadow-lg"
-                        />
-                        <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Content */}
-            <main className="flex-1 container mx-auto px-4 lg:px-24 py-4 lg:py-8">
-                <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+            {/* Main Content - No Banner */}
+            <main className="flex-1 container mx-auto px-4 lg:px-24 py-8 mt-16 lg:mt-24">
+                <div className="flex flex-col lg:flex-row gap-8">
                     {/* Filters Sidebar - Desktop */}
                     <aside className="hidden lg:block w-80 flex-shrink-0">
-                        <FilterModal
-                            expandedFilters={expandedFilters}
-                            fetchProducts={fetchProducts}
-                            handlePriceInputChange={handlePriceInputChange}
-                            list_categoryItem={list_categoryItem}
-                            priceRange={priceRange}
-                            categoryCounts={categoryCounts}
-                            resetFilters={resetFilters}
-                            selectedCategories={selectedCategories}
-                            selectedConditions={selectedConditions}
-                            toggleCategory={toggleCategory}
-                            toggleCondition={toggleCondition}
-                            toggleFilterSection={toggleFilterSection}
-                        />
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-24">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                                    <Filter className="w-5 h-5 mr-2 text-pink-500" />
+                                    Filters
+                                </h2>
+                                <button
+                                    onClick={resetFilters}
+                                    className="text-sm text-pink-500 hover:text-pink-600 font-medium"
+                                >
+                                    Clear all
+                                </button>
+                            </div>
+
+                            {/* Price Range Filter */}
+                            <div className="border-b border-gray-200 py-4">
+                                <button
+                                    onClick={() => toggleFilterSection("price")}
+                                    className="flex items-center justify-between w-full text-left"
+                                >
+                                    <h3 className="font-medium text-gray-900">
+                                        Price Range
+                                    </h3>
+                                    <svg
+                                        className={`w-5 h-5 text-gray-500 transform transition-transform ${
+                                            expandedFilters.price
+                                                ? "rotate-180"
+                                                : ""
+                                        }`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M19 9l-7 7-7-7"
+                                        />
+                                    </svg>
+                                </button>
+
+                                {expandedFilters.price && (
+                                    <div className="mt-4 space-y-4">
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1000"
+                                            value={priceRange[1]}
+                                            onChange={(e) =>
+                                                setPriceRange([
+                                                    0,
+                                                    parseInt(e.target.value),
+                                                ])
+                                            }
+                                            className="w-full accent-pink-500"
+                                        />
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="1000"
+                                                value={priceRange[0]}
+                                                onChange={(e) =>
+                                                    handlePriceInputChange(
+                                                        0,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                placeholder="Min"
+                                            />
+                                            <span className="text-gray-500">
+                                                -
+                                            </span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max="1000"
+                                                value={priceRange[1]}
+                                                onChange={(e) =>
+                                                    handlePriceInputChange(
+                                                        1,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                placeholder="Max"
+                                            />
+                                        </div>
+                                        <div className="text-sm text-gray-600">
+                                            Selected: ${priceRange[0]} - $
+                                            {priceRange[1]}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Category Filter */}
+                            <FilterSection
+                                title="Category"
+                                items={
+                                    list_categoryItem?.map(
+                                        (c) => c.category_name,
+                                    ) || []
+                                }
+                                selectedItems={selectedCategories}
+                                toggleFunction={toggleCategory}
+                                filterType="categories"
+                            />
+
+                            {/* Condition Filter */}
+                            <FilterSection
+                                title="Condition"
+                                items={conditions}
+                                selectedItems={selectedConditions}
+                                toggleFunction={toggleCondition}
+                                filterType="condition"
+                            />
+
+                            {/* Size Filter */}
+                            {sizes.length > 0 && (
+                                <FilterSection
+                                    title="Size"
+                                    items={sizes}
+                                    selectedItems={selectedSizes}
+                                    toggleFunction={toggleSize}
+                                    filterType="size"
+                                />
+                            )}
+
+                            {/* Color Filter */}
+                            {colors.length > 0 && (
+                                <FilterSection
+                                    title="Color"
+                                    items={colors}
+                                    selectedItems={selectedColors}
+                                    toggleFunction={toggleColor}
+                                    filterType="color"
+                                />
+                            )}
+
+                            {/* Brand Filter */}
+                            {brands.length > 0 && (
+                                <FilterSection
+                                    title="Brand"
+                                    items={brands}
+                                    selectedItems={selectedBrands}
+                                    toggleFunction={toggleBrand}
+                                    filterType="brand"
+                                />
+                            )}
+                        </div>
                     </aside>
 
                     {/* Products Section */}
                     <section className="flex-1">
-                        {/* Results Header - Desktop */}
-                        <div className="hidden lg:block bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
+                        {/* Results Header */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-6">
                             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                                 <div>
                                     <h2 className="text-xl font-semibold text-gray-900 mb-1">
                                         {searchQuery
                                             ? `Results for "${searchQuery}"`
-                                            : "All Products"}
+                                            : "Reloved Treasures"}
                                     </h2>
                                     <p className="text-sm text-gray-600">
                                         Showing {from}-{to} of {totalProducts}{" "}
-                                        products
-                                        {selectedCategories.length > 0 &&
-                                            ` in ${
-                                                selectedCategories.length
-                                            } categor${
-                                                selectedCategories.length === 1
-                                                    ? "y"
-                                                    : "ies"
-                                            }`}
+                                        pre-loved items
                                     </p>
                                 </div>
+                                <select
+                                    value={sortBy}
+                                    onChange={(e) =>
+                                        handleSortChange(e.target.value)
+                                    }
+                                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                >
+                                    <option value="newest">
+                                        Newest Arrivals
+                                    </option>
+                                    <option value="price-low">
+                                        Price: Low to High
+                                    </option>
+                                    <option value="price-high">
+                                        Price: High to Low
+                                    </option>
+                                    <option value="rating">Top Rated</option>
+                                </select>
                             </div>
                         </div>
 
-                        {/* Mobile Results Info */}
-                        <div className="lg:hidden bg-white rounded-2xl shadow-sm border border-gray-200 p-4 mb-4">
-                            <p className="text-sm text-gray-600 text-center">
-                                Showing {from}-{to} of {totalProducts} products
-                            </p>
+                        {/* Mobile Sort Button */}
+                        <div className="lg:hidden mb-4">
+                            <button
+                                onClick={() => setShowSortOptions(true)}
+                                className="w-full bg-white border border-gray-200 text-gray-700 py-3 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                            >
+                                Sort by: {sortBy.replace("-", " ")}
+                            </button>
                         </div>
 
                         {/* Loading State */}
                         {loading && (
                             <div className="flex justify-center items-center py-12">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
                             </div>
                         )}
 
-                        {/* Product Grid/List */}
+                        {/* Product Grid - 4 cards per row */}
                         {!loading && hasProducts ? (
-                            <div
-                                className={
-                                    mobileViewMode === "grid"
-                                        ? "grid grid-cols-2 gap-3 lg:grid-cols-2 xl:grid-cols-3 lg:gap-6"
-                                        : "space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-6"
-                                }
-                            >
-                                {products.map((product) =>
-                                    isMobile && mobileViewMode === "list" ? (
-                                        <MobileProductCard
-                                            key={product.product_id}
-                                            product={product}
-                                            save_wishlist={save_wishlist}
-                                            get_wishlist={get_wishlist}
-                                        />
-                                    ) : (
-                                        <ShopProductCard
-                                            key={product.product_id}
-                                            product={product}
-                                            isFlashSale={false}
-                                            save_wishlist={save_wishlist}
-                                            get_wishlist={get_wishlist}
-                                        />
-                                    )
-                                )}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
+                                {products.map((product) => (
+                                    <ProductCard
+                                        key={product.product_id}
+                                        product={product}
+                                        save_wishlist={save_wishlist}
+                                    />
+                                ))}
                             </div>
                         ) : (
                             !loading && (
                                 <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-200">
                                     <Search className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                        No products found
+                                        No pre-loved items found
                                     </h3>
                                     <p className="text-gray-600 mb-6">
                                         Try adjusting your search or filter
@@ -677,7 +874,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                     </p>
                                     <button
                                         onClick={resetFilters}
-                                        className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition-colors"
+                                        className="bg-pink-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-pink-600 transition-colors"
                                     >
                                         Reset Filters
                                     </button>
@@ -685,7 +882,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                             )
                         )}
 
-                        {/* Pagination - Mobile Optimized */}
+                        {/* Pagination */}
                         {!loading && hasProducts && lastPage > 1 && (
                             <div className="flex justify-center mt-8">
                                 <div className="flex items-center gap-1 lg:gap-2">
@@ -694,9 +891,9 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                         onClick={() =>
                                             handlePageChange(currentPage - 1)
                                         }
-                                        className="flex text-black items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                                        className="flex items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
                                     >
-                                        <ChevronLeft className="w-4 h-4 text-blue-600" />
+                                        <ChevronLeft className="w-4 h-4 text-pink-500" />
                                         <span className="hidden lg:inline">
                                             Previous
                                         </span>
@@ -708,10 +905,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                             onClick={() =>
                                                 handlePageChange(page)
                                             }
-                                            className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl text-sm text-black font-medium transition-colors ${
+                                            className={`w-8 h-8 lg:w-10 lg:h-10 rounded-xl text-sm font-medium transition-colors ${
                                                 currentPage === page
-                                                    ? "bg-blue-600 text-white"
-                                                    : "border border-gray-300 hover:bg-gray-50"
+                                                    ? "bg-pink-500 text-white"
+                                                    : "border border-gray-300 hover:bg-gray-50 text-gray-700"
                                             }`}
                                         >
                                             {page}
@@ -725,10 +922,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                         }
                                         className="flex items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
                                     >
-                                        <span className="hidden lg:inline text-black">
+                                        <span className="hidden lg:inline">
                                             Next
                                         </span>
-                                        <ChevronRight className="w-4 h-4 text-blue-600" />
+                                        <ChevronRight className="w-4 h-4 text-pink-500" />
                                     </button>
                                 </div>
                             </div>
@@ -749,6 +946,14 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                     resetFilters={resetFilters}
                     selectedCategories={selectedCategories}
                     selectedConditions={selectedConditions}
+                    selectedSizes={selectedSizes}
+                    selectedColors={selectedColors}
+                    selectedBrands={selectedBrands}
+                    toggleCategory={toggleCategory}
+                    toggleCondition={toggleCondition}
+                    toggleSize={toggleSize}
+                    toggleColor={toggleColor}
+                    toggleBrand={toggleBrand}
                     setMobileFiltersOpen={setMobileFiltersOpen}
                 />
             )}
