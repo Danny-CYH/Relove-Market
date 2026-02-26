@@ -644,12 +644,12 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 sticky top-24">
                             <div className="flex items-center justify-between mb-6">
                                 <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                                    <Filter className="w-5 h-5 mr-2 text-pink-500" />
+                                    <Filter className="w-5 h-5 mr-2 text-green-500" />
                                     Filters
                                 </h2>
                                 <button
                                     onClick={resetFilters}
-                                    className="text-sm text-pink-500 hover:text-pink-600 font-medium"
+                                    className="text-sm text-green-500 hover:text-green-600 font-medium"
                                 >
                                     Clear all
                                 </button>
@@ -696,7 +696,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                                     parseInt(e.target.value),
                                                 ])
                                             }
-                                            className="w-full accent-pink-500"
+                                            className="w-full accent-green-500"
                                         />
                                         <div className="flex items-center space-x-2">
                                             <input
@@ -710,14 +710,14 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                                         e.target.value,
                                                     )
                                                 }
-                                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                className="w-24 px-2 py-1 border border-gray-300 text-black rounded text-sm"
                                                 placeholder="Min"
                                             />
                                             <span className="text-gray-500">
                                                 -
                                             </span>
                                             <input
-                                                type="number"
+                                                type="text"
                                                 min="0"
                                                 max="1000"
                                                 value={priceRange[1]}
@@ -727,12 +727,12 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                                         e.target.value,
                                                     )
                                                 }
-                                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                                className="w-24 px-2 py-1 border border-gray-300 text-black rounded text-sm"
                                                 placeholder="Max"
                                             />
                                         </div>
                                         <div className="text-sm text-gray-600">
-                                            Selected: ${priceRange[0]} - $
+                                            Selected: Rm {priceRange[0]} - Rm
                                             {priceRange[1]}
                                         </div>
                                     </div>
@@ -817,7 +817,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                     onChange={(e) =>
                                         handleSortChange(e.target.value)
                                     }
-                                    className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                                    className="text-black border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2"
                                 >
                                     <option value="newest">
                                         Newest Arrivals
@@ -874,7 +874,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                     </p>
                                     <button
                                         onClick={resetFilters}
-                                        className="bg-pink-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-pink-600 transition-colors"
+                                        className="bg-green-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors"
                                     >
                                         Reset Filters
                                     </button>
@@ -894,7 +894,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                         className="flex items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
                                     >
                                         <ChevronLeft className="w-4 h-4 text-pink-500" />
-                                        <span className="hidden lg:inline">
+                                        <span className="hidden lg:inline text-black">
                                             Previous
                                         </span>
                                     </button>
@@ -922,7 +922,7 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                         }
                                         className="flex items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-xl border border-gray-300 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
                                     >
-                                        <span className="hidden lg:inline">
+                                        <span className="hidden lg:inline text-black">
                                             Next
                                         </span>
                                         <ChevronRight className="w-4 h-4 text-pink-500" />

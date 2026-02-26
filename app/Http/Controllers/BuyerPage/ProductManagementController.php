@@ -77,13 +77,40 @@ class ProductManagementController extends Controller
             ]);
 
             $query = Product::with([
-                'productImage',
-                'productVariant',
-                'category',
-                'ratings',
-                'seller.sellerStore',
+                'productImage' => function ($query) {
+                    $query->select('id', 'product_id', 'image_path');
+                },
+                'productVariant' => function ($query) {
+                    $query->select('variant_id', 'product_id', 'variant_combination', 'variant_key', 'quantity', 'price');
+                },
+                'category' => function ($query) {
+                    $query->select('category_id', 'category_name');
+                },
+                'ratings' => function ($query) {
+                    $query->select('id', 'product_id', 'user_id', 'rating', 'comment');
+                },
+                'seller' => function ($query) {
+                    $query->select('seller_id', 'store_id', 'seller_name', 'seller_email', 'seller_phone')
+                        ->with([
+                            'sellerStore' => function ($q) {
+                                $q->select('store_id', 'store_name');
+                            }
+                        ]);
+                },
                 'orderItems'
             ])
+                ->select([
+                    'product_id',
+                    'product_name',
+                    'product_description',
+                    'product_price',
+                    'product_condition',
+                    'product_quantity',
+                    'product_status',
+                    'featured',
+                    'category_id',
+                    'seller_id',
+                ])
                 ->where('product_status', 'available')
                 ->orderBy('featured', 'desc');
 
@@ -108,6 +135,7 @@ class ProductManagementController extends Controller
                 if (!empty($categoryIds)) {
                     // Filter by category_id
                     $query->whereIn('category_id', $categoryIds);
+                    $query->orderBy('created_at', 'desc');
                     \Log::info('📊 Products matching category filter: ' . $query->count());
                 } else {
                     \Log::info('❌ No category IDs found for: ' . implode(', ', $categoriesFilter));
@@ -139,8 +167,10 @@ class ProductManagementController extends Controller
                 $query->whereIn('product_condition', $conditionsFilter);
             }
 
-            $list_shoppingItem = $query->paginate(6);
+            $list_shoppingItem = $query->paginate(8);
             $list_categoryItem = Category::all();
+
+            $query->orderBy('created_at', 'desc');
 
             \Log::info('📤 SHOPPING API - Sending response:', [
                 'current_page' => $list_shoppingItem->currentPage(),

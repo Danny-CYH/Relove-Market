@@ -61,56 +61,14 @@ class UserController extends Controller
             "orderItems"
         ])
             ->where("product_status", '!=', "blocked")
-            ->orderBy('featured', 'DESC');
+            ->orderBy('featured', 'desc');
 
-        // Apply search filter
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('product_name', 'like', '%' . $search . '%')
-                    ->orWhere('product_description', 'like', '%' . $search . '%')
-                    ->orWhereHas('category', function ($categoryQuery) use ($search) {
-                        $categoryQuery->where('category_name', 'like', '%' . $search . '%');
-                    });
-            });
-        }
-
-        // Apply category filter from query parameters
-        if ($request->has('categories')) {
-            $categories = $request->categories;
-
-            // Handle both array and string input
-            if (!is_array($categories)) {
-                $categories = [$categories];
-            }
-
-            \Log::info('🎯 Applying category filter in shopping method:', [
-                'categories' => $categories,
-                'type' => gettype($request->categories)
-            ]);
-
-            if (!empty($categories)) {
-                $query->whereHas('category', function ($categoryQuery) use ($categories) {
-                    $categoryQuery->whereIn('category_name', $categories);
-                });
-            }
-        }
-
-        // Default sorting
-        $query->orderBy('created_at', 'desc');
-
-        $list_shoppingItem = $query->paginate(6);
+        $list_shoppingItem = $query->paginate(8);
         $list_categoryItem = Category::all();
-
-        // Pass the current category filter to the frontend
-        $currentCategories = $request->has('categories') ?
-            (is_array($request->categories) ? $request->categories : [$request->categories]) : [];
 
         return Inertia::render("BuyerPage/ShopPage", [
             'list_shoppingItem' => $list_shoppingItem,
             'list_categoryItem' => $list_categoryItem,
-            'filters' => $request->only(['search', 'categories']),
-            'currentCategories' => $currentCategories
         ]);
     }
 
