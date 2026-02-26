@@ -59,6 +59,7 @@ class ProductManagementController extends Controller
             $categoriesFilter = $request->get('categories', []);
             $priceRange = $request->get('price_range', [0, 1000]);
             $conditionsFilter = $request->get('conditions', []);
+            $sortBy = $request->get('sort_by', 'newest');
 
             // FIX: Handle categories whether they come as string or array
             if (!is_array($categoriesFilter) && !empty($categoriesFilter)) {

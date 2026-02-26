@@ -4,22 +4,16 @@ import {
     ChevronRight,
     X,
     SlidersHorizontal,
-    Heart,
-    Star,
     Filter,
 } from "lucide-react";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-
-import axios from "axios";
-import Swal from "sweetalert2";
 
 import { Footer } from "@/Components/BuyerPage/Footer";
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
 import { MobileSortModal } from "@/Components/BuyerPage/ShopPage/MobileSortModal";
 import { MobileFilterModal } from "@/Components/BuyerPage/ShopPage/MobileFilterModal";
-import { usePage } from "@inertiajs/react";
 
 export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [priceRange, setPriceRange] = useState([0, 1000]);
@@ -27,7 +21,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [selectedConditions, setSelectedConditions] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
     const [selectedColors, setSelectedColors] = useState([]);
-    const [selectedBrands, setSelectedBrands] = useState([]);
     const [sortBy, setSortBy] = useState("newest");
     const [searchQuery, setSearchQuery] = useState("");
     const [expandedFilters, setExpandedFilters] = useState({
@@ -36,12 +29,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         condition: true,
         size: false,
         color: false,
-        brand: false,
     });
 
     // New mobile-specific states
     const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-    const [mobileViewMode, setMobileViewMode] = useState("grid"); // Changed to grid for vertical cards
     const [isMobile, setIsMobile] = useState(false);
 
     const [showSortOptions, setShowSortOptions] = useState(false);
@@ -56,13 +47,9 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
     const [to, setTo] = useState(0);
     const [loading, setLoading] = useState(false);
 
-    const [categoryCounts, setCategoryCounts] = useState([]);
-
     // Refs for debounce
     const debounceTimeoutRef = useRef(null);
     const isInitialMount = useRef(true);
-
-    const { auth } = usePage().props;
 
     // Extract unique values for filters from products
     const getUniqueValues = (key) => {
@@ -73,24 +60,11 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
     const sizes = getUniqueValues("size");
     const colors = getUniqueValues("color");
-    const brands = getUniqueValues("brand");
     const conditions = ["like-new", "good", "excellent", "fair"]; // Standard conditions
-
-    const fetchCategoryCounts = async () => {
-        try {
-            const response = await fetch(
-                `/api/shopping/category-counts?search=${searchQuery}`,
-            );
-            const data = await response.json();
-            setCategoryCounts(data.categoryCounts || {});
-        } catch (error) {
-            console.error("Error fetching category counts:", error);
-        }
-    };
 
     // Fixed fetchProducts function
     const fetchProducts = useCallback(
-        async (page = 1, filters = {}) => {
+        async (page = 1) => {
             setLoading(true);
 
             // Build URL with proper array parameters
@@ -122,12 +96,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             if (selectedColors.length > 0) {
                 selectedColors.forEach((color) => {
                     params.append("colors[]", color);
-                });
-            }
-
-            if (selectedBrands.length > 0) {
-                selectedBrands.forEach((brand) => {
-                    params.append("brands[]", brand);
                 });
             }
 
@@ -181,7 +149,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
             selectedConditions,
             selectedSizes,
             selectedColors,
-            selectedBrands,
             priceRange,
         ],
     );
@@ -202,113 +169,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                 fetchProducts(1, { search: query });
             }
         }, 500);
-    };
-
-    // Function to get wishlist status
-    const get_wishlist = async (product_id) => {
-        try {
-            const response = await axios.get(route("get-wishlist", product_id));
-            return response.data;
-        } catch (error) {
-            console.error("Error fetching wishlist:", error);
-            return null;
-        }
-    };
-
-    // Function to save to wishlist
-    const save_wishlist = async (productId, selectedVariant = null) => {
-        try {
-            if (!auth.user) {
-                Swal.fire({
-                    title: "Login Required",
-                    text: "You need to log in to add items to your wishlist.",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Go to Login",
-                    cancelButtonText: "Cancel",
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = route("login");
-                    }
-                });
-                return false;
-            }
-
-            const requestData = {
-                product_id: productId,
-            };
-
-            if (selectedVariant) {
-                let variantCombination = selectedVariant.variant_combination;
-                if (typeof variantCombination === "string") {
-                    try {
-                        variantCombination = JSON.parse(variantCombination);
-                    } catch (error) {
-                        console.error(
-                            "Error parsing variant combination:",
-                            error,
-                        );
-                        variantCombination = {
-                            Colors: selectedVariant.variant_key,
-                        };
-                    }
-                }
-
-                requestData.selected_variant = {
-                    variant_id: selectedVariant.variant_id,
-                    variant_combination: variantCombination,
-                    price:
-                        selectedVariant.price || selectedVariant.variant_price,
-                    quantity:
-                        selectedVariant.quantity ||
-                        selectedVariant.stock_quantity,
-                };
-            }
-
-            const response = await axios.post(
-                route("store-wishlist"),
-                requestData,
-            );
-
-            if (response.status === 200) {
-                Swal.fire({
-                    title: "Added to Wishlist!",
-                    text: "This item has been successfully added to your wishlist.",
-                    icon: "success",
-                    confirmButtonText: "OK",
-                    timer: 4000,
-                    timerProgressBar: true,
-                });
-
-                await get_wishlist(productId);
-                return true;
-            }
-        } catch (error) {
-            console.error("💥 Error in save_wishlist:", error);
-
-            if (error.response?.status === 401) {
-                Swal.fire({
-                    title: "Session Expired",
-                    text: "Your session has expired. Please log in again.",
-                    icon: "warning",
-                    confirmButtonText: "Login",
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = route("login");
-                    }
-                });
-                return false;
-            }
-
-            Swal.fire({
-                title: "Error",
-                text: "Failed to add product to wishlist. Please try again.",
-                icon: "error",
-                confirmButtonText: "OK",
-            });
-
-            return false;
-        }
     };
 
     // Toggle functions for filters
@@ -344,14 +204,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         );
     };
 
-    const toggleBrand = (brand) => {
-        setSelectedBrands((prev) =>
-            prev.includes(brand)
-                ? prev.filter((b) => b !== brand)
-                : [...prev, brand],
-        );
-    };
-
     // Apply filters (for mobile)
     const applyFilters = () => {
         setMobileFiltersOpen(false);
@@ -365,7 +217,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         setSelectedConditions([]);
         setSelectedSizes([]);
         setSelectedColors([]);
-        setSelectedBrands([]);
         setSortBy("newest");
         setSearchQuery("");
         fetchProducts(1);
@@ -485,10 +336,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         </div>
     );
 
-    useEffect(() => {
-        fetchCategoryCounts();
-    }, [searchQuery, selectedCategories]);
-
     // Initialize with props data on component mount
     useEffect(() => {
         if (list_shoppingItem?.data) {
@@ -527,7 +374,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
         selectedConditions,
         selectedSizes,
         selectedColors,
-        selectedBrands,
         priceRange,
         sortBy,
         fetchProducts,
@@ -657,6 +503,18 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
 
                             {/* Price Range Filter */}
                             <div className="border-b border-gray-200 py-4">
+                                <div className="relative mb-6">
+                                    <input
+                                        type="text"
+                                        placeholder="What pre-loved treasure are you looking for?"
+                                        value={searchQuery}
+                                        onChange={handleSearchChange}
+                                        autoFocus
+                                        className="text-black w-full px-4 py-3 pl-12 rounded-2xl bg-gray-100 border-green-600 focus:ring-2 focus:ring-green-500 focus:bg-white"
+                                    />
+                                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                                </div>
+
                                 <button
                                     onClick={() => toggleFilterSection("price")}
                                     className="flex items-center justify-between w-full text-left"
@@ -782,17 +640,6 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                     filterType="color"
                                 />
                             )}
-
-                            {/* Brand Filter */}
-                            {brands.length > 0 && (
-                                <FilterSection
-                                    title="Brand"
-                                    items={brands}
-                                    selectedItems={selectedBrands}
-                                    toggleFunction={toggleBrand}
-                                    filterType="brand"
-                                />
-                            )}
                         </div>
                     </aside>
 
@@ -812,24 +659,34 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                                         pre-loved items
                                     </p>
                                 </div>
-                                <select
-                                    value={sortBy}
-                                    onChange={(e) =>
-                                        handleSortChange(e.target.value)
-                                    }
-                                    className="text-black border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2"
-                                >
-                                    <option value="newest">
-                                        Newest Arrivals
-                                    </option>
-                                    <option value="price-low">
-                                        Price: Low to High
-                                    </option>
-                                    <option value="price-high">
-                                        Price: High to Low
-                                    </option>
-                                    <option value="rating">Top Rated</option>
-                                </select>
+                                <div className="flex-row">
+                                    <button
+                                        type="button"
+                                        className="p-2 mr-4 rounded-lg text-white text-sm bg-green-500 hover:bg-green-600 transition-colors"
+                                    >
+                                        Visual Search
+                                    </button>
+                                    <select
+                                        value={sortBy}
+                                        onChange={(e) =>
+                                            handleSortChange(e.target.value)
+                                        }
+                                        className="text-black border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2"
+                                    >
+                                        <option value="newest">
+                                            Newest Arrivals
+                                        </option>
+                                        <option value="price-low">
+                                            Price: Low to High
+                                        </option>
+                                        <option value="price-high">
+                                            Price: High to Low
+                                        </option>
+                                        <option value="rating">
+                                            Top Rated
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -850,14 +707,14 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                             </div>
                         )}
 
-                        {/* Product Grid - 4 cards per row */}
+                        {/* Product Grid - 8 cards per row */}
                         {!loading && hasProducts ? (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
                                 {products.map((product) => (
                                     <ProductCard
                                         key={product.product_id}
                                         product={product}
-                                        save_wishlist={save_wishlist}
+                                        selectedVariant={null}
                                     />
                                 ))}
                             </div>
@@ -948,12 +805,10 @@ export default function ShopPage({ list_shoppingItem, list_categoryItem }) {
                     selectedConditions={selectedConditions}
                     selectedSizes={selectedSizes}
                     selectedColors={selectedColors}
-                    selectedBrands={selectedBrands}
                     toggleCategory={toggleCategory}
                     toggleCondition={toggleCondition}
                     toggleSize={toggleSize}
                     toggleColor={toggleColor}
-                    toggleBrand={toggleBrand}
                     setMobileFiltersOpen={setMobileFiltersOpen}
                 />
             )}

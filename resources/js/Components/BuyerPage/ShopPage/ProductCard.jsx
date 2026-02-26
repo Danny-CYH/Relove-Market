@@ -1,15 +1,20 @@
 import { Heart, Star } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
+import { usePage } from "@inertiajs/react";
 
 import { GetColorValue } from "../../HelperFunction/GetColorValue";
 import { getVariantDetails } from "../../HelperFunction/GetVariantDetails";
 import { getDisplayPrice } from "../../HelperFunction/GetDisplayPrice";
+import { SaveWishlist } from "../../HelperFunction/SaveWishlist";
 
-export function ProductCard({ product, save_wishlist }) {
+export function ProductCard({ product, selected_variant }) {
     const [imageError, setImageError] = useState(false);
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageUrl, setImageUrl] = useState("/api/placeholder/300/400");
+
+    // Get auth data from page props for wishlist functionality
+    const { auth } = usePage().props;
 
     // Get variant details for display
     const variantDetails = getVariantDetails(product);
@@ -105,7 +110,13 @@ export function ProductCard({ product, save_wishlist }) {
 
                     {/* Wishlist Button */}
                     <button
-                        onClick={() => save_wishlist(product.product_id)}
+                        onClick={() =>
+                            SaveWishlist(
+                                product.product_id,
+                                selected_variant,
+                                auth,
+                            )
+                        }
                         className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-pink-50 z-10"
                     >
                         <Heart className="w-4 h-4 text-pink-500" />
