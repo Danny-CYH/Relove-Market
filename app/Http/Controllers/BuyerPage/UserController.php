@@ -58,8 +58,8 @@ class UserController extends Controller
             'category',
             'ratings',
             'seller.sellerStore',
-            "orderItems"
         ])
+            ->withCount('orderItems as order_items') // Add order items count for popularity sorting
             ->where("product_status", '!=', "blocked")
             ->orderBy('featured', 'desc');
 
