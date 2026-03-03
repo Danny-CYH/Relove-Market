@@ -82,6 +82,7 @@ class UserController extends Controller
     public function productDetails($product_id)
     {
         $product_info = Product::with([
+            'category',
             'productImage',
             "productVideo",
             "productFeature",

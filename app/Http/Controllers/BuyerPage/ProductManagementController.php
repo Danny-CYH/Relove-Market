@@ -98,8 +98,8 @@ class ProductManagementController extends Controller
                             }
                         ]);
                 },
-                'orderItems'
             ])
+                ->withCount('orderItems as order_items') // Add order items count for popularity sorting
                 ->select([
                     'product_id',
                     'product_name',
@@ -298,14 +298,32 @@ class ProductManagementController extends Controller
 
             // Query database for product details
             $products = Product::with([
-                "productImage",
+                "productImage" => function ($query) {
+                    $query->select('product_id', 'image_path');
+                },
                 "productVideo",
-                "productFeature",
-                "productIncludeItem",
-                'orderItems',
-                "ratings",
-                "category",
+                "productFeature" => function ($query) {
+                    $query->select('product_id', 'feature_id', 'feature_text');
+                },
+                "productIncludeItem" => function ($query) {
+                    $query->select('product_id', 'item_id', 'item_name');
+                },
+                "seller" => function ($query) {
+                    $query->select('seller_id', 'seller_name', 'store_id')
+                        ->with([
+                            'sellerStore' => function ($q) {
+                                $q->select('store_id', 'store_name');
+                            }
+                        ]);
+                },
+                "ratings" => function ($query) {
+                    $query->select('product_id', 'user_id', 'rating', 'comment');
+                },
+                "category" => function ($query) {
+                    $query->select('category_id', 'category_name');
+                },
             ])
+                ->withCount('orderItems as order_items')
                 ->whereIn('product_id', $productIds)
                 ->where('product_status', '!=', 'blocked')
                 ->get()

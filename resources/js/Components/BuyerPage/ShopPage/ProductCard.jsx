@@ -23,7 +23,7 @@ export function ProductCard({ product, selected_variant }) {
     const displayPrice = getDisplayPrice(product, variantDetails);
 
     // Calculate sold count from order items or fallback to sold_count
-    const soldCount = product.order_items?.length || product.sold_count || 0;
+    const soldCount = product.order_items || 0;
 
     // Calculate rating if available
     const averageRating =
@@ -59,69 +59,60 @@ export function ProductCard({ product, selected_variant }) {
 
     return (
         <div className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden border border-gray-200 group flex flex-col h-full">
-            {/* Product Image */}
-            <div className="w-full h-48 sm:h-56 lg:h-52 xl:h-48 flex-shrink-0">
-                <div
-                    className="relative w-full h-full bg-gray-100"
-                    style={{ minHeight: "192px" }}
-                >
-                    {/* Loading Spinner */}
-                    {!imageLoaded && !imageError && (
-                        <div className="absolute inset-0 flex items-center justify-center z-20">
-                            <div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+            {/* Product Image - Fixed aspect ratio container */}
+            <div className="relative w-full aspect-[6/4] overflow-hidden bg-gray-100">
+                {/* Loading Spinner */}
+                {!imageLoaded && !imageError && (
+                    <div className="absolute inset-0 flex items-center justify-center z-20">
+                        <div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                )}
+
+                {/* Image */}
+                <img
+                    src={imageError ? "/api/placeholder/300/400" : imageUrl}
+                    alt={product.product_name}
+                    className={`absolute inset-0 w-full h-full transition-all duration-300 object-cover ${
+                        imageLoaded && !imageError
+                            ? "opacity-100 scale-100 group-hover:scale-105"
+                            : "opacity-0"
+                    }`}
+                    onError={handleImageError}
+                    onLoad={() => setImageLoaded(true)}
+                    loading="lazy"
+                />
+
+                {/* Badges */}
+                <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
+                    {product.featured && (
+                        <span className="bg-pink-500 text-white text-xs px-2 py-1 rounded shadow-md">
+                            Featured
+                        </span>
+                    )}
+                    {product.product_condition && (
+                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded capitalize shadow-md">
+                            {product.product_condition}
+                        </span>
+                    )}
+                </div>
+
+                <div className="absolute bottom-2 right-2 flex flex-col gap-1 z-10">
+                    {variantDetails.variantCount > 1 && (
+                        <div className="bg-gray-500 text-white text-xs px-2 py-1 rounded capitalize shadow-md">
+                            {variantDetails.variantCount} variants
                         </div>
                     )}
-
-                    {/* Image */}
-                    <img
-                        src={imageError ? "/api/placeholder/300/400" : imageUrl}
-                        alt={product.product_name}
-                        className={`absolute inset-0 w-full md:min-h-48 transition-all duration-300 object-cover ${
-                            imageLoaded && !imageError
-                                ? "opacity-100 scale-100 group-hover:scale-105"
-                                : "opacity-0"
-                        }`}
-                        onError={handleImageError}
-                        onLoad={() => setImageLoaded(true)}
-                        loading="lazy"
-                    />
-
-                    {/* Badges */}
-                    <div className="absolute top-2 left-2 flex flex-col gap-1 z-10">
-                        {product.featured && (
-                            <span className="bg-pink-500 text-white text-xs px-2 py-1 rounded shadow-md">
-                                Featured
-                            </span>
-                        )}
-                        {product.product_condition && (
-                            <span className="bg-green-500 text-white text-xs px-2 py-1 rounded capitalize shadow-md">
-                                {product.product_condition}
-                            </span>
-                        )}
-                    </div>
-
-                    <div className="absolute bottom-2 right-2 flex flex-col gap-1 z-10">
-                        {variantDetails.variantCount > 1 && (
-                            <div className="bg-gray-500 text-white text-xs px-2 py-1 rounded capitalize shadow-md">
-                                {variantDetails.variantCount} variants
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Wishlist Button */}
-                    <button
-                        onClick={() =>
-                            SaveWishlist(
-                                product.product_id,
-                                selected_variant,
-                                auth,
-                            )
-                        }
-                        className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-pink-50 z-10"
-                    >
-                        <Heart className="w-4 h-4 text-pink-500" />
-                    </button>
                 </div>
+
+                {/* Wishlist Button */}
+                <button
+                    onClick={() =>
+                        SaveWishlist(product.product_id, selected_variant, auth)
+                    }
+                    className="absolute top-2 right-2 bg-white p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-pink-50 z-10"
+                >
+                    <Heart className="w-4 h-4 text-pink-500" />
+                </button>
             </div>
 
             {/* Product Details */}

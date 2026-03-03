@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "@inertiajs/react";
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import Carousel from "react-multi-carousel";
 
 import "react-multi-carousel/lib/styles.css";
 
-import { ProductCard } from "@/Components/BuyerPage/ProductCard";
+import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
 
 export function ProductCarousel({ products = [], title, save_wishlist }) {
     const items = Array.isArray(products) ? products : [];
@@ -55,12 +54,9 @@ export function ProductCarousel({ products = [], title, save_wishlist }) {
         return null;
     }
 
-    const handleWishlist =
-        typeof save_wishlist === "function" ? save_wishlist : () => {};
-
     return (
-        <section className="py-8 px-4">
-            <div className="max-w-7xl mx-auto">
+        <section className="py-8">
+            <div className="max-w-9xl mx-auto">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl md:text-2xl font-bold text-gray-900">
                         {title || "Recommended Products"}
@@ -103,12 +99,8 @@ export function ProductCarousel({ products = [], title, save_wishlist }) {
                         shouldResetAutoplay={false}
                     >
                         {items.map((product) => (
-                            <div key={product.product_id} className="h-full">
-                                <ProductCard
-                                    product={product}
-                                    isFlashSale={false}
-                                    save_wishlist={handleWishlist}
-                                />
+                            <div key={product.product_id}>
+                                <ProductCard product={product} />
                             </div>
                         ))}
                     </Carousel>
