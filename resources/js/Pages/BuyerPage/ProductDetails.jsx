@@ -129,8 +129,6 @@ export default function ProductDetails({ product_info }) {
     });
     const [recommendations, setRecommendations] = useState([]);
 
-    console.log(recommendations);
-
     const { auth } = usePage().props;
 
     const product = product_info?.[0];
@@ -273,16 +271,12 @@ export default function ProductDetails({ product_info }) {
 
         try {
             const checkoutData = prepareCheckoutData();
-            const loadingAlert = showLoadingAlert(
-                "Processing Your Order...",
-                "Please wait while we prepare your purchase",
-            );
 
             router.post(route("checkout-process"), {
                 items: checkoutData,
-                onSuccess: () => loadingAlert.close(),
                 onError: (errors) => {
-                    loadingAlert.close();
+                    // Close the loading alert
+                    Swal.close();
                     console.error("Error during buy now:", errors);
                     showAlert(
                         "error",
@@ -293,6 +287,8 @@ export default function ProductDetails({ product_info }) {
                 },
             });
         } catch (error) {
+            // Close the loading alert in case of exception
+            Swal.close();
             console.error("Error during buy now:", error);
             showAlert(
                 "error",
@@ -302,68 +298,6 @@ export default function ProductDetails({ product_info }) {
             );
         } finally {
             setLoadingStates((prev) => ({ ...prev, buyNow: false }));
-        }
-    };
-
-    const handleWishlistToggle = async (product_id) => {
-        if (!auth?.user) {
-            showAlert(
-                "warning",
-                "Login Required",
-                "Please login to add items to your wishlist",
-                "Login Now",
-            ).then(
-                (result) => result.isConfirmed && router.visit(route("login")),
-            );
-            return;
-        }
-
-        if (product?.product_quantity <= 0) {
-            showAlert(
-                "warning",
-                "Product Out of Stock",
-                "Items not available currently",
-                "OK",
-            );
-            return;
-        }
-
-        if (!validateVariant("adding to wishlist")) return;
-
-        setLoadingStates((prev) => ({ ...prev, wishlist: true }));
-        setActionSuccess((prev) => ({ ...prev, wishlist: false }));
-
-        try {
-            if (isWishlisted) {
-                await axios.delete(route("remove-wishlist"), {
-                    data: { product_id: [product_id] },
-                });
-                setIsWishlisted(false);
-            } else {
-                const variantData = prepareSelectedVariantData();
-                await axios.post(route("store-wishlist"), {
-                    product_id: product_id,
-                    selected_variant: variantData,
-                    selected_quantity: quantity,
-                });
-                setIsWishlisted(true);
-            }
-            setActionSuccess((prev) => ({ ...prev, wishlist: true }));
-            setTimeout(
-                () =>
-                    setActionSuccess((prev) => ({ ...prev, wishlist: false })),
-                2000,
-            );
-        } catch (error) {
-            console.error("Error updating wishlist:", error);
-            showAlert(
-                "error",
-                "Error",
-                "Failed to update wishlist. Please try again.",
-                "OK",
-            );
-        } finally {
-            setLoadingStates((prev) => ({ ...prev, wishlist: false }));
         }
     };
 

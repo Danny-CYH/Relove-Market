@@ -1,270 +1,304 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
+    PaymentElement,
     useStripe,
     useElements,
-    CardNumberElement,
-    CardExpiryElement,
-    CardCvcElement,
 } from "@stripe/react-stripe-js";
-import { usePage } from "@inertiajs/react";
+import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import axios from "axios";
+import Swal from "sweetalert2";
 
 export function CheckoutForm({
     total,
+    setActiveStep,
     paymentMethod,
     onPaymentSuccess,
     onPaymentError,
     list_product,
     subtotal,
     shipping,
+    validationId,
+    userId,
+    sellerId,
 }) {
-    const stripe = useStripe();
-    const elements = useElements();
-    const { auth } = usePage().props;
+    // Only use Stripe hooks if payment method is card
+    const stripe = paymentMethod === "card" ? useStripe() : null;
+    const elements = paymentMethod === "card" ? useElements() : null;
 
-    const [processing, setProcessing] = useState(false);
-    const [cardError, setCardError] = useState(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [paymentError, setPaymentError] = useState(null);
+    const [paymentSuccess, setPaymentSuccess] = useState(false);
+    const [loadingAlert, setLoadingAlert] = useState(null);
 
-    const parseSelectedVariant = (item) => {
-        if (!item?.selected_variant) return null;
-        try {
-            return typeof item.selected_variant === "string"
-                ? JSON.parse(item.selected_variant)
-                : item.selected_variant;
-        } catch (error) {
-            return null;
-        }
-    };
+    const isCardPayment = paymentMethod === "card";
 
-    const normalizeItem = (item) => {
-        if (item?.product) {
-            return item;
-        }
-        return {
-            product: {
-                product_id: item.product_id,
-                product_name: item.product_name,
-                product_price: item.product_price,
-                seller_id: item.seller_id,
-                product_image: item.product_image || item.productImage,
+    // Show loading alert function
+    const showLoadingAlert = (title, text) => {
+        return Swal.fire({
+            title,
+            text,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
             },
-            selected_quantity: item.quantity || item.selected_quantity || 1,
-            selected_variant: item.selected_variant || null,
-        };
-    };
-
-    const buildOrderItems = (items) => {
-        return items.map((raw) => {
-            const item = normalizeItem(raw);
-            const product = item.product || raw;
-            const selectedVariant = parseSelectedVariant(item);
-            return {
-                product_id: product.product_id || item.product_id,
-                quantity: item.selected_quantity || item.quantity || 1,
-                price:
-                    selectedVariant?.price ||
-                    product.product_price ||
-                    item.product_price ||
-                    0,
-                selected_variant: selectedVariant || null,
-            };
         });
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleCardPayment = async (event) => {
+        event.preventDefault();
 
         if (!stripe || !elements) {
             return;
         }
 
-        setProcessing(true);
-        setCardError(null);
+        setIsProcessing(true);
+        setPaymentError(null);
+
+        // Show loading alert
+        showLoadingAlert(
+            "Processing your order...",
+            "Please wait while we process your payment",
+        );
 
         try {
-            const items = Array.isArray(list_product) ? list_product : [];
-            const orderItems = buildOrderItems(items);
-
-            if (orderItems.length === 0) {
-                onPaymentError?.("No items to checkout.");
-                setProcessing(false);
-                return;
+            const { error: submitError } = await elements.submit();
+            if (submitError) {
+                Swal.close();
+                throw submitError;
             }
 
-            const sellerId =
-                items[0]?.product?.seller_id ||
-                items[0]?.seller_id ||
-                items[0]?.product?.seller?.seller_id;
-
-            const amount = Math.round((total || 0) * 100);
-
-            // Validate stock
-            const stockRes = await axios.post("/validate-stock", {
-                order_items: orderItems,
-            });
-
-            if (!stockRes.data?.valid) {
-                onPaymentError?.(
-                    stockRes.data?.error || "Stock validation failed."
-                );
-                setProcessing(false);
-                return;
-            }
-
-            // Create payment intent
-            const intentRes = await axios.post("/create-payment-intent", {
-                amount,
-                currency: "myr",
-                payment_method_types: ["card"],
-                user_id: auth?.user?.user_id,
-                seller_id: sellerId,
-                order_items: orderItems,
-                subtotal,
-                shipping,
-                payment_method: paymentMethod,
-                stock_validation_id: stockRes.data?.validation_id,
-            });
-
-            const clientSecret = intentRes.data?.clientSecret;
-            const orderId = intentRes.data?.orderId;
-
-            if (!clientSecret || !orderId) {
-                onPaymentError?.("Failed to create payment intent.");
-                setProcessing(false);
-                return;
-            }
-
-            const cardElement = elements.getElement(CardNumberElement);
-
-            const { paymentIntent, error } =
-                await stripe.confirmCardPayment(clientSecret, {
-                    payment_method: {
-                        card: cardElement,
+            const { error: confirmError, paymentIntent } =
+                await stripe.confirmPayment({
+                    elements,
+                    confirmParams: {
+                        return_url:
+                            window.location.origin + "/payment/complete",
                     },
+                    redirect: "if_required",
                 });
 
-            if (error) {
-                setCardError(error.message);
-                onPaymentError?.(error.message);
-                setProcessing(false);
-                return;
+            if (confirmError) {
+                Swal.close();
+                throw confirmError;
             }
 
-            // Confirm payment with backend
-            const confirmRes = await axios.post("/confirm-payment", {
-                payment_intent_id: paymentIntent.id,
-                order_id: orderId,
-                user_id: auth?.user?.user_id,
-                seller_id: sellerId,
-                amount,
-                currency: "myr",
-                order_items: orderItems,
-                subtotal,
-                shipping,
-                payment_method: paymentMethod,
-            });
-
-            if (confirmRes.data?.success) {
-                onPaymentSuccess?.(confirmRes.data?.order);
-            } else {
-                onPaymentError?.(
-                    confirmRes.data?.error || "Payment confirmation failed."
-                );
+            if (paymentIntent && paymentIntent.status === "succeeded") {
+                Swal.close();
+                await confirmOrder(paymentIntent.id);
             }
         } catch (error) {
-            const message =
-                error?.response?.data?.error ||
-                error?.message ||
-                "Payment failed. Please try again.";
-            onPaymentError?.(message);
-            setCardError(message);
+            console.error("Payment error:", error);
+            Swal.close();
+            setPaymentError(error.message || "Payment failed");
+            onPaymentError?.(error.message || "Payment failed");
         } finally {
-            setProcessing(false);
+            setIsProcessing(false);
         }
     };
 
-    return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
-                <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Card Number
-                    </label>
-                    <div className="rounded-lg border border-gray-300 px-3 py-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                        <CardNumberElement
-                            options={{
-                                style: {
-                                    base: {
-                                        fontSize: "16px",
-                                        color: "#111827",
-                                        fontFamily: "inherit",
-                                        "::placeholder": {
-                                            color: "#9CA3AF",
-                                        },
-                                    },
-                                },
-                            }}
-                        />
-                    </div>
-                </div>
+    const handleCodPayment = async (event) => {
+        event.preventDefault();
+        setIsProcessing(true);
+        setPaymentError(null);
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Expiry Date
-                        </label>
-                        <div className="rounded-lg border border-gray-300 px-3 py-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                            <CardExpiryElement
-                                options={{
-                                    style: {
-                                        base: {
-                                            fontSize: "16px",
-                                            color: "#111827",
-                                            fontFamily: "inherit",
-                                            "::placeholder": {
-                                                color: "#9CA3AF",
-                                            },
-                                        },
-                                    },
-                                }}
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            CVC
-                        </label>
-                        <div className="rounded-lg border border-gray-300 px-3 py-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                            <CardCvcElement
-                                options={{
-                                    style: {
-                                        base: {
-                                            fontSize: "16px",
-                                            color: "#111827",
-                                            fontFamily: "inherit",
-                                            "::placeholder": {
-                                                color: "#9CA3AF",
-                                            },
-                                        },
-                                    },
-                                }}
-                            />
-                        </div>
-                    </div>
-                </div>
+        // Show loading alert for COD
+        showLoadingAlert(
+            "Processing your order...",
+            "Please wait while we confirm your order",
+        );
 
-                {cardError && (
-                    <p className="text-sm text-red-600">{cardError}</p>
-                )}
+        try {
+            // Generate a mock payment intent ID for COD
+            const mockPaymentIntentId =
+                "cod_" +
+                Date.now() +
+                "_" +
+                Math.random().toString(36).substr(2, 9);
+
+            Swal.close();
+            await confirmOrder(mockPaymentIntentId, "cod");
+        } catch (error) {
+            console.error("COD order error:", error);
+            Swal.close();
+            setPaymentError(error.message || "Failed to create order");
+            onPaymentError?.(error.message || "Failed to create order");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const confirmOrder = async (paymentIntentId, method = "card") => {
+        try {
+            // Prepare order items
+            const orderItems = list_product.map((item) => {
+                const selectedVariant = item.selected_variant
+                    ? typeof item.selected_variant === "string"
+                        ? JSON.parse(item.selected_variant)
+                        : item.selected_variant
+                    : null;
+
+                return {
+                    product_id: item.product_id || item.product?.product_id,
+                    quantity: item.selected_quantity || item.quantity || 1,
+                    price:
+                        selectedVariant?.price ||
+                        item.product_price ||
+                        item.product?.product_price ||
+                        0,
+                    selected_variant: selectedVariant,
+                };
+            });
+
+            const orderId =
+                "ORD-" +
+                new Date().toISOString().slice(0, 10).replace(/-/g, "") +
+                "-" +
+                Math.random().toString(36).substr(2, 9).toUpperCase();
+
+            const response = await axios.post(route("confirm-payment"), {
+                payment_intent_id: paymentIntentId,
+                order_id: orderId,
+                user_id: userId,
+                seller_id: sellerId,
+                amount: Math.round(total * 100),
+                currency: "myr",
+                order_items: orderItems,
+                subtotal: subtotal,
+                shipping: shipping,
+                payment_method: method,
+                payment_status: method === "cod" ? "pending" : "paid",
+            });
+
+            if (response.data.success) {
+                setPaymentSuccess(true);
+
+                // Show success message
+                Swal.fire({
+                    icon: "success",
+                    title: "Order Placed Successfully!",
+                    text: "Your order has been confirmed.",
+                    timer: 2000,
+                    showConfirmButton: false,
+                });
+
+                onPaymentSuccess?.({
+                    order_id: response.data.order.order_id,
+                    payment_intent_id: paymentIntentId,
+                    amount: total,
+                });
+            }
+        } catch (error) {
+            console.error("Order confirmation error:", error);
+            throw new Error(
+                error.response?.data?.error || "Failed to confirm order",
+            );
+        }
+    };
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+
+        if (isCardPayment) {
+            await handleCardPayment(event);
+        } else {
+            await handleCodPayment(event);
+        }
+    };
+
+    // Cleanup loading alert on unmount
+    useEffect(() => {
+        return () => {
+            Swal.close();
+        };
+    }, []);
+
+    if (paymentSuccess) {
+        return (
+            <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    Payment Successful!
+                </h3>
+                <p className="text-gray-600 mb-6">
+                    Your order has been placed successfully.
+                </p>
+                <div className="animate-pulse text-sm text-gray-500">
+                    Redirecting...
+                </div>
             </div>
+        );
+    }
 
-            <button
-                type="submit"
-                disabled={!stripe || processing}
-                className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60"
-            >
-                {processing ? "Processing..." : "Pay Now"}
-            </button>
+    return (
+        <form
+            onSubmit={handleSubmit}
+            className="bg-white rounded-lg border border-gray-200 p-6"
+        >
+            <h2 className="text-black text-xl font-semibold mb-6">
+                {isCardPayment ? "Card Details" : "Confirm Order"}
+            </h2>
+
+            {paymentError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                    <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700">{paymentError}</p>
+                </div>
+            )}
+
+            {isCardPayment ? (
+                <div className="space-y-4">
+                    <PaymentElement />
+
+                    <div className="mt-6">
+                        <button
+                            type="submit"
+                            disabled={!stripe || isProcessing}
+                            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {isProcessing ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Processing...
+                                </>
+                            ) : (
+                                `Pay RM ${total.toFixed(2)}`
+                            )}
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p className="text-sm text-yellow-800">
+                            You've selected Cash on Delivery (COD). Please
+                            confirm your order to proceed.
+                        </p>
+                    </div>
+
+                    <button
+                        type="submit"
+                        disabled={isProcessing}
+                        className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {isProcessing ? (
+                            <>
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                                Processing...
+                            </>
+                        ) : (
+                            `Confirm Order - RM ${total.toFixed(2)}`
+                        )}
+                    </button>
+                </div>
+            )}
+
+            <p className="text-xs text-gray-500 text-center mt-4">
+                By confirming your order, you agree to our Terms of Service and
+                Privacy Policy.
+            </p>
         </form>
     );
 }

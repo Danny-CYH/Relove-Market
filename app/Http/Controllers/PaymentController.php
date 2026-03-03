@@ -678,10 +678,8 @@ class PaymentController extends Controller
 
     public function show_orderSuccess(Request $request)
     {
-        return Inertia::render('BuyerPage/OrderSuccess', [
-            'order_id' => $request->input('order_id'),
-            'payment_intent_id' => $request->input('payment_intent_id'),
-            'amount' => $request->input('amount'),
-        ]);
+        return Inertia::render(
+            'BuyerPage/ProfilePage'
+        );
     }
 }

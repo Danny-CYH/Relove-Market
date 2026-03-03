@@ -43,12 +43,12 @@ Route::middleware(["is_buyer"])->group(function () {
 
     Route::get('/checkout', [UserController::class, 'checkoutPage'])->name('checkout');
     Route::post('/checkout-process', [UserController::class, 'checkoutProcess'])->name('checkout-process');
-    Route::post("/validate-stock", [PaymentController::class, "validateStock"]);
-    Route::post('/create-payment-intent', [PaymentController::class, 'createPaymentIntent']);
-    Route::post('/confirm-payment', [PaymentController::class, 'confirmPayment']);
-    Route::get('/order/{orderId}', [PaymentController::class, 'getOrder']);
-    Route::get('/orders', [PaymentController::class, 'listOrders']);
-    Route::get('/order-success', [PaymentController::class, "show_orderSuccess"]);
+    Route::post("/validate-stock", [PaymentController::class, "validateStock"])->name("validate-stock");
+    Route::post('/create-payment-intent', [PaymentController::class, 'createPaymentIntent'])->name('create-payment-intent');
+    Route::post('/confirm-payment', [PaymentController::class, 'confirmPayment'])->name('confirm-payment');
+    Route::get('/order/{orderId}', [PaymentController::class, 'getOrder'])->name('get-order');
+    Route::get('/orders', [PaymentController::class, 'listOrders'])->name('list-orders');
+    Route::get('/order-success', [PaymentController::class, "show_orderSuccess"])->name("order-success");
 });
 
 // need to login account and is a seller can access all this feature

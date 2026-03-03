@@ -6,7 +6,9 @@ import {
     ArrowLeft,
     Clock,
     HelpCircle,
+    AlertCircle,
 } from "lucide-react";
+import axios from "axios";
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
@@ -15,92 +17,53 @@ import { CheckoutForm } from "@/Components/BuyerPage/Checkout/CheckoutForm";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 
-import { Link, router } from "@inertiajs/react";
+import { Link, router, usePage } from "@inertiajs/react";
 
-// Initialize Stripe with your publishable key
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
-
-export default function CheckoutPage({ list_product, errors: initialErrors }) {
-    const [paymentMethod, setPaymentMethod] = useState("credit");
+export default function Checkout({
+    list_product,
+    errors: initialErrors = [],
+}) {
+    const [clientSecret, setClientSecret] = useState(null);
+    const [paymentMethod, setPaymentMethod] = useState("card");
     const [activeStep, setActiveStep] = useState(1);
-
     const [showSuccessModal, setShowSuccessModal] = useState(false);
     const [orderData, setOrderData] = useState(null);
-
-    const [isPageLoaded, setIsPageLoaded] = useState(false);
-    const [hasProducts, setHasProducts] = useState(false);
-
-    const [hasValidData, setHasValidData] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-
     const [checkoutErrors, setCheckoutErrors] = useState(initialErrors || []);
+    const [validationId, setValidationId] = useState(null);
+    const [isValidating, setIsValidating] = useState(false);
+    const [isCreatingIntent, setIsCreatingIntent] = useState(false);
 
-    // Enhanced product validation
-    useEffect(() => {
-        const validateProducts = () => {
-            const productsArray = getProductsArray();
+    const { auth } = usePage().props;
 
-            if (productsArray.length === 0) {
-                console.warn("No checkout data found, redirecting to cart...");
-                router.visit(route("cart"), {
-                    data: {
-                        error: "Checkout session expired. Please select items again.",
-                    },
-                });
-                return false;
+    // Initialize Stripe with your publishable key
+    const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_KEY);
+
+    // Parse selected variant from the product data
+    const parseSelectedVariant = (product) => {
+        if (!product.selected_variant) return null;
+
+        try {
+            const variant =
+                typeof product.selected_variant === "string"
+                    ? JSON.parse(product.selected_variant)
+                    : product.selected_variant;
+
+            if (!variant || typeof variant !== "object") {
+                console.warn("Invalid variant structure:", variant);
+                return null;
             }
 
-            // Validate each product structure
-            const invalidProducts = productsArray.filter((product) => {
-                const productId =
-                    product.product_id || product.product?.product_id;
-                const quantity =
-                    product.selected_quantity || product.quantity || 1;
-
-                if (!productId || quantity < 1) {
-                    return true;
-                }
-
-                // Validate variant data if present
-                if (product.selected_variant) {
-                    try {
-                        const variant = parseSelectedVariant(product);
-                        if (!variant || !variant.variant_id) {
-                            return true;
-                        }
-                    } catch (error) {
-                        return true;
-                    }
-                }
-
-                return false;
-            });
-
-            if (invalidProducts.length > 0) {
-                setCheckoutErrors([
-                    "Some products in your cart are invalid. Please review your selection.",
-                ]);
-                return false;
-            }
-
-            setHasValidData(true);
-            return true;
-        };
-
-        const isValid = validateProducts();
-        setIsLoading(false);
-
-        return () => {
-            // Cleanup if needed
-        };
-    }, []);
-
-    // Redirect if no products
-    useEffect(() => {
-        if (isPageLoaded && !hasProducts) {
-            router.visit(route("cart"));
+            return variant;
+        } catch (error) {
+            console.error(
+                "Error parsing selected variant:",
+                error,
+                product.selected_variant,
+            );
+            return null;
         }
-    }, [isPageLoaded, hasProducts]);
+    };
 
     // Get products array for rendering
     const getProductsArray = () => {
@@ -110,12 +73,10 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
             if (Array.isArray(list_product)) {
                 return list_product.filter((item) => {
                     if (!item) return false;
-
                     const productId =
                         item.product_id || item.product?.product_id;
                     const quantity =
                         item.selected_quantity || item.quantity || 1;
-
                     return productId && quantity > 0;
                 });
             } else if (
@@ -131,260 +92,23 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
         }
     };
 
-    const handlePaymentSuccess = (orderInfo) => {
-        setOrderData(orderInfo);
-        setShowSuccessModal(true);
+    const productsArray = getProductsArray();
+    const hasProducts = productsArray.length > 0;
 
-        setCheckoutErrors([]);
-
-        // Remove the beforeunload listener after successful payment
-        window.removeEventListener("beforeunload", () => {});
-
-        // Redirect to profile page after successful payment
-        router.visit(route("profile"));
-    };
-
-    const handlePaymentError = (error) => {
-        setCheckoutErrors([error]);
-        // Scroll to top to show error
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    };
-
-    // Parse selected variant from the product data
-    const parseSelectedVariant = (product) => {
-        if (!product.selected_variant) return null;
-
-        try {
-            const variant =
-                typeof product.selected_variant === "string"
-                    ? JSON.parse(product.selected_variant)
-                    : product.selected_variant;
-
-            // Validate variant structure
-            if (!variant || typeof variant !== "object") {
-                console.warn("Invalid variant structure:", variant);
-                return null;
-            }
-
-            return variant;
-        } catch (error) {
-            console.error(
-                "Error parsing selected variant:",
-                error,
-                product.selected_variant
-            );
-            return null;
-        }
-    };
-
-    // Get variant display text - MODIFIED VERSION with separate lines
-    const getVariantDisplayText = (variant) => {
-        if (!variant) return null;
-
-        // Helper function to process combination object/string
-        const processCombination = (combination) => {
-            if (!combination) return null;
-
-            let variantEntries = [];
-
-            // If it's already an object
-            if (typeof combination === "object") {
-                variantEntries = Object.entries(combination).map(
-                    ([key, value]) => ({
-                        key: key.charAt(0).toUpperCase() + key.slice(1),
-                        value: value,
-                    })
-                );
-            }
-            // If it's a string
-            else if (typeof combination === "string") {
-                // Try to parse as JSON first
-                try {
-                    const parsed = JSON.parse(combination);
-                    if (typeof parsed === "object") {
-                        variantEntries = Object.entries(parsed).map(
-                            ([key, value]) => ({
-                                key: key.charAt(0).toUpperCase() + key.slice(1),
-                                value: value,
-                            })
-                        );
-                    } else {
-                        // If it's a simple string, treat it as a single variant
-                        variantEntries = [
-                            { key: "Variant", value: combination },
-                        ];
-                    }
-                } catch (error) {
-                    // If not JSON, check if it's a simple key-value string
-                    if (combination.includes(":")) {
-                        // Split by comma first, then by colon
-                        const pairs = combination
-                            .split(",")
-                            .map((pair) => pair.trim());
-                        variantEntries = pairs.map((pair) => {
-                            const [key, value] = pair
-                                .split(":")
-                                .map((part) => part.trim());
-                            return {
-                                key: key
-                                    ? key.charAt(0).toUpperCase() + key.slice(1)
-                                    : "Variant",
-                                value: value || pair,
-                            };
-                        });
-                    } else {
-                        // If it's just a single value, format it nicely
-                        variantEntries = [
-                            { key: "Variant", value: combination },
-                        ];
-                    }
-                }
-            }
-
-            return variantEntries.length > 0 ? variantEntries : null;
-        };
-
-        let variantEntries = [];
-
-        // Check different possible fields in order of priority
-        // 1. Check variant_combination first
-        if (variant.variant_combination) {
-            const entries = processCombination(variant.variant_combination);
-            if (entries) variantEntries = entries;
-        }
-
-        // 2. Check combination field
-        if (variantEntries.length === 0 && variant.combination) {
-            const entries = processCombination(variant.combination);
-            if (entries) variantEntries = entries;
-        }
-
-        // 3. Check if there are individual variant attributes
-        if (variantEntries.length === 0) {
-            // Look for common variant attribute fields
-            const variantFields = [
-                "color",
-                "size",
-                "material",
-                "style",
-                "type",
-                "weight",
-                "length",
-                "width",
-                "height",
-                "dimension",
-            ];
-
-            variantFields.forEach((field) => {
-                if (variant[field]) {
-                    variantEntries.push({
-                        key: field.charAt(0).toUpperCase() + field.slice(1),
-                        value: variant[field],
-                    });
-                }
-            });
-        }
-
-        // 4. Check if variant itself has properties that could be displayed
-        if (variantEntries.length === 0 && typeof variant === "object") {
-            // Exclude common non-variant fields
-            const excludeFields = [
-                "id",
-                "variant_id",
-                "price",
-                "variant_price",
-                "quantity",
-                "stock_quantity",
-                "sku",
-                "image",
-                "created_at",
-                "updated_at",
-                "variant_combination",
-                "combination",
-            ];
-
-            const validEntries = Object.entries(variant)
-                .filter(
-                    ([key, value]) =>
-                        !excludeFields.includes(key) &&
-                        value &&
-                        typeof value !== "object" &&
-                        !Array.isArray(value)
-                )
-                .map(([key, value]) => ({
-                    key: key
-                        .split("_")
-                        .map(
-                            (word) =>
-                                word.charAt(0).toUpperCase() + word.slice(1)
-                        )
-                        .join(" "),
-                    value: value,
-                }));
-
-            if (validEntries.length > 0) {
-                variantEntries = validEntries;
-            }
-        }
-
-        // 5. Final fallback - check if variant has a name or title
-        if (variantEntries.length === 0) {
-            if (variant.name) {
-                variantEntries = [{ key: "Variant", value: variant.name }];
-            } else if (variant.title) {
-                variantEntries = [{ key: "Variant", value: variant.title }];
-            } else if (variant.variant_name) {
-                variantEntries = [
-                    { key: "Variant", value: variant.variant_name },
-                ];
-            }
-        }
-
-        return variantEntries.length > 0 ? variantEntries : null;
-    };
-
-    // Normalize product data structure to handle both single and multiple items
-    const normalizeProductData = (product) => {
-        // If it's a single product (from direct purchase)
-        if (product.product_id && !product.product) {
-            return {
-                product: {
-                    product_id: product.product_id,
-                    product_name: product.product_name,
-                    product_price: product.product_price,
-                    product_image:
-                        product.product_image || product.productImage,
-                },
-                selected_quantity:
-                    product.quantity || product.selected_quantity || 1,
-                selected_variant: product.selected_variant || null,
-                selected_options: product.selected_options || null,
-                product_image: product.product_image || product.productImage,
-            };
-        }
-        // If it's already in the correct structure (from cart)
-        return product;
-    };
-
-    // Calculate totals - handle both single item and multiple items
+    // Calculate totals
     const calculateTotals = () => {
         let subtotal = 0;
 
-        const productsArray = getProductsArray();
-
         subtotal = productsArray.reduce((sum, product) => {
-            const normalizedProduct = normalizeProductData(product);
-            const quantity = normalizedProduct.selected_quantity || 1;
-
-            // Get price from variant if available, otherwise from product
-            const selectedVariant = parseSelectedVariant(normalizedProduct);
+            const quantity = product.selected_quantity || product.quantity || 1;
+            const selectedVariant = parseSelectedVariant(product);
             const price =
                 selectedVariant?.price ||
-                normalizedProduct.product?.product_price ||
-                normalizedProduct.product_price ||
+                product.product_price ||
+                product.product?.product_price ||
                 0;
 
-            return sum + price * quantity;
+            return sum + parseFloat(price) * quantity;
         }, 0);
 
         const shipping = 5.0;
@@ -394,47 +118,221 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
     };
 
     const { subtotal, shipping, total } = calculateTotals();
-    const productsArray = getProductsArray();
 
-    // Show loading state
-    if (isLoading) {
+    // Get seller ID from first product
+    const getSellerId = () => {
+        if (productsArray.length > 0) {
+            return (
+                productsArray[0].seller_id ||
+                productsArray[0].product?.seller_id
+            );
+        }
+        return null;
+    };
+
+    // Validate stock on component mount
+    useEffect(() => {
+        const validateStock = async () => {
+            if (!hasProducts) {
+                setIsLoading(false);
+                return;
+            }
+
+            setIsValidating(true);
+            try {
+                const orderItems = productsArray.map((item) => {
+                    const selectedVariant = parseSelectedVariant(item);
+                    return {
+                        product_id: item.product_id || item.product?.product_id,
+                        quantity: item.selected_quantity || item.quantity || 1,
+                        selected_variant: selectedVariant || undefined,
+                    };
+                });
+
+                const response = await axios.post(route("validate-stock"), {
+                    order_items: orderItems,
+                    validation_timestamp: Date.now(),
+                });
+
+                if (response.data.valid) {
+                    setValidationId(response.data.validation_id);
+                    setCheckoutErrors([]);
+                }
+            } catch (error) {
+                if (error.response?.data?.error) {
+                    setCheckoutErrors([error.response.data.error]);
+                } else {
+                    setCheckoutErrors([
+                        "Unable to validate stock. Please try again.",
+                    ]);
+                }
+                console.error("Stock validation error:", error);
+            } finally {
+                setIsValidating(false);
+                setIsLoading(false);
+            }
+        };
+
+        validateStock();
+    }, []);
+
+    // Create payment intent when validation is complete and payment method is card
+    useEffect(() => {
+        const createPaymentIntent = async () => {
+            if (
+                paymentMethod === "card" &&
+                validationId &&
+                !clientSecret &&
+                !isCreatingIntent &&
+                productsArray.length > 0
+            ) {
+                setIsCreatingIntent(true);
+                try {
+                    const orderItems = productsArray.map((item) => {
+                        const selectedVariant = parseSelectedVariant(item);
+                        return {
+                            product_id:
+                                item.product_id || item.product?.product_id,
+                            quantity:
+                                item.selected_quantity || item.quantity || 1,
+                            price:
+                                selectedVariant?.price ||
+                                item.product_price ||
+                                item.product?.product_price ||
+                                0,
+                            selected_variant: selectedVariant,
+                        };
+                    });
+
+                    const response = await axios.post(
+                        route("create-payment-intent"),
+                        {
+                            amount: Math.round(total * 100), // Convert to cents
+                            currency: "myr",
+                            user_id: auth?.user?.user_id,
+                            seller_id: getSellerId(),
+                            order_items: orderItems,
+                            subtotal: subtotal,
+                            shipping: shipping,
+                            payment_method: paymentMethod,
+                            stock_validation_id: validationId,
+                        },
+                    );
+
+                    if (response.data.clientSecret) {
+                        setClientSecret(response.data.clientSecret);
+                    }
+                } catch (error) {
+                    console.error("Error creating payment intent:", error);
+                    setCheckoutErrors([
+                        error.response?.data?.error ||
+                            "Failed to initialize payment",
+                    ]);
+                } finally {
+                    setIsCreatingIntent(false);
+                }
+            }
+        };
+
+        createPaymentIntent();
+    }, [validationId, paymentMethod, total]);
+
+    // Redirect if no products
+    useEffect(() => {
+        if (!isLoading && !hasProducts) {
+            router.visit(route("cart"), {
+                data: {
+                    error: "Checkout session expired. Please select items again.",
+                },
+            });
+        }
+    }, [isLoading, hasProducts]);
+
+    const handlePaymentSuccess = (orderInfo) => {
+        setOrderData(orderInfo);
+        setShowSuccessModal(true);
+        setCheckoutErrors([]);
+
+        // Redirect to order success page
+        router.visit(
+            route("order-success", {
+                order_id: orderInfo.order_id,
+                payment_intent_id: orderInfo.payment_intent_id,
+                amount: orderInfo.amount,
+            }),
+        );
+    };
+
+    const handlePaymentError = (error) => {
+        setCheckoutErrors([error]);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    // Get variant display text
+    const getVariantDisplayText = (variant) => {
+        if (!variant) return null;
+
+        const processCombination = (combination) => {
+            if (!combination) return null;
+
+            if (typeof combination === "object") {
+                return Object.entries(combination).map(([key, value]) => ({
+                    key: key.charAt(0).toUpperCase() + key.slice(1),
+                    value: value,
+                }));
+            } else if (typeof combination === "string") {
+                try {
+                    const parsed = JSON.parse(combination);
+                    if (typeof parsed === "object") {
+                        return Object.entries(parsed).map(([key, value]) => ({
+                            key: key.charAt(0).toUpperCase() + key.slice(1),
+                            value: value,
+                        }));
+                    }
+                } catch (error) {
+                    return [{ key: "Variant", value: combination }];
+                }
+            }
+            return null;
+        };
+
+        if (variant.variant_combination) {
+            return processCombination(variant.variant_combination);
+        }
+        if (variant.combination) {
+            return processCombination(variant.combination);
+        }
+        return null;
+    };
+
+    // Loading state
+    if (isLoading || isValidating) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading checkout...</p>
+                    <p className="text-gray-600">
+                        {isValidating
+                            ? "Validating stock..."
+                            : "Loading checkout..."}
+                    </p>
                 </div>
             </div>
         );
     }
 
-    // Show error state if no valid data
-    if (!hasValidData) {
+    // Error state
+    if (checkoutErrors.length > 0) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
                 <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
-                    <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg
-                            className="w-8 h-8 text-yellow-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                            />
-                        </svg>
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <AlertCircle className="w-8 h-8 text-red-600" />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                        No Items to Checkout
+                        Checkout Error
                     </h2>
-                    <p className="text-gray-600 mb-6">
-                        Your checkout session has expired or no items were
-                        selected.
-                    </p>
+                    <p className="text-gray-600 mb-6">{checkoutErrors[0]}</p>
                     <button
                         onClick={() => router.visit(route("cart"))}
                         className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
@@ -462,73 +360,127 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                         </button>
                     </Link>
 
-                    <>
-                        {/* Payment Method */}
-                        <div className="bg-white rounded-lg border border-gray-200 p-6">
-                            <h2 className="text-black text-xl font-semibold mb-6 flex items-center">
-                                <CreditCard
-                                    className="text-blue-600 mr-2"
-                                    size={20}
-                                />
-                                Payment Method
-                            </h2>
-                            <div className="space-y-4">
-                                <div
-                                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                                        paymentMethod === "credit"
-                                            ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-300 hover:border-gray-400"
-                                    }`}
-                                    onClick={() => setPaymentMethod("credit")}
-                                >
-                                    <label className="flex items-center cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name="payment"
-                                            checked={paymentMethod === "credit"}
-                                            onChange={() =>
-                                                setPaymentMethod("credit")
-                                            }
-                                            className="text-blue-600 focus:ring-blue-500"
-                                        />
-                                        <div className="ml-3">
-                                            <span className="text-black font-medium">
-                                                Credit / Debit Card
-                                            </span>
-                                            <div className="flex mt-1">
-                                                {[
-                                                    "Visa",
-                                                    "Mastercard",
-                                                    "Amex",
-                                                ].map((card, idx) => (
+                    {/* Payment Method */}
+                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                        <h2 className="text-black text-xl font-semibold mb-6 flex items-center">
+                            <CreditCard
+                                className="text-blue-600 mr-2"
+                                size={20}
+                            />
+                            Payment Method
+                        </h2>
+                        <div className="space-y-4">
+                            <div
+                                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                                    paymentMethod === "card"
+                                        ? "border-blue-500 bg-blue-50"
+                                        : "border-gray-300 hover:border-gray-400"
+                                }`}
+                                onClick={() => setPaymentMethod("card")}
+                            >
+                                <label className="flex items-center cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="payment"
+                                        checked={paymentMethod === "card"}
+                                        onChange={() =>
+                                            setPaymentMethod("card")
+                                        }
+                                        className="text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <div className="ml-3">
+                                        <span className="text-black font-medium">
+                                            Credit / Debit Card
+                                        </span>
+                                        <div className="flex mt-1">
+                                            {["Visa", "Mastercard", "Amex"].map(
+                                                (card, idx) => (
                                                     <div
                                                         key={idx}
                                                         className="bg-gray-100 px-2 py-1 rounded text-xs text-black mr-2"
                                                     >
                                                         {card}
                                                     </div>
-                                                ))}
-                                            </div>
+                                                ),
+                                            )}
                                         </div>
-                                    </label>
-                                </div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div
+                                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                                    paymentMethod === "cod"
+                                        ? "border-blue-500 bg-blue-50"
+                                        : "border-gray-300 hover:border-gray-400"
+                                }`}
+                                onClick={() => setPaymentMethod("cod")}
+                            >
+                                <label className="flex items-center cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="payment"
+                                        checked={paymentMethod === "cod"}
+                                        onChange={() => setPaymentMethod("cod")}
+                                        className="text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <div className="ml-3">
+                                        <span className="text-black font-medium">
+                                            Cash on Delivery (COD)
+                                        </span>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Pay when you receive your order
+                                        </p>
+                                    </div>
+                                </label>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Stripe Payment Form */}
-                        <Elements stripe={stripePromise}>
-                            <CheckoutForm
-                                total={total}
-                                setActiveStep={setActiveStep}
-                                paymentMethod={paymentMethod}
-                                onPaymentSuccess={handlePaymentSuccess}
-                                onPaymentError={handlePaymentError}
-                                list_product={productsArray}
-                                subtotal={subtotal}
-                                shipping={shipping}
-                            />
-                        </Elements>
-                    </>
+                    {/* Payment Form */}
+                    {paymentMethod === "card" ? (
+                        clientSecret ? (
+                            <Elements
+                                stripe={stripePromise}
+                                options={{ clientSecret }}
+                            >
+                                <CheckoutForm
+                                    total={total}
+                                    setActiveStep={setActiveStep}
+                                    paymentMethod={paymentMethod}
+                                    onPaymentSuccess={handlePaymentSuccess}
+                                    onPaymentError={handlePaymentError}
+                                    list_product={productsArray}
+                                    subtotal={subtotal}
+                                    shipping={shipping}
+                                    validationId={validationId}
+                                    userId={auth?.user?.user_id}
+                                    sellerId={getSellerId()}
+                                />
+                            </Elements>
+                        ) : (
+                            <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                <p className="text-gray-600">
+                                    Initializing payment...
+                                </p>
+                            </div>
+                        )
+                    ) : (
+                        <CheckoutForm
+                            total={total}
+                            setActiveStep={setActiveStep}
+                            paymentMethod={paymentMethod}
+                            onPaymentSuccess={handlePaymentSuccess}
+                            onPaymentError={handlePaymentError}
+                            list_product={productsArray}
+                            subtotal={subtotal}
+                            shipping={shipping}
+                            validationId={validationId}
+                            userId={auth?.user?.user_id}
+                            sellerId={getSellerId()}
+                        />
+                    )}
                 </div>
 
                 {/* Right Column - Order Summary */}
@@ -541,25 +493,19 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                         {/* Cart Items */}
                         <div className="space-y-4 max-h-72 overflow-y-auto pr-2 mb-6">
                             {productsArray.map((product) => {
-                                const normalizedProduct =
-                                    normalizeProductData(product);
                                 const selectedVariant =
-                                    parseSelectedVariant(normalizedProduct);
+                                    parseSelectedVariant(product);
                                 const quantity =
-                                    normalizedProduct.selected_quantity || 1;
-                                const productData =
-                                    normalizedProduct.product ||
-                                    normalizedProduct;
+                                    product.selected_quantity ||
+                                    product.quantity ||
+                                    1;
+                                const productData = product.product || product;
                                 const productImage =
-                                    normalizedProduct.product_image ||
+                                    product.product_image ||
                                     productData.product_image;
-
-                                // Get price from variant if available
                                 const displayPrice =
                                     selectedVariant?.price ||
                                     productData.product_price;
-
-                                // Get variant entries array
                                 const variantEntries =
                                     getVariantDisplayText(selectedVariant);
 
@@ -570,10 +516,7 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                                     >
                                         <div className="relative">
                                             <img
-                                                src={`${
-                                                    import.meta.env
-                                                        .VITE_BASE_URL
-                                                }${
+                                                src={`${import.meta.env.VITE_BASE_URL}${
                                                     productImage?.image_path ||
                                                     productImage?.[0]
                                                         ?.image_path ||
@@ -592,49 +535,41 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                                             </p>
 
                                             {variantEntries?.length > 0 && (
-                                                <div className="mt-2 flex flex-col gap-2">
+                                                <div className="mt-2 flex flex-wrap gap-2">
                                                     {variantEntries.map(
                                                         (entry, idx) => (
                                                             <div
                                                                 key={idx}
-                                                                className="flex gap-2 items-center"
+                                                                className="flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md"
                                                             >
-                                                                <span className="text-xs text-black bg-gray-200 px-2 py-0.5 rounded-md font-medium">
-                                                                    {entry.key}
+                                                                <span className="text-xs text-gray-600">
+                                                                    {entry.key}:
                                                                 </span>
-                                                                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md font-semibold">
+                                                                <span className="text-xs font-medium text-gray-900">
                                                                     {
                                                                         entry.value
                                                                     }
                                                                 </span>
                                                             </div>
-                                                        )
+                                                        ),
                                                     )}
                                                 </div>
                                             )}
 
-                                            {/* Debug info - remove in production */}
-                                            {!variantEntries &&
-                                                selectedVariant && (
-                                                    <div className="mt-1">
-                                                        <p className="text-xs text-gray-500">
-                                                            Variant data:{" "}
-                                                            {JSON.stringify(
-                                                                selectedVariant
-                                                            )}
-                                                        </p>
-                                                    </div>
-                                                )}
-
                                             <p className="text-xs text-gray-500 mt-2">
-                                                Price: RM {displayPrice} each
+                                                Price: RM{" "}
+                                                {parseFloat(
+                                                    displayPrice,
+                                                ).toFixed(2)}{" "}
+                                                each
                                             </p>
                                         </div>
                                         <p className="text-sm font-semibold text-gray-900 whitespace-nowrap">
                                             RM{" "}
-                                            {(displayPrice * quantity).toFixed(
-                                                2
-                                            )}
+                                            {(
+                                                parseFloat(displayPrice) *
+                                                quantity
+                                            ).toFixed(2)}
                                         </p>
                                     </div>
                                 );
@@ -714,7 +649,7 @@ export default function CheckoutPage({ list_product, errors: initialErrors }) {
                     </div>
 
                     {/* Support Info */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6 relative">
+                    <div className="bg-white rounded-lg border border-gray-200 p-6 mt-6">
                         <h3 className="font-medium text-gray-900 mb-3 flex items-center">
                             <HelpCircle
                                 size={18}
