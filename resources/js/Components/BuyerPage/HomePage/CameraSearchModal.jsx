@@ -16,7 +16,6 @@ export function CameraSearchModal({
     isLoading,
     searchImage,
 }) {
-    console.log(searchResults);
     const [displayedResults, setDisplayedResults] = useState([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -35,7 +34,7 @@ export function CameraSearchModal({
 
         // Transform the data to match ProductCard expectations
         const processedResults = recommendations
-            .map((item, index) => {
+            .map((item) => {
                 // Check similarity score - only include if above threshold
                 const similarity = item.similarity || 0;
                 const similarityThreshold = results.similarity_threshold || 0.7;
@@ -48,28 +47,6 @@ export function CameraSearchModal({
                 const productData = item || {};
 
                 return productData;
-                // return {
-                //     product_id: productData.product_id || `ai-${index}`,
-                //     product_name:
-                //         item.name ||
-                //         productData.product_name ||
-                //         "Unnamed Product",
-                //     product_price: productData.product_price || item.price || 0,
-                //     product_quantity: productData.product_quantity || 1,
-                //     category: productData.category || "No Category",
-                //     product_status: productData.product_status || "available",
-                //     product_variant: productData.product_variant || [],
-                //     product_image: productData.main_image,
-                //     product_total_ratings: productData.total_ratings || 0,
-                //     seller: productData.seller || {
-                //         seller_store: {
-                //             store_name:
-                //                 productData.seller?.store_name ||
-                //                 "AI Recommended",
-                //         },
-                //     },
-                //     ratings: productData.ratings.length || 0,
-                // };
             })
             .filter(Boolean); // Remove null items (those below threshold)
 
