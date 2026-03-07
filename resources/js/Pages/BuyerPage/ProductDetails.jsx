@@ -31,18 +31,7 @@ import { AlertMessage } from "@/Components/HelperFunction/AlertMessage";
 import { QuantitySelector } from "@/Components/BuyerPage/ProductDetails/QuantitySelector";
 import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
 import { MediaThumbnail } from "@/Components/BuyerPage/ProductDetails/MediaThumbnail";
-
-const showLoadingAlert = (title, text = "") => {
-    return Swal.fire({
-        title,
-        text,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        background: "rgba(255, 255, 255, 0.95)",
-        backdrop: "rgba(0, 0, 0, 0.5) backdrop-blur-sm",
-        didOpen: () => Swal.showLoading(),
-    });
-};
+import { GetSelectedVariant } from "@/Components/HelperFunction/GetSelectedVariant";
 
 const Alert = ({ type, title, message }) => {
     const styles = {
@@ -108,10 +97,6 @@ export default function ProductDetails({ product_info }) {
         buyNow: false,
     });
     const [variantError, setVariantError] = useState("");
-    const [actionSuccess, setActionSuccess] = useState({
-        addToCart: false,
-        wishlist: false,
-    });
     const [showMobileVariants, setShowMobileVariants] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
     const [showAllReviewsModal, setShowAllReviewsModal] = useState(false);
@@ -132,6 +117,7 @@ export default function ProductDetails({ product_info }) {
     const { auth } = usePage().props;
 
     const product = product_info?.[0];
+
     const reviewCount = reviews.length;
     const hasVariants = product?.product_variant?.length > 0;
     const variants = product?.product_variant || [];
@@ -195,48 +181,33 @@ export default function ProductDetails({ product_info }) {
         return "Standard";
     };
 
-    const prepareSelectedVariantData = () => ({
-        variant_id: selectedVariant?.variant_id || null,
-        variant_key: selectedVariant?.variant_key || "default",
-        combination: selectedVariant?.variant_combination || {},
-        quantity: selectedVariant?.quantity || product?.product_quantity,
-        price: selectedVariant?.price || product?.product_price,
-    });
-
     const prepareCheckoutData = () => {
         if (!auth?.user) return [];
-        const variantData = prepareSelectedVariantData();
+
+        const variantData = GetSelectedVariant({ selectedVariant, product });
+        
         return [
             {
                 user: { user_id: auth.user.user_id },
-                product_id: product?.product_id,
-                selected_quantity: quantity,
-                selected_variant: JSON.stringify(variantData),
                 product: {
                     product_id: product?.product_id,
                     product_name: product?.product_name,
                     product_price: parseFloat(product?.product_price),
                     product_quantity: product?.product_quantity,
                     product_image: product?.product_image[0] || {},
+                    selected_quantity: quantity,
+                    selected_variant: JSON.stringify(variantData),
+                },
+                seller: {
                     seller_id: product?.seller_id,
                 },
             },
         ];
     };
 
-    const validateVariant = (action) => {
-        if (hasVariants && !selectedVariant) {
-            setVariantError(`Please select a variant before ${action}`);
-            setTimeout(() => setVariantError(""), 5000);
-            return false;
-        }
-        setVariantError("");
-        return true;
-    };
-
     const handleBuyNow = async () => {
         if (!auth?.user) {
-            showAlert(
+            AlertMessage(
                 "warning",
                 "Login Required",
                 "Please login to continue with your purchase",

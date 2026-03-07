@@ -185,7 +185,7 @@ class UserController extends Controller
         }
 
         return Inertia::render('BuyerPage/Checkout', [
-            'list_product' => $list_product,
+            'list_product' => $list_product->toArray(),
             'platform_tax' => $platform_tax,
         ]);
     }

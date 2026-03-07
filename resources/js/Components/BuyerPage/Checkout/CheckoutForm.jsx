@@ -28,7 +28,6 @@ export function CheckoutForm({
     const [isProcessing, setIsProcessing] = useState(false);
     const [paymentError, setPaymentError] = useState(null);
     const [paymentSuccess, setPaymentSuccess] = useState(false);
-    const [loadingAlert, setLoadingAlert] = useState(null);
 
     const isCardPayment = paymentMethod === "card";
 
