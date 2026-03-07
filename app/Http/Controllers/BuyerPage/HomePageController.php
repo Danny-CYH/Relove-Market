@@ -224,13 +224,42 @@ class HomePageController extends Controller
     {
         try {
             $featured_products = Product::with([
-                "seller.sellerStore",
-                "ratings",
-                'category',
-                "productImage",
-                "productVariant",
-                "orderItems"
+                'productImage' => function ($query) {
+                    $query->select('id', 'product_id', 'image_path');
+                },
+                'productVariant' => function ($query) {
+                    $query->select('variant_id', 'product_id', 'variant_combination', 'variant_key', 'quantity', 'price');
+                },
+                'category' => function ($query) {
+                    $query->select('category_id', 'category_name');
+                },
+                'ratings' => function ($query) {
+                    $query->select('id', 'product_id', 'user_id', 'rating', 'comment');
+                },
+                'seller' => function ($query) {
+                    $query->select('seller_id', 'store_id', 'seller_name', 'seller_email', 'seller_phone')
+                        ->with([
+                            'sellerStore' => function ($q) {
+                                $q->select('store_id', 'store_name');
+                            }
+                        ]);
+                },
             ])
+                ->select([
+                    'product_id',
+                    'product_name',
+                    'product_price',
+                    'product_condition',
+                    'product_quantity',
+                    'product_status',
+                    'total_ratings',
+                    'featured',
+                    'category_id',
+                    'seller_id',
+                    'order_items' => OrderItem::selectRaw('COUNT(*)')
+                        ->whereColumn('product_id', 'products.product_id')
+                ])
+                ->orderBy('featured', 'desc')
                 ->where("featured", true)
                 ->get();
 

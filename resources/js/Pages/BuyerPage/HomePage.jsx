@@ -30,26 +30,35 @@ import {
     Gem,
 } from "lucide-react";
 
+import axios from "axios";
+
 import { useState, useEffect, useRef, useCallback } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
 
-import axios from "axios";
-
-import Swal from "sweetalert2";
-
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
 
-import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
-
+// Modal component for displaying the success register message for users
 import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
 
+// Modal component for camera search results
 import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
 
+// Public Product Card component used in multiple places
+import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
+
+// Helper functions for wishlist
+import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
+
+// Component and function for the loading state of the featured products carousel
 import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
 import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
-import { FeaturedProductCard } from "@/Components/BuyerPage/HomePage/FeaturedProductCard";
+import { GetFeaturedProducts } from "@/Components/HelperFunction/GetFeaturedProducts";
+
+// Component and functions for the flash sale products carousel
+import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
+import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSaleProduct";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -88,16 +97,38 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [isAutoPlaying, setIsAutoPlaying] = useState(true);
     const [carouselProducts, setCarouselProducts] = useState([]);
     const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+
     const carouselIntervalRef = useRef(null);
     const carouselContainerRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const { flash } = usePage().props;
     const { auth } = usePage().props;
 
-    const fileInputRef = useRef(null);
-
     // 4 items per slide
     const itemsPerSlide = 4;
+
+    // Wishlist function
+    const save_wishlist = async (productId, selectedVariant = null) => {
+        return await SaveWishlist(productId, selectedVariant, auth);
+    };
+
+    // Get the featured products data
+    const get_featuredProducts = async () => {
+        return await GetFeaturedProducts(
+            setLoadingFeatured,
+            setFeaturedProducts,
+            setCarouselProducts,
+        );
+    };
+
+    // Get the flash sale products data
+    const get_flashSaleProducts = async () => {
+        return await GetFlashSaleProducts(
+            setLoadingFlashSale,
+            setFlashSaleProducts,
+        );
+    };
 
     const startAutoPlay = useCallback(() => {
         if (carouselProducts.length <= itemsPerSlide) return;
@@ -147,134 +178,13 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 // Smooth transition to end
                 setTimeout(() => {
                     setCurrentCarouselIndex(
-                        carouselProducts.length - itemsPerSlide
+                        carouselProducts.length - itemsPerSlide,
                     );
                 }, 300);
                 return 0;
             }
             return prevIndexValue;
         });
-    };
-
-    // save_wishlist function
-    const save_wishlist = async (productId, selectedVariant = null) => {
-        try {
-            if (!auth.user) {
-                Swal.fire({
-                    title: "Login Required",
-                    text: "You need to log in to add items to your wishlist.",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "Go to Login",
-                    cancelButtonText: "Cancel",
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Redirect to login page
-                        window.location.href = route("login");
-                    }
-                });
-                return false;
-            }
-
-            // Prepare the request data with proper structure
-            const requestData = {
-                product_id: productId,
-            };
-
-            if (selectedVariant) {
-                // Parse variant_combination if it's a string
-                let variantCombination = selectedVariant.variant_combination;
-                if (typeof variantCombination === "string") {
-                    try {
-                        variantCombination = JSON.parse(variantCombination);
-                    } catch (error) {
-                        console.error(
-                            "Error parsing variant combination:",
-                            error
-                        );
-                        // If parsing fails, create a basic structure
-                        variantCombination = {
-                            Colors: selectedVariant.variant_key,
-                        };
-                    }
-                }
-
-                // Format the selected variant data to match the desired structure
-                requestData.selected_variant = {
-                    variant_id: selectedVariant.variant_id,
-                    variant_combination: variantCombination,
-                    price:
-                        selectedVariant.price || selectedVariant.variant_price,
-                    quantity:
-                        selectedVariant.quantity ||
-                        selectedVariant.stock_quantity,
-                };
-            }
-
-            const response = await axios.post(
-                route("store-wishlist"),
-                requestData
-            );
-
-            if (response.status === 200) {
-                // popup on success
-                Swal.fire({
-                    title: "Added to Wishlist!",
-                    text: "This item has been successfully added to your wishlist.",
-                    icon: "success",
-                    confirmButtonText: "OK",
-                    timer: 4000,
-                    timerProgressBar: true,
-                });
-
-                // Refresh wishlist status if get_wishlist function exists
-                if (typeof get_wishlist === "function") {
-                    await get_wishlist(productId);
-                }
-
-                return true;
-            }
-        } catch (error) {
-            console.error("💥 Error in save_wishlist:", error);
-
-            // Check if error is due to authentication
-            if (error.response?.status === 401) {
-                Swal.fire({
-                    title: "Session Expired",
-                    text: "Your session has expired. Please log in again.",
-                    icon: "warning",
-                    confirmButtonText: "Login",
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        window.location.href = route("login");
-                    }
-                });
-                return false;
-            }
-
-            // Handle other specific error cases
-            if (error.response?.status === 409) {
-                Swal.fire({
-                    title: "Already in Wishlist",
-                    text: "This item is already in your wishlist.",
-                    icon: "info",
-                    confirmButtonText: "OK",
-                });
-                return false;
-            }
-
-            // Show generic error message to user
-            Swal.fire({
-                title: "Error",
-                text:
-                    error.response?.data?.message ||
-                    "Failed to add product to wishlist. Please try again.",
-                icon: "error",
-                confirmButtonText: "OK",
-            });
-
-            return false;
-        }
     };
 
     // Updated camera search handler
@@ -298,7 +208,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 formData,
                 {
                     headers: { "Content-Type": "multipart/form-data" },
-                }
+                },
             );
 
             setCameraSearchResults(response.data || []);
@@ -326,40 +236,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    // get the featured products data
-    const get_featuredProducts = async () => {
-        try {
-            setLoadingFeatured(true);
-            const response = await axios.get(route("get-featured-products"));
-
-            const products = response.data.featured_products || [];
-            setFeaturedProducts(products);
-            // Initialize carousel with all products
-            setCarouselProducts(products);
-        } catch (error) {
-            console.log(error);
-            setFeaturedProducts([]);
-            setCarouselProducts([]);
-        } finally {
-            setLoadingFeatured(false);
-        }
-    };
-
-    // get the flash sale products data
-    const get_flashSaleProducts = async () => {
-        try {
-            setLoadingFlashSale(true);
-            const response = await axios.get(route("get-flash-sale-products"));
-
-            setFlashSaleProducts(response.data.flashSaleProducts || []);
-        } catch (error) {
-            console.log(error);
-            setFlashSaleProducts([]);
-        } finally {
-            setLoadingFlashSale(false);
-        }
-    };
-
     // Handle search functionality
     const handleSearch = (query) => {
         setSearchQuery(query);
@@ -372,7 +248,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                         .includes(query.toLowerCase()) ||
                     product.category?.category_name
                         ?.toLowerCase()
-                        .includes(query.toLowerCase())
+                        .includes(query.toLowerCase()),
             );
             setSearchResults(results);
             setShowSearchResults(true);
@@ -381,16 +257,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    const toggleAutoPlay = () => {
-        setIsAutoPlaying(!isAutoPlaying);
-        if (!isAutoPlaying) {
-            startAutoPlay();
-        } else {
-            stopAutoPlay();
-        }
-    };
-
-    // Initialize and cleanup autoplay
+    // Start autoplay when there are enough products and autoplay is enabled
     useEffect(() => {
         if (carouselProducts.length > 1 && isAutoPlaying) {
             startAutoPlay();
@@ -470,7 +337,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                             setTimeout(
                                                 () =>
                                                     setShowSearchResults(false),
-                                                200
+                                                200,
                                             )
                                         }
                                     />
@@ -491,7 +358,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                                                 }
                                                                 href={route(
                                                                     "product-details",
-                                                                    product.product_id
+                                                                    product.product_id,
                                                                 )}
                                                                 className="flex items-center px-4 py-3 hover:bg-gray-100 transition-colors"
                                                             >
@@ -530,7 +397,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                                                     }
                                                                 </span>
                                                             </Link>
-                                                        )
+                                                        ),
                                                     )}
                                                 </div>
                                             ) : (
@@ -650,7 +517,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     }`}
                                     onClick={() =>
                                         setSelectedCategory(
-                                            category.category_name
+                                            category.category_name,
                                         )
                                     }
                                 >
@@ -752,7 +619,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                                 (100 /
                                                     Math.min(
                                                         4,
-                                                        carouselProducts.length
+                                                        carouselProducts.length,
                                                     ))
                                             }%)`,
                                         }}
@@ -763,15 +630,12 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                                     key={`${product.product_id}-${index}`}
                                                     className="w-full sm:w-1/2 md:w-1/3 lg:w-1/4 flex-shrink-0 px-2 sm:px-3"
                                                 >
-                                                    {/* Use your original FeaturedProductCard without modifications */}
-                                                    <FeaturedProductCard
+                                                    <ProductCard
+                                                        key={product.product_id}
                                                         product={product}
-                                                        save_wishlist={
-                                                            save_wishlist
-                                                        }
                                                     />
                                                 </div>
-                                            )
+                                            ),
                                         )}
                                     </div>
                                 </div>
@@ -795,49 +659,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                         </button>
                                     </>
                                 )}
-
-                                {/* Progress Dots */}
-                                {carouselProducts.length > 4 && (
-                                    <div className="flex justify-center mt-6 space-x-2">
-                                        {Array.from({
-                                            length: Math.ceil(
-                                                carouselProducts.length / 4
-                                            ),
-                                        }).map((_, index) => (
-                                            <button
-                                                key={index}
-                                                onClick={() =>
-                                                    setCurrentCarouselIndex(
-                                                        index * 4
-                                                    )
-                                                }
-                                                className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full transition-all duration-300 ${
-                                                    Math.floor(
-                                                        currentCarouselIndex / 4
-                                                    ) === index
-                                                        ? "bg-green-600 w-4 sm:w-6"
-                                                        : "bg-gray-300 hover:bg-gray-400"
-                                                }`}
-                                                aria-label={`Go to page ${
-                                                    index + 1
-                                                }`}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Original Desktop Grid View (Fallback for small number of products) */}
-                        {!loadingFeatured && carouselProducts.length <= 4 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                                {carouselProducts.map((product) => (
-                                    <FeaturedProductCard
-                                        key={product.product_id}
-                                        product={product}
-                                        save_wishlist={save_wishlist}
-                                    />
-                                ))}
                             </div>
                         )}
                     </div>
@@ -892,7 +713,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                             feature.color
                                         } ${feature.color.replace(
                                             "text",
-                                            "bg"
+                                            "bg",
                                         )} mb-4`}
                                     >
                                         {feature.icon}
