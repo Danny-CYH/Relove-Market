@@ -4,6 +4,7 @@ namespace App\Http\Controllers\BuyerPage;
 
 use App\Http\Controllers\Controller;
 
+use App\Models\OrderItem;
 use App\Models\Product;
 
 use DB;
@@ -105,17 +106,42 @@ class HomePageController extends Controller
 
             // Fetch products from Laravel
             $products = Product::with([
-                'productImage',
-                'productVideo',
-                'productFeature',
-                'productIncludeItem',
-                'productVariant',
-                'ratings',
-                'category',
-                'seller.sellerStore'
+                'productImage' => function ($query) {
+                    $query->select('id', 'product_id', 'image_path');
+                },
+                'productVariant' => function ($query) {
+                    $query->select('variant_id', 'product_id', 'variant_combination', 'variant_key', 'quantity', 'price');
+                },
+                'category' => function ($query) {
+                    $query->select('category_id', 'category_name');
+                },
+                'ratings' => function ($query) {
+                    $query->select('id', 'product_id', 'user_id', 'rating', 'comment');
+                },
+                'seller' => function ($query) {
+                    $query->select('seller_id', 'store_id', 'seller_name', 'seller_email', 'seller_phone')
+                        ->with([
+                            'sellerStore' => function ($q) {
+                                $q->select('store_id', 'store_name');
+                            }
+                        ]);
+                },
             ])
-                ->whereIn('product_id', $productIds)
-                ->where('product_status', '!=', 'blocked')
+                ->withCount('orderItems as order_items') // Add order items count for popularity sorting
+                ->select([
+                    'product_id',
+                    'product_name',
+                    'product_price',
+                    'product_condition',
+                    'product_quantity',
+                    'product_status',
+                    'total_ratings',
+                    'featured',
+                    'category_id',
+                    'seller_id',
+                ])
+                ->where('product_status', 'available')
+                ->orderBy('featured', 'desc')
                 ->get();
 
             \Log::info('Products found in Laravel', ['count' => $products->count()]);
@@ -153,35 +179,15 @@ class HomePageController extends Controller
                     }
 
                     // Get the first product image manually
-                    $productImage = $productImages[$rec['product_id']] ?? null;
-                    $imagePath = $productImage ? $productImage->image_path : null;
+                    $productArray = $product->toArray();
 
-                    return [
-                        'similarity' => $rec['similarity'],
-                        'similarity_percentage' => round($rec['similarity'] * 100, 1), // Add percentage
-                        'product_id' => $product->product_id,
-                        'product_name' => $product->product_name,
-                        'product_price' => $product->product_price,
-                        'product_quantity' => $product->product_quantity,
-                        'product_status' => $product->product_status,
-                        'total_ratings' => $product->total_ratings,
-                        "ratings" => $product->ratings,
-                        'category' => $product->category->category_name ?? 'Uncategorized',
-                        'product_variant' => $product->productVariant->map(function ($variant) {
-                            return [
-                                'variant_combination' => $variant->variant_combination,
-                                'variant_quantity' => $variant->quantity,
-                                'variant_price' => $variant->price,
-                            ];
-                        })->toArray(),
-                        'main_image' => $imagePath,
-                        'seller' => $product->seller ? [
-                            'seller_id' => $product->seller->seller_id,
-                            'store_name' => $product->seller->seller_store->store_name
-                                ?? $product->seller->sellerStore->store_name
-                                ?? 'Unknown Store'
-                        ] : null,
-                    ];
+                    $orderCount = OrderItem::where('product_id', $product->product_id)->count();
+
+                    $productArray['order_items'] = $orderCount;
+                    $productArray['similarity'] = $rec['similarity'];
+                    $productArray['similarity_percentage'] = round($rec['similarity'] * 100, 1);
+
+                    return $productArray;
                 })
                 ->filter()
                 ->values();
@@ -202,13 +208,9 @@ class HomePageController extends Controller
             }
 
             return response()->json([
-                'detected_category' => $data['detected_category'] ?? 'unknown',
-                'category_confidence' => $data['category_confidence'] ?? 0,
                 'recommendations' => $finalResults,
                 'total_found' => $finalResults->count(),
                 'search_metrics' => $data['search_metrics'] ?? [],
-                // 'similarity_threshold' => $similarityThreshold, // Include threshold in response
-                // 'top_similarity' => collect($finalResults)->max('similarity') ?? 0
             ]);
 
         } catch (Exception $e) {

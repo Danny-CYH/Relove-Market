@@ -35,13 +35,57 @@ clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 
 def get_embedding(image_bytes: bytes) -> np.ndarray:
-    """Extract normalized CLIP image embedding"""
-    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-    inputs = clip_processor(images=image, return_tensors="pt")
-    with torch.no_grad():
-        embedding = clip_model.get_image_features(**inputs)
-    embedding = embedding / embedding.norm(p=2, dim=-1, keepdim=True)
-    return embedding.squeeze().cpu().numpy()
+    """Extract normalized CLIP image embedding (should be 512-dim)"""
+    try:
+        print(f"[DEBUG] Processing image of size: {len(image_bytes)} bytes")
+        
+        # Open and convert image
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        
+        # Process image
+        inputs = clip_processor(images=image, return_tensors="pt")
+        
+        with torch.no_grad():
+            # Get image features - this should return 512-dim for base-patch32
+            embedding = clip_model.get_image_features(**inputs)
+            
+            # Ensure we have a tensor and get the correct shape
+            if isinstance(embedding, torch.Tensor):
+                print(f"[DEBUG] Raw embedding shape: {embedding.shape}")
+                
+                # If shape is (1, 768), we need to project it down
+                if embedding.shape[-1] == 768:
+                    print("[WARN] Got 768-dim embedding, attempting to fix...")
+                    # Try to get the pooler output instead
+                    vision_outputs = clip_model.vision_model(**inputs)
+                    embedding = vision_outputs.pooler_output
+                    print(f"[DEBUG] After pooling: {embedding.shape}")
+            else:
+                print(f"[DEBUG] Unexpected type: {type(embedding)}")
+                # Try to extract from BaseModelOutput
+                if hasattr(embedding, 'pooler_output'):
+                    embedding = embedding.pooler_output
+                elif hasattr(embedding, 'last_hidden_state'):
+                    embedding = embedding.last_hidden_state[:, 0, :]
+        
+        # Normalize
+        embedding = embedding / embedding.norm(p=2, dim=-1, keepdim=True)
+        
+        # Convert to numpy
+        result = embedding.squeeze().cpu().numpy()
+        print(f"[DEBUG] Final embedding shape: {result.shape}, norm: {np.linalg.norm(result):.4f}")
+        
+        # Verify dimension
+        if result.shape[0] != 512:
+            print(f"[WARN] Expected 512-dim embedding, got {result.shape[0]}-dim")
+            
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error in get_embedding: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Image processing failed: {str(e)}")
 
 def embedding_to_hex(embedding: np.ndarray) -> str:
     """Convert numpy embedding to hex string for transmission"""

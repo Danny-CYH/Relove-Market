@@ -255,11 +255,7 @@ export default function Checkout({
 
         // Redirect to order success page
         router.visit(
-            route("order-success", {
-                order_id: orderInfo.order_id,
-                payment_intent_id: orderInfo.payment_intent_id,
-                amount: orderInfo.amount,
-            }),
+            route("order-success"),
         );
     };
 

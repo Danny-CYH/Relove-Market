@@ -6,7 +6,7 @@ import Carousel from "react-multi-carousel";
 
 import "react-multi-carousel/lib/styles.css";
 
-import { ProductCard } from "../ProductCard";
+import { ProductCard } from "../ShopPage/ProductCard";
 
 export function Carousel_ProductData({ productData }) {
     // Fallback if productData is empty

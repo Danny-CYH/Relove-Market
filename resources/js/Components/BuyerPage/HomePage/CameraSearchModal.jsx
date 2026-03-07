@@ -7,7 +7,7 @@ import {
     FaExclamationTriangle,
 } from "react-icons/fa";
 
-import { ProductCard } from "@/Components/BuyerPage/ProductCard";
+import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
 
 export function CameraSearchModal({
     isOpen,
@@ -15,8 +15,8 @@ export function CameraSearchModal({
     searchResults,
     isLoading,
     searchImage,
-    save_wishlist,
 }) {
+    console.log(searchResults);
     const [displayedResults, setDisplayedResults] = useState([]);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -47,28 +47,29 @@ export function CameraSearchModal({
                 // Use the actual product data from the response
                 const productData = item || {};
 
-                return {
-                    product_id: productData.product_id || `ai-${index}`,
-                    product_name:
-                        item.name ||
-                        productData.product_name ||
-                        "Unnamed Product",
-                    product_price: productData.product_price || item.price || 0,
-                    product_quantity: productData.product_quantity || 1,
-                    category: productData.category || "No Category",
-                    product_status: productData.product_status || "available",
-                    product_variant: productData.product_variant || [],
-                    product_image: productData.main_image,
-                    product_total_ratings: productData.total_ratings || 0,
-                    seller: productData.seller || {
-                        seller_store: {
-                            store_name:
-                                productData.seller?.store_name ||
-                                "AI Recommended",
-                        },
-                    },
-                    ratings: productData.ratings.length || 0,
-                };
+                return productData;
+                // return {
+                //     product_id: productData.product_id || `ai-${index}`,
+                //     product_name:
+                //         item.name ||
+                //         productData.product_name ||
+                //         "Unnamed Product",
+                //     product_price: productData.product_price || item.price || 0,
+                //     product_quantity: productData.product_quantity || 1,
+                //     category: productData.category || "No Category",
+                //     product_status: productData.product_status || "available",
+                //     product_variant: productData.product_variant || [],
+                //     product_image: productData.main_image,
+                //     product_total_ratings: productData.total_ratings || 0,
+                //     seller: productData.seller || {
+                //         seller_store: {
+                //             store_name:
+                //                 productData.seller?.store_name ||
+                //                 "AI Recommended",
+                //         },
+                //     },
+                //     ratings: productData.ratings.length || 0,
+                // };
             })
             .filter(Boolean); // Remove null items (those below threshold)
 
@@ -111,7 +112,7 @@ export function CameraSearchModal({
                     loadMore();
                 }
             },
-            { threshold: 0.1 }
+            { threshold: 0.1 },
         );
 
         const sentinel = document.getElementById("scroll-sentinel");
@@ -153,10 +154,10 @@ export function CameraSearchModal({
                                 {safeSearchResults.length > 0
                                     ? `Found ${safeSearchResults.length} similar items`
                                     : searchResults?.data?.error
-                                    ? "No similar products found"
-                                    : isLoading
-                                    ? "Searching for similar products..."
-                                    : "No results found"}
+                                      ? "No similar products found"
+                                      : isLoading
+                                        ? "Searching for similar products..."
+                                        : "No results found"}
                             </p>
                         </div>
                     </div>
@@ -208,7 +209,7 @@ export function CameraSearchModal({
                                         <span className="ml-1">
                                             (
                                             {Math.round(
-                                                categoryConfidence * 100
+                                                categoryConfidence * 100,
                                             )}
                                             % confidence)
                                         </span>
@@ -275,7 +276,7 @@ export function CameraSearchModal({
                                     Closest match:{" "}
                                     {Math.round(
                                         searchResults.data
-                                            .closest_match_similarity * 100
+                                            .closest_match_similarity * 100,
                                     )}
                                     % similarity (needs{" "}
                                     {Math.round(similarityThreshold * 100)}% to
@@ -339,8 +340,6 @@ export function CameraSearchModal({
                                         <ProductCard
                                             key={product.product_id}
                                             product={product}
-                                            isFlashSale={false}
-                                            save_wishlist={save_wishlist}
                                         />
                                     );
                                 })}
