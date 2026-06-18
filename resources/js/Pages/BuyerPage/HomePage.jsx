@@ -1,5 +1,4 @@
 import {
-    FaSearch,
     FaCamera,
     FaRecycle,
     FaStore,
@@ -10,9 +9,6 @@ import {
     FaTags,
     FaStar,
     FaExclamationTriangle,
-    FaChevronLeft,
-    FaChevronRight,
-    FaSpinner,
 } from "react-icons/fa";
 
 import {
@@ -45,20 +41,18 @@ import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerReg
 // Modal component for camera search results
 import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
 
-// Public Product Card component used in multiple places
-import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
-
 // Helper functions for wishlist
 import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
 
 // Component and function for the loading state of the featured products carousel
-import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
-import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
 import { GetFeaturedProducts } from "@/Components/HelperFunction/GetFeaturedProducts";
 
 // Component and functions for the flash sale products carousel
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
 import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSaleProduct";
+import SearchBar from "@/Components/Ui/SearchBar";
+import { Button } from "@/Components/Ui/Button";
+import Carousel from "../../Components/Ui/Carousel";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -99,7 +93,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
 
     const carouselIntervalRef = useRef(null);
-    const carouselContainerRef = useRef(null);
     const fileInputRef = useRef(null);
 
     const { flash } = usePage().props;
@@ -151,40 +144,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const stopAutoPlay = () => {
         clearInterval(carouselIntervalRef.current);
-    };
-
-    const nextCarouselSlide = () => {
-        if (carouselProducts.length <= itemsPerSlide) return;
-
-        setCurrentCarouselIndex((prevIndex) => {
-            const nextIndex = prevIndex + itemsPerSlide;
-            if (nextIndex >= carouselProducts.length) {
-                // Smooth transition to beginning
-                setTimeout(() => {
-                    setCurrentCarouselIndex(0);
-                }, 300);
-                return carouselProducts.length - itemsPerSlide;
-            }
-            return nextIndex;
-        });
-    };
-
-    const prevCarouselSlide = () => {
-        if (carouselProducts.length <= itemsPerSlide) return;
-
-        setCurrentCarouselIndex((prevIndex) => {
-            const prevIndexValue = prevIndex - itemsPerSlide;
-            if (prevIndexValue < 0) {
-                // Smooth transition to end
-                setTimeout(() => {
-                    setCurrentCarouselIndex(
-                        carouselProducts.length - itemsPerSlide,
-                    );
-                }, 300);
-                return 0;
-            }
-            return prevIndexValue;
-        });
     };
 
     // Updated camera search handler
@@ -321,29 +280,17 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <div className="relative flex-grow max-w-xl">
-                                    <input
-                                        type="text"
-                                        placeholder="Search for any product..."
+                                    <SearchBar
                                         className="text-black w-full px-6 py-4 rounded-full border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                                        value={searchQuery}
-                                        onChange={(e) =>
-                                            handleSearch(e.target.value)
+                                        placeholder={
+                                            "Search for any product..."
                                         }
-                                        onFocus={() =>
-                                            searchQuery.length > 1 &&
-                                            setShowSearchResults(true)
-                                        }
-                                        onBlur={() =>
-                                            setTimeout(
-                                                () =>
-                                                    setShowSearchResults(false),
-                                                200,
-                                            )
+                                        handleSearch={handleSearch}
+                                        searchQuery={searchQuery}
+                                        setShowSearchResults={
+                                            setShowSearchResults
                                         }
                                     />
-                                    <button className="absolute right-3 top-3 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
-                                        <FaSearch className="text-lg" />
-                                    </button>
 
                                     {/* Search Results Dropdown */}
                                     {showSearchResults && (
@@ -409,24 +356,20 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                         </div>
                                     )}
                                 </div>
-                                <button
+
+                                {/* Button for visual search functionality */}
+                                <Button
+                                    variant="black"
+                                    size="visual"
                                     onClick={handleCameraClick}
                                     disabled={cameraSearchLoading}
-                                    className={`px-6 py-4 rounded-full flex items-center justify-center gap-2 transition-colors ${
-                                        cameraSearchLoading
-                                            ? "bg-gray-400 cursor-not-allowed text-white"
-                                            : "bg-gray-800 hover:bg-gray-900 text-white"
-                                    }`}
-                                >
-                                    {cameraSearchLoading ? (
-                                        <FaSpinner className="animate-spin" />
-                                    ) : (
-                                        <FaCamera />
-                                    )}
-                                    {cameraSearchLoading
-                                        ? "Searching..."
-                                        : "Visual Search"}
-                                </button>
+                                    isLoading={cameraSearchLoading}
+                                    loadingText="Searching..."
+                                    leftIcon={<FaCamera />}
+                                    iconSize="text-lg"
+                                    className="flex items-center justify-center gap-2"
+                                    buttonText="Visual Search"
+                                />
 
                                 <input
                                     type="file"
@@ -579,89 +522,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                 {/* NEW: Infinite Carousel Section - "Recommended for You" */}
                 <section className="py-12 bg-white px-4">
-                    <div className="max-w-7xl mx-auto">
-                        <div className="flex flex-col md:flex-row md:justify-between items-center mb-8">
-                            <h2 className="text-2xl font-bold text-gray-900 text-center">
-                                Second Life, First Choice
-                            </h2>
-                            <div className="flex items-center gap-3 mt-3 md:mt-0">
-                                <Link
-                                    href={route("shopping")}
-                                    className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium"
-                                >
-                                    View all{" "}
-                                    <FaArrowRight className="ml-1 text-xs" />
-                                </Link>
-                            </div>
-                        </div>
-
-                        {/* Loading State */}
-                        {loadingFeatured && <FeaturedProductsLoading />}
-
-                        {/* No Featured Products State */}
-                        {!loadingFeatured && carouselProducts.length === 0 && (
-                            <NoFeaturedProducts />
-                        )}
-
-                        {/* Infinite Carousel */}
-                        {!loadingFeatured && carouselProducts.length > 0 && (
-                            <div className="relative">
-                                {/* Carousel Container */}
-                                <div
-                                    ref={carouselContainerRef}
-                                    className="overflow-hidden rounded-xl"
-                                >
-                                    <div
-                                        className="flex transition-transform duration-500 ease-in-out"
-                                        style={{
-                                            transform: `translateX(-${
-                                                currentCarouselIndex *
-                                                (100 /
-                                                    Math.min(
-                                                        4,
-                                                        carouselProducts.length,
-                                                    ))
-                                            }%)`,
-                                        }}
-                                    >
-                                        {carouselProducts.map(
-                                            (product, index) => (
-                                                <div
-                                                    key={`${product.product_id}-${index}`}
-                                                    className="w-full sm:w-1/2 md:w-1/3 lg:w-1/4 flex-shrink-0 px-2 sm:px-3"
-                                                >
-                                                    <ProductCard
-                                                        key={product.product_id}
-                                                        product={product}
-                                                    />
-                                                </div>
-                                            ),
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Navigation Buttons - Only show if there are more than 4 products */}
-                                {carouselProducts.length > 4 && (
-                                    <>
-                                        <button
-                                            onClick={prevCarouselSlide}
-                                            className="absolute -left-3 sm:-left-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 sm:p-3 rounded-full shadow-lg border border-gray-200 transition-all z-10"
-                                            aria-label="Previous product"
-                                        >
-                                            <FaChevronLeft className="text-gray-700 w-4 h-4 sm:w-5 sm:h-5" />
-                                        </button>
-                                        <button
-                                            onClick={nextCarouselSlide}
-                                            className="absolute -right-3 sm:-right-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 sm:p-3 rounded-full shadow-lg border border-gray-200 transition-all z-10"
-                                            aria-label="Next product"
-                                        >
-                                            <FaChevronRight className="text-gray-700 w-4 h-4 sm:w-5 sm:h-5" />
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    <Carousel
+                        title="Second Life, First Choice"
+                        loadingFeatured={loadingFeatured}
+                        carouselProducts={carouselProducts}
+                    />
                 </section>
 
                 {/* BENEFITS */}
