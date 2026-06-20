@@ -2,7 +2,7 @@ import React, { useRef, useState } from "react";
 import { Link } from "@inertiajs/react";
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
-import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
+import { ProductCard } from "@/Components/Ui/ProductCard";
 import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
 import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
 
