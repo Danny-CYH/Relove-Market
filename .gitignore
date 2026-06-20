@@ -19,6 +19,11 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+
+composer.lock
+composer.json
+tsconfig.json
+vite.config.ts
 Homestead.json
 Homestead.yaml
 npm-debug.log
