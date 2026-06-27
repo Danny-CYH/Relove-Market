@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 import { FaArrowRight, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
@@ -6,9 +6,13 @@ import { ProductCard } from "@/Components/Ui/ProductCard";
 import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
 import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
 
-export default function Carousel({carouselProducts, loadingFeatured, title}) {
-    const carouselContainerRef = useRef(null);
+export default function Carousel({ carouselProducts, loadingFeatured, title }) {
+    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
     const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+
+    const carouselIntervalRef = useRef(null);
+    const carouselContainerRef = useRef(null);
+
     const itemsPerSlide = 4; // Number of products to show per slide
 
     const nextCarouselSlide = () => {
@@ -44,6 +48,38 @@ export default function Carousel({carouselProducts, loadingFeatured, title}) {
             return prevIndexValue;
         });
     };
+
+    const startAutoPlay = useCallback(() => {
+        if (carouselProducts.length <= itemsPerSlide) return;
+
+        clearInterval(carouselIntervalRef.current);
+        carouselIntervalRef.current = setInterval(() => {
+            setCurrentCarouselIndex((prevIndex) => {
+                const nextIndex = prevIndex + itemsPerSlide;
+                if (nextIndex >= carouselProducts.length) {
+                    // Smooth transition to beginning
+                    setTimeout(() => {
+                        setCurrentCarouselIndex(0);
+                    }, 300);
+                    return carouselProducts.length - itemsPerSlide;
+                }
+                return nextIndex;
+            });
+        }, 5000);
+    }, [carouselProducts.length]);
+
+    const stopAutoPlay = () => {
+        clearInterval(carouselIntervalRef.current);
+    };
+
+    useEffect(() => {
+        if (carouselProducts.length > 1 && isAutoPlaying) {
+            startAutoPlay();
+        }
+        return () => {
+            stopAutoPlay();
+        };
+    }, [carouselProducts.length, isAutoPlaying, startAutoPlay]);
 
     return (
         <div className="max-w-7xl mx-auto">
