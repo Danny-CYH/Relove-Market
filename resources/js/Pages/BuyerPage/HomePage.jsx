@@ -37,14 +37,8 @@ import { Link, usePage } from "@inertiajs/react";
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
 
-// Modal component for displaying the success register message for users
-import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
-
 // Modal component for camera search results
 import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
-
-// Helper functions for wishlist
-import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
 
 // Component and function for the loading state of the featured products carousel
 import { GetFeaturedProducts } from "@/Components/HelperFunction/GetFeaturedProducts";
@@ -55,9 +49,13 @@ import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSalePr
 
 // Additional UI components
 import SearchBar from "@/Components/Ui/SearchBar";
-import { Button } from "@/Components/Ui/Button";
 import Carousel from "../../Components/Ui/Carousel";
+
+import { Button } from "@/Components/Ui/Button";
 import { Modal } from "@/Components/Ui/Modal";
+
+// Helper Functions
+import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -92,24 +90,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [cameraSearchLoading, setCameraSearchLoading] = useState(false);
     const [searchImage, setSearchImage] = useState(null);
 
-    // NEW: Infinite carousel states
-    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
     const [carouselProducts, setCarouselProducts] = useState([]);
-    const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
 
-    const carouselIntervalRef = useRef(null);
     const fileInputRef = useRef(null);
 
     const { flash } = usePage().props;
-    const { auth } = usePage().props;
-
-    // 4 items per slide
-    const itemsPerSlide = 4;
-
-    // Wishlist function
-    const save_wishlist = async (productId, selectedVariant = null) => {
-        return await SaveWishlist(productId, selectedVariant, auth);
-    };
 
     // Get the featured products data
     const get_featuredProducts = async () => {
@@ -126,29 +111,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             setLoadingFlashSale,
             setFlashSaleProducts,
         );
-    };
-
-    const startAutoPlay = useCallback(() => {
-        if (carouselProducts.length <= itemsPerSlide) return;
-
-        clearInterval(carouselIntervalRef.current);
-        carouselIntervalRef.current = setInterval(() => {
-            setCurrentCarouselIndex((prevIndex) => {
-                const nextIndex = prevIndex + itemsPerSlide;
-                if (nextIndex >= carouselProducts.length) {
-                    // Smooth transition to beginning
-                    setTimeout(() => {
-                        setCurrentCarouselIndex(0);
-                    }, 300);
-                    return carouselProducts.length - itemsPerSlide;
-                }
-                return nextIndex;
-            });
-        }, 5000);
-    }, [carouselProducts.length]);
-
-    const stopAutoPlay = () => {
-        clearInterval(carouselIntervalRef.current);
     };
 
     // Updated camera search handler
@@ -221,16 +183,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    // Start autoplay when there are enough products and autoplay is enabled
-    useEffect(() => {
-        if (carouselProducts.length > 1 && isAutoPlaying) {
-            startAutoPlay();
-        }
-        return () => {
-            stopAutoPlay();
-        };
-    }, [carouselProducts.length, isAutoPlaying, startAutoPlay]);
-
     // listen to the success message after user register as seller success
     useEffect(() => {
         if (flash.successMessage) {
@@ -269,7 +221,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 searchResults={cameraSearchResults}
                 isLoading={cameraSearchLoading}
                 searchImage={searchImage}
-                save_wishlist={save_wishlist}
+                save_wishlist={SaveWishlist}
             />
 
             <main className="flex-grow">
