@@ -31,7 +31,7 @@ import {
 
 import axios from "axios";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
 
@@ -49,7 +49,6 @@ import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_P
 import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSaleProduct";
 
 // Additional UI components
-import SearchBar from "@/Components/Ui/SearchBar";
 import Carousel from "../../Components/Ui/Carousel";
 
 import { Button } from "@/Components/Ui/Button";
@@ -75,12 +74,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     };
 
     const [selectedCategory, setSelectedCategory] = useState("All");
-    const [isOpen, setIsOpen] = useState(true);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState([]);
-    const [showSearchResults, setShowSearchResults] = useState(false);
+    const [isSuccessRegisterOpen, setIsSuccessRegisterOpen] = useState(false);
 
-    const [featuredProducts, setFeaturedProducts] = useState([]);
     const [flashSaleProducts, setFlashSaleProducts] = useState([]);
 
     const [loadingFeatured, setLoadingFeatured] = useState(true);
@@ -96,6 +91,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
+    const setSearchQuery = useState("");
+    const setSearchResults = useState([]);
+
+    const setFeaturedProducts = useState([]);
     const fileInputRef = useRef(null);
 
     const { flash } = usePage().props;
@@ -115,11 +114,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             setLoadingFlashSale,
             setFlashSaleProducts,
         );
-    };
-
-    const handleSearchResults = (results, query) => {
-        setSearchResults(results);
-        setSearchQuery(query);
     };
 
     // Updated camera search handler
@@ -171,16 +165,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    useEffect(() => {
-        if (searchQuery.length > 1 && searchResults.length >= 0) {
-            setIsSearchModalOpen(true);
-        }
-    }, [searchQuery, searchResults]);
-
     // listen to the success message after user register as seller success
     useEffect(() => {
         if (flash.successMessage) {
-            setIsOpen(true);
+            setIsSuccessRegisterOpen(true);
         }
     }, [flash.successMessage]);
 
@@ -196,15 +184,15 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
             {/* Modal for displaying the success register message for users */}
             <Modal
-                isOpen={isOpen}
-                onClose={() => setIsOpen(false)}
+                isOpen={isSuccessRegisterOpen}
+                onClose={() => setIsSuccessRegisterOpen(false)}
                 icon={<CheckCircle />}
                 title="Seller Registration Received"
                 description="Thank you for registering as a seller on Relove Market. Your application is under review and will be processed within around 1 week."
                 note="Please wait patiently, we'll notify you via email once approved."
                 noteIcon={<Clock />}
                 primaryLabel="Got it!"
-                primaryOnClick={() => setIsOpen(false)}
+                primaryOnClick={() => setIsSuccessRegisterOpen(false)}
             />
 
             {/* Modal for showing the camera search result */}
@@ -251,74 +239,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                         <span className="text-gray-400 flex-1">
                                             Search for any product...
                                         </span>
-                                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                                            ⌘K
-                                        </span>
                                     </div>
-
-                                    {/* Search Results Dropdown */}
-                                    {/* {showSearchResults && (
-                                        <div className="absolute z-50 w-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto">
-                                            {searchResults.length > 0 ? (
-                                                <div className="py-2">
-                                                    {searchResults.map(
-                                                        (product) => (
-                                                            <Link
-                                                                key={
-                                                                    product.product_id
-                                                                }
-                                                                href={route(
-                                                                    "product-details",
-                                                                    product.product_id,
-                                                                )}
-                                                                className="flex items-center px-4 py-3 hover:bg-gray-100 transition-colors"
-                                                            >
-                                                                <img
-                                                                    src={
-                                                                        import.meta
-                                                                            .env
-                                                                            .VITE_BASE_URL +
-                                                                        product
-                                                                            .product_image[0]
-                                                                            .image_path
-                                                                    }
-                                                                    alt={
-                                                                        product.product_name
-                                                                    }
-                                                                    className="w-10 h-10 rounded-full object-cover mr-3"
-                                                                />
-                                                                <div>
-                                                                    <p className="font-medium text-gray-900">
-                                                                        {
-                                                                            product.product_name
-                                                                        }
-                                                                    </p>
-                                                                    <p className="text-sm text-gray-500">
-                                                                        {
-                                                                            product
-                                                                                .category
-                                                                                .category_name
-                                                                        }
-                                                                    </p>
-                                                                </div>
-                                                                <span className="ml-auto font-bold text-green-600">
-                                                                    RM{" "}
-                                                                    {
-                                                                        product.product_price
-                                                                    }
-                                                                </span>
-                                                            </Link>
-                                                        ),
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="px-4 py-3 text-gray-500">
-                                                    No results found for "
-                                                    {searchQuery}"
-                                                </div>
-                                            )}
-                                        </div>
-                                    )} */}
 
                                     {/* Modal for displaying search results */}
                                     <SearchablePickerModal
