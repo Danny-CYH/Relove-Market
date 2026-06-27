@@ -267,7 +267,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                                 {/* Button for visual search functionality */}
                                 <Button
-                                    variant="black"
+                                    variant="successSoft"
                                     size="visual"
                                     onClick={handleCameraClick}
                                     disabled={cameraSearchLoading}
