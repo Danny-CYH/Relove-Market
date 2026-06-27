@@ -9,6 +9,7 @@ import {
     FaTags,
     FaStar,
     FaExclamationTriangle,
+    FaSearch,
 } from "react-icons/fa";
 
 import {
@@ -56,6 +57,7 @@ import { Modal } from "@/Components/Ui/Modal";
 
 // Helper Functions
 import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
+import { SearchablePickerModal } from "@/Components/Ui/SearchablePickerModal";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -92,6 +94,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const [carouselProducts, setCarouselProducts] = useState([]);
 
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+
     const fileInputRef = useRef(null);
 
     const { flash } = usePage().props;
@@ -111,6 +115,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             setLoadingFlashSale,
             setFlashSaleProducts,
         );
+    };
+
+    const handleSearchResults = (results, query) => {
+        setSearchResults(results);
+        setSearchQuery(query);
     };
 
     // Updated camera search handler
@@ -162,6 +171,12 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
+    useEffect(() => {
+        if (searchQuery.length > 1 && searchResults.length >= 0) {
+            setIsSearchModalOpen(true);
+        }
+    }, [searchQuery, searchResults]);
+
     // listen to the success message after user register as seller success
     useEffect(() => {
         if (flash.successMessage) {
@@ -180,7 +195,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             <Navbar />
 
             {/* Modal for displaying the success register message for users */}
-            {/* <SellerRegisterSuccess isOpen={isOpen} setIsOpen={setIsOpen} /> */}
             <Modal
                 isOpen={isOpen}
                 onClose={() => setIsOpen(false)}
@@ -227,17 +241,23 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <div className="relative flex-grow max-w-xl">
-                                    <SearchBar
-                                        className="text-black w-full px-6 py-4 rounded-full border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                                        placeholder={
-                                            "Search for any product..."
+                                    <div
+                                        className="flex items-center w-full px-6 py-4 rounded-full border border-gray-300 bg-white cursor-pointer hover:border-green-400 hover:shadow-md transition-all"
+                                        onClick={() =>
+                                            setIsSearchModalOpen(true)
                                         }
-                                        list_shoppingItem={list_shoppingItem}
-                                        setShowSearchResults={setShowSearchResults}
-                                    />
+                                    >
+                                        <FaSearch className="text-gray-400 mr-3" />
+                                        <span className="text-gray-400 flex-1">
+                                            Search for any product...
+                                        </span>
+                                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                                            ⌘K
+                                        </span>
+                                    </div>
 
                                     {/* Search Results Dropdown */}
-                                    {showSearchResults && (
+                                    {/* {showSearchResults && (
                                         <div className="absolute z-50 w-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto">
                                             {searchResults.length > 0 ? (
                                                 <div className="py-2">
@@ -298,7 +318,29 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                                 </div>
                                             )}
                                         </div>
-                                    )}
+                                    )} */}
+
+                                    {/* Modal for displaying search results */}
+                                    <SearchablePickerModal
+                                        isOpen={isSearchModalOpen}
+                                        onClose={() => {
+                                            setIsSearchModalOpen(false);
+                                            setSearchQuery("");
+                                            setSearchResults([]);
+                                        }}
+                                        items={list_shoppingItem}
+                                        onSelect={(product) => {
+                                            setIsSearchModalOpen(false);
+                                            setSearchQuery("");
+                                            setSearchResults([]);
+                                            window.location.href = route(
+                                                "product-details",
+                                                product.product_id,
+                                            );
+                                        }}
+                                        title="Search Products"
+                                        placeholder="What are you looking for?"
+                                    />
                                 </div>
 
                                 {/* Button for visual search functionality */}
