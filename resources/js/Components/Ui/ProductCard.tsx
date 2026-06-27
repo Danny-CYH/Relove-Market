@@ -3,10 +3,10 @@ import { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 import { usePage } from "@inertiajs/react";
 
-import { GetColorValue } from "../../HelperFunction/GetColorValue";
-import { getVariantDetails } from "../../HelperFunction/GetVariantDetails";
-import { getDisplayPrice } from "../../HelperFunction/GetDisplayPrice";
-import { SaveWishlist } from "../../HelperFunction/SaveWishlist";
+import { GetColorValue } from "../HelperFunction/GetColorValue";
+import { getVariantDetails } from "../HelperFunction/GetVariantDetails";
+import { getDisplayPrice } from "../HelperFunction/GetDisplayPrice";
+import { SaveWishlist } from "../HelperFunction/SaveWishlist";
 
 export function ProductCard({ product, selected_variant }) {
     const [imageError, setImageError] = useState(false);
