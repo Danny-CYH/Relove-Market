@@ -7,7 +7,7 @@ import {
     FaExclamationTriangle,
 } from "react-icons/fa";
 
-import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
+import { ProductCard } from "../../Ui/ProductCard";
 
 export function CameraSearchModal({
     isOpen,
