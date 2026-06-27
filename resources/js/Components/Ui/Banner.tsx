@@ -8,7 +8,7 @@ const variantClasses = {
 
 const joinClasses = (...classes) => classes.filter(Boolean).join(" ");
 
-export function AlertBanner({
+export function Banner({
     message,
     variant = "error",
     onDismiss,
