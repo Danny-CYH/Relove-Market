@@ -78,6 +78,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const [flashSaleProducts, setFlashSaleProducts] = useState([]);
 
+    const [featuredProducts, setFeaturedProducts] = useState([]);
+
     const [loadingFeatured, setLoadingFeatured] = useState(true);
     const [loadingFlashSale, setLoadingFlashSale] = useState(true);
 
@@ -94,7 +96,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const setSearchQuery = useState("");
     const setSearchResults = useState([]);
 
-    const setFeaturedProducts = useState([]);
     const fileInputRef = useRef(null);
 
     const { flash } = usePage().props;
