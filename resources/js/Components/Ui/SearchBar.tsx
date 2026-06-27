@@ -1,13 +1,36 @@
-import React from "react";
+import { useState } from "react";
 import { FaSearch } from "react-icons/fa";
 
 export default function SearchBar({
     className,
     placeholder,
-    handleSearch,
     setShowSearchResults,
-    searchQuery,
+    list_shoppingItem,
 }) {
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+
+    // Handle search functionality
+    const handleSearch = (query) => {
+        setSearchQuery(query);
+        if (query.length > 1) {
+            // Filter items based on search query
+            const results = list_shoppingItem.filter(
+                (product) =>
+                    product.product_name
+                        .toLowerCase()
+                        .includes(query.toLowerCase()) ||
+                    product.category?.category_name
+                        ?.toLowerCase()
+                        .includes(query.toLowerCase()),
+            );
+            setSearchResults(results);
+            setShowSearchResults(true);
+        } else {
+            setShowSearchResults(false);
+        }
+    };
+    
     return (
         <div>
             <input
