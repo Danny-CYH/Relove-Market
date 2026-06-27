@@ -6,6 +6,7 @@ export default function SearchBar({
     placeholder,
     setShowSearchResults,
     list_shoppingItem,
+    onSearchResults,
 }) {
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState([]);
@@ -13,24 +14,34 @@ export default function SearchBar({
     // Handle search functionality
     const handleSearch = (query) => {
         setSearchQuery(query);
+
         if (query.length > 1) {
             // Filter items based on search query
             const results = list_shoppingItem.filter(
                 (product) =>
                     product.product_name
-                        .toLowerCase()
+                        ?.toLowerCase()
                         .includes(query.toLowerCase()) ||
                     product.category?.category_name
                         ?.toLowerCase()
                         .includes(query.toLowerCase()),
             );
-            setSearchResults(results);
+
+            // 🆕 把搜索结果传给父组件
+            if (onSearchResults) {
+                onSearchResults(results, query);
+            }
+
             setShowSearchResults(true);
         } else {
+            // 🆕 空搜索时，传空数组给父组件
+            if (onSearchResults) {
+                onSearchResults([], "");
+            }
             setShowSearchResults(false);
         }
     };
-    
+
     return (
         <div>
             <input
