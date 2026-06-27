@@ -93,8 +93,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-    const setSearchQuery = useState("");
-    const setSearchResults = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
 
     const fileInputRef = useRef(null);
 
