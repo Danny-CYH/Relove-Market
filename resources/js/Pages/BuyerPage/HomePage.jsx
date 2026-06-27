@@ -162,27 +162,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    // Handle search functionality
-    const handleSearch = (query) => {
-        setSearchQuery(query);
-        if (query.length > 1) {
-            // Filter items based on search query
-            const results = list_shoppingItem.filter(
-                (product) =>
-                    product.product_name
-                        .toLowerCase()
-                        .includes(query.toLowerCase()) ||
-                    product.category?.category_name
-                        ?.toLowerCase()
-                        .includes(query.toLowerCase()),
-            );
-            setSearchResults(results);
-            setShowSearchResults(true);
-        } else {
-            setShowSearchResults(false);
-        }
-    };
-
     // listen to the success message after user register as seller success
     useEffect(() => {
         if (flash.successMessage) {
@@ -253,11 +232,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                         placeholder={
                                             "Search for any product..."
                                         }
-                                        handleSearch={handleSearch}
-                                        searchQuery={searchQuery}
-                                        setShowSearchResults={
-                                            setShowSearchResults
-                                        }
+                                        list_shoppingItem={list_shoppingItem}
+                                        setShowSearchResults={setShowSearchResults}
                                     />
 
                                     {/* Search Results Dropdown */}
