@@ -24,6 +24,8 @@ import {
     Sofa,
     Boxes,
     Gem,
+    CheckCircle,
+    Clock,
 } from "lucide-react";
 
 import axios from "axios";
@@ -50,9 +52,12 @@ import { GetFeaturedProducts } from "@/Components/HelperFunction/GetFeaturedProd
 // Component and functions for the flash sale products carousel
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
 import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSaleProduct";
+
+// Additional UI components
 import SearchBar from "@/Components/Ui/SearchBar";
 import { Button } from "@/Components/Ui/Button";
 import Carousel from "../../Components/Ui/Carousel";
+import { Modal } from "@/Components/Ui/Modal";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -70,7 +75,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     };
 
     const [selectedCategory, setSelectedCategory] = useState("All");
-    const [isOpen, setIsOpen] = useState(false);
+    const [isOpen, setIsOpen] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchResults, setSearchResults] = useState([]);
     const [showSearchResults, setShowSearchResults] = useState(false);
@@ -244,7 +249,18 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             <Navbar />
 
             {/* Modal for displaying the success register message for users */}
-            <SellerRegisterSuccess isOpen={isOpen} setIsOpen={setIsOpen} />
+            {/* <SellerRegisterSuccess isOpen={isOpen} setIsOpen={setIsOpen} /> */}
+            <Modal
+                isOpen={isOpen}
+                onClose={() => setIsOpen(false)}
+                icon={<CheckCircle />}
+                title="Seller Registration Received"
+                description="Thank you for registering as a seller on Relove Market. Your application is under review and will be processed within around 1 week."
+                note="Please wait patiently, we'll notify you via email once approved."
+                noteIcon={<Clock />}
+                primaryLabel="Got it!"
+                primaryOnClick={() => setIsOpen(false)}
+            />
 
             {/* Modal for showing the camera search result */}
             <CameraSearchModal
