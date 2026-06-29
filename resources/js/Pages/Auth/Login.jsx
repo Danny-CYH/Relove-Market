@@ -12,8 +12,8 @@ import Swal from "sweetalert2";
 
 import { ForgetPasswordModal } from "@/Components/Auth/Login/ForgetPasswordModal";
 import { ResetPasswordModal } from "@/Components/Auth/Login/ResetPasswordModal";
-import { Footer } from "@/Components/Ui/Footer";
-import { Navbar } from "@/Components/Ui/Navbar";
+import Footer from "@/Components/Ui/Footer";
+import Navbar from "@/Components/Ui/Navbar";
 import TextInput from "@/Components/TextInput";
 
 // SweetAlert configuration
