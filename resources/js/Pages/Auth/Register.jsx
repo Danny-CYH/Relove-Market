@@ -1,5 +1,5 @@
-import { Footer } from "@/Components/BuyerPage/Footer";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
+import { Footer } from "@/Components/Ui/Footer";
+import { Navbar } from "@/Components/Ui/Navbar";
 import { TermsPrivacyModal } from "@/Components/Auth/Register/TermsPrivacyModal";
 import { PasswordRequirementsModal } from "@/Components/Auth/Register/PasswordRequirementsModal";
 import { EmailVerificationModal } from "@/Components/Auth/Register/EmailVerificationModal";

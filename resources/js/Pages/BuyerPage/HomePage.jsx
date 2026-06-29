@@ -35,9 +35,6 @@ import { useState, useEffect, useRef } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
 
-import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { Footer } from "@/Components/BuyerPage/Footer";
-
 // Modal component for camera search results
 import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
 
@@ -47,7 +44,8 @@ import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSalePr
 
 // Additional UI components
 import Carousel from "../../Components/Ui/Carousel";
-
+import Navbar from "@/Components/Ui/Navbar";
+import Footer from "@/Components/Ui/Footer";
 import { Button } from "@/Components/Ui/Button";
 import { Modal } from "@/Components/Ui/Modal";
 

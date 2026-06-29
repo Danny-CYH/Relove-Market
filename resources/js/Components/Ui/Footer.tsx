@@ -23,13 +23,13 @@ import { FiSend } from "react-icons/fi";
 
 import { Link } from "@inertiajs/react";
 
-import { TermsConditions } from "./HomePage/TermsConditions";
-import { HelpCenterModal } from "./HomePage/HelpCenterModal";
-import { SafetyGuidelinesModal } from "./HomePage/SafetyGuidelinesModal";
-import { ShippingInformationModal } from "./HomePage/ShippingInformationModal";
-import { ReturnsRefundsModal } from "./HomePage/ReturnsRefundModal";
+import { TermsConditions } from "../BuyerPage/HomePage/TermsConditions";
+import { HelpCenterModal } from "../BuyerPage/HomePage/HelpCenterModal";
+import { SafetyGuidelinesModal } from "../BuyerPage/HomePage/SafetyGuidelinesModal";
+import { ShippingInformationModal } from "../BuyerPage/HomePage/ShippingInformationModal";
+import { ReturnsRefundsModal } from "../BuyerPage/HomePage/ReturnsRefundModal";
 
-export function Footer() {
+export default function Footer() {
     const [email, setEmail] = useState("");
     const [subscribed, setSubscribed] = useState(false);
     const [isTermsConditionOpen, setIsTermsConditionOpen] = useState(false);

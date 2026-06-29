@@ -25,8 +25,8 @@ import {
     Share2,
     Flag,
 } from "lucide-react";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { Footer } from "@/Components/BuyerPage/Footer";
+import { Navbar } from "@/Components/Ui/Navbar";
+import { Footer } from "@/Components/Ui/Footer";
 
 export default function SellerShop() {
     // Mock data (replace with server data)

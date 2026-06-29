@@ -1,4 +1,4 @@
-import { Footer } from "@/Components/BuyerPage/Footer";
+import { Footer } from "@/Components/Ui/Footer";
 import { SellerRegisterForm } from "@/Components/BuyerPage/SellerRegistration/SellerRegisterForm";
 import { SellerProgressBar } from "@/Components/BuyerPage/SellerRegistration/SellerProgressBar";
 

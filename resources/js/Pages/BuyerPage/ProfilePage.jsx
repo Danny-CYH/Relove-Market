@@ -17,8 +17,8 @@ import Swal from "sweetalert2";
 
 import { usePage, Link } from "@inertiajs/react";
 
-import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { Footer } from "@/Components/BuyerPage/Footer";
+import { Navbar } from "@/Components/Ui/Navbar";
+import { Footer } from "@/Components/Ui/Footer";
 
 import { OrdersTab } from "@/Components/BuyerPage/ProfilePage/OrdersTab";
 import { SecurityTab } from "@/Components/BuyerPage/ProfilePage/SecurityTab";

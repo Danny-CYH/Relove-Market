@@ -12,8 +12,8 @@ import {
 
 import { Link, usePage } from "@inertiajs/react";
 
-import { Footer } from "@/Components/BuyerPage/Footer";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
+import { Footer } from "@/Components/Ui/Footer";
+import { Navbar } from "@/Components/Ui/Navbar";
 
 export default function AboutUs() {
     const [activeFAQ, setActiveFAQ] = useState(null);

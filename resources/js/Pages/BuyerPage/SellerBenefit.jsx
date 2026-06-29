@@ -15,8 +15,8 @@ import {
 
 import { Link } from "@inertiajs/react";
 
-import { Footer } from "@/Components/BuyerPage/Footer";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
+import { Footer } from "@/Components/Ui/Footer";
+import { Navbar } from "@/Components/Ui/Navbar";
 
 export default function SellerBenefits() {
     const benefits = [

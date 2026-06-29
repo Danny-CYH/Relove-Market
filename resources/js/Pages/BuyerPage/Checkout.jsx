@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import { Link, router, usePage } from "@inertiajs/react";
 import axios from "axios";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
-import { Footer } from "@/Components/BuyerPage/Footer";
+import { Navbar } from "@/Components/Ui/Navbar";
+import { Footer } from "@/Components/Ui/Footer";
 import { CheckoutForm } from "@/Components/BuyerPage/Checkout/CheckoutForm";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";

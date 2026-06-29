@@ -17,8 +17,8 @@ import {
 } from "lucide-react";
 import axios from "axios";
 import { Link, router, usePage } from "@inertiajs/react";
-import { Footer } from "@/Components/BuyerPage/Footer";
-import { Navbar } from "@/Components/BuyerPage/Navbar";
+import { Footer } from "@/Components/Ui/Footer";
+import { Navbar } from "@/Components/Ui/Navbar";
 
 export default function Wishlist({ user_wishlist }) {
     const [wishlist, setWishlist] = useState(user_wishlist);

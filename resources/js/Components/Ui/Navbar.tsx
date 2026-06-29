@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { usePage, Link } from "@inertiajs/react";
 
-export function Navbar() {
+export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [scrolled, setScrolled] = useState(false);
