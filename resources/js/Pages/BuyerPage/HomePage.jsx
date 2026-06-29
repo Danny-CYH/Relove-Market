@@ -1,5 +1,4 @@
 import {
-    FaSearch,
     FaCamera,
     FaRecycle,
     FaStore,
@@ -10,9 +9,7 @@ import {
     FaTags,
     FaStar,
     FaExclamationTriangle,
-    FaChevronLeft,
-    FaChevronRight,
-    FaSpinner,
+    FaSearch,
 } from "react-icons/fa";
 
 import {
@@ -28,37 +25,36 @@ import {
     Sofa,
     Boxes,
     Gem,
+    CheckCircle,
+    Clock,
 } from "lucide-react";
 
 import axios from "axios";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { Link, usePage } from "@inertiajs/react";
 
 import { Navbar } from "@/Components/BuyerPage/Navbar";
 import { Footer } from "@/Components/BuyerPage/Footer";
 
-// Modal component for displaying the success register message for users
-import { SellerRegisterSuccess } from "@/Components/BuyerPage/HomePage/SellerRegisterSuccess";
-
 // Modal component for camera search results
 import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
-
-// Public Product Card component used in multiple places
-import { ProductCard } from "@/Components/BuyerPage/ShopPage/ProductCard";
-
-// Helper functions for wishlist
-import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
-
-// Component and function for the loading state of the featured products carousel
-import { FeaturedProductsLoading } from "@/Components/BuyerPage/HomePage/FeaturedProductsLoading";
-import { NoFeaturedProducts } from "@/Components/BuyerPage/HomePage/NoFeaturedProducts";
-import { GetFeaturedProducts } from "@/Components/HelperFunction/GetFeaturedProducts";
 
 // Component and functions for the flash sale products carousel
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
 import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSaleProduct";
+
+// Additional UI components
+import Carousel from "../../Components/Ui/Carousel";
+
+import { Button } from "@/Components/Ui/Button";
+import { Modal } from "@/Components/Ui/Modal";
+
+// Helper Functions
+import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
+import { SearchablePickerModal } from "@/Components/Ui/SearchablePickerModal";
+import { useFeaturedProducts } from "@/Components/HelperFunction/useFeaturedProducts";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -76,15 +72,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     };
 
     const [selectedCategory, setSelectedCategory] = useState("All");
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState([]);
-    const [showSearchResults, setShowSearchResults] = useState(false);
+    const [isSuccessRegisterOpen, setIsSuccessRegisterOpen] = useState(false);
 
-    const [featuredProducts, setFeaturedProducts] = useState([]);
     const [flashSaleProducts, setFlashSaleProducts] = useState([]);
 
-    const [loadingFeatured, setLoadingFeatured] = useState(true);
     const [loadingFlashSale, setLoadingFlashSale] = useState(true);
 
     // Add these new states for camera search
@@ -93,34 +84,16 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [cameraSearchLoading, setCameraSearchLoading] = useState(false);
     const [searchImage, setSearchImage] = useState(null);
 
-    // NEW: Infinite carousel states
-    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-    const [carouselProducts, setCarouselProducts] = useState([]);
-    const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
+    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
-    const carouselIntervalRef = useRef(null);
-    const carouselContainerRef = useRef(null);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+
     const fileInputRef = useRef(null);
 
+    const { carouselProducts, loadingFeatured } = useFeaturedProducts();
+
     const { flash } = usePage().props;
-    const { auth } = usePage().props;
-
-    // 4 items per slide
-    const itemsPerSlide = 4;
-
-    // Wishlist function
-    const save_wishlist = async (productId, selectedVariant = null) => {
-        return await SaveWishlist(productId, selectedVariant, auth);
-    };
-
-    // Get the featured products data
-    const get_featuredProducts = async () => {
-        return await GetFeaturedProducts(
-            setLoadingFeatured,
-            setFeaturedProducts,
-            setCarouselProducts,
-        );
-    };
 
     // Get the flash sale products data
     const get_flashSaleProducts = async () => {
@@ -128,63 +101,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             setLoadingFlashSale,
             setFlashSaleProducts,
         );
-    };
-
-    const startAutoPlay = useCallback(() => {
-        if (carouselProducts.length <= itemsPerSlide) return;
-
-        clearInterval(carouselIntervalRef.current);
-        carouselIntervalRef.current = setInterval(() => {
-            setCurrentCarouselIndex((prevIndex) => {
-                const nextIndex = prevIndex + itemsPerSlide;
-                if (nextIndex >= carouselProducts.length) {
-                    // Smooth transition to beginning
-                    setTimeout(() => {
-                        setCurrentCarouselIndex(0);
-                    }, 300);
-                    return carouselProducts.length - itemsPerSlide;
-                }
-                return nextIndex;
-            });
-        }, 5000);
-    }, [carouselProducts.length]);
-
-    const stopAutoPlay = () => {
-        clearInterval(carouselIntervalRef.current);
-    };
-
-    const nextCarouselSlide = () => {
-        if (carouselProducts.length <= itemsPerSlide) return;
-
-        setCurrentCarouselIndex((prevIndex) => {
-            const nextIndex = prevIndex + itemsPerSlide;
-            if (nextIndex >= carouselProducts.length) {
-                // Smooth transition to beginning
-                setTimeout(() => {
-                    setCurrentCarouselIndex(0);
-                }, 300);
-                return carouselProducts.length - itemsPerSlide;
-            }
-            return nextIndex;
-        });
-    };
-
-    const prevCarouselSlide = () => {
-        if (carouselProducts.length <= itemsPerSlide) return;
-
-        setCurrentCarouselIndex((prevIndex) => {
-            const prevIndexValue = prevIndex - itemsPerSlide;
-            if (prevIndexValue < 0) {
-                // Smooth transition to end
-                setTimeout(() => {
-                    setCurrentCarouselIndex(
-                        carouselProducts.length - itemsPerSlide,
-                    );
-                }, 300);
-                return 0;
-            }
-            return prevIndexValue;
-        });
     };
 
     // Updated camera search handler
@@ -236,47 +152,15 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         }
     };
 
-    // Handle search functionality
-    const handleSearch = (query) => {
-        setSearchQuery(query);
-        if (query.length > 1) {
-            // Filter items based on search query
-            const results = list_shoppingItem.filter(
-                (product) =>
-                    product.product_name
-                        .toLowerCase()
-                        .includes(query.toLowerCase()) ||
-                    product.category?.category_name
-                        ?.toLowerCase()
-                        .includes(query.toLowerCase()),
-            );
-            setSearchResults(results);
-            setShowSearchResults(true);
-        } else {
-            setShowSearchResults(false);
-        }
-    };
-
-    // Start autoplay when there are enough products and autoplay is enabled
-    useEffect(() => {
-        if (carouselProducts.length > 1 && isAutoPlaying) {
-            startAutoPlay();
-        }
-        return () => {
-            stopAutoPlay();
-        };
-    }, [carouselProducts.length, isAutoPlaying, startAutoPlay]);
-
     // listen to the success message after user register as seller success
     useEffect(() => {
         if (flash.successMessage) {
-            setIsOpen(true);
+            setIsSuccessRegisterOpen(true);
         }
     }, [flash.successMessage]);
 
     // call the api functions
     useEffect(() => {
-        get_featuredProducts();
         get_flashSaleProducts();
     }, []);
 
@@ -285,16 +169,26 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             <Navbar />
 
             {/* Modal for displaying the success register message for users */}
-            <SellerRegisterSuccess isOpen={isOpen} setIsOpen={setIsOpen} />
+            <Modal
+                isOpen={isSuccessRegisterOpen}
+                onClose={() => setIsSuccessRegisterOpen(false)}
+                icon={<CheckCircle />}
+                title="Seller Registration Received"
+                description="Thank you for registering as a seller on Relove Market. Your application is under review and will be processed within around 1 week."
+                note="Please wait patiently, we'll notify you via email once approved."
+                noteIcon={<Clock />}
+                primaryLabel="Got it!"
+                primaryOnClick={() => setIsSuccessRegisterOpen(false)}
+            />
 
-            {/* Modal for showing the camera search result */}
+            {/* Special Modal for showing the camera search result */}
             <CameraSearchModal
                 isOpen={cameraSearchOpen}
                 onClose={closeCameraSearch}
                 searchResults={cameraSearchResults}
                 isLoading={cameraSearchLoading}
                 searchImage={searchImage}
-                save_wishlist={save_wishlist}
+                save_wishlist={SaveWishlist}
             />
 
             <main className="flex-grow">
@@ -321,112 +215,54 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <div className="relative flex-grow max-w-xl">
-                                    <input
-                                        type="text"
-                                        placeholder="Search for any product..."
-                                        className="text-black w-full px-6 py-4 rounded-full border border-gray-300 focus:ring-2 focus:ring-green-500 focus:border-transparent shadow-sm"
-                                        value={searchQuery}
-                                        onChange={(e) =>
-                                            handleSearch(e.target.value)
+                                    <div
+                                        className="flex items-center w-full px-6 py-4 rounded-full border border-gray-300 bg-white cursor-pointer hover:border-green-400 hover:shadow-md transition-all"
+                                        onClick={() =>
+                                            setIsSearchModalOpen(true)
                                         }
-                                        onFocus={() =>
-                                            searchQuery.length > 1 &&
-                                            setShowSearchResults(true)
-                                        }
-                                        onBlur={() =>
-                                            setTimeout(
-                                                () =>
-                                                    setShowSearchResults(false),
-                                                200,
-                                            )
-                                        }
-                                    />
-                                    <button className="absolute right-3 top-3 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full">
-                                        <FaSearch className="text-lg" />
-                                    </button>
+                                    >
+                                        <FaSearch className="text-gray-400 mr-3" />
+                                        <span className="text-gray-400 flex-1">
+                                            Search for any product...
+                                        </span>
+                                    </div>
 
-                                    {/* Search Results Dropdown */}
-                                    {showSearchResults && (
-                                        <div className="absolute z-50 w-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 max-h-80 overflow-y-auto">
-                                            {searchResults.length > 0 ? (
-                                                <div className="py-2">
-                                                    {searchResults.map(
-                                                        (product) => (
-                                                            <Link
-                                                                key={
-                                                                    product.product_id
-                                                                }
-                                                                href={route(
-                                                                    "product-details",
-                                                                    product.product_id,
-                                                                )}
-                                                                className="flex items-center px-4 py-3 hover:bg-gray-100 transition-colors"
-                                                            >
-                                                                <img
-                                                                    src={
-                                                                        import.meta
-                                                                            .env
-                                                                            .VITE_BASE_URL +
-                                                                        product
-                                                                            .product_image[0]
-                                                                            .image_path
-                                                                    }
-                                                                    alt={
-                                                                        product.product_name
-                                                                    }
-                                                                    className="w-10 h-10 rounded-full object-cover mr-3"
-                                                                />
-                                                                <div>
-                                                                    <p className="font-medium text-gray-900">
-                                                                        {
-                                                                            product.product_name
-                                                                        }
-                                                                    </p>
-                                                                    <p className="text-sm text-gray-500">
-                                                                        {
-                                                                            product
-                                                                                .category
-                                                                                .category_name
-                                                                        }
-                                                                    </p>
-                                                                </div>
-                                                                <span className="ml-auto font-bold text-green-600">
-                                                                    RM{" "}
-                                                                    {
-                                                                        product.product_price
-                                                                    }
-                                                                </span>
-                                                            </Link>
-                                                        ),
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div className="px-4 py-3 text-gray-500">
-                                                    No results found for "
-                                                    {searchQuery}"
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                    {/* Modal for displaying search results */}
+                                    <SearchablePickerModal
+                                        isOpen={isSearchModalOpen}
+                                        onClose={() => {
+                                            setIsSearchModalOpen(false);
+                                            setSearchQuery("");
+                                            setSearchResults([]);
+                                        }}
+                                        items={list_shoppingItem}
+                                        onSelect={(product) => {
+                                            setIsSearchModalOpen(false);
+                                            setSearchQuery("");
+                                            setSearchResults([]);
+                                            window.location.href = route(
+                                                "product-details",
+                                                product.product_id,
+                                            );
+                                        }}
+                                        title="Search Products"
+                                        placeholder="What are you looking for?"
+                                    />
                                 </div>
-                                <button
+
+                                {/* Button for visual search functionality */}
+                                <Button
+                                    variant="successSoft"
+                                    size="visual"
                                     onClick={handleCameraClick}
                                     disabled={cameraSearchLoading}
-                                    className={`px-6 py-4 rounded-full flex items-center justify-center gap-2 transition-colors ${
-                                        cameraSearchLoading
-                                            ? "bg-gray-400 cursor-not-allowed text-white"
-                                            : "bg-gray-800 hover:bg-gray-900 text-white"
-                                    }`}
-                                >
-                                    {cameraSearchLoading ? (
-                                        <FaSpinner className="animate-spin" />
-                                    ) : (
-                                        <FaCamera />
-                                    )}
-                                    {cameraSearchLoading
-                                        ? "Searching..."
-                                        : "Visual Search"}
-                                </button>
+                                    isLoading={cameraSearchLoading}
+                                    loadingText="Searching..."
+                                    leftIcon={<FaCamera />}
+                                    iconSize="text-lg"
+                                    className="flex items-center justify-center gap-2"
+                                    buttonText="Visual Search"
+                                />
 
                                 <input
                                     type="file"
@@ -579,89 +415,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                 {/* NEW: Infinite Carousel Section - "Recommended for You" */}
                 <section className="py-12 bg-white px-4">
-                    <div className="max-w-7xl mx-auto">
-                        <div className="flex flex-col md:flex-row md:justify-between items-center mb-8">
-                            <h2 className="text-2xl font-bold text-gray-900 text-center">
-                                Second Life, First Choice
-                            </h2>
-                            <div className="flex items-center gap-3 mt-3 md:mt-0">
-                                <Link
-                                    href={route("shopping")}
-                                    className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium"
-                                >
-                                    View all{" "}
-                                    <FaArrowRight className="ml-1 text-xs" />
-                                </Link>
-                            </div>
-                        </div>
-
-                        {/* Loading State */}
-                        {loadingFeatured && <FeaturedProductsLoading />}
-
-                        {/* No Featured Products State */}
-                        {!loadingFeatured && carouselProducts.length === 0 && (
-                            <NoFeaturedProducts />
-                        )}
-
-                        {/* Infinite Carousel */}
-                        {!loadingFeatured && carouselProducts.length > 0 && (
-                            <div className="relative">
-                                {/* Carousel Container */}
-                                <div
-                                    ref={carouselContainerRef}
-                                    className="overflow-hidden rounded-xl"
-                                >
-                                    <div
-                                        className="flex transition-transform duration-500 ease-in-out"
-                                        style={{
-                                            transform: `translateX(-${
-                                                currentCarouselIndex *
-                                                (100 /
-                                                    Math.min(
-                                                        4,
-                                                        carouselProducts.length,
-                                                    ))
-                                            }%)`,
-                                        }}
-                                    >
-                                        {carouselProducts.map(
-                                            (product, index) => (
-                                                <div
-                                                    key={`${product.product_id}-${index}`}
-                                                    className="w-full sm:w-1/2 md:w-1/3 lg:w-1/4 flex-shrink-0 px-2 sm:px-3"
-                                                >
-                                                    <ProductCard
-                                                        key={product.product_id}
-                                                        product={product}
-                                                    />
-                                                </div>
-                                            ),
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Navigation Buttons - Only show if there are more than 4 products */}
-                                {carouselProducts.length > 4 && (
-                                    <>
-                                        <button
-                                            onClick={prevCarouselSlide}
-                                            className="absolute -left-3 sm:-left-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 sm:p-3 rounded-full shadow-lg border border-gray-200 transition-all z-10"
-                                            aria-label="Previous product"
-                                        >
-                                            <FaChevronLeft className="text-gray-700 w-4 h-4 sm:w-5 sm:h-5" />
-                                        </button>
-                                        <button
-                                            onClick={nextCarouselSlide}
-                                            className="absolute -right-3 sm:-right-4 top-1/2 transform -translate-y-1/2 bg-white hover:bg-gray-50 p-2 sm:p-3 rounded-full shadow-lg border border-gray-200 transition-all z-10"
-                                            aria-label="Next product"
-                                        >
-                                            <FaChevronRight className="text-gray-700 w-4 h-4 sm:w-5 sm:h-5" />
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                    <Carousel
+                        title="Second Life, First Choice"
+                        loadingFeatured={loadingFeatured}
+                        carouselProducts={carouselProducts}
+                    />
                 </section>
 
                 {/* BENEFITS */}
