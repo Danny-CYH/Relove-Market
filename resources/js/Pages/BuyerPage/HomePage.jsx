@@ -41,9 +41,6 @@ import { Footer } from "@/Components/BuyerPage/Footer";
 // Modal component for camera search results
 import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchModal";
 
-// Component and function for the loading state of the featured products carousel
-import { GetFeaturedProducts } from "@/Components/HelperFunction/GetFeaturedProducts";
-
 // Component and functions for the flash sale products carousel
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
 import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSaleProduct";
@@ -57,6 +54,7 @@ import { Modal } from "@/Components/Ui/Modal";
 // Helper Functions
 import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
 import { SearchablePickerModal } from "@/Components/Ui/SearchablePickerModal";
+import { useFeaturedProducts } from "@/Components/HelperFunction/useFeaturedProducts";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -78,9 +76,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const [flashSaleProducts, setFlashSaleProducts] = useState([]);
 
-    const [featuredProducts, setFeaturedProducts] = useState([]);
-
-    const [loadingFeatured, setLoadingFeatured] = useState(true);
     const [loadingFlashSale, setLoadingFlashSale] = useState(true);
 
     // Add these new states for camera search
@@ -89,8 +84,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [cameraSearchLoading, setCameraSearchLoading] = useState(false);
     const [searchImage, setSearchImage] = useState(null);
 
-    const [carouselProducts, setCarouselProducts] = useState([]);
-
     const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
 
     const [searchQuery, setSearchQuery] = useState("");
@@ -98,16 +91,9 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const fileInputRef = useRef(null);
 
-    const { flash } = usePage().props;
+    const { carouselProducts, loadingFeatured } = useFeaturedProducts();
 
-    // Get the featured products data
-    const get_featuredProducts = async () => {
-        return await GetFeaturedProducts(
-            setLoadingFeatured,
-            setFeaturedProducts,
-            setCarouselProducts,
-        );
-    };
+    const { flash } = usePage().props;
 
     // Get the flash sale products data
     const get_flashSaleProducts = async () => {
@@ -175,7 +161,6 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     // call the api functions
     useEffect(() => {
-        get_featuredProducts();
         get_flashSaleProducts();
     }, []);
 
@@ -196,7 +181,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 primaryOnClick={() => setIsSuccessRegisterOpen(false)}
             />
 
-            {/* Modal for showing the camera search result */}
+            {/* Special Modal for showing the camera search result */}
             <CameraSearchModal
                 isOpen={cameraSearchOpen}
                 onClose={closeCameraSearch}
