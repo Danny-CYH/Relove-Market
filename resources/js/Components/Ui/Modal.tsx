@@ -13,6 +13,9 @@ export function Modal({
     primaryOnClick,
     secondaryLabel,
     secondaryOnClick,
+    buttonLayout = "right", // "right" | "center" | "full"
+    buttonDirection = "row", // "row" | "col"
+    fullWidth = false, // true | false
 }) {
     if (!isOpen) return null;
 
@@ -33,17 +36,63 @@ export function Modal({
         });
     };
 
-    // 判断有几个按钮
-    const hasSecondary = !!secondaryLabel;
+    // 判断是否有按钮
     const hasPrimary = !!primaryLabel;
+    const hasSecondary = !!secondaryLabel;
+    const hasAnyButton = hasPrimary || hasSecondary;
 
     // 处理按钮点击 - 默认关闭
     const handlePrimary = primaryOnClick ?? onClose;
     const handleSecondary = secondaryOnClick ?? onClose;
 
+    // 按钮布局样式
+    const getButtonJustify = () => {
+        if (fullWidth) return "flex-col";
+        if (buttonLayout === "center") return "justify-center";
+        if (buttonLayout === "right") return "justify-end";
+        return "justify-end";
+    };
+
+    // 按钮宽度样式
+    const getButtonWidth = (isSecondary = false) => {
+        if (fullWidth) return "w-full";
+        if (hasSecondary && !fullWidth) return "flex-1";
+        return "";
+    };
+
+    // 按钮方向
+    const getButtonDirection = () => {
+        if (fullWidth || buttonDirection === "col") return "flex-col";
+        return "flex-row";
+    };
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
-            <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl p-6">
+            <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl p-6 relative">
+                {/* 如果没有按钮，显示右上角的 X 关闭按钮 */}
+                {!hasAnyButton && (
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                        aria-label="Close"
+                    >
+                        <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                )}
+
                 {/* 图标 */}
                 {icon && (
                     <div className="flex justify-center mb-3">
@@ -73,34 +122,36 @@ export function Modal({
                     </div>
                 )}
 
-                {/* 🆕 按钮：一个就 full width，两个就各 50% */}
-                <div
-                    className={`mt-6 flex gap-3 ${!hasSecondary ? "flex-col" : ""}`}
-                >
-                    {/* 次要按钮（如果有两个按钮时在左边） */}
-                    {hasSecondary && (
+                {/* 按钮区域 */}
+                {hasAnyButton && (
+                    <div
+                        className={`mt-6 flex ${getButtonDirection()} ${getButtonJustify()} gap-3`}
+                    >
+                        {/* 次要按钮 */}
+                        {hasSecondary && (
+                            <Button
+                                type="button"
+                                onClick={handleSecondary}
+                                size="sm"
+                                variant="dangerOutline"
+                                className={getButtonWidth(true)}
+                            >
+                                {secondaryLabel}
+                            </Button>
+                        )}
+
+                        {/* 主要按钮 */}
                         <Button
                             type="button"
-                            onClick={handleSecondary}
+                            onClick={handlePrimary}
                             size="sm"
-                            variant="dangerOutline"
-                            className="flex-1 w-full sm:w-1/2"
+                            variant="success"
+                            className={getButtonWidth()}
                         >
-                            {secondaryLabel}
+                            {primaryLabel}
                         </Button>
-                    )}
-
-                    {/* 主要按钮 */}
-                    <Button
-                        type="button"
-                        onClick={handlePrimary}
-                        size="sm"
-                        variant="success"
-                        className={`flex-1 ${hasSecondary ? "w-full sm:w-1/2" : "w-full"}`}
-                    >
-                        {primaryLabel}
-                    </Button>
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );

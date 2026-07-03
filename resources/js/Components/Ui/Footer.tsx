@@ -29,14 +29,18 @@ import { SafetyGuidelinesModal } from "../BuyerPage/HomePage/SafetyGuidelinesMod
 import { ShippingInformationModal } from "../BuyerPage/HomePage/ShippingInformationModal";
 import { ReturnsRefundsModal } from "../BuyerPage/HomePage/ReturnsRefundModal";
 
+// Modal Contents
+import { modalConfig } from "@/Constants/modalContent";
+
+// UI Component
+import { Modal } from "./Modal";
+
 export default function Footer() {
     const [email, setEmail] = useState("");
     const [subscribed, setSubscribed] = useState(false);
-    const [isTermsConditionOpen, setIsTermsConditionOpen] = useState(false);
-    const [isHelpCenterOpen, setIsHelpCenterOpen] = useState(false);
-    const [isSafetyGuidelinesOpen, setIsSafetyGuidelinesOpen] = useState(false);
-    const [isShippingInfoOpen, setIsShippingInfoOpen] = useState(false);
-    const [isReturnsRefundsOpen, setIsReturnsRefundsOpen] = useState(false);
+
+    const [modalType, setModalType] = useState(null);
+    const config = modalType ? modalConfig[modalType] : null;
 
     const handleSubscribe = (e) => {
         e.preventDefault();
@@ -52,31 +56,17 @@ export default function Footer() {
     return (
         <footer className="bg-gray-900 text-white">
             {/* Modal for displaying terms and condition */}
-            <TermsConditions
-                isOpen={isTermsConditionOpen}
-                onClose={() => setIsTermsConditionOpen(false)}
-                onAccept={() => console.log("Terms accepted")}
-            />
-
-            <HelpCenterModal
-                isOpen={isHelpCenterOpen}
-                onClose={() => setIsHelpCenterOpen(false)}
-            />
-
-            <SafetyGuidelinesModal
-                isOpen={isSafetyGuidelinesOpen}
-                onClose={() => setIsSafetyGuidelinesOpen(false)}
-            />
-
-            <ShippingInformationModal
-                isOpen={isShippingInfoOpen}
-                onClose={() => setIsShippingInfoOpen(false)}
-            />
-
-            <ReturnsRefundsModal
-                isOpen={isReturnsRefundsOpen}
-                onClose={() => setIsReturnsRefundsOpen(false)}
-            />
+            {config && (
+                <Modal
+                    isOpen={true}
+                    onClose={() => setModalType(null)}
+                    icon={config.icon}
+                    title={config.title}
+                    description={config.description}
+                    note={config.note}
+                    noteIcon={config.noteIcon}
+                />
+            )}
 
             {/* Main Footer Content */}
             <div className="container mx-auto px-8 py-12 md:py-16 md:px-28">
@@ -237,7 +227,7 @@ export default function Footer() {
                         <ul className="space-y-3">
                             <li>
                                 <button
-                                    onClick={() => setIsHelpCenterOpen(true)}
+                                    onClick={() => setModalType("help")}
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group w-full text-left"
                                 >
                                     <FaQuestionCircle className="mr-3 text-green-500" />
@@ -247,7 +237,7 @@ export default function Footer() {
                             <li>
                                 <button
                                     onClick={() =>
-                                        setIsSafetyGuidelinesOpen(true)
+                                        setModalType("safety")
                                     }
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group w-full text-left"
                                 >
@@ -257,7 +247,9 @@ export default function Footer() {
                             </li>
                             <li>
                                 <button
-                                    onClick={() => setIsShippingInfoOpen(true)}
+                                    onClick={() =>
+                                        setModalType("shipping")
+                                    }
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group w-full text-left"
                                 >
                                     <FaShippingFast className="mr-3 text-green-500" />
@@ -267,7 +259,7 @@ export default function Footer() {
                             <li>
                                 <button
                                     onClick={() =>
-                                        setIsReturnsRefundsOpen(true)
+                                        setModalType("returns")
                                     }
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group w-full text-left"
                                 >
@@ -278,7 +270,7 @@ export default function Footer() {
                             <li>
                                 <button
                                     onClick={() =>
-                                        setIsTermsConditionOpen(true)
+                                        setModalType("terms")
                                     }
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group w-full text-left"
                                 >
