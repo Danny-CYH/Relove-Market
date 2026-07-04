@@ -30,7 +30,7 @@ class ProfileManagementController extends Controller
     }
 
     // Code for view the order history on profile page.
-    public function orderHistory()
+    public function orders()
     {
         $list_order = Order::with([
             "orderItems.product",

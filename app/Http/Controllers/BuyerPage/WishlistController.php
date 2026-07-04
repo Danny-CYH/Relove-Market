@@ -20,7 +20,7 @@ class WishlistController extends Controller
     }
 
     // Code for getting all the wishlist item for specific user
-    public function get_allWishlist()
+    public function getAllWishlist()
     {
         $all_wishlist = Wishlist::with([
             "product",
@@ -37,7 +37,7 @@ class WishlistController extends Controller
     }
 
     // Code for validate that did the user have ever like the product before
-    public function get_wishlist($product_id)
+    public function getWishlist($product_id)
     {
         try {
             $is_wishlisted = Wishlist::where(
@@ -64,7 +64,7 @@ class WishlistController extends Controller
     }
 
     // Code for storing the product as a wishlist
-    public function store_wishlist(Request $request)
+    public function storeWishlist(Request $request)
     {
         $product_id = $request->input("product_id");
 
@@ -124,7 +124,7 @@ class WishlistController extends Controller
     }
 
     // Code for removing the product from wishlist (Can removed more than 1 at one time)
-    public function remove_wishlist(Request $request)
+    public function removeWishlist(Request $request)
     {
         try {
             $productIds = $request->input('product_id'); // array from frontend
