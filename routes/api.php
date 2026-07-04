@@ -20,25 +20,25 @@ use App\Http\Controllers\SellerPage\SellerManageProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(["is_buyer"])->group(function () {
-    // COde for manage the profile on the profile page
-    Route::get("/api/orders-history", [ProfileManagementController::class, "orderHistory"])->name("order-history");
-    Route::post("/api/profile-update", [ProfileManagementController::class, "updateProfile"])->name("update-profile");
-    Route::post('/api/update-password', [ProfileManagementController::class, 'updatePassword'])->name('update-password');
-    Route::get('/api/check-address', [ProfileManagementController::class, 'checkAddress'])->name('check-address');
+    // Route for manage the profile on the profile page
+    Route::get("/profile/orders", [ProfileManagementController::class, "orders"])->name("profile.orders");
+    Route::patch("/profile/info", [ProfileManagementController::class, "updateProfile"])->name("profile.info");
+    Route::patch('/profile/password', [ProfileManagementController::class, 'updatePassword'])->name('profile.password');
+    Route::get('/profile/check-address', [ProfileManagementController::class, 'checkAddress'])->name('profile.check-address');
     Route::post('/orders/{orderId}/confirm-delivery', [ProfileManagementController::class, 'confirmDelivery'])->name('confirm-delivery');
 
-    // Code for manage the wishlist operations on wishlist and product details page
-    Route::get("/api/get-all-wishlist", [WishlistController::class, "get_allWishlist"])->name("all-wishlist");
-    Route::get("/api/get-wishlist/{product_id}", [WishlistController::class, "get_wishlist"])->name("get-wishlist");
-    Route::post('/api/store-wishlist', [WishlistController::class, 'store_wishlist'])->name("store-wishlist");
-    Route::post('/api/update-wishlist-variant', [WishlistController::class, 'updateVariant'])->name("update-wishlist-variant");
-    Route::delete('/api/remove-wishlist', [WishlistController::class, 'remove_wishlist'])->name("remove-wishlist");
+    // Route for manage the wishlist operations on wishlist and product details page
+    Route::get("/wishlist/all", [WishlistController::class, "getAllWishlist"])->name("wishlist.all");
+    Route::get("/wishlist/{product_id}", [WishlistController::class, "getWishlist"])->name("wishlist.check");
+    Route::post('/wishlist', [WishlistController::class, 'storeWishlist'])->name("wishlist.store");
+    Route::patch('/wishlist/update-variant', [WishlistController::class, 'updateVariant'])->name("wishlist.update-variant");
+    Route::delete('/wishlist', [WishlistController::class, 'removeWishlist'])->name("wishlist.remove");
 
     // Code for register an a seller account on seller registration page
-    Route::post('/api/seller-registration-process', [SellerRegistrationController::class, 'sellerRegistrationProcess'])->name("seller-registration-process");
+    Route::post('/seller-registration', [SellerRegistrationController::class, 'sellerRegistrationProcess'])->name("seller-registration-process");
 
     // Code for manage the reviews on product details page.
-    Route::post("/api/make-reviews", [ProductManagementController::class, "make_review"])->name("make-review");
+    Route::post("/reviews", [ProductManagementController::class, "make_review"])->name("make-review");
 });
 
 // API functions for seller page
@@ -65,40 +65,40 @@ Route::middleware(["is_seller"])->group(function () {
     Route::get('/api/seller-earnings', [SellerManageEarningController::class, 'getEarnings'])->name("earnings");
     Route::post('/api/generate-income-report', [SellerManageEarningController::class, 'generateIncomeReport'])->name("generate-report");
 
-    Route::get('/seller/profile', [SellerManageProfileController::class, 'getProfile']);
-    Route::post('/seller/profile/user/update', [SellerManageProfileController::class, 'updateUserProfile']);
-    Route::post('/seller/profile/store/update', [SellerManageProfileController::class, 'updateStoreProfile']);
-    Route::post('/seller/profile/password/update', [SellerManageProfileController::class, 'updatePassword']);
-    Route::delete('/seller/profile/image', [SellerManageProfileController::class, 'deleteProfileImage']);
-    Route::delete('/seller/store/image', [SellerManageProfileController::class, 'deleteStoreImage']);
+    Route::get('/profile/seller', [SellerManageProfileController::class, 'getProfile']);
+    Route::post('/profile/store', [SellerManageProfileController::class, 'updateStoreProfile']);
+    Route::patch('/profile/update', [SellerManageProfileController::class, 'updateUserProfile']);
+    Route::patch('/profile/update/password', [SellerManageProfileController::class, 'updatePassword']);
+    Route::delete('/profile/image', [SellerManageProfileController::class, 'deleteProfileImage']);
+    Route::delete('/profile/image', [SellerManageProfileController::class, 'deleteStoreImage']);
 });
 
 // API function for admin page
 Route::middleware(["is_admin"])->group(function () {
     // API for admin dashboard
-    Route::get('/api/admin/dashboard/stats', [AdminDashboardController::class, 'getStats'])->name('admin.dashboard.stats');
-    Route::get('/api/admin/dashboard/notifications', [AdminDashboardController::class, 'getNotifications']);
+    Route::get('/dashboard/stats', [AdminDashboardController::class, 'getStats'])->name('admin.dashboard.stats');
+    Route::get('/dashboard/notifications', [AdminDashboardController::class, 'getNotifications']);
 
-    Route::get('/api/admin/dashboard/seller-list', [SellerPendingController::class, 'getSellerList'])->name("seller-list");
+    Route::get('/dashboard/seller-list', [SellerPendingController::class, 'getSellerList'])->name("seller-list");
     Route::post('/api/admin/pending-seller/{id}/action', [SellerPendingController::class, 'handleAction'])->name("handle-action");
 
     // API for manage products
-    Route::get('/api/admin/products', [ProductModerationController::class, 'get_allProducts'])->name('get-all-products');
-    Route::get('/api/admin/products/stats', [ProductModerationController::class, 'get_product_stats'])->name('get-product-stats');
-    Route::post('/api/admin/products/{product}/block', [ProductModerationController::class, 'block_product'])->name("admin.products.block");
-    Route::post('/api/admin/products/{product}/unblock', [ProductModerationController::class, 'unblock_product'])->name("admin.products.unblock");
-    Route::post('/api/admin/products/{product}/flag', [ProductModerationController::class, 'flag_product'])->name("admin.products.flag");
-    Route::get('/api/admin/products/{product}/analysis', [ProductModerationController::class, 'getProductAnalysis'])->name('admin.product-analysis');
+    Route::get('/products', [ProductModerationController::class, 'get_allProducts'])->name('get-all-products');
+    Route::get('/products/stats', [ProductModerationController::class, 'get_product_stats'])->name('get-product-stats');
+    Route::post('/products/{product}/block', [ProductModerationController::class, 'block_product'])->name("admin.products.block");
+    Route::post('/products/{product}/unblock', [ProductModerationController::class, 'unblock_product'])->name("admin.products.unblock");
+    Route::post('/products/{product}/flag', [ProductModerationController::class, 'flag_product'])->name("admin.products.flag");
+    Route::get('/products/{product}/analysis', [ProductModerationController::class, 'getProductAnalysis'])->name('admin.product-analysis');
 
-    Route::get("/api/transactions", [TransactionManagementController::class, 'filterFunction'])->name("filter-functions");
-    Route::get("/api/transactions/metrics", [TransactionManagementController::class, "getData"])->name("get-data");
-    Route::post('/api/transactions/{orderId}/release-payment', [TransactionManagementController::class, 'releasePayment'])->name('release-payment');
-    Route::get('/api/transactions/{orderId}/tracking', [TransactionManagementController::class, 'getOrderTracking']);
+    Route::get("/transactions", [TransactionManagementController::class, 'filterFunction'])->name("filter-functions");
+    Route::get("/transactions/metrics", [TransactionManagementController::class, "getData"])->name("get-data");
+    Route::post('/transactions/{orderId}/release-payment', [TransactionManagementController::class, 'releasePayment'])->name('release-payment');
+    Route::get('/transactions/{orderId}/tracking', [TransactionManagementController::class, 'getOrderTracking']);
     Route::post('/{orderId}/manual-release', [TransactionManagementController::class, 'manualReleasePayment']);
 
     // API for manage users.
-    Route::get("/api/admin/user-management/list", [UserManagementController::class, "getUserList"])->name("list-user");
-    Route::get('/api/admin/user-management/details/{id}', [UserManagementController::class, 'getUserDetails']);
-    Route::post('/api/admin/user-management/actions', [UserManagementController::class, 'handleUserActions'])->name('user-management.actions');
-    Route::get('/api/admin/user-management/stats', [UserManagementController::class, 'getUserStats'])->name('user-management.stats');
+    Route::get("/user-management/list", [UserManagementController::class, "getUserList"])->name("list-user");
+    Route::get('/user-management/details/{id}', [UserManagementController::class, 'getUserDetails']);
+    Route::post('/user-management/actions', [UserManagementController::class, 'handleUserActions'])->name('user-management.actions');
+    Route::get('/user-management/stats', [UserManagementController::class, 'getUserStats'])->name('user-management.stats');
 });
