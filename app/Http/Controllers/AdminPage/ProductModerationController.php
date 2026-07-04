@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class ProductModerationController extends Controller
 {
-    public function get_allProducts(Request $request)
+    public function getProducts(Request $request)
     {
         try {
             $query = Product::with(['category', 'seller.sellerStore', 'ratings', 'productImage']);
@@ -78,7 +78,7 @@ class ProductModerationController extends Controller
         }
     }
 
-    public function get_product_stats()
+    public function statsProducts()
     {
         try {
             $totalProducts = Product::count();
@@ -110,7 +110,7 @@ class ProductModerationController extends Controller
         }
     }
 
-    public function getProductAnalysis($id)
+    public function analysisProducts($id)
     {
         $product = Product::with(['seller', 'category'])
             ->findOrFail($id);
@@ -173,7 +173,7 @@ class ProductModerationController extends Controller
         ]);
     }
 
-    public function block_product(Request $request, $productId)
+    public function blockProducts(Request $request, $productId)
     {
         try {
             $product = Product::with(['seller', 'category'])->findOrFail($productId);
@@ -208,7 +208,7 @@ class ProductModerationController extends Controller
         }
     }
 
-    public function unblock_product(Request $request, $productId)
+    public function unblockProducts(Request $request, $productId)
     {
         try {
             $product = Product::with(['seller', 'category'])->findOrFail($productId);
@@ -243,7 +243,7 @@ class ProductModerationController extends Controller
         }
     }
 
-    public function flag_product(Request $request, $productId)
+    public function flagProducts(Request $request, $productId)
     {
         try {
             $product = Product::with(['seller', 'category'])->findOrFail($productId);
