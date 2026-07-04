@@ -4,7 +4,7 @@ import {
     FaUserCircle,
     FaSignOutAlt,
     FaStore,
-    FaSnapchat,
+    FaHeart,
     FaShoppingCart,
     FaComment,
 } from "react-icons/fa";
@@ -192,12 +192,12 @@ export default function Navbar() {
                                                     <>
                                                         <Link
                                                             href={route(
-                                                                "seller.dashboard"
+                                                                "seller.dashboard",
                                                             )}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
-                                                                    false
+                                                                    false,
                                                                 )
                                                             }
                                                         >
@@ -205,11 +205,13 @@ export default function Navbar() {
                                                             Seller Dashboard
                                                         </Link>
                                                         <Link
-                                                            href={route("relove-market.cart")}
+                                                            href={route(
+                                                                "relove-market.cart",
+                                                            )}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
-                                                                    false
+                                                                    false,
                                                                 )
                                                             }
                                                         >
@@ -221,12 +223,12 @@ export default function Navbar() {
                                                     <>
                                                         <Link
                                                             href={route(
-                                                                "relove-market.profile"
+                                                                "relove-market.profile",
                                                             )}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
-                                                                    false
+                                                                    false,
                                                                 )
                                                             }
                                                         >
@@ -234,11 +236,13 @@ export default function Navbar() {
                                                             Profile
                                                         </Link>
                                                         <Link
-                                                            href={route("relove-market.cart")}
+                                                            href={route(
+                                                                "relove-market.cart",
+                                                            )}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
-                                                                    false
+                                                                    false,
                                                                 )
                                                             }
                                                         >
@@ -248,12 +252,27 @@ export default function Navbar() {
 
                                                         <Link
                                                             href={route(
-                                                                "relove-market.chat"
+                                                                "relove-market.wishlist",
                                                             )}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
-                                                                    false
+                                                                    false,
+                                                                )
+                                                            }
+                                                        >
+                                                            <FaHeart className="mr-3 text-gray-400" />
+                                                            Wishlist
+                                                        </Link>
+
+                                                        <Link
+                                                            href={route(
+                                                                "relove-market.chat",
+                                                            )}
+                                                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
+                                                            onClick={() =>
+                                                                setShowUserMenu(
+                                                                    false,
                                                                 )
                                                             }
                                                         >
@@ -396,7 +415,7 @@ export default function Navbar() {
                                     </Link>
 
                                     <Link
-                                        href={route("about-us")}
+                                        href={route("relove-market.about-us")}
                                         onClick={() => setIsOpen(false)}
                                         className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
                                             route().current("about-us")
@@ -411,10 +430,12 @@ export default function Navbar() {
                                     </Link>
 
                                     <Link
-                                        href={route("shopping")}
+                                        href={route("relove-market.shopping")}
                                         onClick={() => setIsOpen(false)}
                                         className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                                            route().current("shopping")
+                                            route().current(
+                                                "relove-market.shopping",
+                                            )
                                                 ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
                                                 : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
                                         }`}
@@ -426,10 +447,14 @@ export default function Navbar() {
                                     </Link>
 
                                     <Link
-                                        href={route("seller-benefit")}
+                                        href={route(
+                                            "relove-market.seller-benefit",
+                                        )}
                                         onClick={() => setIsOpen(false)}
                                         className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                                            route().current("seller-benefit")
+                                            route().current(
+                                                "relove-market.seller-benefit",
+                                            )
                                                 ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
                                                 : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
                                         }`}
@@ -441,10 +466,12 @@ export default function Navbar() {
                                     </Link>
 
                                     <Link
-                                        href={route("cart")}
+                                        href={route("relove-market.cart")}
                                         onClick={() => setIsOpen(false)}
                                         className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                                            route().current("cart")
+                                            route().current(
+                                                "relove-market.cart",
+                                            )
                                                 ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
                                                 : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
                                         }`}
@@ -456,10 +483,29 @@ export default function Navbar() {
                                     </Link>
 
                                     <Link
+                                        href={route("relove-market.wishlist")}
+                                        onClick={() => setIsOpen(false)}
+                                        className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
+                                            route().current(
+                                                "relove-market.wishlist",
+                                            )
+                                                ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
+                                                : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
+                                        }`}
+                                    >
+                                        <span className="text-xl mb-2">❤️</span>
+                                        <span className="text-xs font-medium text-center">
+                                            Wishlist
+                                        </span>
+                                    </Link>
+
+                                    <Link
                                         href={route("relove-market.chat")}
                                         onClick={() => setIsOpen(false)}
                                         className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${
-                                            route().current("relove-market.chat")
+                                            route().current(
+                                                "relove-market.chat",
+                                            )
                                                 ? "bg-green-50 border-green-200 text-green-600 shadow-sm"
                                                 : "border-gray-100 text-gray-700 hover:bg-gray-50 hover:border-gray-200"
                                         }`}
@@ -477,10 +523,14 @@ export default function Navbar() {
                                     {auth?.user && (
                                         <>
                                             <Link
-                                                href={route("profile")}
+                                                href={route(
+                                                    "relove-market.profile",
+                                                )}
                                                 onClick={() => setIsOpen(false)}
                                                 className={`flex items-center space-x-3 p-3 rounded-xl transition-colors ${
-                                                    route().current("profile")
+                                                    route().current(
+                                                        "relove-market.profile",
+                                                    )
                                                         ? "bg-blue-50 text-blue-600"
                                                         : "text-gray-700 hover:bg-gray-50"
                                                 }`}

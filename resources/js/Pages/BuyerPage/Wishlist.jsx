@@ -446,7 +446,7 @@ export default function Wishlist({ user_wishlist = [] }) {
                             Start saving your favorite items by clicking the
                             heart icon on any product.
                         </p>
-                        <Link href={route("shopping")}>
+                        <Link href={route("relove-market.shopping")}>
                             <button className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-2xl hover:from-emerald-600 hover:to-emerald-700 transition shadow-lg hover:shadow-xl font-semibold flex items-center gap-2 mx-auto">
                                 <ShoppingBag className="w-5 h-5" />
                                 Explore Products
@@ -585,7 +585,7 @@ export default function Wishlist({ user_wishlist = [] }) {
                                                     {/* Product Image */}
                                                     <Link
                                                         href={route(
-                                                            "product-details",
+                                                            "relove-market.product-details",
                                                             item.product_id,
                                                         )}
                                                     >
@@ -641,7 +641,7 @@ export default function Wishlist({ user_wishlist = [] }) {
                                                     {/* Product Name */}
                                                     <Link
                                                         href={route(
-                                                            "product-details",
+                                                            "relove-market.product-details",
                                                             item.product_id,
                                                         )}
                                                     >
@@ -707,7 +707,7 @@ export default function Wishlist({ user_wishlist = [] }) {
                                                         </div>
                                                         <Link
                                                             href={route(
-                                                                "product-details",
+                                                                "relove-market.product-details",
                                                                 item.product_id,
                                                             )}
                                                         >
@@ -776,7 +776,7 @@ export default function Wishlist({ user_wishlist = [] }) {
 
                                                         <Link
                                                             href={route(
-                                                                "product-details",
+                                                                "relove-market.product-details",
                                                                 item.product_id,
                                                             )}
                                                         >
@@ -809,7 +809,7 @@ export default function Wishlist({ user_wishlist = [] }) {
                                                         <div className="flex-1 min-w-0">
                                                             <Link
                                                                 href={route(
-                                                                    "product-details",
+                                                                    "relove-market.product-details",
                                                                     item.product_id,
                                                                 )}
                                                             >
@@ -881,7 +881,7 @@ export default function Wishlist({ user_wishlist = [] }) {
                                                     <div className="flex sm:flex-col gap-2 justify-end">
                                                         <Link
                                                             href={route(
-                                                                "product-details",
+                                                                "relove-market.product-details",
                                                                 item.product_id,
                                                             )}
                                                         >

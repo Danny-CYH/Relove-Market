@@ -44,7 +44,8 @@ Route::get("/get-flash-sale-products", [HomePageController::class, "get_flashSal
 Route::middleware(["is_buyer"])->group(function () {
     Route::get("/relove-market/seller-registration", [UserController::class, "sellerRegistration"])->name('relove-market.seller.registration');
     Route::get("/relove-market/profile", [UserController::class, "profile"])->name("relove-market.profile");
-    Route::get('/relove-market/cart', [UserController::class, 'wishlist'])->name('relove-market.cart');
+    Route::get('/relove-market/cart', [UserController::class, 'cart'])->name('relove-market.cart');
+    Route::get('/relove-market/wishlist', [UserController::class, 'wishlist'])->name('relove-market.wishlist');
     Route::get('/relove-market/chat', [UserController::class, 'buyerChat'])->name('relove-market.chat');
 
     Route::get('/checkout', [UserController::class, 'checkoutPage'])->name('checkout');

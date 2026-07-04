@@ -20,7 +20,7 @@ import axios from "axios";
 import Navbar from "@/Components/Ui/Navbar";
 import Footer from "@/Components/Ui/Footer";
 
-export default function CartPage() {
+export default function Cart() {
     const [cartItems, setCartItems] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [promoCode, setPromoCode] = useState("");
@@ -148,7 +148,7 @@ export default function CartPage() {
                 <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
                     <div className="flex items-center gap-4">
                         <Link
-                            href={route("shopping")}
+                            href={route("relove-market.shopping")}
                             className="text-gray-500 hover:text-emerald-600 transition-colors"
                         >
                             <FaArrowLeft className="text-xl" />
@@ -161,7 +161,7 @@ export default function CartPage() {
                         </span>
                     </div>
                     <Link
-                        href={route("shopping")}
+                        href={route("relove-market.shopping")}
                         className="text-emerald-600 hover:text-emerald-700 text-sm font-medium flex items-center gap-2"
                     >
                         <FaShoppingBag />
@@ -186,7 +186,7 @@ export default function CartPage() {
                             yet.
                         </p>
                         <Link
-                            href={route("shopping")}
+                            href={route("relove-market.shopping")}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-full hover:bg-emerald-700 transition-colors shadow-sm hover:shadow-md"
                         >
                             <FaShoppingBag />
@@ -427,7 +427,7 @@ export default function CartPage() {
                                 </div>
 
                                 {/* ✅ 链接到 Wishlist 页面 */}
-                                <Link href={route("wishlist")}>
+                                <Link href={route("relove-market.wishlist")}>
                                     <button className="w-full mt-3 py-2.5 text-emerald-600 font-medium rounded-xl border-2 border-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2">
                                         <FaHeart />
                                         View My Wishlist

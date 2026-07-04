@@ -143,6 +143,11 @@ class UserController extends Controller
         );
     }
 
+    public function cart()
+    {
+        return Inertia::render("BuyerPage/Cart");
+    }
+
     // Code for returning the profile page
     public function profile()
     {
