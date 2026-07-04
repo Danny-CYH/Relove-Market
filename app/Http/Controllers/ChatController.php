@@ -210,7 +210,7 @@ class ChatController extends Controller
         return response()->json($conversations);
     }
 
-    public function sellerChat()
+    public function chat()
     {
         $seller_storeInfo = Seller::with("sellerStore")
             ->where("seller_id", $this->seller_id)

@@ -7,32 +7,32 @@ use Inertia\Inertia;
 
 class SellerController extends Controller
 {
-    public function sellerDashboard()
+    public function dashboard()
     {
         return Inertia::render('SellerPage/SellerDashboard');
     }
 
-    public function sellerManageProduct()
+    public function manageProducts()
     {
         return Inertia::render('SellerPage/SellerManageProduct');
     }
 
-    public function sellerOrderPage()
+    public function manageOrders()
     {
         return Inertia::render('SellerPage/SellerOrderPage');
     }
 
-    public function sellerEarningPage()
+    public function manageEarnings()
     {
         return Inertia::render('SellerPage/SellerEarningPage');
     }
 
-    public function sellerHelpSupportPage()
+    public function helpSupport()
     {
         return Inertia::render('SellerPage/SellerHelpSupportPage');
     }
 
-    public function getProfile()
+    public function profile()
     {
         return Inertia::render('SellerPage/SellerUpdateProfile');
     }

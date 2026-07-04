@@ -21,7 +21,7 @@ class SellerManageOrderController extends Controller
         $this->seller_id = session('seller_id');
     }
 
-    public function get_listOrder(Request $request)
+    public function listOrder(Request $request)
     {
         try {
             $search = $request->input('search', '');
@@ -124,7 +124,7 @@ class SellerManageOrderController extends Controller
         ];
     }
 
-    public function updateStatus(Request $request, $orderId)
+    public function updateOrderStatus(Request $request, $orderId)
     {
         try {
             $order = Order::where('seller_id', $this->seller_id)

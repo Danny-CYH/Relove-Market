@@ -162,7 +162,7 @@ class SellerManageEarningController extends Controller
         }
     }
 
-    public function generateIncomeReport(Request $request)
+    public function incomeReport(Request $request)
     {
         try {
             $sellerId = $this->seller_id;

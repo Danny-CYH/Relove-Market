@@ -64,7 +64,7 @@ class SellerManageProfileController extends Controller
     /**
      * Update user personal information (users table)
      */
-    public function updateUserProfile(Request $request)
+    public function updateProfileSeller(Request $request)
     {
         try {
             $user = Auth::user();
@@ -136,7 +136,7 @@ class SellerManageProfileController extends Controller
     /**
      * Update store information (seller_stores table)
      */
-    public function updateStoreProfile(Request $request)
+    public function updateProfileStore(Request $request)
     {
         try {
             $user = Auth::user()->seller;
@@ -214,7 +214,7 @@ class SellerManageProfileController extends Controller
     /**
      * Update user password
      */
-    public function updatePassword(Request $request)
+    public function updateProfilePassword(Request $request)
     {
         try {
             $user = Auth::user();

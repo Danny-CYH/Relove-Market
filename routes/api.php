@@ -19,82 +19,92 @@ use App\Http\Controllers\SellerPage\SellerManageProductController;
 
 use Illuminate\Support\Facades\Route;
 
+/**
+ * TODO: Need to combine the route seller update info and password into 1 route (PATCH /profile/seller/info & PATCH /profile/seller/password)
+ * TODO: Need to applied the version of the API (v1, v2, v3) for the future development.
+ */
+
+// Note: The API for buyer used only
 Route::middleware(["is_buyer"])->group(function () {
-    // Route for manage the profile on the profile page
+    // * API for manage the profile on the profile page
     Route::get("/profile/orders", [ProfileManagementController::class, "orders"])->name("profile.orders");
+    Route::post('/profile/orders/{orderId}/confirm-delivery', [ProfileManagementController::class, 'confirmDelivery'])->name('profile.confirm-delivery');
     Route::patch("/profile/info", [ProfileManagementController::class, "updateProfile"])->name("profile.info");
     Route::patch('/profile/password', [ProfileManagementController::class, 'updatePassword'])->name('profile.password');
     Route::get('/profile/check-address', [ProfileManagementController::class, 'checkAddress'])->name('profile.check-address');
-    Route::post('/orders/{orderId}/confirm-delivery', [ProfileManagementController::class, 'confirmDelivery'])->name('confirm-delivery');
 
-    // Route for manage the wishlist operations on wishlist and product details page
+    // * API for manage the wishlist operations on wishlist and product details page
     Route::get("/wishlist/all", [WishlistController::class, "getAllWishlist"])->name("wishlist.all");
     Route::get("/wishlist/{product_id}", [WishlistController::class, "getWishlist"])->name("wishlist.check");
     Route::post('/wishlist', [WishlistController::class, 'storeWishlist'])->name("wishlist.store");
     Route::patch('/wishlist/update-variant', [WishlistController::class, 'updateVariant'])->name("wishlist.update-variant");
     Route::delete('/wishlist', [WishlistController::class, 'removeWishlist'])->name("wishlist.remove");
 
-    // Code for register an a seller account on seller registration page
+    // * API for register an a seller account on seller registration page
     Route::post('/seller-registration', [SellerRegistrationController::class, 'sellerRegistrationProcess'])->name("seller-registration-process");
 
-    // Code for manage the reviews on product details page.
-    Route::post("/reviews", [ProductManagementController::class, "make_review"])->name("make-review");
+    // * API for manage the reviews on product details page.
+    Route::post("/reviews", [ProductManagementController::class, "storeReview"])->name("review.store");
 });
 
-// API functions for seller page
+// Note: The API for seller used only
 Route::middleware(["is_seller"])->group(function () {
-    // API for the seller dashboard
-    Route::get("/api/dashboard-data", [SellerDashboardController::class, "getData_dashboard"])->name("dashboard-data");
-    Route::get("/api/featured-products", [SellerDashboardController::class, 'get_FeaturedProducts'])->name("featured-products");
+    // * API for the seller dashboard
+    Route::get("/dashboard/data", [SellerDashboardController::class, "getDashboardData"])->name("seller.dashboard.data");
+    Route::get("/dashboard/featured-products", [SellerDashboardController::class, 'getFeaturedProducts'])->name("seller.dashboard.featured-products");
 
-    // API for seller manage products
-    Route::get("/api/seller-manage-product/get-product", [SellerManageProductController::class, "get_ListProduct"])->name("product-data");
-    Route::post('/api/seller-manage-product/add-product', [SellerManageProductController::class, 'sellerAddProduct'])->name('add-product');
-    Route::post('/api/seller-manage-product/edit-product', [SellerManageProductController::class, 'sellerEditProduct'])->name('edit-product');
-    Route::post('/api/seller-manage-product/delete-product', [SellerManageProductController::class, 'sellerDeleteProduct'])->name('delete-product');
-    Route::post('/api/seller/toggle-listing', [SellerManageProductController::class, 'toggleProductListing'])->name("product-listing");
-    Route::post('/api/seller/toggle-product-featured', [SellerManageProductController::class, 'toggleProductFeatured'])->name("product-featured");
-    Route::get('/api/products/metrics', [SellerManageProductController::class, 'getProductMetrics']);
-    Route::post('/api/products/auto-update-status', [SellerManageProductController::class, 'autoUpdateProductStatus']);
+    // * API for seller manage products
+    Route::get("/manage-products/products", [SellerManageProductController::class, "getProducts"])->name("seller.products.index");
+    Route::post('/manage-products/products', [SellerManageProductController::class, 'addProducts'])->name('seller.products.store');
+    Route::patch('/manage-products/products', [SellerManageProductController::class, 'editProducts'])->name('seller.products.update');
+    Route::delete('/manage-products/products', [SellerManageProductController::class, 'deleteProducts'])->name('seller.products.delete');
+    Route::patch('/manage-products/products/listing', [SellerManageProductController::class, 'listingProducts'])->name("seller.products.listing");
+    Route::patch('/manage-products/products/featured', [SellerManageProductController::class, 'featuredProducts'])->name("seller.products.featured");
+    Route::get('/manage-products/products/metrics', [SellerManageProductController::class, 'metricsProducts'])->name("seller.products.metrics");
+    Route::patch('/manage-products/products/status', [SellerManageProductController::class, 'statusProducts'])->name("seller.products.status");
 
-    // API for seller manage order
-    Route::get("/api/get-list-order", [SellerManageOrderController::class, "get_listOrder"])->name("list-order");
-    Route::put("/api/update-order/{orderId}/status", [SellerManageOrderController::class, "updateStatus"])->name("update-order");
+    // * API for seller manage orders
+    Route::get("/manage-orders/list-order", [SellerManageOrderController::class, "listOrder"])->name("seller.orders.index");
+    Route::put("/manage-orders/update-order/{orderId}/status", [SellerManageOrderController::class, "updateOrderStatus"])->name("seller.orders.update");
 
-    // API for seller manage earnings
-    Route::get('/api/seller-earnings', [SellerManageEarningController::class, 'getEarnings'])->name("earnings");
-    Route::post('/api/generate-income-report', [SellerManageEarningController::class, 'generateIncomeReport'])->name("generate-report");
+    // * API for seller manage earnings
+    Route::get('/manage-earnings/seller-earnings', [SellerManageEarningController::class, 'getEarnings'])->name("seller.earnings.index");
+    Route::post('/manage-earnings/seller-earnings/income-report', [SellerManageEarningController::class, 'incomeReport'])->name("seller.earnings.income-report");
 
-    Route::get('/profile/seller', [SellerManageProfileController::class, 'getProfile']);
-    Route::post('/profile/store', [SellerManageProfileController::class, 'updateStoreProfile']);
-    Route::patch('/profile/update', [SellerManageProfileController::class, 'updateUserProfile']);
-    Route::patch('/profile/update/password', [SellerManageProfileController::class, 'updatePassword']);
-    Route::delete('/profile/image', [SellerManageProfileController::class, 'deleteProfileImage']);
-    Route::delete('/profile/image', [SellerManageProfileController::class, 'deleteStoreImage']);
+    // * API for manage the profile on the seller manage profile page
+    Route::get('/profile/seller', [SellerManageProfileController::class, 'getProfile'])->name("seller.profile.index");
+    Route::patch('/profile/seller/info', [SellerManageProfileController::class, 'updateProfileSeller'])->name("seller.profile.info.update");
+    Route::patch('/profile/seller/password', [SellerManageProfileController::class, 'updateProfilePassword'])->name("seller.profile.password.update");
+    Route::delete('/profile/seller/image', [SellerManageProfileController::class, 'deleteProfileImage'])->name("seller.profile.image.delete");
+
+    // * API for manage the store information on the seller manage profile page
+    Route::patch('/profile/store', [SellerManageProfileController::class, 'updateProfileStore'])->name("seller.profile.store.update");
+    Route::delete('/profile/store/image', [SellerManageProfileController::class, 'deleteStoreImage'])->name("seller.profile.store.delete");
 });
 
-// API function for admin page
+// Note: The API for admin used only
 Route::middleware(["is_admin"])->group(function () {
-    // API for admin dashboard
+    // * API for admin dashboard
     Route::get('/dashboard/stats', [AdminDashboardController::class, 'getStats'])->name('admin.dashboard.stats');
-    Route::get('/dashboard/notifications', [AdminDashboardController::class, 'getNotifications']);
+    Route::get('/dashboard/notifications', [AdminDashboardController::class, 'getNotifications'])->name('admin.dashboard.notifications');
 
-    Route::get('/dashboard/seller-list', [SellerPendingController::class, 'getSellerList'])->name("seller-list");
-    Route::post('/api/admin/pending-seller/{id}/action', [SellerPendingController::class, 'handleAction'])->name("handle-action");
+    // * API for manage pending seller
+    Route::get('/seller-list', [SellerPendingController::class, 'getSellerList'])->name("admin.seller-list");
+    Route::post('/pending-seller/{id}/action', [SellerPendingController::class, 'handleAction'])->name("admin.handle-action");
 
-    // API for manage products
-    Route::get('/products', [ProductModerationController::class, 'get_allProducts'])->name('get-all-products');
-    Route::get('/products/stats', [ProductModerationController::class, 'get_product_stats'])->name('get-product-stats');
-    Route::post('/products/{product}/block', [ProductModerationController::class, 'block_product'])->name("admin.products.block");
-    Route::post('/products/{product}/unblock', [ProductModerationController::class, 'unblock_product'])->name("admin.products.unblock");
-    Route::post('/products/{product}/flag', [ProductModerationController::class, 'flag_product'])->name("admin.products.flag");
-    Route::get('/products/{product}/analysis', [ProductModerationController::class, 'getProductAnalysis'])->name('admin.product-analysis');
+    // * API for manage products
+    Route::get('/manage-products', [ProductModerationController::class, 'getProducts'])->name('admin.products.index');
+    Route::get('/manage-products/stats', [ProductModerationController::class, 'statsProducts'])->name('admin.products.stats');
+    Route::post('/manage-products/{product}/block', [ProductModerationController::class, 'blockProducts'])->name("admin.products.block");
+    Route::post('/manage-products/{product}/unblock', [ProductModerationController::class, 'unblockProducts'])->name("admin.products.unblock");
+    Route::post('/manage-products/{product}/flag', [ProductModerationController::class, 'flagProducts'])->name("admin.products.flag");
+    Route::get('/manage-products/{product}/analysis', [ProductModerationController::class, 'analysisProducts'])->name('admin.products.analysis');
 
-    Route::get("/transactions", [TransactionManagementController::class, 'filterFunction'])->name("filter-functions");
-    Route::get("/transactions/metrics", [TransactionManagementController::class, "getData"])->name("get-data");
-    Route::post('/transactions/{orderId}/release-payment', [TransactionManagementController::class, 'releasePayment'])->name('release-payment');
-    Route::get('/transactions/{orderId}/tracking', [TransactionManagementController::class, 'getOrderTracking']);
-    Route::post('/{orderId}/manual-release', [TransactionManagementController::class, 'manualReleasePayment']);
+    Route::get("/manage-transactions", [TransactionManagementController::class, 'filterFunction'])->name("filter-functions");
+    Route::get("/manage-transactions/metrics", [TransactionManagementController::class, "getData"])->name("get-data");
+    Route::post('/manage-transactions/{orderId}/release-payment', [TransactionManagementController::class, 'releasePayment'])->name('release-payment');
+    Route::get('/manage-transactions/{orderId}/tracking', [TransactionManagementController::class, 'getOrderTracking']);
+    Route::post('/manage-transactions/{orderId}/manual-release', [TransactionManagementController::class, 'manualReleasePayment']);
 
     // API for manage users.
     Route::get("/user-management/list", [UserManagementController::class, "getUserList"])->name("list-user");

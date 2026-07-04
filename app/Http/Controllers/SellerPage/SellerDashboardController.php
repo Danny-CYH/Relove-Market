@@ -23,7 +23,7 @@ class SellerDashboardController extends Controller
     }
 
     // Get the data for the seller dashboard
-    public function getData_dashboard()
+    public function getDashboardData()
     {
         $seller_storeInfo = Seller::with([
             'sellerStore',
@@ -50,7 +50,7 @@ class SellerDashboardController extends Controller
     }
 
     // Get the data for featured products
-    public function get_FeaturedProducts()
+    public function getFeaturedProducts()
     {
         try {
             $featured_products = Product::with([

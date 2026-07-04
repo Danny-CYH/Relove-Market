@@ -35,7 +35,7 @@ class SellerManageProductController extends Controller
     }
 
     // Code for getting all the product for the current login seller
-    public function get_ListProduct(Request $request)
+    public function getProducts(Request $request)
     {
         \Log::info('📥 Received request:', $request->all());
         \Log::info('📥 Page parameter:', ['page' => $request->get('page')]);
@@ -106,7 +106,7 @@ class SellerManageProductController extends Controller
     }
 
     // Add this method to your SellerManageProductController
-    public function getProductMetrics(Request $request)
+    public function metricsProducts(Request $request)
     {
         try {
             $searchTerm = $request->get('search', '');
@@ -164,7 +164,7 @@ class SellerManageProductController extends Controller
     }
 
     // Add this method to auto-update product status when stock is zero
-    public function autoUpdateProductStatus()
+    public function statusProducts()
     {
         try {
             $products = Product::where('seller_id', $this->seller_id)
@@ -203,7 +203,7 @@ class SellerManageProductController extends Controller
     }
 
     // Code for seller to add the new products
-    public function sellerAddProduct(Request $request)
+    public function addProducts(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'product_name' => 'required|string|max:255',
@@ -399,7 +399,7 @@ class SellerManageProductController extends Controller
     }
 
     // Code for seller to edit the products data
-    public function sellerEditProduct(Request $request)
+    public function editProducts(Request $request)
     {
         try {
             $validator = Validator::make($request->all(), [
@@ -635,7 +635,7 @@ class SellerManageProductController extends Controller
     }
 
     // Code for seller to delete the product data
-    public function sellerDeleteProduct(Request $request)
+    public function deleteProducts(Request $request)
     {
         try {
             $product = Product::with(
@@ -687,7 +687,7 @@ class SellerManageProductController extends Controller
     }
 
     // Code for seller to trigger the availability of the products
-    public function toggleProductListing(Request $request)
+    public function listingProducts(Request $request)
     {
         try {
             $product_id = $request->input("product_id");
@@ -718,7 +718,7 @@ class SellerManageProductController extends Controller
     }
 
     // Code for seller to trigger the product feature availability
-    public function toggleProductFeatured(Request $request)
+    public function featuredProducts(Request $request)
     {
         try {
             $product_id = $request->input("product_id");

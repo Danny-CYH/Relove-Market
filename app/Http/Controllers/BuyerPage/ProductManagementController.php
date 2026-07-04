@@ -385,7 +385,7 @@ class ProductManagementController extends Controller
     }
 
     // Code for user to make a review and comment on the product and store in the database.
-    public function make_review(Request $request)
+    public function storeReview(Request $request)
     {
         try {
             $validated = $request->validate([

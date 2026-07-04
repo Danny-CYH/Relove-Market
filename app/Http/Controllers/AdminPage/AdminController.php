@@ -7,22 +7,22 @@ use Inertia\Inertia;
 
 class AdminController extends Controller
 {
-    public function adminDashboard()
+    public function dashboard()
     {
         return Inertia::render('AdminPage/AdminDashboard');
     }
 
-    public function pendingSellerTable()
+    public function pendingSeller()
     {
         return Inertia::render('AdminPage/PendingSellerTable');
     }
 
-    public function profilePage()
+    public function profile()
     {
         return Inertia::render('AdminPage/ProfilePage');
     }
 
-    public function transactionPage()
+    public function transaction()
     {
         return Inertia::render('AdminPage/Transactions');
     }
