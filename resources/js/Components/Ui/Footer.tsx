@@ -23,12 +23,6 @@ import { FiSend } from "react-icons/fi";
 
 import { Link } from "@inertiajs/react";
 
-import { TermsConditions } from "../BuyerPage/HomePage/TermsConditions";
-import { HelpCenterModal } from "../BuyerPage/HomePage/HelpCenterModal";
-import { SafetyGuidelinesModal } from "../BuyerPage/HomePage/SafetyGuidelinesModal";
-import { ShippingInformationModal } from "../BuyerPage/HomePage/ShippingInformationModal";
-import { ReturnsRefundsModal } from "../BuyerPage/HomePage/ReturnsRefundModal";
-
 // Modal Contents
 import { modalConfig } from "@/Constants/modalContent";
 
@@ -153,7 +147,7 @@ export default function Footer() {
                         <ul className="space-y-3">
                             <li>
                                 <Link
-                                    href={route("shopping")}
+                                    href={route("relove-market.shopping")}
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group"
                                 >
                                     <FaShoppingBag
@@ -166,7 +160,7 @@ export default function Footer() {
                             </li>
                             <li>
                                 <Link
-                                    href={route("seller-manage-product")}
+                                    href={route("seller.manage.products")}
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group"
                                 >
                                     <FaPlusCircle
@@ -179,7 +173,7 @@ export default function Footer() {
                             </li>
                             <li>
                                 <Link
-                                    href={route("about-us")}
+                                    href={route("relove-market.about-us")}
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group"
                                 >
                                     <FaInfoCircle
@@ -192,7 +186,7 @@ export default function Footer() {
                             </li>
                             <li>
                                 <Link
-                                    href={route("seller-benefit")}
+                                    href={route("relove-market.seller-benefit")}
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group"
                                 >
                                     <FaChartLine
@@ -205,7 +199,7 @@ export default function Footer() {
                             </li>
                             <li>
                                 <Link
-                                    href={route("profile")}
+                                    href={route("relove-market.profile")}
                                     className="text-gray-400 hover:text-green-400 transition-colors flex items-center group"
                                 >
                                     <FaBox

@@ -239,7 +239,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                             setSearchQuery("");
                                             setSearchResults([]);
                                             window.location.href = route(
-                                                "product-details",
+                                                "relove-market.product-details",
                                                 product.product_id,
                                             );
                                         }}
@@ -328,7 +328,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 Various Category Waiting For You To Discover
                             </h2>
                             <Link
-                                href={route("shopping")}
+                                href={route("relove-market.shopping")}
                                 className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium mt-3 md:mt-0"
                             >
                                 View all categories{" "}
@@ -340,7 +340,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                             {list_categoryItem.map((category) => (
                                 <Link
                                     key={category.category_id}
-                                    href={route("shopping", {
+                                    href={route("relove-market.shopping", {
                                         categories: [category.category_name],
                                     })}
                                     className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all cursor-pointer ${
@@ -400,7 +400,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     sale. Check back later for amazing deals!
                                 </p>
                                 <Link
-                                    href={route("shopping")}
+                                    href={route("relove-market.shopping")}
                                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
                                 >
                                     Browse All Products
@@ -508,13 +508,13 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link
-                                href={route("seller-registration")}
+                                href={route("relove-market.seller.registration")}
                                 className="bg-white text-green-700 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition shadow-md hover:shadow-lg"
                             >
                                 Become a Seller Today
                             </Link>
                             <Link
-                                href={route("seller-benefit")}
+                                href={route("relove-market.seller-benefit")}
                                 className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold hover:bg-white hover:text-green-700 transition"
                             >
                                 Learn More

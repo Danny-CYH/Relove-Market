@@ -231,7 +231,7 @@ export function ProductCard({ product, selected_variant }) {
 
                     {/* View Details Button */}
                     <Link
-                        href={route("product-details", {
+                        href={route("relove-market.product-details", {
                             productId: product.product_id,
                         })}
                     >

@@ -81,7 +81,7 @@ export default function Navbar() {
                             Home
                         </Link>
                         <Link
-                            href={route("about-us")}
+                            href={route("relove-market.about-us")}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                                 route().current("about-us")
                                     ? "text-green-600 bg-green-50"
@@ -91,7 +91,7 @@ export default function Navbar() {
                             About
                         </Link>
                         <Link
-                            href={route("shopping")}
+                            href={route("relove-market.shopping")}
                             preserveScroll
                             preserveState
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -103,7 +103,7 @@ export default function Navbar() {
                             Shop
                         </Link>
                         <Link
-                            href={route("seller-benefit")}
+                            href={route("relove-market.seller-benefit")}
                             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                                 route().current("seller-benefit")
                                     ? "text-green-600 bg-green-50"
@@ -192,7 +192,7 @@ export default function Navbar() {
                                                     <>
                                                         <Link
                                                             href={route(
-                                                                "seller-dashboard"
+                                                                "seller.dashboard"
                                                             )}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
@@ -205,7 +205,7 @@ export default function Navbar() {
                                                             Seller Dashboard
                                                         </Link>
                                                         <Link
-                                                            href={route("cart")}
+                                                            href={route("relove-market.cart")}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
@@ -221,7 +221,7 @@ export default function Navbar() {
                                                     <>
                                                         <Link
                                                             href={route(
-                                                                "profile"
+                                                                "relove-market.profile"
                                                             )}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
@@ -234,7 +234,7 @@ export default function Navbar() {
                                                             Profile
                                                         </Link>
                                                         <Link
-                                                            href={route("cart")}
+                                                            href={route("relove-market.cart")}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>
                                                                 setShowUserMenu(
@@ -248,7 +248,7 @@ export default function Navbar() {
 
                                                         <Link
                                                             href={route(
-                                                                "buyer-chat"
+                                                                "relove-market.buyer-chat"
                                                             )}
                                                             className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-600 transition-colors"
                                                             onClick={() =>

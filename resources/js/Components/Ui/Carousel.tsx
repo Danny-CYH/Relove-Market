@@ -89,7 +89,7 @@ export default function Carousel({ carouselProducts, loadingFeatured, title }) {
                 </h2>
                 <div className="flex items-center gap-3 mt-3 md:mt-0">
                     <Link
-                        href={route("shopping")}
+                        href={route("relove-market.shopping")}
                         className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium"
                     >
                         View all <FaArrowRight className="ml-1 text-xs" />
