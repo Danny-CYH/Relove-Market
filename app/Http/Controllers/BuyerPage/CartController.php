@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\BuyerPage;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\CartResource;
 use App\Models\Cart;
 use Illuminate\Http\Request;
 use Exception;
@@ -20,16 +21,15 @@ class CartController extends Controller
     public function getAllCart()
     {
         $all_cart = Cart::with([
-            "product",
+            "product.seller.sellerStore",
+            "product.category",
             "productImage",
             "productVariant",
         ])
             ->where("user_id", $this->user_id)
             ->get();
 
-        return response()->json(
-            $all_cart
-        );
+        return CartResource::collection($all_cart);
     }
 
     // Code for validate that did the user have ever like the product before

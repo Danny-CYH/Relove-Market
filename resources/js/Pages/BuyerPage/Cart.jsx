@@ -12,7 +12,6 @@ import {
     FaGift,
     FaHeart,
     FaTimes,
-    FaArrowLeft,
     FaChevronLeft,
     FaChevronRight,
     FaTrashAlt,
@@ -24,6 +23,7 @@ import Navbar from "@/Components/Ui/Navbar";
 import Footer from "@/Components/Ui/Footer";
 import LoadingSpinner from "@/Components/Ui/LoadingSpinner";
 import { Button } from "@/Components/Ui/Button";
+import { CartCard } from "@/Components/Ui/CartCard";
 
 export default function Cart() {
     // ========== States ==========
@@ -295,13 +295,6 @@ export default function Cart() {
                             <div className="space-y-4">
                                 <AnimatePresence mode="wait">
                                     {currentItems.map((item) => {
-                                        const price = getProductPrice(item);
-                                        const quantity =
-                                            item.selected_quantity || 1;
-                                        const stock = getAvailableStock(item);
-                                        const variantText =
-                                            getVariantDisplayText(item);
-
                                         return (
                                             <motion.div
                                                 key={item.id}
@@ -312,152 +305,7 @@ export default function Cart() {
                                                 layout
                                                 className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow"
                                             >
-                                                <div className="flex flex-col md:grid md:grid-cols-12 md:gap-4 items-center">
-                                                    {/* Product Info */}
-                                                    <div className="flex items-center gap-4 md:col-span-6 w-full md:w-auto">
-                                                        <div className="w-20 h-20 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden">
-                                                            <img
-                                                                src={getProductImage(
-                                                                    item,
-                                                                )}
-                                                                alt={getProductName(
-                                                                    item,
-                                                                )}
-                                                                className="w-full h-full object-cover"
-                                                                onError={(
-                                                                    e,
-                                                                ) => {
-                                                                    e.target.src =
-                                                                        "/placeholder.jpg";
-                                                                }}
-                                                            />
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <h3 className="font-semibold text-gray-900 truncate">
-                                                                {getProductName(
-                                                                    item,
-                                                                )}
-                                                            </h3>
-                                                            <p className="text-xs text-gray-500">
-                                                                {getCategoryName(
-                                                                    item,
-                                                                )}
-                                                            </p>
-                                                            {variantText && (
-                                                                <p className="text-xs text-gray-400 truncate">
-                                                                    {
-                                                                        variantText
-                                                                    }
-                                                                </p>
-                                                            )}
-                                                            <p className="text-xs text-gray-400 truncate">
-                                                                {getSellerName(
-                                                                    item,
-                                                                )}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Quantity */}
-                                                    <div className="flex items-center justify-between md:justify-center md:col-span-2 w-full md:w-auto mt-3 md:mt-0">
-                                                        <span className="text-sm text-gray-500 md:hidden">
-                                                            Qty:
-                                                        </span>
-                                                        <div className="flex items-center gap-1 bg-gray-50 rounded-lg border border-gray-200">
-                                                            <button
-                                                                onClick={() =>
-                                                                    updateQuantity(
-                                                                        item.id,
-                                                                        quantity -
-                                                                            1,
-                                                                    )
-                                                                }
-                                                                className="px-2.5 py-1.5 hover:bg-gray-100 rounded-l-lg transition disabled:opacity-50"
-                                                                disabled={
-                                                                    quantity <=
-                                                                    1
-                                                                }
-                                                            >
-                                                                <FaMinus className="text-xs text-gray-600" />
-                                                            </button>
-                                                            <span className="w-8 text-center text-sm font-medium text-gray-900">
-                                                                {quantity}
-                                                            </span>
-                                                            <button
-                                                                onClick={() =>
-                                                                    updateQuantity(
-                                                                        item.id,
-                                                                        quantity +
-                                                                            1,
-                                                                    )
-                                                                }
-                                                                className="px-2.5 py-1.5 hover:bg-gray-100 rounded-r-lg transition disabled:opacity-50"
-                                                                disabled={
-                                                                    quantity >=
-                                                                    stock
-                                                                }
-                                                            >
-                                                                <FaPlus className="text-xs text-gray-600" />
-                                                            </button>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Price */}
-                                                    <div className="flex items-center justify-between md:justify-end md:col-span-3 w-full md:w-auto mt-3 md:mt-0">
-                                                        <span className="text-sm text-gray-500 md:hidden">
-                                                            Price:
-                                                        </span>
-                                                        <div className="text-right">
-                                                            <span className="font-bold text-emerald-600 text-base">
-                                                                RM{" "}
-                                                                {(
-                                                                    price *
-                                                                    quantity
-                                                                ).toFixed(2)}
-                                                            </span>
-                                                            <p className="text-xs text-gray-400">
-                                                                RM{" "}
-                                                                {price.toFixed(
-                                                                    2,
-                                                                )}{" "}
-                                                                each
-                                                            </p>
-                                                            {stock < 5 &&
-                                                                stock > 0 && (
-                                                                    <p className="text-xs text-amber-500">
-                                                                        ⚠️{" "}
-                                                                        {stock}{" "}
-                                                                        left
-                                                                    </p>
-                                                                )}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Action */}
-                                                    <div className="flex justify-end md:col-span-1 w-full md:w-auto mt-3 md:mt-0">
-                                                        <button
-                                                            onClick={() =>
-                                                                removeItem(
-                                                                    item.id,
-                                                                )
-                                                            }
-                                                            disabled={
-                                                                loadingStates[
-                                                                    item.id
-                                                                ]
-                                                            }
-                                                            className="text-gray-300 hover:text-red-500 transition-colors p-2 disabled:opacity-50"
-                                                        >
-                                                            {loadingStates[
-                                                                item.id
-                                                            ] ? (
-                                                                <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                                                            ) : (
-                                                                <FaTrash className="text-sm" />
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                                <CartCard item={item} />
                                             </motion.div>
                                         );
                                     })}
