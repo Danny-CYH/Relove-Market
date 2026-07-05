@@ -44,7 +44,7 @@ class CartController extends Controller
         }
     }
 
-    public function storeWishlist(Request $request)
+    public function storeToCart(Request $request)
     {
         $product_id = $request->input("product_id");
 
