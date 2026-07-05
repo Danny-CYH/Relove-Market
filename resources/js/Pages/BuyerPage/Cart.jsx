@@ -34,10 +34,6 @@ export default function Cart() {
     const [notification, setNotification] = useState(null);
     const [loadingStates, setLoadingStates] = useState({});
 
-    // ========== Pagination ==========
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 3;
-
     // ========== Fetch Data ==========
     useEffect(() => {
         fetchCartData();
@@ -121,18 +117,6 @@ export default function Cart() {
                 .join(", ");
         }
         return null;
-    };
-
-    // ========== Pagination ==========
-    const totalPages = Math.ceil(cartItems.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = Math.min(startIndex + itemsPerPage, cartItems.length);
-    const currentItems = cartItems.slice(startIndex, endIndex);
-
-    const goToPage = (page) => {
-        if (page < 1 || page > totalPages) return;
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
     // ========== Cart Functions ==========
@@ -294,7 +278,7 @@ export default function Cart() {
                             {/* Cart Items */}
                             <div className="space-y-4">
                                 <AnimatePresence mode="wait">
-                                    {currentItems.map((item) => {
+                                    {cartItems.map((item) => {
                                         return (
                                             <motion.div
                                                 key={item.id}
@@ -303,7 +287,6 @@ export default function Cart() {
                                                 animate="visible"
                                                 exit="exit"
                                                 layout
-                                                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 hover:shadow-md transition-shadow"
                                             >
                                                 <CartCard item={item} />
                                             </motion.div>
@@ -311,54 +294,6 @@ export default function Cart() {
                                     })}
                                 </AnimatePresence>
                             </div>
-
-                            {/* ✅ NEW: Pagination */}
-                            {totalPages > 1 && (
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6 pt-4 border-t border-gray-200">
-                                    <p className="text-sm text-gray-500">
-                                        Showing {startIndex + 1}–{endIndex} of{" "}
-                                        {cartItems.length} items
-                                    </p>
-                                    <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() =>
-                                                goToPage(currentPage - 1)
-                                            }
-                                            disabled={currentPage === 1}
-                                            className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                        >
-                                            <FaChevronLeft className="text-xs" />
-                                        </button>
-                                        {Array.from(
-                                            { length: totalPages },
-                                            (_, i) => i + 1,
-                                        ).map((page) => (
-                                            <button
-                                                key={page}
-                                                onClick={() => goToPage(page)}
-                                                className={`w-8 h-8 rounded-lg text-sm font-medium transition ${
-                                                    currentPage === page
-                                                        ? "bg-emerald-600 text-white shadow-sm"
-                                                        : "hover:bg-gray-100 text-gray-600"
-                                                }`}
-                                            >
-                                                {page}
-                                            </button>
-                                        ))}
-                                        <button
-                                            onClick={() =>
-                                                goToPage(currentPage + 1)
-                                            }
-                                            disabled={
-                                                currentPage === totalPages
-                                            }
-                                            className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                        >
-                                            <FaChevronRight className="text-xs" />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {/* ✅ NEW: Right Column - Order Summary (sticky) */}
