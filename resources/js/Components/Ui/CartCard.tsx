@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Link } from "@inertiajs/react";
 import {
     FaPlus,
@@ -13,6 +13,7 @@ import {
     FaTrashAlt,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import { Icon } from "./Icon";
 
 // ========== 子组件：变体下拉菜单 ==========
 function VariantDropdown({
@@ -31,11 +32,15 @@ function VariantDropdown({
 
     const getCurrentVariantDisplay = () => {
         if (!variant) return null;
+
         const combo = variant.variant_combination || {};
         const parts = [];
-        if (combo.Colors || combo.Color)
-            parts.push(combo.Colors || combo.Color);
-        if (combo.Size) parts.push(combo.Size);
+        if (combo.Colors) {
+            parts.push(combo.Colors);
+        }
+        if (combo.Size) {
+            parts.push(combo.Size);
+        }
         return parts.join(" • ") || variant.variant_key || "Variant";
     };
 
@@ -62,7 +67,7 @@ function VariantDropdown({
             <button
                 ref={buttonRef}
                 onClick={() => setIsOpen(!isOpen)}
-                disabled={isUpdating || isOutOfStock}
+                disabled={isUpdating}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-3 py-1 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap border border-emerald-200"
             >
                 {isUpdating ? (
@@ -71,12 +76,15 @@ function VariantDropdown({
                     <>
                         <span>🔄</span>
                         <span className="text-emerald-800 max-w-[80px] truncate">
-                            {getCurrentVariantDisplay() || "Select"}
+                            {getCurrentVariantDisplay()}
                         </span>
                         {isOpen ? (
-                            <FaChevronUp className="w-2.5 h-2.5" />
+                            <Icon icon={FaChevronUp} className="w-2.5 h-2.5" />
                         ) : (
-                            <FaChevronDown className="w-2.5 h-2.5" />
+                            <Icon
+                                icon={FaChevronDown}
+                                className="w-2.5 h-2.5"
+                            />
                         )}
                     </>
                 )}
@@ -126,7 +134,10 @@ function VariantDropdown({
                                         RM {vPrice.toFixed(2)}
                                     </span>
                                     {isSelected && (
-                                        <FaCheck className="w-4 h-4 text-emerald-600" />
+                                        <Icon
+                                            icon={FaCheck}
+                                            className="w-4 h-4 text-emerald-600"
+                                        />
                                     )}
                                 </button>
                             );
@@ -154,9 +165,9 @@ function QuantityControl({
                 <button
                     onClick={() => onUpdate(quantity - 1)}
                     className="px-2.5 py-1.5 hover:bg-gray-100 rounded-l-lg transition disabled:opacity-50"
-                    disabled={quantity <= 1 || isLoading || isOutOfStock}
+                    disabled={quantity <= 1}
                 >
-                    <FaMinus className="text-xs text-gray-600" />
+                    <Icon icon={FaMinus} className="text-xs text-gray-600" />
                 </button>
                 <span className="w-8 text-center text-sm font-medium text-gray-900">
                     {quantity}
@@ -164,9 +175,9 @@ function QuantityControl({
                 <button
                     onClick={() => onUpdate(quantity + 1)}
                     className="px-2.5 py-1.5 hover:bg-gray-100 rounded-r-lg transition disabled:opacity-50"
-                    disabled={isAtMaxStock || isLoading || isOutOfStock}
+                    disabled={isAtMaxStock}
                 >
-                    <FaPlus className="text-xs text-gray-600" />
+                    <Icon icon={FaPlus} className="text-xs text-gray-600" />
                 </button>
             </div>
         </div>
@@ -190,26 +201,26 @@ export function CartCard({
 
     const selected_variant = item.selected_variant;
     const selectedVariantPrice = item.selected_variant.price;
-    const selected_quantity = item.selected_quantity;
+    const selectedQuantity = item.selected_quantity;
 
     const stockAvailable = selected_variant.quantity;
     const isOutOfStock = selected_variant.quantity;
 
     const hasMultipleVariants = productVariants.length > 1;
     const availableVariants = productVariants.filter(
-        (v) => parseInt(v.quantity) > 0,
+        (v) => Number(v.quantity) > 0,
     );
 
     // ========== 变体辅助函数 ==========
-    const isVariantSelected = (v) => selected_variant?.variant_id === v.variant_id;
+    const isVariantSelected = (v) =>
+        selected_variant.variant_id === v.variant_id;
 
     const getVariantLabel = (v) => {
-        const combo = v.variant_combination || {};
+        const combo = v.variant_combination;
         const parts = [];
-        if (combo.Colors || combo.Color)
-            parts.push(combo.Colors || combo.Color);
+        if (combo.Colors) parts.push(combo.Colors);
         if (combo.Size) parts.push(combo.Size);
-        return parts.join(" • ") || v.variant_key || "Variant";
+        return parts.join(" • ");
     };
 
     const getVariantColor = (v) => {
@@ -219,9 +230,10 @@ export function CartCard({
 
     const handleVariantSelect = async (v) => {
         setIsUpdatingVariant(true);
+
         try {
             // ✅ 使用 cartId 而不是 productId 更新变体
-            await onUpdateVariant?.(cartId, {
+            await onUpdateVariant?.(product_info.product_id, {
                 variant_id: v.variant_id,
                 variant_combination: v.variant_combination || {},
                 price: v.price,
@@ -234,30 +246,44 @@ export function CartCard({
         }
     };
 
-    // ✅ 处理数量更新 - 使用 product_id
-    const handleQuantityUpdate = (newQuantity) => {
-        onUpdateQuantity?.(productId, newQuantity);
+    const handleQuantityUpdate = (newQuantity: number) => {
+        onUpdateQuantity?.(product_info.product_id, newQuantity);
     };
 
-    // ✅ 处理删除 - 使用 product_id
     const handleRemove = () => {
-        onRemove?.(productId);
+        onRemove?.(product_info.product_id);
     };
 
-    // ✅ 处理选择 - 使用 product_id
     const handleSelect = () => {
-        onSelect?.(productId);
+        onSelect?.(product_info.product_id);
     };
+
+    const variant = useMemo(() => {
+        if (!item.selected_variant) return null;
+
+        let parsed = item.selected_variant;
+
+        // 如果是字符串，解析为对象
+        if (typeof parsed === "string") {
+            try {
+                parsed = JSON.parse(parsed);
+            } catch (e) {
+                console.error("Error parsing variant:", e);
+                return null;
+            }
+        }
+
+        // 如果是数组，取第一个
+        if (Array.isArray(parsed)) {
+            return parsed.length > 0 ? parsed[0] : null;
+        }
+
+        return parsed;
+    }, [item.selected_variant]);
 
     // ========== Render ==========
     return (
-        <div
-        // className={`bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 overflow-visible ${
-        //     isSelected
-        //         ? "border-emerald-400 shadow-md shadow-emerald-100"
-        //         : "border-gray-200 hover:border-gray-300"
-        // } ${isOutOfStock ? "opacity-70" : ""}`}
-        >
+        <div>
             <div className="flex items-center justify-between px-4 py-2 bg-gray-50/80 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                     <label className="relative flex items-center cursor-pointer group">
@@ -271,7 +297,10 @@ export function CartCard({
                         <span className="absolute -inset-2" />
                     </label>
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                        <FaStore className="w-4 h-4 text-emerald-500" />
+                        <Icon
+                            icon={FaStore}
+                            className="w-4 h-4 text-emerald-500"
+                        />
                         <span>{product_info.seller_store}</span>
                     </div>
                 </div>
@@ -279,7 +308,7 @@ export function CartCard({
                 <div className="flex items-center gap-2">
                     {hasMultipleVariants && (
                         <VariantDropdown
-                            variant={productVariants}
+                            variant={selected_variant}
                             availableVariants={availableVariants}
                             isVariantSelected={isVariantSelected}
                             getVariantColor={getVariantColor}
@@ -297,9 +326,12 @@ export function CartCard({
                         title="Remove item"
                     >
                         {isLoading ? (
-                            <FaSpinner className="w-4 h-4 animate-spin" />
+                            <Icon
+                                icon={FaSpinner}
+                                className="w-4 h-4 animate-spin"
+                            />
                         ) : (
-                            <FaTrashAlt className="w-4 h-4" />
+                            <Icon icon={FaTrashAlt} className="w-4 h-4" />
                         )}
                     </button>
                 </div>
@@ -334,7 +366,10 @@ export function CartCard({
                         </Link>
 
                         <div className="flex items-center gap-1 mt-0.5">
-                            <FaTag className="w-3 h-3 text-emerald-500" />
+                            <Icon
+                                icon={FaTag}
+                                className="w-3 h-3 text-emerald-500"
+                            />
                             <span className="text-xs text-emerald-600 font-medium">
                                 {product_info.category}
                             </span>
@@ -342,7 +377,10 @@ export function CartCard({
 
                         {selected_variant.quantity <= 5 && (
                             <div className="flex items-center gap-1.5 mt-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-[10px] font-medium border border-amber-200 w-fit">
-                                <FaExclamationTriangle className="w-3 h-3" />
+                                <Icon
+                                    icon={FaExclamationTriangle}
+                                    className="w-3 h-3"
+                                />
                                 Only {selected_variant.quantity} left in stock -
                                 Order soon!
                             </div>
@@ -353,7 +391,7 @@ export function CartCard({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full md:col-span-6 mt-3 md:mt-0">
                     <div className="flex items-center gap-3 flex-wrap">
                         <QuantityControl
-                            quantity={selected_quantity}
+                            quantity={selectedQuantity}
                             stock={stockAvailable}
                             onUpdate={handleQuantityUpdate}
                             isLoading={isLoading}
@@ -364,11 +402,11 @@ export function CartCard({
                     <div className="text-right">
                         <span className="font-bold text-emerald-600 text-base">
                             RM{" "}
-                            {(selectedVariantPrice * selected_quantity).toFixed(
+                            {(selectedVariantPrice * selectedQuantity).toFixed(
                                 2,
                             )}
                         </span>
-                        {selected_quantity > 1 && (
+                        {selectedQuantity > 1 && (
                             <p className="text-xs text-gray-400">
                                 RM {selectedVariantPrice} ea
                             </p>

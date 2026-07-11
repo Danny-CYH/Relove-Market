@@ -20,11 +20,15 @@ import Footer from "@/Components/Ui/Footer";
 import LoadingSpinner from "@/Components/Ui/LoadingSpinner";
 import { Button } from "@/Components/Ui/Button";
 import { CartCard } from "@/Components/Ui/CartCard";
+import { Icon } from "@/Components/Ui/Icon";
 
-import { getVariantDetails } from "@/Components/HelperFunction/GetVariantDetails";
+import { Product } from "@/eloquent-types/models/product";
+
+import { GetSelectedVariant } from "@/Components/HelperFunction/GetSelectedVariant";
+import { CartItem } from "@/eloquent-types/models/cart-item";
 
 export default function Cart() {
-    const [cartItems, setCartItems] = useState([]);
+    const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [selectedItems, setSelectedItems] = useState([]);
 
     const [isLoading, setIsLoading] = useState(true);
@@ -56,20 +60,8 @@ export default function Cart() {
         setTimeout(() => setNotification(null), 3000);
     };
 
-    // ========== Helper Functions ==========
-    const parseVariantData = (variantData) => {
-        if (!variantData) return null;
-        try {
-            return typeof variantData === "string"
-                ? JSON.parse(variantData)
-                : variantData;
-        } catch {
-            return null;
-        }
-    };
-
     const getProductPrice = (item) => {
-        const variant = parseVariantData(item.selected_variant);
+        const variant = GetSelectedVariant(item);
         if (variant?.price) {
             return parseFloat(variant.price);
         }
@@ -77,7 +69,7 @@ export default function Cart() {
     };
 
     const getAvailableStock = (item) => {
-        const variant = parseVariantData(item.selected_variant);
+        const variant = GetSelectedVariant(item);
         if (variant?.quantity) {
             return parseInt(variant.quantity);
         }
@@ -85,10 +77,13 @@ export default function Cart() {
     };
 
     // ========== Cart Functions ==========
-    const updateQuantity = (productId, newQuantity) => {
+    const updateQuantity = (productId: string, newQuantity: number): void => {
         if (newQuantity < 1) return;
 
-        const item = cartItems.find((item) => item.product_id === productId);
+        const item = cartItems.find(
+            (item) => item.product.product_id === productId,
+        );
+
         if (!item) return;
 
         const maxStock = getAvailableStock(item);
@@ -103,11 +98,40 @@ export default function Cart() {
 
         setCartItems((prev) =>
             prev.map((item) =>
-                item.product_id === productId
+                item.product.product_id === productId
                     ? { ...item, selected_quantity: newQuantity }
                     : item,
             ),
         );
+    };
+
+    const updateVariant = async (productId, selectedVariant) => {
+        await axios.patch(
+            route("cart.update-variant", {
+                product_id: productId,
+                variant_data: selectedVariant,
+            }),
+        );
+
+        setCartItems((prev) =>
+            prev.map((item) => {
+                if (item.product.product_id === productId) {
+                    return {
+                        ...item,
+                        selected_variant: {
+                            variant_id: selectedVariant.variant_id,
+                            variant_combination:
+                                selectedVariant.variant_combination || {},
+                            price: selectedVariant.price,
+                            quantity: selectedVariant.quantity,
+                        },
+                    };
+                }
+                return item;
+            }),
+        );
+
+        showNotification("Variant updated");
     };
 
     const removeItem = async (productId) => {
@@ -219,9 +243,9 @@ export default function Cart() {
                         }`}
                     >
                         {notification.type === "error" ? (
-                            <FaTimes className="text-red-500" />
+                            <Icon icon={FaTimes} className="text-red-500" />
                         ) : (
-                            <FaTag className="text-emerald-500" />
+                            <Icon icon={FaTag} className="text-emerald-500" />
                         )}
                         <p className="text-sm font-medium">
                             {notification.message}
@@ -236,7 +260,10 @@ export default function Cart() {
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
                             <span className="bg-emerald-100 p-2 rounded-xl">
-                                <FaShoppingBag className="text-emerald-600" />
+                                <Icon
+                                    icon={FaShoppingBag}
+                                    className="text-emerald-600"
+                                />
                             </span>
                             Shopping Cart
                         </h1>
@@ -251,7 +278,12 @@ export default function Cart() {
                                 type="button"
                                 variant="dangerSoft"
                                 buttonText={`Remove Selected (${selectedItems.length})`}
-                                leftIcon={<FaTrashAlt className="text-xs" />}
+                                leftIcon={
+                                    <Icon
+                                        icon={FaTrashAlt}
+                                        className="text-xs"
+                                    />
+                                }
                                 onClick={removeSelectedItems}
                             />
                         )}
@@ -261,7 +293,12 @@ export default function Cart() {
                                 type="button"
                                 variant="primary"
                                 buttonText="Continue Shopping"
-                                leftIcon={<FaShoppingBag className="text-sm" />}
+                                leftIcon={
+                                    <Icon
+                                        icon={FaShoppingBag}
+                                        className="text-sm"
+                                    />
+                                }
                             />
                         </Link>
                     </div>
@@ -274,7 +311,10 @@ export default function Cart() {
                 ) : cartItems.length === 0 ? (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
                         <div className="w-28 h-28 mx-auto mb-6 bg-emerald-50 rounded-full flex items-center justify-center">
-                            <FaShoppingBag className="text-5xl text-emerald-400" />
+                            <Icon
+                                icon={FaShoppingBag}
+                                className="text-5xl text-emerald-400"
+                            />
                         </div>
                         <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                             Your cart is empty
@@ -336,6 +376,9 @@ export default function Cart() {
                                                     onUpdateQuantity={
                                                         updateQuantity
                                                     }
+                                                    onUpdateVariant={
+                                                        updateVariant
+                                                    }
                                                     onRemove={removeItem}
                                                     isSelected={selectedItems.includes(
                                                         item.product.product_id,
@@ -374,7 +417,10 @@ export default function Cart() {
 
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-500 flex items-center gap-1">
-                                            <FaTruck className="text-xs" />
+                                            <Icon
+                                                icon={FaTruck}
+                                                className="text-xs"
+                                            />
                                             Shipping
                                         </span>
                                         <span
@@ -392,7 +438,10 @@ export default function Cart() {
 
                                     {shippingFee > 0 && (
                                         <div className="text-xs text-emerald-600 bg-emerald-50 p-2.5 rounded-lg flex items-center gap-2">
-                                            <FaGift className="text-emerald-500" />
+                                            <Icon
+                                                icon={FaGift}
+                                                className="text-emerald-500"
+                                            />
                                             Add RM {(100 - subtotal).toFixed(2)}{" "}
                                             more for free shipping
                                         </div>
@@ -445,25 +494,31 @@ export default function Cart() {
                                 </div>
 
                                 <button className="w-full mt-4 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm hover:shadow-md flex items-center justify-center gap-2">
-                                    <FaLock className="text-sm" />
+                                    <Icon icon={FaLock} className="text-sm" />
                                     Proceed to Checkout
                                 </button>
 
                                 <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-400">
                                     <span className="flex items-center gap-1">
-                                        <FaLock className="text-[10px]" />
+                                        <Icon
+                                            icon={FaLock}
+                                            className="text-[10px]"
+                                        />
                                         Secure checkout
                                     </span>
                                     <span>•</span>
                                     <span className="flex items-center gap-1">
-                                        <FaUndo className="text-[10px]" />
+                                        <Icon
+                                            icon={FaUndo}
+                                            className="text-[10px]"
+                                        />
                                         30-day returns
                                     </span>
                                 </div>
 
                                 <Link href={route("relove-market.wishlist")}>
                                     <button className="w-full mt-3 py-2.5 text-emerald-600 font-medium rounded-xl border-2 border-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2">
-                                        <FaHeart />
+                                        <Icon icon={FaHeart} />
                                         View My Wishlist
                                     </button>
                                 </Link>
