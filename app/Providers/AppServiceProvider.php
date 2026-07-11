@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Vite;
@@ -30,6 +31,9 @@ class AppServiceProvider extends ServiceProvider
                 CURLOPT_CAINFO => base_path('cacert.pem'),
             ]);
         }
+
+        // Disable wrapping for all JSON resources
+        JsonResource::withoutWrapping();
 
         Inertia::share([
             'auth' => fn() => [

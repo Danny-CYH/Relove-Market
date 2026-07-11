@@ -8,6 +8,9 @@ import {
     FaCheck,
     FaStore,
     FaTag,
+    FaExclamationTriangle,
+    FaSpinner,
+    FaTrashAlt,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -143,25 +146,29 @@ function QuantityControl({
     isLoading,
     isOutOfStock,
 }) {
+    const isAtMaxStock = quantity >= stock;
+
     return (
-        <div className="flex items-center gap-1 bg-gray-50 rounded-lg border border-gray-200">
-            <button
-                onClick={() => onUpdate(quantity - 1)}
-                className="px-2.5 py-1.5 hover:bg-gray-100 rounded-l-lg transition disabled:opacity-50"
-                disabled={quantity <= 1 || isLoading || isOutOfStock}
-            >
-                <FaMinus className="text-xs text-gray-600" />
-            </button>
-            <span className="w-8 text-center text-sm font-medium text-gray-900">
-                {quantity}
-            </span>
-            <button
-                onClick={() => onUpdate(quantity + 1)}
-                className="px-2.5 py-1.5 hover:bg-gray-100 rounded-r-lg transition disabled:opacity-50"
-                disabled={quantity >= stock || isLoading || isOutOfStock}
-            >
-                <FaPlus className="text-xs text-gray-600" />
-            </button>
+        <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 bg-gray-50 rounded-lg border border-gray-200">
+                <button
+                    onClick={() => onUpdate(quantity - 1)}
+                    className="px-2.5 py-1.5 hover:bg-gray-100 rounded-l-lg transition disabled:opacity-50"
+                    disabled={quantity <= 1 || isLoading || isOutOfStock}
+                >
+                    <FaMinus className="text-xs text-gray-600" />
+                </button>
+                <span className="w-8 text-center text-sm font-medium text-gray-900">
+                    {quantity}
+                </span>
+                <button
+                    onClick={() => onUpdate(quantity + 1)}
+                    className="px-2.5 py-1.5 hover:bg-gray-100 rounded-r-lg transition disabled:opacity-50"
+                    disabled={isAtMaxStock || isLoading || isOutOfStock}
+                >
+                    <FaPlus className="text-xs text-gray-600" />
+                </button>
+            </div>
         </div>
     );
 }
@@ -178,28 +185,23 @@ export function CartCard({
 }) {
     const [isUpdatingVariant, setIsUpdatingVariant] = useState(false);
 
-    // ========== 数据提取 ==========
-    const product = item.product;
-    const variant = item.selected_variant;
-    const variants = product?.product_variant || [];
+    const product_info = item.product;
+    const productVariants = item.product.product_variant;
 
-    const productName = product?.product_name || "Unknown Product";
-    const productImage = product?.product_image || "";
-    const sellerName =
-        product?.seller?.seller_store?.store_name || "Unknown Store";
-    const categoryName = product?.category?.category_name || "";
-    const quantity = item.selected_quantity || 1;
-    const price = parseFloat(variant?.price || 0);
-    const stock = parseInt(variant?.quantity || 0);
-    const isOutOfStock = stock === 0;
+    const selected_variant = item.selected_variant;
+    const selectedVariantPrice = item.selected_variant.price;
+    const selected_quantity = item.selected_quantity;
 
-    const availableVariants = variants.filter(
-        (v) => parseInt(v.quantity || 0) > 0,
+    const stockAvailable = selected_variant.quantity;
+    const isOutOfStock = selected_variant.quantity;
+
+    const hasMultipleVariants = productVariants.length > 1;
+    const availableVariants = productVariants.filter(
+        (v) => parseInt(v.quantity) > 0,
     );
-    const hasMultipleVariants = availableVariants.length > 1;
 
     // ========== 变体辅助函数 ==========
-    const isVariantSelected = (v) => variant?.variant_id === v.variant_id;
+    const isVariantSelected = (v) => selected_variant?.variant_id === v.variant_id;
 
     const getVariantLabel = (v) => {
         const combo = v.variant_combination || {};
@@ -218,7 +220,8 @@ export function CartCard({
     const handleVariantSelect = async (v) => {
         setIsUpdatingVariant(true);
         try {
-            await onUpdateVariant?.(item.id, {
+            // ✅ 使用 cartId 而不是 productId 更新变体
+            await onUpdateVariant?.(cartId, {
                 variant_id: v.variant_id,
                 variant_combination: v.variant_combination || {},
                 price: v.price,
@@ -231,23 +234,37 @@ export function CartCard({
         }
     };
 
+    // ✅ 处理数量更新 - 使用 product_id
+    const handleQuantityUpdate = (newQuantity) => {
+        onUpdateQuantity?.(productId, newQuantity);
+    };
+
+    // ✅ 处理删除 - 使用 product_id
+    const handleRemove = () => {
+        onRemove?.(productId);
+    };
+
+    // ✅ 处理选择 - 使用 product_id
+    const handleSelect = () => {
+        onSelect?.(productId);
+    };
+
     // ========== Render ==========
     return (
         <div
-            className={`bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 overflow-visible ${
-                isSelected
-                    ? "border-emerald-400 shadow-md shadow-emerald-100"
-                    : "border-gray-200 hover:border-gray-300"
-            } ${isOutOfStock ? "opacity-70" : ""}`}
+        // className={`bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 overflow-visible ${
+        //     isSelected
+        //         ? "border-emerald-400 shadow-md shadow-emerald-100"
+        //         : "border-gray-200 hover:border-gray-300"
+        // } ${isOutOfStock ? "opacity-70" : ""}`}
         >
-            {/* ===== 顶部：复选框 + 店铺名称 + 变体选择器 ===== */}
             <div className="flex items-center justify-between px-4 py-2 bg-gray-50/80 border-b border-gray-100">
                 <div className="flex items-center gap-3">
                     <label className="relative flex items-center cursor-pointer group">
                         <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => onSelect?.(item.id)}
+                            onChange={handleSelect}
                             className="w-4 h-4 text-emerald-600 bg-white border-2 border-gray-300 rounded focus:ring-2 focus:ring-emerald-500 cursor-pointer transition-all group-hover:border-emerald-400"
                             disabled={isLoading}
                         />
@@ -255,103 +272,110 @@ export function CartCard({
                     </label>
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                         <FaStore className="w-4 h-4 text-emerald-500" />
-                        <span>{sellerName}</span>
+                        <span>{product_info.seller_store}</span>
                     </div>
                 </div>
 
-                {/* 变体选择器 - 只在有多个变体时显示 */}
-                {hasMultipleVariants && (
-                    <VariantDropdown
-                        variant={variant}
-                        availableVariants={availableVariants}
-                        isVariantSelected={isVariantSelected}
-                        getVariantColor={getVariantColor}
-                        getVariantLabel={getVariantLabel}
-                        onSelect={handleVariantSelect}
-                        isUpdating={isUpdatingVariant}
-                        isOutOfStock={isOutOfStock}
-                    />
-                )}
+                <div className="flex items-center gap-2">
+                    {hasMultipleVariants && (
+                        <VariantDropdown
+                            variant={productVariants}
+                            availableVariants={availableVariants}
+                            isVariantSelected={isVariantSelected}
+                            getVariantColor={getVariantColor}
+                            getVariantLabel={getVariantLabel}
+                            onSelect={handleVariantSelect}
+                            isUpdating={isUpdatingVariant}
+                            isOutOfStock={isOutOfStock}
+                        />
+                    )}
+
+                    <button
+                        onClick={handleRemove}
+                        disabled={isLoading}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Remove item"
+                    >
+                        {isLoading ? (
+                            <FaSpinner className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <FaTrashAlt className="w-4 h-4" />
+                        )}
+                    </button>
+                </div>
             </div>
 
-            {/* ===== 商品内容 ===== */}
             <div className="flex flex-col md:grid md:grid-cols-12 md:gap-4 items-start md:items-center p-4">
-                {/* ===== Product Info - col-span-6 ===== */}
                 <div className="flex items-center gap-4 md:col-span-6 w-full md:w-auto">
                     <div className="relative w-14 h-14 rounded-xl bg-gray-100 flex-shrink-0 overflow-hidden">
                         <img
-                            src={import.meta.env.VITE_BASE_URL + productImage}
-                            alt={productName}
+                            src={
+                                import.meta.env.VITE_BASE_URL +
+                                product_info.product_image
+                            }
+                            alt={product_info.product_name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                                 e.target.src = "/placeholder.jpg";
                             }}
                         />
-                        {isOutOfStock && (
-                            <span className="absolute bottom-1 left-1 bg-red-500 text-white text-[8px] font-medium px-1.5 py-0.5 rounded-full">
-                                Out of Stock
-                            </span>
-                        )}
                     </div>
 
                     <div className="min-w-0 flex-1">
                         <Link
                             href={route("relove-market.product-details", {
-                                productId: product?.product_id,
+                                productId: product_info.product_id,
                             })}
                             className="hover:text-emerald-600 transition-colors"
                         >
                             <h3 className="font-semibold text-gray-900 truncate">
-                                {productName}
+                                {product_info.product_name}
                             </h3>
                         </Link>
 
-                        {/* Category Name */}
-                        {categoryName && (
-                            <div className="flex items-center gap-1 mt-0.5">
-                                <FaTag className="w-3 h-3 text-emerald-500" />
-                                <span className="text-xs text-emerald-600 font-medium">
-                                    {categoryName}
-                                </span>
+                        <div className="flex items-center gap-1 mt-0.5">
+                            <FaTag className="w-3 h-3 text-emerald-500" />
+                            <span className="text-xs text-emerald-600 font-medium">
+                                {product_info.category}
+                            </span>
+                        </div>
+
+                        {selected_variant.quantity <= 5 && (
+                            <div className="flex items-center gap-1.5 mt-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-[10px] font-medium border border-amber-200 w-fit">
+                                <FaExclamationTriangle className="w-3 h-3" />
+                                Only {selected_variant.quantity} left in stock -
+                                Order soon!
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* ===== 底部操作行 - col-span-6 ===== */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full md:col-span-6 mt-3 md:mt-0">
-                    {/* 数量控制 */}
                     <div className="flex items-center gap-3 flex-wrap">
                         <QuantityControl
-                            quantity={quantity}
-                            stock={stock}
-                            onUpdate={(newQty) =>
-                                onUpdateQuantity?.(item.id, newQty)
-                            }
+                            quantity={selected_quantity}
+                            stock={stockAvailable}
+                            onUpdate={handleQuantityUpdate}
                             isLoading={isLoading}
                             isOutOfStock={isOutOfStock}
                         />
-
-                        {!isOutOfStock && stock < 5 && (
-                            <span className="text-[10px] text-amber-500 font-medium bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                ⚠️ {stock} left
-                            </span>
-                        )}
                     </div>
 
-                    {/* 价格 */}
                     <div className="text-right">
                         <span className="font-bold text-emerald-600 text-base">
-                            RM {(price * quantity).toFixed(2)}
+                            RM{" "}
+                            {(selectedVariantPrice * selected_quantity).toFixed(
+                                2,
+                            )}
                         </span>
-                        {quantity > 1 && (
+                        {selected_quantity > 1 && (
                             <p className="text-xs text-gray-400">
-                                RM {price.toFixed(2)} ea
+                                RM {selectedVariantPrice} ea
                             </p>
                         )}
-                        {!isOutOfStock && stock < 5 && stock > 0 && (
+                        {stockAvailable < 5 && stockAvailable > 0 && (
                             <p className="text-xs text-amber-500">
-                                ⚠️ {stock} left
+                                ⚠️ {stockAvailable} left
                             </p>
                         )}
                     </div>
@@ -360,3 +384,5 @@ export function CartCard({
         </div>
     );
 }
+
+export default CartCard;

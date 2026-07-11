@@ -15,7 +15,6 @@ class CartResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id' => $this->id,
             'selected_quantity' => $this->selected_quantity,
 
             'selected_variant' => $this->selected_variant ? json_decode($this->selected_variant, true) : null,
@@ -30,19 +29,11 @@ class CartResource extends JsonResource
                 'featured' => $this->product->featured,
                 'total_ratings' => $this->product->total_ratings,
 
-                'seller' => $this->product->seller ? [
-                    'seller_id' => $this->product->seller->seller_id ?? null,
-                    'seller_store' => $this->product->seller->sellerStore ? [
-                        'store_name' => $this->product->seller->sellerStore->store_name ?? null,
-                    ] : null,
-                ] : null,
+                'seller_name' => $this->product->seller->seller_name,
+                'seller_store' => $this->product->seller->sellerStore->store_name,
 
-                'category' => $this->product->category ? [
-                    'category_id' => $this->product->category->category_id ?? null,
-                    'category_name' => $this->product->category->category_name ?? null,
-                ] : null,
+                'category' => $this->product->category->category_name,
 
-                // Product Variants（只选需要的）
                 'product_variant' => $this->productVariant->map(function ($variant) {
                     return [
                         'variant_id' => $variant->variant_id,
@@ -52,10 +43,6 @@ class CartResource extends JsonResource
                         'price' => $variant->price,
                     ];
                 }),
-
-                // 时间戳（可选）
-                'created_at' => $this->created_at,
-                'updated_at' => $this->updated_at,
             ]
         ];
     }
