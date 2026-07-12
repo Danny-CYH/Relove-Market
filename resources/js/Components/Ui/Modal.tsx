@@ -13,11 +13,18 @@ export function Modal({
     primaryOnClick,
     secondaryLabel,
     secondaryOnClick,
-    buttonLayout = "right", // "right" | "center" | "full"
-    buttonDirection = "row", // "row" | "col"
-    fullWidth = false, // true | false
+    buttonLayout = "right",
+    buttonDirection = "row",
+    fullWidth = false,
 }) {
     if (!isOpen) return null;
+
+    const hasPrimary = !!primaryLabel;
+    const hasSecondary = !!secondaryLabel;
+    const hasAnyButton = hasPrimary || hasSecondary;
+
+    const handlePrimary = primaryOnClick ?? onClose;
+    const handleSecondary = secondaryOnClick ?? onClose;
 
     // 渲染图标
     const renderTitleIcon = () => {
@@ -36,16 +43,6 @@ export function Modal({
         });
     };
 
-    // 判断是否有按钮
-    const hasPrimary = !!primaryLabel;
-    const hasSecondary = !!secondaryLabel;
-    const hasAnyButton = hasPrimary || hasSecondary;
-
-    // 处理按钮点击 - 默认关闭
-    const handlePrimary = primaryOnClick ?? onClose;
-    const handleSecondary = secondaryOnClick ?? onClose;
-
-    // 按钮布局样式
     const getButtonJustify = () => {
         if (fullWidth) return "flex-col";
         if (buttonLayout === "center") return "justify-center";
