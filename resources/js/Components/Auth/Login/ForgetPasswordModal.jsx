@@ -1,5 +1,5 @@
 import { FaEnvelope } from "react-icons/fa";
-import TextInput from "../../TextInput";
+import TextInput from "../../Ui/TextInput";
 
 export function ForgetPasswordModal({
     handleCloseForgetModal,

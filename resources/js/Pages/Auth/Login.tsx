@@ -24,9 +24,11 @@ import Swal from "sweetalert2";
 
 import { ForgetPasswordModal } from "@/Components/Auth/Login/ForgetPasswordModal";
 import { ResetPasswordModal } from "@/Components/Auth/Login/ResetPasswordModal";
+
 import Footer from "@/Components/Ui/Footer";
 import Navbar from "@/Components/Ui/Navbar";
-import TextInput from "@/Components/TextInput";
+import TextInput from "@/Components/Ui/TextInput";
+import { Icon } from "@/Components/Ui/Icon";
 
 // SweetAlert configuration
 const showAlert = (icon, title, text, confirmButtonText = "OK") => {
@@ -347,7 +349,10 @@ export default function Login() {
                             className="flex items-center gap-3 mb-6"
                         >
                             <div className="p-2.5 bg-emerald-100 rounded-2xl">
-                                <FaLeaf className="w-7 h-7 text-emerald-600" />
+                                <Icon
+                                    icon={FaLeaf}
+                                    className="w-7 h-7 text-emerald-600"
+                                />
                             </div>
                             <div>
                                 <h1 className="text-xl font-bold text-gray-900">
@@ -498,7 +503,10 @@ export default function Login() {
                                     onClick={() => handleSocialLogin("Google")}
                                     className="flex items-center justify-center gap-2 py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
                                 >
-                                    <FaGoogle className="w-4 h-4 text-red-500" />
+                                    <Icon
+                                        icon={FaGoogle}
+                                        className="w-4 h-4 text-red-500"
+                                    />
                                     Google
                                 </button>
                                 <button
@@ -507,7 +515,10 @@ export default function Login() {
                                     }
                                     className="flex items-center justify-center gap-2 py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
                                 >
-                                    <FaFacebook className="w-4 h-4 text-blue-600" />
+                                    <Icon
+                                        icon={FaFacebook}
+                                        className="w-4 h-4 text-blue-600"
+                                    />
                                     Facebook
                                 </button>
                             </div>
@@ -534,7 +545,10 @@ export default function Login() {
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FaEnvelope className="h-4 w-4 text-gray-400" />
+                                            <Icon
+                                                icon={FaEnvelope}
+                                                className="h-4 w-4 text-gray-400"
+                                            />
                                         </div>
                                         <TextInput
                                             type="email"
@@ -546,7 +560,7 @@ export default function Login() {
                                                     e.target.value,
                                                 )
                                             }
-                                            className="pl-9 w-full border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
+                                            className="pl-9 pr-9 text-black"
                                             required
                                         />
                                     </div>
@@ -558,7 +572,10 @@ export default function Login() {
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FaLock className="h-4 w-4 text-gray-400" />
+                                            <Icon
+                                                icon={FaLock}
+                                                className="h-4 w-4 text-gray-400"
+                                            />
                                         </div>
                                         <TextInput
                                             type={
@@ -574,7 +591,7 @@ export default function Login() {
                                                     e.target.value,
                                                 )
                                             }
-                                            className="pl-9 pr-9 w-full border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
+                                            className="pl-9 pr-9 text-black"
                                             required
                                         />
                                         <button
@@ -585,9 +602,15 @@ export default function Login() {
                                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                                         >
                                             {showPassword ? (
-                                                <FaEyeSlash className="h-4 w-4" />
+                                                <Icon
+                                                    icon={FaEyeSlash}
+                                                    className="h-4 w-4"
+                                                />
                                             ) : (
-                                                <FaEye className="h-4 w-4" />
+                                                <Icon
+                                                    icon={FaEye}
+                                                    className="h-4 w-4"
+                                                />
                                             )}
                                         </button>
                                     </div>
@@ -652,7 +675,10 @@ export default function Login() {
                                     ) : (
                                         <>
                                             Sign in
-                                            <FaArrowRight className="w-4 h-4" />
+                                            <Icon
+                                                icon={FaArrowRight}
+                                                className="w-4 h-4"
+                                            />
                                         </>
                                     )}
                                 </button>

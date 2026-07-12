@@ -4,7 +4,7 @@ import { TermsPrivacyModal } from "@/Components/Auth/Register/TermsPrivacyModal"
 import { PasswordRequirementsModal } from "@/Components/Auth/Register/PasswordRequirementsModal";
 import { EmailVerificationModal } from "@/Components/Auth/Register/EmailVerificationModal";
 
-import TextInput from "@/Components/TextInput";
+import TextInput from "@/Components/Ui/TextInput";
 
 import { Link, useForm, usePage } from "@inertiajs/react";
 

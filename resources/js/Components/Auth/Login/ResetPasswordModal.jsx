@@ -6,7 +6,7 @@ import {
     FaCheck,
     FaTimes,
 } from "react-icons/fa";
-import TextInput from "../../TextInput";
+import TextInput from "../../Ui/TextInput";
 import { useState, useEffect } from "react";
 
 // Password validation functions (same as register page)
