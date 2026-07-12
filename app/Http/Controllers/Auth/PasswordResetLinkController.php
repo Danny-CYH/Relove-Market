@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Facades\Log;
 
 class PasswordResetLinkController extends Controller
 {
@@ -30,7 +31,13 @@ class PasswordResetLinkController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'email' => 'required|email|exists:users,email',  // ✅ 检查 email 是否存在
+        ]);
+
+        // ✅ 添加日志
+        Log::info('Password reset requested', [
+            'email' => $request->input('email'),
+            'ip' => $request->ip(),
         ]);
 
         // We will send the password reset link to this user. Once we have attempted

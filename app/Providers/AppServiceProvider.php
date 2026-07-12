@@ -2,12 +2,17 @@
 
 namespace App\Providers;
 
-use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Filesystem\Filesystem;
+
+use Illuminate\Auth\Notifications\ResetPassword;
+
+use Illuminate\Http\Resources\Json\JsonResource;
+
+use App\Mail\ResetPasswordMail;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,6 +39,11 @@ class AppServiceProvider extends ServiceProvider
 
         // Disable wrapping for all JSON resources
         JsonResource::withoutWrapping();
+
+        ResetPassword::toMailUsing(function ($notifiable, $token) {
+            return (new ResetPasswordMail($notifiable, $token))
+                ->to($notifiable->email);
+        });
 
         Inertia::share([
             'auth' => fn() => [
