@@ -10,6 +10,8 @@ const appName = "Relove Market";
 
 import { registerSW } from "virtual:pwa-register";
 
+import { ToastProvider } from "./Components/Ui/Toast";
+
 const updateSW = registerSW({
     onNeedRefresh() {
         if (confirm("New content available. Reload?")) {
@@ -26,12 +28,16 @@ createInertiaApp({
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.tsx`,
-            import.meta.glob("./Pages/**/*.tsx")
+            import.meta.glob("./Pages/**/*.tsx"),
         ),
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        root.render(<App {...props} />);
+        root.render(
+            <ToastProvider>
+                <App {...props} />
+            </ToastProvider>,
+        );
     },
     progress: {
         color: "#2AAA8A",

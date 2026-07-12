@@ -20,8 +20,6 @@ import {
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 
-import Swal from "sweetalert2";
-
 import { ForgetPasswordModal } from "@/Components/Auth/Login/ForgetPasswordModal";
 import { ResetPasswordModal } from "@/Components/Auth/Login/ResetPasswordModal";
 
@@ -29,35 +27,10 @@ import Footer from "@/Components/Ui/Footer";
 import Navbar from "@/Components/Ui/Navbar";
 import TextInput from "@/Components/Ui/TextInput";
 import { Icon } from "@/Components/Ui/Icon";
-
-// SweetAlert configuration
-const showAlert = (icon, title, text, confirmButtonText = "OK") => {
-    return Swal.fire({
-        icon,
-        title,
-        text,
-        confirmButtonText,
-        confirmButtonColor: "#059669",
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
-
-const showLoadingAlert = (title, text = "") => {
-    return Swal.fire({
-        title,
-        text,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-            Swal.showLoading();
-        },
-    });
-};
+import { useToast } from "@/Components/Ui/Toast";
 
 export default function Login() {
+    const { showToast } = useToast();
     const { flash, token, email } = usePage().props;
 
     const [showResetModal, setShowResetModal] = useState(false);
@@ -99,11 +72,11 @@ export default function Login() {
 
     useEffect(() => {
         if (flash?.successMessage) {
-            showAlert("success", "Success!", flash.successMessage);
+            showToast(flash.successMessage, "success");
         }
 
         if (flash?.errorMessage) {
-            showAlert("error", "Error!", flash.errorMessage);
+            showToast(flash.errorMessage, "error");
         }
 
         if (resetData.token && resetData.email) {
@@ -132,18 +105,11 @@ export default function Login() {
         e.preventDefault();
 
         if (!loginData.email || !loginData.password) {
-            showAlert(
-                "warning",
-                "Missing Information",
-                "Please fill in all fields",
-            );
+            showToast("Please fill in all fields", "warning");
             return;
         }
 
-        const loadingAlert = showLoadingAlert(
-            "Signing In",
-            "Please wait while we sign you in...",
-        );
+        showToast("Signing in...", "info", 1000);
 
         try {
             const response = await fetch(route("login"), {
@@ -161,37 +127,35 @@ export default function Login() {
             });
 
             const data = await response.json();
-            loadingAlert.close();
 
             if (response.ok && data.success) {
-                if (data.csrf_token) {
-                    const metaTag = document.querySelector(
-                        'meta[name="csrf-token"]',
-                    );
-                    if (metaTag) {
-                        metaTag.content = data.csrf_token;
-                    }
-                    window.__csrfToken = data.csrf_token;
-                    if (window.axios) {
-                        window.axios.defaults.headers.common["X-CSRF-TOKEN"] =
-                            data.csrf_token;
-                    }
-                }
+                // if (data.csrf_token) {
+                //     const metaTag = document.querySelector(
+                //         'meta[name="csrf-token"]',
+                //     );
+                //     if (metaTag) {
+                //         metaTag.content = data.csrf_token;
+                //     }
+                //     window.__csrfToken = data.csrf_token;
+                //     if (window.axios) {
+                //         window.axios.defaults.headers.common["X-CSRF-TOKEN"] =
+                //             data.csrf_token;
+                //     }
+                // }
 
-                showAlert("success", "Login Successful!", "Redirecting...");
+                showToast("Login successful! Redirecting...", "success");
 
-                setTimeout(() => {
-                    if (data.redirect) {
-                        window.location.href = data.redirect;
-                    } else {
-                        window.location.href = "/";
-                    }
-                }, 1000);
+                // setTimeout(() => {
+                //     if (data.redirect) {
+                //         window.location.href = data.redirect;
+                //     } else {
+                //         window.location.href = "/";
+                //     }
+                // }, 1000);
             } else {
                 throw new Error(data.message || "Login failed");
             }
         } catch (error) {
-            loadingAlert.close();
             console.error("Login error:", error);
 
             let errorMessage =
@@ -205,7 +169,7 @@ export default function Login() {
                 }
             }
 
-            showAlert("error", "Login Failed", errorMessage);
+            showToast(errorMessage, "error");
             reset("password");
         }
     };
@@ -214,37 +178,28 @@ export default function Login() {
         e.preventDefault();
 
         if (!forgetData.email) {
-            showAlert(
-                "warning",
-                "Email Required",
-                "Please enter your email address",
-            );
+            showToast("Please enter your email address", "warning");
             return;
         }
 
-        const loadingAlert = showLoadingAlert(
-            "Sending Reset Link",
-            "Please wait...",
-        );
+        showToast("Sending reset link...", "info", 1000);
 
         postForget(route("password.email"), {
             email: forgetData.email,
             onSuccess: () => {
-                loadingAlert.close();
                 setShowForgetModal(false);
                 setForgetData("email", "");
-                showAlert(
-                    "success",
-                    "Reset Link Sent!",
+                showToast(
                     "If your email exists in our system, you will receive a password reset link shortly.",
+                    "success",
+                    5000,
                 );
             },
             onError: (errors) => {
-                loadingAlert.close();
                 let errorMessage =
                     errors.email ||
                     "Error sending reset link. Please try again.";
-                showAlert("error", "Failed to Send", errorMessage);
+                showToast(errorMessage, "error");
             },
         });
     };
@@ -253,31 +208,19 @@ export default function Login() {
         e.preventDefault();
 
         if (!resetData.password || !resetData.password_confirmation) {
-            showAlert(
-                "warning",
-                "Missing Information",
-                "Please fill in all password fields",
-            );
+            showToast("Please fill in all password fields", "warning");
             return;
         }
 
         if (resetData.password !== resetData.password_confirmation) {
-            showAlert(
-                "error",
-                "Password Mismatch",
-                "Passwords do not match. Please try again.",
-            );
+            showToast("Passwords do not match. Please try again.", "error");
             return;
         }
 
-        const loadingAlert = showLoadingAlert(
-            "Updating Password",
-            "Please wait...",
-        );
+        showToast("Updating password...", "info", 1000);
 
         postReset(route("password.store"), {
             onSuccess: () => {
-                loadingAlert.close();
                 setShowResetModal(false);
                 setResetData({
                     token: "",
@@ -285,16 +228,15 @@ export default function Login() {
                     password: "",
                     password_confirmation: "",
                 });
-                showAlert(
+                showToast(
+                    "Password updated successfully! You can now login with your new password.",
                     "success",
-                    "Password Updated!",
-                    "Your password has been updated successfully. You can now login with your new password.",
+                    4000,
                 ).then(() => {
                     window.location.href = "/login";
                 });
             },
             onError: (errors) => {
-                loadingAlert.close();
                 let errorMessage =
                     "Error resetting password. Please try again.";
 
@@ -307,7 +249,7 @@ export default function Login() {
                         "Invalid or expired reset token. Please request a new reset link.";
                 }
 
-                showAlert("error", "Reset Failed", errorMessage);
+                showToast(errorMessage, "error");
             },
         });
     };
@@ -322,11 +264,7 @@ export default function Login() {
     };
 
     const handleSocialLogin = (provider) => {
-        showAlert(
-            "info",
-            `${provider} Login`,
-            `${provider} login coming soon!`,
-        );
+        showToast(`${provider} login coming soon!`, "info");
     };
 
     return (
@@ -336,7 +274,7 @@ export default function Login() {
             {/* Main Content */}
             <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-12">
                 <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-                    {/* ✅ Left Side - Reimagined Layout */}
+                    {/* Left Side */}
                     <motion.div
                         initial={{ opacity: 0, x: -30 }}
                         animate={{ opacity: 1, x: 0 }}
@@ -378,7 +316,7 @@ export default function Login() {
                             circular preloved item.
                         </p>
 
-                        {/* ✅ Stats - 4 columns instead of 3 */}
+                        {/* Stats */}
                         <div className="grid grid-cols-4 gap-4 mb-6">
                             {[
                                 {
@@ -418,7 +356,7 @@ export default function Login() {
                             ))}
                         </div>
 
-                        {/* ✅ Two-column feature grid */}
+                        {/* Features */}
                         <div className="grid grid-cols-2 gap-3 mb-6">
                             {[
                                 {
@@ -455,7 +393,7 @@ export default function Login() {
                             ))}
                         </div>
 
-                        {/* ✅ Trust badges - simplified */}
+                        {/* Trust badges */}
                         <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
                             <div className="flex items-center gap-1.5">
                                 <span className="text-sm">♻️</span>
@@ -480,7 +418,7 @@ export default function Login() {
                         </div>
                     </motion.div>
 
-                    {/* ✅ Right - Login Card (unchanged) */}
+                    {/* Right - Login Card */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
