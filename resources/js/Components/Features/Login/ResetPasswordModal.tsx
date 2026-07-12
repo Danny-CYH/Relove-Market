@@ -8,6 +8,7 @@ import {
 } from "react-icons/fa";
 import TextInput from "../../Ui/TextInput";
 import { useState, useEffect } from "react";
+import { Button } from "@/Components/Ui/Button";
 
 // Password validation functions (same as register page)
 const validatePassword = (password) => {
@@ -50,10 +51,13 @@ const PasswordRequirement = ({ met, text }) => (
 
 export function ResetPasswordModal({
     handleCloseResetModal,
-    resetData,
-    setResetData,
+    email,
+    password,
+    password_confirmation,
+    setPassword,
+    setPasswordConfirmation,
     updatePassword_submit,
-    processingReset,
+    isLoading,
 }) {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -73,8 +77,8 @@ export function ResetPasswordModal({
 
     // Validate password on change
     useEffect(() => {
-        if (resetData.password) {
-            const validation = validatePassword(resetData.password);
+        if (password) {
+            const validation = validatePassword(password);
             setPasswordValidation(validation);
         } else {
             setPasswordValidation({
@@ -89,7 +93,7 @@ export function ResetPasswordModal({
                 strength: 0,
             });
         }
-    }, [resetData.password]);
+    }, [password]);
 
     const { text: strengthText, color: strengthColor } =
         getPasswordStrengthText(passwordValidation.strength);
@@ -100,15 +104,15 @@ export function ResetPasswordModal({
         // Validate password strength
         if (!passwordValidation.isValid) {
             alert(
-                "Please create a stronger password that meets all requirements."
+                "Please create a stronger password that meets all requirements.",
             );
             return;
         }
 
         // Validate password confirmation
-        if (resetData.password !== resetData.password_confirmation) {
+        if (password !== password_confirmation) {
             alert(
-                "Passwords do not match. Please make sure both passwords are identical."
+                "Passwords do not match. Please make sure both passwords are identical.",
             );
             return;
         }
@@ -172,7 +176,7 @@ export function ResetPasswordModal({
                             </label>
                             <TextInput
                                 type="email"
-                                value={resetData.email}
+                                value={email}
                                 readOnly
                                 className="w-full bg-gray-100"
                             />
@@ -199,9 +203,9 @@ export function ResetPasswordModal({
                                     type={showPassword ? "text" : "password"}
                                     name="password"
                                     placeholder="Create a strong password"
-                                    value={resetData.password}
+                                    value={password}
                                     onChange={(e) =>
-                                        setResetData("password", e.target.value)
+                                        setPassword(e.target.value)
                                     }
                                     className="w-full pr-10"
                                     required
@@ -222,7 +226,7 @@ export function ResetPasswordModal({
                             </div>
 
                             {/* Password strength indicator */}
-                            {resetData.password && (
+                            {password && (
                                 <div className="mt-2">
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="text-xs text-gray-600">
@@ -240,12 +244,12 @@ export function ResetPasswordModal({
                                                 passwordValidation.strength <= 2
                                                     ? "bg-red-500"
                                                     : passwordValidation.strength <=
-                                                      3
-                                                    ? "bg-yellow-500"
-                                                    : passwordValidation.strength <=
-                                                      4
-                                                    ? "bg-blue-500"
-                                                    : "bg-green-500"
+                                                        3
+                                                      ? "bg-yellow-500"
+                                                      : passwordValidation.strength <=
+                                                          4
+                                                        ? "bg-blue-500"
+                                                        : "bg-green-500"
                                             }`}
                                             style={{
                                                 width: `${
@@ -273,12 +277,9 @@ export function ResetPasswordModal({
                                     }
                                     name="password_confirmation"
                                     placeholder="Confirm your password"
-                                    value={resetData.password_confirmation}
+                                    value={password_confirmation}
                                     onChange={(e) =>
-                                        setResetData(
-                                            "password_confirmation",
-                                            e.target.value
-                                        )
+                                        setPasswordConfirmation(e.target.value)
                                     }
                                     className="w-full pr-10"
                                     required
@@ -287,7 +288,7 @@ export function ResetPasswordModal({
                                     type="button"
                                     onClick={() =>
                                         setShowConfirmPassword(
-                                            !showConfirmPassword
+                                            !showConfirmPassword,
                                         )
                                     }
                                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
@@ -299,9 +300,8 @@ export function ResetPasswordModal({
                                     )}
                                 </button>
                             </div>
-                            {resetData.password_confirmation &&
-                                resetData.password !==
-                                    resetData.password_confirmation && (
+                            {password_confirmation &&
+                                password !== password_confirmation && (
                                     <p className="text-red-600 text-sm mt-1 flex items-center">
                                         <FaTimes className="w-3 h-3 mr-1" />
                                         Passwords do not match
@@ -310,7 +310,7 @@ export function ResetPasswordModal({
                         </div>
 
                         <div className="mt-5 sm:mt-6">
-                            <button
+                            {/* <button
                                 type="submit"
                                 disabled={
                                     processingReset ||
@@ -323,7 +323,13 @@ export function ResetPasswordModal({
                                 {processingReset
                                     ? "Updating..."
                                     : "Update Password"}
-                            </button>
+                            </button> */}
+                            <Button
+                                type="submit"
+                                buttonText="Update Password"
+                                isLoading={isLoading}
+                                loadingText="Updating"
+                            />
                         </div>
                     </form>
                 </div>
@@ -415,7 +421,7 @@ export function ResetPasswordModal({
                                                 text="One special character (!@#$%^&*)"
                                             />
                                         </div>
-                                        {resetData.password && (
+                                        {password && (
                                             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                                                 <div className="flex justify-between items-center mb-2">
                                                     <span className="text-sm font-medium text-blue-900">
@@ -434,12 +440,12 @@ export function ResetPasswordModal({
                                                             2
                                                                 ? "bg-red-500"
                                                                 : passwordValidation.strength <=
-                                                                  3
-                                                                ? "bg-yellow-500"
-                                                                : passwordValidation.strength <=
-                                                                  4
-                                                                ? "bg-blue-500"
-                                                                : "bg-green-500"
+                                                                    3
+                                                                  ? "bg-yellow-500"
+                                                                  : passwordValidation.strength <=
+                                                                      4
+                                                                    ? "bg-blue-500"
+                                                                    : "bg-green-500"
                                                         }`}
                                                         style={{
                                                             width: `${
