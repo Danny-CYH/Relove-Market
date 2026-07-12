@@ -5,8 +5,20 @@ import {
     FaEyeSlash,
     FaEnvelope,
     FaLock,
-    FaCheckCircle,
+    FaLeaf,
+    FaArrowRight,
+    FaGoogle,
+    FaFacebook,
+    FaHeart,
+    FaStar,
+    FaShieldAlt,
+    FaRecycle,
+    FaTree,
+    FaUsers,
+    FaShoppingBag,
+    FaGlobe,
 } from "react-icons/fa";
+import { motion } from "framer-motion";
 
 import Swal from "sweetalert2";
 
@@ -23,7 +35,7 @@ const showAlert = (icon, title, text, confirmButtonText = "OK") => {
         title,
         text,
         confirmButtonText,
-        confirmButtonColor: "#3085d6",
+        confirmButtonColor: "#059669",
         customClass: {
             popup: "rounded-2xl",
             confirmButton: "px-4 py-2 rounded-lg font-medium",
@@ -50,7 +62,6 @@ export default function Login() {
     const [showForgetModal, setShowForgetModal] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    // login account
     const {
         data: loginData,
         setData: setLoginData,
@@ -63,7 +74,6 @@ export default function Login() {
         remember: false,
     });
 
-    // forget password
     const {
         data: forgetData,
         setData: setForgetData,
@@ -73,7 +83,6 @@ export default function Login() {
         email: "",
     });
 
-    // reset password
     const {
         data: resetData,
         setData: setResetData,
@@ -87,27 +96,23 @@ export default function Login() {
     });
 
     useEffect(() => {
-        // Show success message if exists
         if (flash?.successMessage) {
             showAlert("success", "Success!", flash.successMessage);
         }
 
-        // Show error message if exists
         if (flash?.errorMessage) {
             showAlert("error", "Error!", flash.errorMessage);
         }
 
-        // Handle reset password modal
         if (resetData.token && resetData.email) {
             setShowResetModal(true);
         }
 
-        // Handle reset password URL
         if (window.location.pathname.includes("/reset-password/")) {
             const pathSegments = window.location.pathname.split("/");
             const tokenFromPath = pathSegments[pathSegments.length - 1];
             const emailFromURL = new URL(window.location.href).searchParams.get(
-                "email"
+                "email",
             );
 
             if (tokenFromPath && emailFromURL) {
@@ -128,14 +133,14 @@ export default function Login() {
             showAlert(
                 "warning",
                 "Missing Information",
-                "Please fill in all fields"
+                "Please fill in all fields",
             );
             return;
         }
 
         const loadingAlert = showLoadingAlert(
             "Signing In",
-            "Please wait while we sign you in..."
+            "Please wait while we sign you in...",
         );
 
         try {
@@ -144,12 +149,12 @@ export default function Login() {
                 headers: {
                     "Content-Type": "application/json",
                     "X-CSRF-TOKEN": document.querySelector(
-                        'meta[name="csrf-token"]'
+                        'meta[name="csrf-token"]',
                     ).content,
                     "X-Requested-With": "XMLHttpRequest",
                     "X-Inertia": "true",
                 },
-                credentials: "include", // Important for session cookies
+                credentials: "include",
                 body: JSON.stringify(loginData),
             });
 
@@ -157,30 +162,22 @@ export default function Login() {
             loadingAlert.close();
 
             if (response.ok && data.success) {
-                // Update CSRF token in meta tag
                 if (data.csrf_token) {
                     const metaTag = document.querySelector(
-                        'meta[name="csrf-token"]'
+                        'meta[name="csrf-token"]',
                     );
                     if (metaTag) {
                         metaTag.content = data.csrf_token;
-                        console.log("CSRF token updated in meta tag");
                     }
-
-                    // Update global variable
                     window.__csrfToken = data.csrf_token;
-
-                    // Update axios if available
                     if (window.axios) {
                         window.axios.defaults.headers.common["X-CSRF-TOKEN"] =
                             data.csrf_token;
                     }
                 }
 
-                // Show success message
                 showAlert("success", "Login Successful!", "Redirecting...");
 
-                // Redirect after a short delay
                 setTimeout(() => {
                     if (data.redirect) {
                         window.location.href = data.redirect;
@@ -198,7 +195,6 @@ export default function Login() {
             let errorMessage =
                 error.message || "Invalid email or password. Please try again.";
 
-            // Check for validation errors
             if (error.errors) {
                 if (error.errors.email) {
                     errorMessage = error.errors.email[0];
@@ -208,11 +204,10 @@ export default function Login() {
             }
 
             showAlert("error", "Login Failed", errorMessage);
-            reset("password"); // Only reset password, keep email
+            reset("password");
         }
     };
 
-    // forgot password
     const resetLink_submit = async (e) => {
         e.preventDefault();
 
@@ -220,14 +215,14 @@ export default function Login() {
             showAlert(
                 "warning",
                 "Email Required",
-                "Please enter your email address"
+                "Please enter your email address",
             );
             return;
         }
 
         const loadingAlert = showLoadingAlert(
             "Sending Reset Link",
-            "Please wait..."
+            "Please wait...",
         );
 
         postForget(route("password.email"), {
@@ -239,7 +234,7 @@ export default function Login() {
                 showAlert(
                     "success",
                     "Reset Link Sent!",
-                    "If your email exists in our system, you will receive a password reset link shortly."
+                    "If your email exists in our system, you will receive a password reset link shortly.",
                 );
             },
             onError: (errors) => {
@@ -252,7 +247,6 @@ export default function Login() {
         });
     };
 
-    // reset password
     const updatePassword_submit = async (e) => {
         e.preventDefault();
 
@@ -260,7 +254,7 @@ export default function Login() {
             showAlert(
                 "warning",
                 "Missing Information",
-                "Please fill in all password fields"
+                "Please fill in all password fields",
             );
             return;
         }
@@ -269,14 +263,14 @@ export default function Login() {
             showAlert(
                 "error",
                 "Password Mismatch",
-                "Passwords do not match. Please try again."
+                "Passwords do not match. Please try again.",
             );
             return;
         }
 
         const loadingAlert = showLoadingAlert(
             "Updating Password",
-            "Please wait..."
+            "Please wait...",
         );
 
         postReset(route("password.store"), {
@@ -292,7 +286,7 @@ export default function Login() {
                 showAlert(
                     "success",
                     "Password Updated!",
-                    "Your password has been updated successfully. You can now login with your new password."
+                    "Your password has been updated successfully. You can now login with your new password.",
                 ).then(() => {
                     window.location.href = "/login";
                 });
@@ -325,211 +319,362 @@ export default function Login() {
         setForgetData("email", "");
     };
 
+    const handleSocialLogin = (provider) => {
+        showAlert(
+            "info",
+            `${provider} Login`,
+            `${provider} login coming soon!`,
+        );
+    };
+
     return (
-        <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-blue-50">
+        <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
             <Navbar />
 
             {/* Main Content */}
             <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-12">
-                <div className="max-w-5xl w-full grid grid-cols-1 lg:grid-cols-2 bg-white rounded-2xl shadow-xl overflow-hidden">
-                    {/* Left Column - Login Form */}
-                    <div className="py-10 px-8 sm:px-10">
-                        <div className="mb-8">
-                            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                                Welcome Back
-                            </h2>
-                            <p className="text-gray-600">
-                                Sign in to your Relove Market account
-                            </p>
+                <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+                    {/* ✅ Left Side - Reimagined Layout */}
+                    <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="flex flex-col justify-center"
+                    >
+                        {/* Logo */}
+                        <motion.div
+                            whileHover={{ scale: 1.02 }}
+                            className="flex items-center gap-3 mb-6"
+                        >
+                            <div className="p-2.5 bg-emerald-100 rounded-2xl">
+                                <FaLeaf className="w-7 h-7 text-emerald-600" />
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-gray-900">
+                                    Relove Market
+                                </h1>
+                                <p className="text-xs text-gray-500">
+                                    Sustainable Preloved Marketplace
+                                </p>
+                            </div>
+                        </motion.div>
+
+                        {/* Main headline */}
+                        <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.15] mb-3">
+                            Shop{" "}
+                            <span className="text-emerald-600">
+                                Sustainably
+                            </span>{" "}
+                            Today
+                        </h2>
+
+                        <p className="text-gray-500 text-base mb-6 max-w-sm">
+                            Join thousands of conscious shoppers embracing
+                            circular preloved item.
+                        </p>
+
+                        {/* ✅ Stats - 4 columns instead of 3 */}
+                        <div className="grid grid-cols-4 gap-4 mb-6">
+                            {[
+                                {
+                                    number: "15K+",
+                                    label: "Members",
+                                    icon: FaUsers,
+                                },
+                                {
+                                    number: "98%",
+                                    label: "Satisfied",
+                                    icon: FaStar,
+                                },
+                                {
+                                    number: "5K+",
+                                    label: "Items Sold",
+                                    icon: FaShoppingBag,
+                                },
+                                {
+                                    number: "50K+",
+                                    label: "Trees Saved",
+                                    icon: FaTree,
+                                },
+                            ].map((stat, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    whileHover={{ y: -2 }}
+                                    className="text-center bg-white rounded-xl p-3 shadow-sm border border-gray-100"
+                                >
+                                    <stat.icon className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
+                                    <p className="text-lg font-bold text-gray-900">
+                                        {stat.number}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500">
+                                        {stat.label}
+                                    </p>
+                                </motion.div>
+                            ))}
                         </div>
 
-                        <form
-                            onSubmit={loginAccount_submit}
-                            className="space-y-6"
-                        >
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Email Address
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <FaEnvelope className="h-5 w-5 text-gray-400" />
-                                    </div>
-                                    <TextInput
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        placeholder="Enter your email"
-                                        autoComplete="off"
-                                        value={loginData.email}
-                                        onChange={(e) =>
-                                            setLoginData(
-                                                "email",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="pl-10 w-full"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Password
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <FaLock className="h-5 w-5 text-gray-400" />
-                                    </div>
-                                    <TextInput
-                                        id="password"
-                                        type={
-                                            showPassword ? "text" : "password"
-                                        }
-                                        name="password"
-                                        placeholder="Enter your password"
-                                        value={loginData.password}
-                                        onChange={(e) =>
-                                            setLoginData(
-                                                "password",
-                                                e.target.value
-                                            )
-                                        }
-                                        className="pl-10 pr-10 w-full"
-                                        required
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setShowPassword(!showPassword)
-                                        }
-                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                                    >
-                                        {showPassword ? (
-                                            <FaEyeSlash className="h-5 w-5" />
-                                        ) : (
-                                            <FaEye className="h-5 w-5" />
-                                        )}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <label className="flex items-center">
-                                    <input
-                                        type="checkbox"
-                                        checked={loginData.remember}
-                                        onChange={(e) =>
-                                            setLoginData(
-                                                "remember",
-                                                e.target.checked
-                                            )
-                                        }
-                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                    />
-                                    <span className="ml-2 text-sm text-gray-600">
-                                        Remember me
-                                    </span>
-                                </label>
-
-                                <button
-                                    type="button"
-                                    onClick={handleForgetPasswordClick}
-                                    className="text-sm text-blue-600 hover:text-blue-500 font-medium"
+                        {/* ✅ Two-column feature grid */}
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            {[
+                                {
+                                    icon: FaHeart,
+                                    text: "Pre-loved fashion",
+                                    color: "text-rose-400",
+                                },
+                                {
+                                    icon: FaShieldAlt,
+                                    text: "Secure shopping",
+                                    color: "text-emerald-400",
+                                },
+                                {
+                                    icon: FaRecycle,
+                                    text: "Zero waste",
+                                    color: "text-teal-400",
+                                },
+                                {
+                                    icon: FaGlobe,
+                                    text: "Global community",
+                                    color: "text-blue-400",
+                                },
+                            ].map((item, idx) => (
+                                <motion.div
+                                    key={idx}
+                                    whileHover={{ x: 4 }}
+                                    className="flex items-center gap-2 text-gray-700 bg-white/50 rounded-xl px-3 py-2 border border-gray-100"
                                 >
-                                    Forgot password?
+                                    <item.icon
+                                        className={`w-4 h-4 ${item.color}`}
+                                    />
+                                    <span className="text-xs">{item.text}</span>
+                                </motion.div>
+                            ))}
+                        </div>
+
+                        {/* ✅ Trust badges - simplified */}
+                        <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm">♻️</span>
+                                <span className="text-xs text-gray-500">
+                                    Eco-friendly
+                                </span>
+                            </div>
+                            <div className="w-px h-4 bg-gray-200"></div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm">💚</span>
+                                <span className="text-xs text-gray-500">
+                                    Carbon offset
+                                </span>
+                            </div>
+                            <div className="w-px h-4 bg-gray-200"></div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-sm">🌱</span>
+                                <span className="text-xs text-gray-500">
+                                    Sustainable
+                                </span>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* ✅ Right - Login Card (unchanged) */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.1 }}
+                        className="flex items-center"
+                    >
+                        <div className="w-full bg-white rounded-3xl shadow-xl shadow-emerald-100/30 p-8 sm:p-10">
+                            <div className="text-center mb-7">
+                                <h2 className="text-2xl font-bold text-gray-900">
+                                    Welcome back
+                                </h2>
+                                <p className="text-gray-500 text-sm mt-1">
+                                    Sign in to your account
+                                </p>
+                            </div>
+
+                            {/* Social Login Buttons */}
+                            <div className="grid grid-cols-2 gap-3 mb-5">
+                                <button
+                                    onClick={() => handleSocialLogin("Google")}
+                                    className="flex items-center justify-center gap-2 py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
+                                >
+                                    <FaGoogle className="w-4 h-4 text-red-500" />
+                                    Google
+                                </button>
+                                <button
+                                    onClick={() =>
+                                        handleSocialLogin("Facebook")
+                                    }
+                                    className="flex items-center justify-center gap-2 py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
+                                >
+                                    <FaFacebook className="w-4 h-4 text-blue-600" />
+                                    Facebook
                                 </button>
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={processingLogin}
-                                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            <div className="relative mb-5">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-200"></div>
+                                </div>
+                                <div className="relative flex justify-center text-xs">
+                                    <span className="px-3 bg-white text-gray-400 uppercase tracking-wider">
+                                        or continue with email
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Login Form */}
+                            <form
+                                onSubmit={loginAccount_submit}
+                                className="space-y-4"
                             >
-                                {processingLogin ? (
-                                    <span className="flex items-center justify-center">
-                                        <svg
-                                            className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Email Address
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <FaEnvelope className="h-4 w-4 text-gray-400" />
+                                        </div>
+                                        <TextInput
+                                            type="email"
+                                            placeholder="you@example.com"
+                                            value={loginData.email}
+                                            onChange={(e) =>
+                                                setLoginData(
+                                                    "email",
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="pl-9 w-full border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                                        Password
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <FaLock className="h-4 w-4 text-gray-400" />
+                                        </div>
+                                        <TextInput
+                                            type={
+                                                showPassword
+                                                    ? "text"
+                                                    : "password"
+                                            }
+                                            placeholder="Enter password"
+                                            value={loginData.password}
+                                            onChange={(e) =>
+                                                setLoginData(
+                                                    "password",
+                                                    e.target.value,
+                                                )
+                                            }
+                                            className="pl-9 pr-9 w-full border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setShowPassword(!showPassword)
+                                            }
+                                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                                         >
-                                            <circle
-                                                className="opacity-25"
-                                                cx="12"
-                                                cy="12"
-                                                r="10"
-                                                stroke="currentColor"
-                                                strokeWidth="4"
-                                            ></circle>
-                                            <path
-                                                className="opacity-75"
-                                                fill="currentColor"
-                                                d="M4 12a8 8 0 018-8v8H4z"
-                                            ></path>
-                                        </svg>
-                                        Signing in...
-                                    </span>
-                                ) : (
-                                    "Sign in"
-                                )}
-                            </button>
-                        </form>
+                                            {showPassword ? (
+                                                <FaEyeSlash className="h-4 w-4" />
+                                            ) : (
+                                                <FaEye className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
 
-                        <div className="mt-8 text-center">
-                            <p className="text-sm text-gray-600">
-                                Don't have an account?{" "}
-                                <Link
-                                    href={route("register")}
-                                    className="font-medium text-blue-600 hover:text-blue-500"
+                                <div className="flex items-center justify-between">
+                                    <label className="flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={loginData.remember}
+                                            onChange={(e) =>
+                                                setLoginData(
+                                                    "remember",
+                                                    e.target.checked,
+                                                )
+                                            }
+                                            className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
+                                        />
+                                        <span className="ml-2 text-sm text-gray-600">
+                                            Remember me
+                                        </span>
+                                    </label>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleForgetPasswordClick}
+                                        className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+                                    >
+                                        Forgot password?
+                                    </button>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={processingLogin}
+                                    className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
                                 >
-                                    Sign up
-                                </Link>
-                            </p>
-                        </div>
-                    </div>
+                                    {processingLogin ? (
+                                        <>
+                                            <svg
+                                                className="animate-spin h-5 w-5 text-white"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <circle
+                                                    className="opacity-25"
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    stroke="currentColor"
+                                                    strokeWidth="4"
+                                                ></circle>
+                                                <path
+                                                    className="opacity-75"
+                                                    fill="currentColor"
+                                                    d="M4 12a8 8 0 018-8v8H4z"
+                                                ></path>
+                                            </svg>
+                                            Signing in...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Sign in
+                                            <FaArrowRight className="w-4 h-4" />
+                                        </>
+                                    )}
+                                </button>
+                            </form>
 
-                    {/* Right Column - Image & Features */}
-                    <div className="hidden lg:block relative h-full">
-                        <img
-                            src="../image/login_bg.jpg"
-                            alt="Shopping Woman"
-                            className="absolute inset-0 h-full w-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-blue-900 bg-opacity-70"></div>
-                        <div className="relative flex flex-col items-center justify-center h-full p-12 text-white">
-                            <h3 className="text-3xl text-center font-bold mb-6">
-                                Join Our Sustainable Community
-                            </h3>
-                            <ul className="space-y-4">
-                                <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
-                                    <span>
-                                        Access thousands of eco-conscious buyers
-                                    </span>
-                                </li>
-                                <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
-                                    <span>Sell your preloved items easily</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
-                                    <span>Track your environmental impact</span>
-                                </li>
-                                <li className="flex items-start">
-                                    <FaCheckCircle className="h-6 w-6 text-green-300 mr-3 mt-1 flex-shrink-0" />
-                                    <span>
-                                        Secure transactions and fast payouts
-                                    </span>
-                                </li>
-                            </ul>
+                            <div className="mt-6 text-center">
+                                <p className="text-sm text-gray-600">
+                                    Don't have an account?{" "}
+                                    <Link
+                                        href={route("register")}
+                                        className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                                    >
+                                        Create one free
+                                    </Link>
+                                </p>
+                            </div>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
             </div>
 
-            {/* Forgot Password Modal */}
+            {/* Modals */}
             {showForgetModal && (
                 <ForgetPasswordModal
                     forgetData={forgetData}
@@ -540,7 +685,6 @@ export default function Login() {
                 />
             )}
 
-            {/* Reset Password Modal */}
             {showResetModal && (
                 <ResetPasswordModal
                     handleCloseResetModal={handleCloseForgetModal}
