@@ -8,8 +8,15 @@ import {
     FaCheck,
     FaStore,
     FaTag,
+    FaTrashAlt,
+    FaHeart,
+    FaShareAlt,
+    FaExclamationTriangle,
+    FaSpinner
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+
+import { Icon } from "./Icon";
 
 // ========== 子组件：变体下拉菜单 ==========
 function VariantDropdown({
@@ -30,8 +37,7 @@ function VariantDropdown({
         if (!variant) return null;
         const combo = variant.variant_combination || {};
         const parts = [];
-        if (combo.Colors)
-            parts.push(combo.Colors);
+        if (combo.Colors) parts.push(combo.Colors);
         if (combo.Size) parts.push(combo.Size);
         return parts.join(" • ") || variant.variant_key || "Variant";
     };
@@ -289,7 +295,7 @@ export function CartCard({
             {isSelected && (
                 <div className="absolute top-3 left-3 z-10">
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-medium rounded-full">
-                        <FaCheck className="w-2.5 h-2.5" />
+                        <Icon icon={FaCheck} className="w-2.5 h-2.5" />
                         Selected
                     </span>
                 </div>
@@ -371,7 +377,6 @@ export function CartCard({
                                 </div>
                             </div>
 
-                            {/* ✅ 低库存警告 */}
                             {!isOutOfStock && stockAvailable <= 5 && (
                                 <div className="flex items-center gap-1.5 mt-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full text-[10px] font-medium border border-amber-200 w-fit">
                                     <Icon
@@ -453,11 +458,11 @@ export function CartCard({
             <div className="px-4 sm:px-5 py-2 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button className="text-xs text-gray-400 hover:text-emerald-600 transition-colors flex items-center gap-1">
-                        <FaHeart className="w-3 h-3" />
+                        <Icon icon={FaHeart} className="w-3 h-3" />
                         Wishlist
                     </button>
                     <button className="text-xs text-gray-400 hover:text-emerald-600 transition-colors flex items-center gap-1">
-                        <FaShareAlt className="w-3 h-3" />
+                        <Icon icon={FaShareAlt} className="w-3 h-3" />
                         Share
                     </button>
                 </div>
