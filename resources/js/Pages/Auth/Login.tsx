@@ -20,8 +20,8 @@ import {
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 
-import { ForgetPasswordModal } from "@/Components/Auth/Login/ForgetPasswordModal";
-import { ResetPasswordModal } from "@/Components/Auth/Login/ResetPasswordModal";
+import { ForgetPasswordModal } from "@/Components/Features/Login/ForgetPasswordModal";
+import { ResetPasswordModal } from "@/Components/Features/Login/ResetPasswordModal";
 
 import Footer from "@/Components/Ui/Footer";
 import Navbar from "@/Components/Ui/Navbar";
@@ -40,42 +40,12 @@ export default function Login() {
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [passwordConfirmation, setPasswordConfirmation] = useState("");
     const [remember, setRemember] = useState(false);
 
+    const [resetEmail, setResetEmail] = useState("");
+
     const [isLoading, setIsLoading] = useState(false);
-
-    // const {
-    //     data: loginData,
-    //     setData: setLoginData,
-    //     post: postLogin,
-    //     processing: processingLogin,
-    //     reset,
-    // } = useForm({
-    //     email: "",
-    //     password: "",
-    //     remember: false,
-    // });
-
-    // const {
-    //     data: forgetData,
-    //     setData: setForgetData,
-    //     post: postForget,
-    //     processing: processingForget,
-    // } = useForm({
-    //     email: "",
-    // });
-
-    // const {
-    //     data: resetData,
-    //     setData: setResetData,
-    //     post: postReset,
-    //     processing: processingReset,
-    // } = useForm({
-    //     token: token,
-    //     email: email,
-    //     password: "",
-    //     password_confirmation: "",
-    // });
 
     useEffect(() => {
         if (flash?.successMessage) {
@@ -86,9 +56,9 @@ export default function Login() {
             showToast(flash.errorMessage, "error");
         }
 
-        // if (resetData.token && resetData.email) {
-        //     setShowResetModal(true);
-        // }
+        if (token && email) {
+            setShowResetModal(true);
+        }
 
         if (window.location.pathname.includes("/reset-password/")) {
             const pathSegments = window.location.pathname.split("/");
@@ -97,16 +67,16 @@ export default function Login() {
                 "email",
             );
 
-            if (tokenFromPath && emailFromURL) {
-                setResetData("token", tokenFromPath);
-                setResetData("email", emailFromURL);
-            }
+            // if (tokenFromPath && emailFromURL) {
+            //     setResetData("token", tokenFromPath);
+            //     setResetData("email", emailFromURL);
+            // }
         }
 
         if (flash.cleanUrl) {
             window.history.replaceState({}, "", "/reset-password");
         }
-    }, [flash]);
+    }, []);
 
     const loginAccount_submit = async (e) => {
         e.preventDefault();
@@ -136,34 +106,19 @@ export default function Login() {
         }
     };
 
-    const resetLink_submit = async (e) => {
-        e.preventDefault();
+    const resetLink_submit = async () => {
+        try {
+            setIsLoading(true);
+            const response = await axios.post(route("password.email"), {
+                email: resetEmail,
+            });
 
-        if (!forgetData.email) {
-            showToast("Please enter your email address", "warning");
-            return;
+            console.log(response);
+        } catch (error) {
+            console.log(error.response);
+        } finally {
+            setIsLoading(false);
         }
-
-        showToast("Sending reset link...", "info", 1000);
-
-        postForget(route("password.email"), {
-            email: forgetData.email,
-            onSuccess: () => {
-                setShowForgetModal(false);
-                setForgetData("email", "");
-                showToast(
-                    "If your email exists in our system, you will receive a password reset link shortly.",
-                    "success",
-                    5000,
-                );
-            },
-            onError: (errors) => {
-                let errorMessage =
-                    errors.email ||
-                    "Error sending reset link. Please try again.";
-                showToast(errorMessage, "error");
-            },
-        });
     };
 
     const updatePassword_submit = async (e) => {
@@ -563,21 +518,24 @@ export default function Login() {
             {/* Modals */}
             {showForgetModal && (
                 <ForgetPasswordModal
-                    forgetData={forgetData}
-                    handleCloseForgetModal={handleCloseForgetModal}
-                    processingForget={processingForget}
+                    resetEmail={resetEmail}
+                    setResetEmail={setResetEmail}
                     resetLink_submit={resetLink_submit}
-                    setForgetData={setForgetData}
+                    handleCloseForgetModal={handleCloseForgetModal}
+                    isLoading={isLoading}
                 />
             )}
 
             {showResetModal && (
                 <ResetPasswordModal
+                    email={email}
+                    password={password}
+                    passwordConfirmation={passwordConfirmation}
+                    setPassword={setPassword}
+                    setPasswordConfirmation={setPasswordConfirmation}
                     handleCloseResetModal={handleCloseForgetModal}
-                    processingReset={processingReset}
-                    resetData={resetData}
-                    setResetData={setResetData}
                     updatePassword_submit={updatePassword_submit}
+                    isLoading={isLoading}
                 />
             )}
 

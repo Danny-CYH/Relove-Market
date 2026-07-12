@@ -1,8 +1,8 @@
 import Footer from "@/Components/Ui/Footer";
 import Navbar from "@/Components/Ui/Navbar";
-import { TermsPrivacyModal } from "@/Components/Auth/Register/TermsPrivacyModal";
-import { PasswordRequirementsModal } from "@/Components/Auth/Register/PasswordRequirementsModal";
-import { EmailVerificationModal } from "@/Components/Auth/Register/EmailVerificationModal";
+import { TermsPrivacyModal } from "@/Components/Features/Register/TermsPrivacyModal";
+import { PasswordRequirementsModal } from "@/Components/Features/Register/PasswordRequirementsModal";
+import { EmailVerificationModal } from "@/Components/Features/Register/EmailVerificationModal";
 
 import TextInput from "@/Components/Ui/TextInput";
 
