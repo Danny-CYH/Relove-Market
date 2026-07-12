@@ -8,6 +8,7 @@ use App\Http\Controllers\AdminPage\UserManagementController;
 
 use App\Http\Controllers\BuyerPage\ProfileManagementController;
 use App\Http\Controllers\BuyerPage\WishlistController;
+use App\Http\Controllers\BuyerPage\CartController;
 use App\Http\Controllers\BuyerPage\SellerRegistrationController;
 use App\Http\Controllers\BuyerPage\ProductManagementController;
 
@@ -39,6 +40,13 @@ Route::middleware(["is_buyer"])->group(function () {
     Route::post('/wishlist', [WishlistController::class, 'storeWishlist'])->name("wishlist.store");
     Route::patch('/wishlist/update-variant', [WishlistController::class, 'updateVariant'])->name("wishlist.update-variant");
     Route::delete('/wishlist', [WishlistController::class, 'removeWishlist'])->name("wishlist.remove");
+
+    //  * API for manage cart operations on cart page
+    Route::get("/cart/all", [CartController::class, "getAllCart"])->name("cart.all");
+    Route::get("/cart/{product_id}", [CartController::class, "getCart"])->name("cart.check");
+    Route::post('/cart', [CartController::class, 'storeCart'])->name("cart.store");
+    Route::patch('/cart/update-variant', [CartController::class, 'updateVariant'])->name("cart.update-variant");
+    Route::delete('/cart/{product_id}', [CartController::class, 'removeCart'])->name("cart.remove");
 
     // * API for register an a seller account on seller registration page
     Route::post('/seller-registration', [SellerRegistrationController::class, 'sellerRegistrationProcess'])->name("seller-registration-process");
