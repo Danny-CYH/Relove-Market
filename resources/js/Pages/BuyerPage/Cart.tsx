@@ -1,4 +1,3 @@
-// resources/js/Pages/BuyerPage/Cart.jsx
 import { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 import {
@@ -22,9 +21,8 @@ import { Button } from "@/Components/Ui/Button";
 import { CartCard } from "@/Components/Ui/CartCard";
 import { Icon } from "@/Components/Ui/Icon";
 
-import { Product } from "@/eloquent-types/models/product";
-
 import { GetSelectedVariant } from "@/Components/HelperFunction/GetSelectedVariant";
+
 import { CartItem } from "@/eloquent-types/models/cart-item";
 
 export default function Cart() {
@@ -141,7 +139,6 @@ export default function Cart() {
             setCartItems((prev) =>
                 prev.filter((item) => item.product.product_id !== productId),
             );
-            showNotification("Item removed from cart");
         } catch (error) {
             showNotification(
                 error.response?.data?.errorMessage || "Failed to remove item",
@@ -163,7 +160,7 @@ export default function Cart() {
             );
 
             setCartItems((prev) =>
-                prev.filter((item) => !selectedItems.includes(item.product_id)),
+                prev.filter((item) => !selectedItems.includes(item.product.product_id)),
             );
             setSelectedItems([]);
             showNotification(`${selectedItems.length} items removed from cart`);
