@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "@inertiajs/react";
 import {
-    FaTrash,
-    FaPlus,
-    FaMinus,
     FaShoppingBag,
     FaLock,
     FaTruck,
@@ -12,8 +9,6 @@ import {
     FaGift,
     FaHeart,
     FaTimes,
-    FaChevronLeft,
-    FaChevronRight,
     FaTrashAlt,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
@@ -24,30 +19,34 @@ import Footer from "@/Components/Ui/Footer";
 import LoadingSpinner from "@/Components/Ui/LoadingSpinner";
 import { Button } from "@/Components/Ui/Button";
 import { CartCard } from "@/Components/Ui/CartCard";
+import { Icon } from "@/Components/Ui/Icon";
+
+import { GetSelectedVariant } from "@/Components/HelperFunction/GetSelectedVariant";
+
+import { CartItem } from "@/eloquent-types/models/cart-item";
 
 export default function Cart() {
-    // ========== States ==========
-    const [cartItems, setCartItems] = useState([]);
+    const [cartItems, setCartItems] = useState<CartItem[]>([]);
+    const [selectedItems, setSelectedItems] = useState([]);
+
     const [isLoading, setIsLoading] = useState(true);
-    const [promoCode, setPromoCode] = useState("");
-    const [promoApplied, setPromoApplied] = useState(false);
-    const [notification, setNotification] = useState(null);
     const [loadingStates, setLoadingStates] = useState({});
 
-    // ========== Fetch Data ==========
-    useEffect(() => {
-        fetchCartData();
-    }, []);
+    const [promoCode, setPromoCode] = useState("");
+    const [promoApplied, setPromoApplied] = useState(false);
 
-    const fetchCartData = async () => {
+    const [notification, setNotification] = useState(null);
+
+    // Fetch cart data from the backend
+    const fetchCart = async () => {
         setIsLoading(true);
         try {
             const response = await axios.get(route("cart.all"));
-            const items = response.data.data || response.data || [];
-            setCartItems(items);
+            const cartItems = response.data;
+
+            setCartItems(cartItems);
         } catch (error) {
-            console.error("Error fetching cart data:", error);
-            showNotification("Failed to load your cart", "error");
+            showNotification("Failed to load your cart", error);
         } finally {
             setIsLoading(false);
         }
@@ -59,101 +58,140 @@ export default function Cart() {
         setTimeout(() => setNotification(null), 3000);
     };
 
-    // ========== Helper Functions ==========
-    const parseVariantData = (variantData) => {
-        if (!variantData) return null;
-        try {
-            return typeof variantData === "string"
-                ? JSON.parse(variantData)
-                : variantData;
-        } catch {
-            return null;
-        }
-    };
-
-    const getProductImage = (item) => {
-        const baseUrl = import.meta.env.VITE_BASE_URL || "";
-        if (item.product_image?.image_path) {
-            return baseUrl + item.product_image.image_path;
-        }
-        return "/placeholder.jpg";
-    };
-
     const getProductPrice = (item) => {
-        const variant = parseVariantData(item.selected_variant);
+        const variant = GetSelectedVariant(item);
         if (variant?.price) {
             return parseFloat(variant.price);
         }
         return parseFloat(item.product?.product_price || 0);
     };
 
-    const getProductName = (item) => {
-        return item.product?.product_name || "Unknown Product";
-    };
-
-    const getSellerName = (item) => {
-        return (
-            item.product?.seller?.seller_store?.store_name || "Unknown Store"
-        );
-    };
-
-    const getCategoryName = (item) => {
-        return item.product?.category?.category_name || "Uncategorized";
-    };
-
     const getAvailableStock = (item) => {
-        const variant = parseVariantData(item.selected_variant);
+        const variant = GetSelectedVariant(item);
         if (variant?.quantity) {
             return parseInt(variant.quantity);
         }
         return parseInt(item.product?.product_quantity || 0);
     };
 
-    const getVariantDisplayText = (item) => {
-        const variant = parseVariantData(item.selected_variant);
-        if (variant?.variant_combination) {
-            return Object.entries(variant.variant_combination)
-                .map(([k, v]) => `${k}: ${v}`)
-                .join(", ");
-        }
-        return null;
-    };
-
     // ========== Cart Functions ==========
-    const updateQuantity = async (id, newQuantity) => {
+    const updateQuantity = (productId: string, newQuantity: number): void => {
         if (newQuantity < 1) return;
+
+        const item = cartItems.find(
+            (item) => item.product.product_id === productId,
+        );
+
+        if (!item) return;
+
+        const maxStock = getAvailableStock(item);
+
+        if (newQuantity > maxStock) {
+            showNotification(
+                `Only ${maxStock} items available in stock`,
+                "error",
+            );
+            return;
+        }
+
         setCartItems((prev) =>
             prev.map((item) =>
-                item.id === id
+                item.product.product_id === productId
                     ? { ...item, selected_quantity: newQuantity }
                     : item,
             ),
         );
+    };
+
+    const updateVariant = async (productId, selectedVariant) => {
+        await axios.patch(
+            route("cart.update-variant", {
+                product_id: productId,
+                variant_data: selectedVariant,
+            }),
+        );
+
+        setCartItems((prev) =>
+            prev.map((item) => {
+                if (item.product.product_id === productId) {
+                    return {
+                        ...item,
+                        selected_variant: {
+                            variant_id: selectedVariant.variant_id,
+                            variant_combination:
+                                selectedVariant.variant_combination || {},
+                            price: selectedVariant.price,
+                            quantity: selectedVariant.quantity,
+                        },
+                    };
+                }
+                return item;
+            }),
+        );
+
+        showNotification("Variant updated");
+    };
+
+    const removeItem = async (productId) => {
         try {
-            await axios.patch(route("cart.update", { id }), {
-                selected_quantity: newQuantity,
-            });
+            await axios.delete(route("cart.remove", { product_id: productId }));
+
+            setCartItems((prev) =>
+                prev.filter((item) => item.product.product_id !== productId),
+            );
         } catch (error) {
-            console.error("Error updating quantity:", error);
-            showNotification("Failed to update quantity", "error");
-            fetchCartData();
+            showNotification(
+                error.response?.data?.errorMessage || "Failed to remove item",
+                "error",
+            );
+        } finally {
+            setLoadingStates((prev) => ({ ...prev, [productId]: false }));
         }
     };
 
-    const removeItem = async (id) => {
-        setLoadingStates((prev) => ({ ...prev, [id]: true }));
+    const removeSelectedItems = async () => {
+        if (selectedItems.length === 0) return;
+
+        setLoadingStates((prev) => ({ ...prev, all: true }));
         try {
-            await axios.delete(route("cart.remove", { id }));
-            setCartItems((prev) => prev.filter((item) => item.id !== id));
-            if (currentItems.length === 1 && currentPage > 1) {
-                setCurrentPage(currentPage - 1);
-            }
-            showNotification("Item removed from cart");
+            // 发送 product_id 数组到后端
+            await axios.delete(
+                route("cart.remove", { product_id: selectedItems }),
+            );
+
+            setCartItems((prev) =>
+                prev.filter((item) => !selectedItems.includes(item.product.product_id)),
+            );
+            setSelectedItems([]);
+            showNotification(`${selectedItems.length} items removed from cart`);
         } catch (error) {
-            console.error("Error removing item:", error);
-            showNotification("Failed to remove item", "error");
+            showNotification(error.response);
         } finally {
-            setLoadingStates((prev) => ({ ...prev, [id]: false }));
+            setLoadingStates((prev) => ({ ...prev, all: false }));
+        }
+    };
+
+    const toggleSelect = (productId) => {
+        setSelectedItems((prev) => {
+            const exists = prev.some((id) => id === productId);
+            if (exists) {
+                return prev.filter((id) => id !== productId);
+            } else {
+                return [...prev, productId];
+            }
+        });
+    };
+
+    const toggleSelectAll = () => {
+        const allProductIds = cartItems.map((item) => item.product.product_id);
+        const allSelected = allProductIds.every((id) => {
+            selectedItems.includes(id);
+        });
+
+        if (allSelected) {
+            setSelectedItems([]);
+        } else {
+            setSelectedItems(allProductIds);
         }
     };
 
@@ -183,6 +221,10 @@ export default function Cart() {
         exit: { opacity: 0, y: -30 },
     };
 
+    useEffect(() => {
+        fetchCart();
+    }, []);
+
     return (
         <div className="flex flex-col min-h-screen bg-gray-50">
             <Navbar />
@@ -198,9 +240,9 @@ export default function Cart() {
                         }`}
                     >
                         {notification.type === "error" ? (
-                            <FaTimes className="text-red-500" />
+                            <Icon icon={FaTimes} className="text-red-500" />
                         ) : (
-                            <FaTag className="text-emerald-500" />
+                            <Icon icon={FaTag} className="text-emerald-500" />
                         )}
                         <p className="text-sm font-medium">
                             {notification.message}
@@ -210,12 +252,15 @@ export default function Cart() {
             )}
 
             <main className="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 mt-16">
-                {/* ✅ NEW: Header */}
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
                             <span className="bg-emerald-100 p-2 rounded-xl">
-                                <FaShoppingBag className="text-emerald-600" />
+                                <Icon
+                                    icon={FaShoppingBag}
+                                    className="text-emerald-600"
+                                />
                             </span>
                             Shopping Cart
                         </h1>
@@ -224,13 +269,19 @@ export default function Cart() {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        {cartItems.length > 0 && (
+                        {selectedItems.length > 0 && (
                             <Button
                                 size="sm"
                                 type="button"
                                 variant="dangerSoft"
-                                buttonText="Clear Cart"
-                                leftIcon={<FaTrashAlt className="text-xs" />}
+                                buttonText={`Remove Selected (${selectedItems.length})`}
+                                leftIcon={
+                                    <Icon
+                                        icon={FaTrashAlt}
+                                        className="text-xs"
+                                    />
+                                }
+                                onClick={removeSelectedItems}
                             />
                         )}
                         <Link href={route("relove-market.shopping")}>
@@ -239,22 +290,28 @@ export default function Cart() {
                                 type="button"
                                 variant="primary"
                                 buttonText="Continue Shopping"
-                                leftIcon={<FaShoppingBag className="text-sm" />}
+                                leftIcon={
+                                    <Icon
+                                        icon={FaShoppingBag}
+                                        className="text-sm"
+                                    />
+                                }
                             />
                         </Link>
                     </div>
                 </div>
 
                 {isLoading ? (
-                    // Loading state
-                    <div className="flex justify-center items-center">
+                    <div className="flex justify-center items-center py-20">
                         <LoadingSpinner />
                     </div>
                 ) : cartItems.length === 0 ? (
-                    // ✅ 空状态 - 购物车为空
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
                         <div className="w-28 h-28 mx-auto mb-6 bg-emerald-50 rounded-full flex items-center justify-center">
-                            <FaShoppingBag className="text-5xl text-emerald-400" />
+                            <Icon
+                                icon={FaShoppingBag}
+                                className="text-5xl text-emerald-400"
+                            />
                         </div>
                         <h2 className="text-2xl font-semibold text-gray-900 mb-2">
                             Your cart is empty
@@ -273,22 +330,64 @@ export default function Cart() {
                     </div>
                 ) : (
                     <div className="flex flex-col lg:flex-row gap-8">
-                        {/* ✅ NEW: Left Column - Cart Items */}
                         <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-4">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={
+                                            cartItems.length > 0 &&
+                                            cartItems.every((item) =>
+                                                selectedItems.includes(
+                                                    item.product.product_id,
+                                                ),
+                                            )
+                                        }
+                                        onChange={toggleSelectAll}
+                                        className="w-4 h-4 text-emerald-600 border-2 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer"
+                                    />
+                                    <span className="text-sm text-gray-600">
+                                        Select All ({cartItems.length} items)
+                                    </span>
+                                </label>
+                                <span className="text-sm text-gray-400">
+                                    {selectedItems.length} selected
+                                </span>
+                            </div>
+
                             {/* Cart Items */}
                             <div className="space-y-4">
-                                <AnimatePresence mode="wait">
+                                <AnimatePresence>
                                     {cartItems.map((item) => {
                                         return (
                                             <motion.div
-                                                key={item.id}
+                                                key={item.product.product_id}
                                                 variants={itemVariants}
                                                 initial="hidden"
                                                 animate="visible"
                                                 exit="exit"
                                                 layout
                                             >
-                                                <CartCard item={item} />
+                                                <CartCard
+                                                    item={item}
+                                                    onUpdateQuantity={
+                                                        updateQuantity
+                                                    }
+                                                    onUpdateVariant={
+                                                        updateVariant
+                                                    }
+                                                    onRemove={removeItem}
+                                                    isSelected={selectedItems.includes(
+                                                        item.product.product_id,
+                                                    )}
+                                                    onSelect={toggleSelect}
+                                                    isLoading={
+                                                        loadingStates[
+                                                            item.product
+                                                                .product_id
+                                                        ] || loadingStates.all
+                                                    }
+                                                />
                                             </motion.div>
                                         );
                                     })}
@@ -296,7 +395,7 @@ export default function Cart() {
                             </div>
                         </div>
 
-                        {/* ✅ NEW: Right Column - Order Summary (sticky) */}
+                        {/* Order Summary */}
                         <div className="lg:w-96 flex-shrink-0">
                             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
                                 <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-3 border-b border-gray-100">
@@ -315,7 +414,10 @@ export default function Cart() {
 
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-500 flex items-center gap-1">
-                                            <FaTruck className="text-xs" />
+                                            <Icon
+                                                icon={FaTruck}
+                                                className="text-xs"
+                                            />
                                             Shipping
                                         </span>
                                         <span
@@ -333,7 +435,10 @@ export default function Cart() {
 
                                     {shippingFee > 0 && (
                                         <div className="text-xs text-emerald-600 bg-emerald-50 p-2.5 rounded-lg flex items-center gap-2">
-                                            <FaGift className="text-emerald-500" />
+                                            <Icon
+                                                icon={FaGift}
+                                                className="text-emerald-500"
+                                            />
                                             Add RM {(100 - subtotal).toFixed(2)}{" "}
                                             more for free shipping
                                         </div>
@@ -386,25 +491,31 @@ export default function Cart() {
                                 </div>
 
                                 <button className="w-full mt-4 py-3 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition shadow-sm hover:shadow-md flex items-center justify-center gap-2">
-                                    <FaLock className="text-sm" />
+                                    <Icon icon={FaLock} className="text-sm" />
                                     Proceed to Checkout
                                 </button>
 
                                 <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-400">
                                     <span className="flex items-center gap-1">
-                                        <FaLock className="text-[10px]" />
+                                        <Icon
+                                            icon={FaLock}
+                                            className="text-[10px]"
+                                        />
                                         Secure checkout
                                     </span>
                                     <span>•</span>
                                     <span className="flex items-center gap-1">
-                                        <FaUndo className="text-[10px]" />
+                                        <Icon
+                                            icon={FaUndo}
+                                            className="text-[10px]"
+                                        />
                                         30-day returns
                                     </span>
                                 </div>
 
                                 <Link href={route("relove-market.wishlist")}>
                                     <button className="w-full mt-3 py-2.5 text-emerald-600 font-medium rounded-xl border-2 border-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-2">
-                                        <FaHeart />
+                                        <Icon icon={FaHeart} />
                                         View My Wishlist
                                     </button>
                                 </Link>

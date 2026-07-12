@@ -21,7 +21,7 @@ class CartController extends Controller
             "productImage",
             "productVariant",
         ])
-            ->where("user_id", $this->userId())  // ✅ 改成 $this->userId()
+            ->where("user_id", $this->userId())
             ->get();
 
         return CartResource::collection($all_cart);
@@ -50,7 +50,7 @@ class CartController extends Controller
 
         try {
             $cartData = [
-                'user_id' => $this->userId(),  // ✅ 改成 $this->userId()
+                'user_id' => $this->userId(),
                 'product_id' => $product_id,
             ];
 
@@ -99,13 +99,11 @@ class CartController extends Controller
         return response()->json(['success' => false], 404);
     }
 
-    public function removeCart(Request $request)
+    public function removeCart($product_id)
     {
         try {
-            $productIds = $request->input('product_id');
-
-            if (!is_array($productIds)) {
-                $productIds = [$productIds];
+            if (!is_array($product_id)) {
+                $productIds = [$product_id];
             }
 
             $deletedCount = Cart::where('user_id', $this->userId())
