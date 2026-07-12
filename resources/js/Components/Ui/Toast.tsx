@@ -129,7 +129,7 @@ export const Toast = ({ message, type = "info", duration = 3000, onClose }) => {
                                 text-gray-400 hover:text-gray-600
                             `}
                         >
-                            <FaTimes className="w-3.5 h-3.5" />
+                            <Icon icon={FaTimes} className="w-3.5 h-3.5" />
                         </button>
                     </div>
 

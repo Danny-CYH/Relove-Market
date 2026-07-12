@@ -1,4 +1,5 @@
 import { Link, useForm, usePage } from "@inertiajs/react";
+import axios from "axios";
 import { useState, useEffect } from "react";
 import {
     FaEye,
@@ -6,7 +7,6 @@ import {
     FaEnvelope,
     FaLock,
     FaLeaf,
-    FaArrowRight,
     FaGoogle,
     FaFacebook,
     FaHeart,
@@ -28,47 +28,54 @@ import Navbar from "@/Components/Ui/Navbar";
 import TextInput from "@/Components/Ui/TextInput";
 import { Icon } from "@/Components/Ui/Icon";
 import { useToast } from "@/Components/Ui/Toast";
+import { Button } from "@/Components/Ui/Button";
 
 export default function Login() {
     const { showToast } = useToast();
-    const { flash, token, email } = usePage().props;
+    const { flash, token } = usePage().props;
 
     const [showResetModal, setShowResetModal] = useState(false);
     const [showForgetModal, setShowForgetModal] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    const {
-        data: loginData,
-        setData: setLoginData,
-        post: postLogin,
-        processing: processingLogin,
-        reset,
-    } = useForm({
-        email: "",
-        password: "",
-        remember: false,
-    });
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [remember, setRemember] = useState(false);
 
-    const {
-        data: forgetData,
-        setData: setForgetData,
-        post: postForget,
-        processing: processingForget,
-    } = useForm({
-        email: "",
-    });
+    const [isLoading, setIsLoading] = useState(false);
 
-    const {
-        data: resetData,
-        setData: setResetData,
-        post: postReset,
-        processing: processingReset,
-    } = useForm({
-        token: token,
-        email: email,
-        password: "",
-        password_confirmation: "",
-    });
+    // const {
+    //     data: loginData,
+    //     setData: setLoginData,
+    //     post: postLogin,
+    //     processing: processingLogin,
+    //     reset,
+    // } = useForm({
+    //     email: "",
+    //     password: "",
+    //     remember: false,
+    // });
+
+    // const {
+    //     data: forgetData,
+    //     setData: setForgetData,
+    //     post: postForget,
+    //     processing: processingForget,
+    // } = useForm({
+    //     email: "",
+    // });
+
+    // const {
+    //     data: resetData,
+    //     setData: setResetData,
+    //     post: postReset,
+    //     processing: processingReset,
+    // } = useForm({
+    //     token: token,
+    //     email: email,
+    //     password: "",
+    //     password_confirmation: "",
+    // });
 
     useEffect(() => {
         if (flash?.successMessage) {
@@ -79,9 +86,9 @@ export default function Login() {
             showToast(flash.errorMessage, "error");
         }
 
-        if (resetData.token && resetData.email) {
-            setShowResetModal(true);
-        }
+        // if (resetData.token && resetData.email) {
+        //     setShowResetModal(true);
+        // }
 
         if (window.location.pathname.includes("/reset-password/")) {
             const pathSegments = window.location.pathname.split("/");
@@ -99,78 +106,33 @@ export default function Login() {
         if (flash.cleanUrl) {
             window.history.replaceState({}, "", "/reset-password");
         }
-    }, [flash, resetData.token, resetData.email, flash?.cleanUrl]);
+    }, [flash]);
 
     const loginAccount_submit = async (e) => {
         e.preventDefault();
 
-        if (!loginData.email || !loginData.password) {
-            showToast("Please fill in all fields", "warning");
+        if (!email || !password) {
+            showToast("Please fill in all fields", "error", 5000);
             return;
         }
 
-        showToast("Signing in...", "info", 1000);
-
         try {
-            const response = await fetch(route("login"), {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-CSRF-TOKEN": document.querySelector(
-                        'meta[name="csrf-token"]',
-                    ).content,
-                    "X-Requested-With": "XMLHttpRequest",
-                    "X-Inertia": "true",
-                },
-                credentials: "include",
-                body: JSON.stringify(loginData),
+            setIsLoading(true);
+
+            const response = await axios.post(route("login"), {
+                email: email,
+                password: password,
             });
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                // if (data.csrf_token) {
-                //     const metaTag = document.querySelector(
-                //         'meta[name="csrf-token"]',
-                //     );
-                //     if (metaTag) {
-                //         metaTag.content = data.csrf_token;
-                //     }
-                //     window.__csrfToken = data.csrf_token;
-                //     if (window.axios) {
-                //         window.axios.defaults.headers.common["X-CSRF-TOKEN"] =
-                //             data.csrf_token;
-                //     }
-                // }
-
-                showToast("Login successful! Redirecting...", "success");
-
-                // setTimeout(() => {
-                //     if (data.redirect) {
-                //         window.location.href = data.redirect;
-                //     } else {
-                //         window.location.href = "/";
-                //     }
-                // }, 1000);
-            } else {
-                throw new Error(data.message || "Login failed");
+            if (response.status == 200) {
+                setTimeout(() => {
+                    window.location.href = "/";
+                }, 1000);
             }
         } catch (error) {
-            console.error("Login error:", error);
-
-            let errorMessage =
-                error.message || "Invalid email or password. Please try again.";
-
-            if (error.errors) {
-                if (error.errors.email) {
-                    errorMessage = error.errors.email[0];
-                } else if (error.errors.password) {
-                    errorMessage = error.errors.password[0];
-                }
-            }
-
-            showToast(errorMessage, "error");
-            reset("password");
+            showToast(error.response.data.message, "error", 5000);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -491,12 +453,9 @@ export default function Login() {
                                         <TextInput
                                             type="email"
                                             placeholder="you@example.com"
-                                            value={loginData.email}
+                                            value={email}
                                             onChange={(e) =>
-                                                setLoginData(
-                                                    "email",
-                                                    e.target.value,
-                                                )
+                                                setEmail(e.target.value)
                                             }
                                             className="pl-9 pr-9 text-black"
                                             required
@@ -522,12 +481,9 @@ export default function Login() {
                                                     : "password"
                                             }
                                             placeholder="Enter password"
-                                            value={loginData.password}
+                                            value={password}
                                             onChange={(e) =>
-                                                setLoginData(
-                                                    "password",
-                                                    e.target.value,
-                                                )
+                                                setPassword(e.target.value)
                                             }
                                             className="pl-9 pr-9 text-black"
                                             required
@@ -558,12 +514,9 @@ export default function Login() {
                                     <label className="flex items-center cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={loginData.remember}
+                                            checked={remember}
                                             onChange={(e) =>
-                                                setLoginData(
-                                                    "remember",
-                                                    e.target.checked,
-                                                )
+                                                setRemember(e.target.checked)
                                             }
                                             className="h-4 w-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded"
                                         />
@@ -581,45 +534,14 @@ export default function Login() {
                                     </button>
                                 </div>
 
-                                <button
+                                <Button
+                                    variant="primary"
                                     type="submit"
-                                    disabled={processingLogin}
-                                    className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-                                >
-                                    {processingLogin ? (
-                                        <>
-                                            <svg
-                                                className="animate-spin h-5 w-5 text-white"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <circle
-                                                    className="opacity-25"
-                                                    cx="12"
-                                                    cy="12"
-                                                    r="10"
-                                                    stroke="currentColor"
-                                                    strokeWidth="4"
-                                                ></circle>
-                                                <path
-                                                    className="opacity-75"
-                                                    fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8v8H4z"
-                                                ></path>
-                                            </svg>
-                                            Signing in...
-                                        </>
-                                    ) : (
-                                        <>
-                                            Sign in
-                                            <Icon
-                                                icon={FaArrowRight}
-                                                className="w-4 h-4"
-                                            />
-                                        </>
-                                    )}
-                                </button>
+                                    buttonText="Sign In"
+                                    fullWidth={true}
+                                    isLoading={isLoading}
+                                    loadingText="Signing In"
+                                />
                             </form>
 
                             <div className="mt-6 text-center">

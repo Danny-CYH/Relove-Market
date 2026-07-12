@@ -6,7 +6,7 @@ const baseClasses =
 
 const variantClasses = {
     primary:
-        "bg-green-600 text-white hover:bg-green-700 shadow-sm hover:shadow-md focus:ring-green-500",
+        "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow-md focus:ring-green-500",
     secondary:
         "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 focus:ring-gray-300",
     ghost:
