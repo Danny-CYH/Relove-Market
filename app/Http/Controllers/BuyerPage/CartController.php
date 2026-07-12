@@ -50,7 +50,7 @@ class CartController extends Controller
 
         try {
             $cartData = [
-                'user_id' => $this->userId(),  // ✅ 改成 $this->userId()
+                'user_id' => $this->userId(),
                 'product_id' => $product_id,
             ];
 

@@ -8,15 +8,10 @@ import {
     FaCheck,
     FaStore,
     FaTag,
-    FaExclamationTriangle,
-    FaSpinner,
-    FaTrashAlt,
-    FaHeart,
-    FaShareAlt,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-import { Icon } from "./Icon";
 
+// ========== 子组件：变体下拉菜单 ==========
 function VariantDropdown({
     variant,
     availableVariants,
@@ -33,15 +28,11 @@ function VariantDropdown({
 
     const getCurrentVariantDisplay = () => {
         if (!variant) return null;
-
         const combo = variant.variant_combination || {};
         const parts = [];
-        if (combo.Colors) {
+        if (combo.Colors)
             parts.push(combo.Colors);
-        }
-        if (combo.Size) {
-            parts.push(combo.Size);
-        }
+        if (combo.Size) parts.push(combo.Size);
         return parts.join(" • ") || variant.variant_key || "Variant";
     };
 
