@@ -14,6 +14,8 @@ import {
     FaTimes,
 } from "react-icons/fa";
 
+import { Icon } from "./Icon";
+
 const toastTypes = {
     success: {
         icon: FaCheckCircle,

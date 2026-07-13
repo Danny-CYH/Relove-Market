@@ -1,4 +1,4 @@
-import { Link, useForm, usePage } from "@inertiajs/react";
+import { Link, usePage } from "@inertiajs/react";
 import axios from "axios";
 import { useState, useEffect } from "react";
 import {
@@ -29,7 +29,6 @@ import TextInput from "@/Components/Ui/TextInput";
 import { Icon } from "@/Components/Ui/Icon";
 import { useToast } from "@/Components/Ui/Toast";
 import Button from "@/Components/Ui/Button";
-import { ButtonProps } from "@/Components/PropsType/ButtonProps";
 
 export default function Login() {
     const { showToast } = useToast();
@@ -107,12 +106,22 @@ export default function Login() {
         }
     };
 
-    const resetLink_submit = async () => {
+    const resetLink_submit = async (e) => {
+        e.preventDefault();
+
         try {
             setIsLoading(true);
             const response = await axios.post(route("password.email"), {
                 email: resetEmail,
             });
+
+            if (response.status == 200) {
+                setShowForgetModal(false);
+                setResetEmail("");
+                showToast(response.data.message, "success");
+            } else {
+                showToast(response.data.message, "error");
+            }
 
             console.log(response);
         } catch (error) {
@@ -125,12 +134,12 @@ export default function Login() {
     const updatePassword_submit = async (e) => {
         e.preventDefault();
 
-        if (!resetData.password || !resetData.password_confirmation) {
+        if (!password || !passwordConfirmation) {
             showToast("Please fill in all password fields", "warning");
             return;
         }
 
-        if (resetData.password !== resetData.password_confirmation) {
+        if (password !== passwordConfirmation) {
             showToast("Passwords do not match. Please try again.", "error");
             return;
         }

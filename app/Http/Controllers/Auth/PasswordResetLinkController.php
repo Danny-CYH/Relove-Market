@@ -28,7 +28,7 @@ class PasswordResetLinkController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
         $request->validate([
             'email' => 'required|email|exists:users,email',  // ✅ 检查 email 是否存在
@@ -44,20 +44,20 @@ class PasswordResetLinkController extends Controller
         // to send the link, we will examine the response then see the message we
         // need to show to the user. Finally, we'll send out a proper response.
         $status = Password::sendResetLink(
-            ['email' => $request->input('email'),]
+            $request->only("email")
         );
 
-        if ($status == Password::RESET_LINK_SENT) {
-            try {
-                return back()->with('successMessage', __($status));
-            } catch (ValidationException $e) {
-                return back()->with('errorMessage', __($status));
-            }
+        if ($status === Password::RESET_LINK_SENT) {
+            return response()->json([
+                'success' => true,
+                'message' => 'We have emailed your password reset link.',
+            ], 200);
 
         }
 
-        throw ValidationException::withMessages([
-            'email' => [trans($status)],
-        ]);
+        return response()->json([
+            'success' => false,
+            'message' => trans($status),
+        ], 400);
     }
 }
