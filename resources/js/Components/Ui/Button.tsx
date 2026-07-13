@@ -1,5 +1,6 @@
-import { forwardRef } from "react";
+import React, { forwardRef, ReactNode } from "react";
 import LoadingSpinner from "./LoadingSpinner";
+import { ButtonProps } from "../PropsType/ButtonProps";
 
 const baseClasses =
     "inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
@@ -9,16 +10,14 @@ const variantClasses = {
         "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow-md focus:ring-green-500",
     secondary:
         "bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200 focus:ring-gray-300",
-    ghost:
-        "text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300",
+    ghost: "text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300",
     outline:
         "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-300",
     success:
         "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-md hover:shadow-lg focus:ring-green-500",
     successSoft:
         "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 focus:ring-green-300",
-    danger:
-        "bg-red-600 text-white hover:bg-red-700 shadow-sm hover:shadow-md focus:ring-red-500",
+    danger: "bg-red-600 text-white hover:bg-red-700 shadow-sm hover:shadow-md focus:ring-red-500",
     dangerSoft:
         "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 focus:ring-red-400",
     dangerOutline:
@@ -27,8 +26,7 @@ const variantClasses = {
         "bg-yellow-50 text-yellow-800 border border-yellow-200 hover:bg-yellow-100 focus:ring-yellow-400",
     neutralSoft:
         "bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100 focus:ring-gray-300",
-    black:
-        "bg-gray-800 text-white hover:bg-gray-900 shadow-sm focus:ring-gray-600",
+    black: "bg-gray-800 text-white hover:bg-gray-900 shadow-sm focus:ring-gray-600",
 };
 
 const sizeClasses = {
@@ -58,11 +56,12 @@ const positionClasses = {
     "right-block": "ml-auto block",
 };
 
-const joinClasses = (...classes) => classes.filter(Boolean).join(" ");
+const joinClasses = (...classes: (string | false | undefined)[]) =>
+    classes.filter(Boolean).join(" ");
 
-export const Button = forwardRef(
-    (
-        {
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+    (props, ref) => {
+        const {
             children,
             className = "",
             disabled = false,
@@ -79,14 +78,13 @@ export const Button = forwardRef(
             variant = "primary",
             position = "left",
             buttonText = null,
-            ...props
-        }: ButtonProps,
-        ref,
-    ) => {
+            ...rest
+        } = props;
+
         const isDisabled = disabled || isLoading;
         const btn_text = buttonText || children;
 
-        const renderContent = (text) => {
+        const renderContent = (text: React.ReactNode) => {
             if (isLoading) {
                 return (
                     <>
@@ -117,6 +115,7 @@ export const Button = forwardRef(
 
         return (
             <button
+                ref={ref}
                 type={type}
                 disabled={isDisabled}
                 className={joinClasses(
@@ -129,7 +128,7 @@ export const Button = forwardRef(
                     isDisabled && "opacity-50 cursor-not-allowed",
                     className,
                 )}
-                {...props}
+                {...rest}
             >
                 {renderContent(btn_text)}
             </button>
@@ -138,3 +137,5 @@ export const Button = forwardRef(
 );
 
 Button.displayName = "Button";
+
+export default Button;
