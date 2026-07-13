@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -19,12 +20,39 @@ class NewPasswordController extends Controller
     /**
      * Display the password reset view.
      */
-    public function create(Request $request): Response
+    public function create(Request $request, string $data): Response
     {
-        return Inertia::render('Auth/Login', [
-            'email' => $request->email,
-            'token' => $request->route('token'),
-        ]);
+        try {
+        $decrypted = Crypt::decrypt($data);
+
+            $token = $decrypted['token'];
+            $email = $decrypted['email'];
+
+            if (!$token) {
+                return Inertia::render('Auth/Login', [
+                    'errorMessage' => 'Invalid reset link. Please request a new one.',
+                ]);
+            }
+
+            $resetRecord = \DB::table('password_reset_tokens')
+                ->where('email', $email)
+                ->first();
+
+            if (!$resetRecord || !Hash::check($token, $resetRecord->token)) {
+                return Inertia::render('Auth/Login', [
+                    'errorMessage' => 'Invalid or expired reset token. Please request a new one.',
+                ]);
+            }
+
+            return Inertia::render('Auth/Login', [
+                'email' => $email,
+                'token' => $token,
+            ]);
+        } catch (error) {
+            return Inertia::render('Auth/Login', [
+                'errorMessage' => 'Invalid reset link. Please request a new one.',
+            ]);
+        }
     }
 
     /**

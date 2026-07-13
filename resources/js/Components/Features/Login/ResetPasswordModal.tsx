@@ -52,8 +52,9 @@ const PasswordRequirement = ({ met, text }) => (
 export function ResetPasswordModal({
     handleCloseResetModal,
     email,
+    setEmail,
     password,
-    password_confirmation,
+    passwordConfirmation,
     setPassword,
     setPasswordConfirmation,
     updatePassword_submit,
@@ -110,7 +111,7 @@ export function ResetPasswordModal({
         }
 
         // Validate password confirmation
-        if (password !== password_confirmation) {
+        if (password !== passwordConfirmation) {
             alert(
                 "Passwords do not match. Please make sure both passwords are identical.",
             );
@@ -175,10 +176,11 @@ export function ResetPasswordModal({
                                 Email
                             </label>
                             <TextInput
+                                name="email"
                                 type="email"
                                 value={email}
-                                readOnly
-                                className="w-full bg-gray-100"
+                                className="w-full bg-gray-100 text-black"
+                                onChange={(e) => setEmail(e.target.value)}
                             />
                         </div>
 
@@ -277,7 +279,7 @@ export function ResetPasswordModal({
                                     }
                                     name="password_confirmation"
                                     placeholder="Confirm your password"
-                                    value={password_confirmation}
+                                    value={passwordConfirmation}
                                     onChange={(e) =>
                                         setPasswordConfirmation(e.target.value)
                                     }
@@ -300,8 +302,8 @@ export function ResetPasswordModal({
                                     )}
                                 </button>
                             </div>
-                            {password_confirmation &&
-                                password !== password_confirmation && (
+                            {passwordConfirmation &&
+                                password !== passwordConfirmation && (
                                     <p className="text-red-600 text-sm mt-1 flex items-center">
                                         <FaTimes className="w-3 h-3 mr-1" />
                                         Passwords do not match

@@ -47,37 +47,6 @@ export default function Login() {
 
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        if (flash?.successMessage) {
-            showToast(flash.successMessage, "success");
-        }
-
-        if (flash?.errorMessage) {
-            showToast(flash.errorMessage, "error");
-        }
-
-        if (token && email) {
-            setShowResetModal(true);
-        }
-
-        if (window.location.pathname.includes("/reset-password/")) {
-            const pathSegments = window.location.pathname.split("/");
-            const tokenFromPath = pathSegments[pathSegments.length - 1];
-            const emailFromURL = new URL(window.location.href).searchParams.get(
-                "email",
-            );
-
-            // if (tokenFromPath && emailFromURL) {
-            //     setResetData("token", tokenFromPath);
-            //     setResetData("email", emailFromURL);
-            // }
-        }
-
-        if (flash.cleanUrl) {
-            window.history.replaceState({}, "", "/reset-password");
-        }
-    }, []);
-
     const loginAccount_submit = async (e) => {
         e.preventDefault();
 
@@ -96,7 +65,7 @@ export default function Login() {
 
             if (response.status == 200) {
                 setTimeout(() => {
-                    window.location.href = "/";
+                    window.location.href = "/relove-market";
                 }, 1000);
             }
         } catch (error) {
@@ -122,8 +91,6 @@ export default function Login() {
             } else {
                 showToast(response.data.message, "error");
             }
-
-            console.log(response);
         } catch (error) {
             console.log(error.response);
         } finally {
@@ -139,50 +106,59 @@ export default function Login() {
             return;
         }
 
-        if (password !== passwordConfirmation) {
+        if (password != passwordConfirmation) {
             showToast("Passwords do not match. Please try again.", "error");
             return;
         }
 
-        showToast("Updating password...", "info", 1000);
+        // postReset(route("password.store"), {
+        //     onSuccess: () => {
+        //         setShowResetModal(false);
+        //         setResetData({
+        //             token: "",
+        //             email: "",
+        //             password: "",
+        //             password_confirmation: "",
+        //         });
+        //         showToast(
+        //             "Password updated successfully! You can now login with your new password.",
+        //             "success",
+        //             4000,
+        //         ).then(() => {
+        //             window.location.href = "/login";
+        //         });
+        //     },
+        //     onError: (errors) => {
+        //         let errorMessage =
+        //             "Error resetting password. Please try again.";
 
-        postReset(route("password.store"), {
-            onSuccess: () => {
-                setShowResetModal(false);
-                setResetData({
-                    token: "",
-                    email: "",
-                    password: "",
-                    password_confirmation: "",
-                });
-                showToast(
-                    "Password updated successfully! You can now login with your new password.",
-                    "success",
-                    4000,
-                ).then(() => {
-                    window.location.href = "/login";
-                });
-            },
-            onError: (errors) => {
-                let errorMessage =
-                    "Error resetting password. Please try again.";
+        //         if (errors.password) {
+        //             errorMessage = errors.password[0];
+        //         } else if (errors.email) {
+        //             errorMessage = errors.email;
+        //         } else if (errors.token) {
+        //             errorMessage =
+        //                 "Invalid or expired reset token. Please request a new reset link.";
+        //         }
 
-                if (errors.password) {
-                    errorMessage = errors.password[0];
-                } else if (errors.email) {
-                    errorMessage = errors.email;
-                } else if (errors.token) {
-                    errorMessage =
-                        "Invalid or expired reset token. Please request a new reset link.";
-                }
+        //         showToast(errorMessage, "error");
+        //     },
+        // });
 
-                showToast(errorMessage, "error");
-            },
-        });
-    };
+        const response = await axios.post(
+            route("password.store", {
+                token: token,
+                email: email,
+                password: password,
+                password_confirmation: passwordConfirmation,
+            }),
+        );
 
-    const handleForgetPasswordClick = () => {
-        setShowForgetModal(true);
+        showToast(
+            "Password updated successfully! You can now login with your new password.",
+            "success",
+            4000,
+        );
     };
 
     const handleCloseForgetModal = () => {
@@ -193,6 +169,12 @@ export default function Login() {
     const handleSocialLogin = (provider) => {
         showToast(`${provider} login coming soon!`, "info");
     };
+
+    useEffect(() => {
+        if (token) {
+            setShowResetModal(true);
+        }
+    }, []);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
@@ -492,7 +474,7 @@ export default function Login() {
 
                                     <button
                                         type="button"
-                                        onClick={handleForgetPasswordClick}
+                                        onClick={() => setShowForgetModal(true)}
                                         className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                                     >
                                         Forgot password?
@@ -539,6 +521,7 @@ export default function Login() {
             {showResetModal && (
                 <ResetPasswordModal
                     email={email}
+                    setEmail={setEmail}
                     password={password}
                     passwordConfirmation={passwordConfirmation}
                     setPassword={setPassword}

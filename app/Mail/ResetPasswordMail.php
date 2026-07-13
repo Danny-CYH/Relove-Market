@@ -7,6 +7,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Crypt;
 
 class ResetPasswordMail extends Mailable
 {
@@ -15,6 +16,8 @@ class ResetPasswordMail extends Mailable
     public $user;
     public $token;
 
+    public $encryptedData;
+
     /**
      * Create a new message instance.
      */
@@ -22,6 +25,11 @@ class ResetPasswordMail extends Mailable
     {
         $this->user = $user;
         $this->token = $token;
+
+        $this->encryptedData = Crypt::encrypt([
+            'token' => $token,
+            'email' => $user->email,
+        ]);
     }
 
     /**
@@ -43,11 +51,7 @@ class ResetPasswordMail extends Mailable
             view: 'reset-password',
             with: [
                 'user' => $this->user,
-                'token' => $this->token,
-                'resetUrl' => route('password.reset', [
-                    'token' => $this->token,
-                    'email' => $this->user->email,
-                ]),
+                'resetUrl' => route('password.reset', ['data' => $this->encryptedData]),
             ]
         );
     }
