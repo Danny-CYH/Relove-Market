@@ -29,6 +29,7 @@ import TextInput from "@/Components/Ui/TextInput";
 import { Icon } from "@/Components/Ui/Icon";
 import { useToast } from "@/Components/Ui/Toast";
 import Button from "@/Components/Ui/Button";
+import { ButtonProps } from "@/Components/PropsType/ButtonProps";
 
 export default function Login() {
     const { showToast } = useToast();
@@ -464,8 +465,6 @@ export default function Login() {
                                         </button>
                                     </div>
                                 </div>
-
-                                <Button />
 
                                 <div className="flex items-center justify-between">
                                     <label className="flex items-center cursor-pointer">

@@ -1,4 +1,4 @@
-import React, { forwardRef, ReactNode } from "react";
+import React from "react";
 import LoadingSpinner from "./LoadingSpinner";
 import { ButtonProps } from "../PropsType/ButtonProps";
 
@@ -59,83 +59,61 @@ const positionClasses = {
 const joinClasses = (...classes: (string | false | undefined)[]) =>
     classes.filter(Boolean).join(" ");
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-    (props, ref) => {
-        const {
-            children,
-            className = "",
-            disabled = false,
-            fullWidth = false,
-            fontSize = "base",
-            iconSize = "text-lg",
-            iconPosition = "left",
-            isLoading = false,
-            loadingText = "",
-            leftIcon = null,
-            rightIcon = null,
-            size = "md",
-            type = "button",
-            variant = "primary",
-            position = "left",
-            buttonText = null,
-            ...rest
-        } = props;
+export function Button(props: ButtonProps) {
+    const isDisabled = props.disabled || props.isLoading;
+    const btn_text = props.buttonText;
 
-        const isDisabled = disabled || isLoading;
-        const btn_text = buttonText || children;
-
-        const renderContent = (text: React.ReactNode) => {
-            if (isLoading) {
-                return (
-                    <>
-                        <span className={joinClasses(iconSize, "inline-flex")}>
-                            {leftIcon ? (
-                                <span className="animate-spin">{leftIcon}</span>
-                            ) : (
-                                <LoadingSpinner />
-                            )}
-                        </span>
-                        {loadingText || text || "Loading..."}
-                    </>
-                );
-            }
-
+    const renderContent = (text: React.ReactNode) => {
+        if (props.isLoading) {
             return (
                 <>
-                    {iconPosition === "left" && leftIcon && (
-                        <span className={iconSize}>{leftIcon}</span>
-                    )}
-                    {text}
-                    {iconPosition === "right" && rightIcon && (
-                        <span className={iconSize}>{rightIcon}</span>
-                    )}
+                    <span
+                        className={joinClasses(props.iconSize, "inline-flex")}
+                    >
+                        {props.leftIcon ? (
+                            <span className="animate-spin">
+                                {props.leftIcon}
+                            </span>
+                        ) : (
+                            <LoadingSpinner />
+                        )}
+                    </span>
+                    {props.loadingText || text || "Loading..."}
                 </>
             );
-        };
+        }
 
         return (
-            <button
-                ref={ref}
-                type={type}
-                disabled={isDisabled}
-                className={joinClasses(
-                    baseClasses,
-                    variantClasses[variant] || variantClasses.primary,
-                    sizeClasses[size] || sizeClasses.md,
-                    fontSizeClasses[fontSize] || fontSizeClasses.base,
-                    positionClasses[position] || positionClasses.left,
-                    fullWidth && "w-full",
-                    isDisabled && "opacity-50 cursor-not-allowed",
-                    className,
+            <>
+                {props.iconPosition === "left" && props.leftIcon && (
+                    <span className={props.iconSize}>{props.leftIcon}</span>
                 )}
-                {...rest}
-            >
-                {renderContent(btn_text)}
-            </button>
+                {text}
+                {props.iconPosition === "right" && props.rightIcon && (
+                    <span className={props.iconSize}>{props.rightIcon}</span>
+                )}
+            </>
         );
-    },
-);
+    };
 
-Button.displayName = "Button";
+    return (
+        <button
+            type={props.type}
+            disabled={isDisabled}
+            className={joinClasses(
+                baseClasses,
+                variantClasses[props.variant] || variantClasses.primary,
+                sizeClasses[props.size] || sizeClasses.md,
+                fontSizeClasses[props.fontSize] || fontSizeClasses.base,
+                positionClasses[props.position] || positionClasses.left,
+                props.fullWidth && "w-full",
+                isDisabled && "opacity-50 cursor-not-allowed",
+                props.className,
+            )}
+        >
+            {renderContent(btn_text)}
+        </button>
+    );
+}
 
 export default Button;
