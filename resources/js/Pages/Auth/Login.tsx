@@ -32,18 +32,28 @@ import Button from "@/Components/Ui/Button";
 
 export default function Login() {
     const { showToast } = useToast();
-    const { flash, token } = usePage().props;
+    const { props } = usePage();
+
+    // ✅ 从 props 获取 token 和 email（从 cookie 解密后传入）
+    const {
+        token: urlToken,
+        email: urlEmail,
+        showResetModal: showResetFromProps,
+    } = props;
 
     const [showResetModal, setShowResetModal] = useState(false);
     const [showForgetModal, setShowForgetModal] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
+    // ✅ 登录表单的 email
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [passwordConfirmation, setPasswordConfirmation] = useState("");
     const [remember, setRemember] = useState(false);
 
+    // ✅ 重置密码的 email（从 cookie/props 获取）
     const [resetEmail, setResetEmail] = useState("");
+    const [resetToken, setResetToken] = useState("");
 
     const [isLoading, setIsLoading] = useState(false);
 
@@ -87,7 +97,7 @@ export default function Login() {
             if (response.status == 200) {
                 setShowForgetModal(false);
                 setResetEmail("");
-                showToast(response.data.message, "success");
+                showToast(response.data.message, "success", 5000);
             } else {
                 showToast(response.data.message, "error");
             }
@@ -98,72 +108,66 @@ export default function Login() {
         }
     };
 
+    // ✅ 修改：使用 resetEmail 和 resetToken 提交
     const updatePassword_submit = async (e) => {
         e.preventDefault();
+
+        // ✅ 使用 resetEmail 而不是 email
+        if (!resetEmail || !resetToken) {
+            showToast("Invalid reset link. Please request a new one.", "error");
+            return;
+        }
 
         if (!password || !passwordConfirmation) {
             showToast("Please fill in all password fields", "warning");
             return;
         }
 
-        if (password != passwordConfirmation) {
+        if (password !== passwordConfirmation) {
             showToast("Passwords do not match. Please try again.", "error");
             return;
         }
 
-        // postReset(route("password.store"), {
-        //     onSuccess: () => {
-        //         setShowResetModal(false);
-        //         setResetData({
-        //             token: "",
-        //             email: "",
-        //             password: "",
-        //             password_confirmation: "",
-        //         });
-        //         showToast(
-        //             "Password updated successfully! You can now login with your new password.",
-        //             "success",
-        //             4000,
-        //         ).then(() => {
-        //             window.location.href = "/login";
-        //         });
-        //     },
-        //     onError: (errors) => {
-        //         let errorMessage =
-        //             "Error resetting password. Please try again.";
+        try {
+            setIsLoading(true);
 
-        //         if (errors.password) {
-        //             errorMessage = errors.password[0];
-        //         } else if (errors.email) {
-        //             errorMessage = errors.email;
-        //         } else if (errors.token) {
-        //             errorMessage =
-        //                 "Invalid or expired reset token. Please request a new reset link.";
-        //         }
-
-        //         showToast(errorMessage, "error");
-        //     },
-        // });
-
-        const response = await axios.post(
-            route("password.store", {
-                token: token,
-                email: email,
+            // ✅ 使用 resetEmail 和 resetToken
+            const response = await axios.post(route("password.store"), {
+                token: resetToken,
+                email: resetEmail,
                 password: password,
                 password_confirmation: passwordConfirmation,
-            }),
-        );
+            });
 
-        showToast(
-            "Password updated successfully! You can now login with your new password.",
-            "success",
-            4000,
-        );
+            if (response.status == 200) {
+                showToast(
+                    "Password updated successfully! You can now login with your new password.",
+                    "success",
+                    4000,
+                );
+                setShowResetModal(false);
+                setPassword("");
+                setPasswordConfirmation("");
+                // ✅ 把重置的 email 填入登录表单
+                setEmail(resetEmail);
+            }
+        } catch (error) {
+            showToast(
+                error.response?.data?.message || "Failed to update password",
+                "error",
+                5000,
+            );
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleCloseForgetModal = () => {
         setShowForgetModal(false);
-        setForgetData("email", "");
+    };
+
+    const handleCloseResetModal = () => {
+        setShowResetModal(false);
     };
 
     const handleSocialLogin = (provider) => {
@@ -171,10 +175,18 @@ export default function Login() {
     };
 
     useEffect(() => {
-        if (token) {
+        // ✅ 从 props 获取 token 和 email（从 cookie 解密后传入）
+        if (urlToken && urlEmail) {
+            setResetToken(urlToken);
+            setResetEmail(urlEmail);
             setShowResetModal(true);
         }
-    }, []);
+
+        // ✅ 如果 props 有 showResetModal 标志
+        if (showResetFromProps) {
+            setShowResetModal(true);
+        }
+    }, [urlToken, urlEmail, showResetFromProps]);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
@@ -507,7 +519,7 @@ export default function Login() {
                 </div>
             </div>
 
-            {/* Modals */}
+            {/* ✅ Modals */}
             {showForgetModal && (
                 <ForgetPasswordModal
                     resetEmail={resetEmail}
@@ -520,13 +532,12 @@ export default function Login() {
 
             {showResetModal && (
                 <ResetPasswordModal
-                    email={email}
-                    setEmail={setEmail}
+                    email={resetEmail} // ✅ 使用 resetEmail 而不是 email
                     password={password}
                     passwordConfirmation={passwordConfirmation}
                     setPassword={setPassword}
                     setPasswordConfirmation={setPasswordConfirmation}
-                    handleCloseResetModal={handleCloseForgetModal}
+                    handleCloseResetModal={handleCloseResetModal}
                     updatePassword_submit={updatePassword_submit}
                     isLoading={isLoading}
                 />

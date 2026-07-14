@@ -38,7 +38,7 @@
                             </p>
 
                             <!-- ✅ Reset Button -->
-                            <a href="{{ $resetUrl }}"
+                            <a href="{{ route('password.reset') }}"
                                 style="display: inline-block; background: #059669; color: #ffffff; padding: 14px 40px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 24px 0;">
                                 Reset Password
                             </a>
@@ -58,11 +58,16 @@
                                 <strong style="color: #059669;">Relove Market</strong>
                             </p>
 
-                            <p style="color: #9ca3af; font-size: 12px;">
-                                If you're having trouble clicking the button, copy and paste the URL below:
+                            <p style="color: #9ca3af; font-size: 12px; margin-bottom: 4px;">
+                                📞 Need help? Contact our customer service:
                             </p>
-                            <p style="color: #9ca3af; font-size: 12px; word-break: break-all;">
-                                {{ $resetUrl }}
+                            <a href="mailto:support@relovemarket.com"
+                                style="color: #059669; text-decoration: none; text-align: center;">
+                                support@relovemarket.com
+                            </a>
+
+                            <p style="color: #9ca3af; font-size: 11px; margin-top: 12px;">
+                                © {{ date('Y') }} Relove Market. All rights reserved.
                             </p>
                         </td>
                     </tr>

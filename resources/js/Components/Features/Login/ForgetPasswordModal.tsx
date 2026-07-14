@@ -69,6 +69,12 @@ export function ForgetPasswordModal({
                                     onChange={(e) =>
                                         setResetEmail(e.target.value)
                                     }
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            resetLink_submit(e);
+                                        }
+                                    }}
                                     className="pl-9 w-full text-black"
                                     required
                                 />

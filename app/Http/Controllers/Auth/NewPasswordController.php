@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Contracts\Encryption\DecryptException;
+
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,37 +23,68 @@ class NewPasswordController extends Controller
     /**
      * Display the password reset view.
      */
-    public function create(Request $request, string $data): Response
+    public function create(Request $request): Response
     {
         try {
-        $decrypted = Crypt::decrypt($data);
+            // ✅ 先获取 cookie 值
+            $encryptedToken = $request->cookie('reset_token');
+            $encryptedEmail = $request->cookie('reset_email');
 
-            $token = $decrypted['token'];
-            $email = $decrypted['email'];
-
-            if (!$token) {
+            // ✅ 检查是否存在
+            if (!$encryptedToken || !$encryptedEmail) {
                 return Inertia::render('Auth/Login', [
-                    'errorMessage' => 'Invalid reset link. Please request a new one.',
+                    'errorMessage' => 'Invalid or expired reset link. Please request a new one.',
                 ]);
             }
 
+            // ✅ 尝试解密
+            $token = decrypt($encryptedToken);
+            $email = decrypt($encryptedEmail);
+
+            // ✅ 验证 token
             $resetRecord = \DB::table('password_reset_tokens')
                 ->where('email', $email)
                 ->first();
 
-            if (!$resetRecord || !Hash::check($token, $resetRecord->token)) {
+            if (!$resetRecord || !\Hash::check($token, $resetRecord->token)) {
+                Cookie::queue(Cookie::forget('reset_token'));
+                Cookie::queue(Cookie::forget('reset_email'));
+
                 return Inertia::render('Auth/Login', [
-                    'errorMessage' => 'Invalid or expired reset token. Please request a new one.',
+                    'errorMessage' => 'Invalid or expired reset token.',
                 ]);
             }
 
             return Inertia::render('Auth/Login', [
                 'email' => $email,
                 'token' => $token,
+                'showResetModal' => true,
             ]);
-        } catch (error) {
+
+        } catch (DecryptException $e) {
+            // ✅ 专门捕获解密异常
+            \Log::error('Cookie decryption failed', [
+                'error' => $e->getMessage(),
+                'token_exists' => $request->cookie('reset_token') ? 'yes' : 'no',
+                'email_exists' => $request->cookie('reset_email') ? 'yes' : 'no',
+            ]);
+
+            // ✅ 清除无效 cookie
+            Cookie::queue(Cookie::forget('reset_token'));
+            Cookie::queue(Cookie::forget('reset_email'));
+
             return Inertia::render('Auth/Login', [
                 'errorMessage' => 'Invalid reset link. Please request a new one.',
+            ]);
+
+        } catch (\Exception $e) {
+            // ✅ 其他异常
+            \Log::error('Password reset error', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return Inertia::render('Auth/Login', [
+                'errorMessage' => 'Something went wrong. Please try again.',
             ]);
         }
     }
@@ -88,6 +122,9 @@ class NewPasswordController extends Controller
         // redirect them back to where they came from with their error message.
         if ($status == Password::PASSWORD_RESET) {
             try {
+                Cookie::queue(Cookie::forget('reset_token'));
+                Cookie::queue(Cookie::forget('reset_email'));
+
                 return redirect('/login')->with([
                     'resetSuccess' => true,
                     'cleanUrl' => true,
