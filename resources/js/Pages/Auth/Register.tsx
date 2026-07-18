@@ -1,12 +1,16 @@
 import Footer from "@/Components/Ui/Footer";
 import Navbar from "@/Components/Ui/Navbar";
-import { TermsPrivacyModal } from "@/Components/Features/Register/TermsPrivacyModal";
+
 import { PasswordRequirementsModal } from "@/Components/Features/Register/PasswordRequirementsModal";
 import { EmailVerificationModal } from "@/Components/Features/Register/EmailVerificationModal";
 
-import TextInput from "@/Components/Ui/TextInput";
+import { modalConfig } from "@/Constants/modalContent";
 
-import { Link, useForm, usePage } from "@inertiajs/react";
+import TextInput from "@/Components/Ui/TextInput";
+import { Icon } from "@/Components/Ui/Icon";
+
+import { Link, usePage } from "@inertiajs/react";
+import axios from "axios";
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -17,11 +21,9 @@ import {
     FaUser,
     FaEye,
     FaEyeSlash,
-    FaCheck,
     FaTimes,
     FaInfoCircle,
     FaLeaf,
-    FaArrowRight,
     FaGoogle,
     FaFacebook,
     FaHeart,
@@ -37,66 +39,18 @@ import {
     FaClock,
 } from "react-icons/fa";
 
-import Swal from "sweetalert2";
-
-// SweetAlert configuration
-const showAlert = (icon, title, text, confirmButtonText = "OK") => {
-    return Swal.fire({
-        icon,
-        title,
-        text,
-        confirmButtonText,
-        confirmButtonColor: "#059669",
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
-
-const showLoadingAlert = (title, text = "") => {
-    return Swal.fire({
-        title,
-        text,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-            Swal.showLoading();
-        },
-    });
-};
-
-const showConfirmationAlert = (
-    title,
-    text,
-    confirmButtonText = "Yes",
-    cancelButtonText = "Cancel",
-) => {
-    return Swal.fire({
-        title,
-        text,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonColor: "#059669",
-        cancelButtonColor: "#d33",
-        confirmButtonText,
-        cancelButtonText,
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-            cancelButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
+import { useToast } from "@/Components/Ui/Toast";
+import Button from "@/Components/Ui/Button";
+import { Modal } from "@/Components/Ui/Modal";
 
 // Password validation functions
-const validatePassword = (password) => {
+const validatePass = (pass) => {
     const validations = {
-        length: password.length >= 8,
-        uppercase: /[A-Z]/.test(password),
-        lowercase: /[a-z]/.test(password),
-        number: /[0-9]/.test(password),
-        special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+        length: pass.length >= 8,
+        uppercase: /[A-Z]/.test(pass),
+        lowercase: /[a-z]/.test(pass),
+        number: /[0-9]/.test(pass),
+        special: /[!@#$%^&*(),.?":{}|<>]/.test(pass),
     };
 
     const isValid = Object.values(validations).every(Boolean);
@@ -105,7 +59,7 @@ const validatePassword = (password) => {
     return { isValid, validations, strength };
 };
 
-const getPasswordStrengthText = (strength) => {
+const getStrengthText = (strength) => {
     if (strength === 0) return { text: "Very Weak", color: "text-red-600" };
     if (strength <= 2) return { text: "Weak", color: "text-red-500" };
     if (strength <= 3) return { text: "Fair", color: "text-yellow-500" };
@@ -114,22 +68,38 @@ const getPasswordStrengthText = (strength) => {
 };
 
 export default function Register() {
+    const { showToast } = useToast();
     const { flash } = usePage().props;
-    const [showEmailVerificationModal, setShowEmailVerificationModal] =
-        useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [showPasswordRequirements, setShowPasswordRequirements] =
-        useState(false);
-    const [showTermsModal, setShowTermsModal] = useState(false);
-    const [showPrivacyModal, setShowPrivacyModal] = useState(false);
-    const [nameValidation, setNameValidation] = useState({
-        isValid: true,
-        message: "",
+
+    // Modal type
+    const [modalType, setModalType] = useState(null);
+    const config = modalType ? modalConfig[modalType] : null;
+
+    // ✅ Form fields
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [pass, setPass] = useState("");
+    const [passConfirm, setPassConfirm] = useState("");
+
+    // ✅ UI states
+    const [showPass, setShowPass] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [showReq, setShowReq] = useState(false);
+    const [loading, setLoading] = useState(false);
+
+    // ✅ Modal states
+    const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const [verifyEmail, setVerifyEmail] = useState("");
+
+    // ✅ Validation states
+    const [nameValid, setNameValid] = useState({
+        ok: true,
+        msg: "",
     });
-    const [passwordValidation, setPasswordValidation] = useState({
-        isValid: false,
-        validations: {
+
+    const [passValid, setPassValid] = useState({
+        ok: false,
+        checks: {
             length: false,
             uppercase: false,
             lowercase: false,
@@ -139,274 +109,136 @@ export default function Register() {
         strength: 0,
     });
 
-    const {
-        data: registerData,
-        setData: setRegisterData,
-        post: postRegister,
-        processing: processingRegister,
-        reset,
-        errors: registerErrors,
-    } = useForm({
-        name: "",
-        email: "",
-        password: "",
-        password_confirmation: "",
-    });
-
-    const {
-        data: verifyData,
-        setData: setVerifyData,
-        post: postResendEmail,
-        processing: processingResendEmail,
-    } = useForm({
-        user_email: "",
-    });
-
-    useEffect(() => {
-        if (flash?.errorMessage) {
-            showAlert("error", "Error!", flash.errorMessage);
-        }
-
-        if (flash?.successMessage) {
-            setVerifyData("user_email", registerData.email);
-            setShowEmailVerificationModal(true);
-            reset("password", "password_confirmation", "name");
-        }
-    }, [flash]);
-
-    useEffect(() => {
-        if (registerData.name) {
-            const nameRegex = /^[a-zA-Z\s]*$/;
-            const isValid = nameRegex.test(registerData.name);
-
-            if (!isValid) {
-                setNameValidation({
-                    isValid: false,
-                    message: "Name should only contain letters and spaces",
-                });
-            } else if (registerData.name.trim().length < 2) {
-                setNameValidation({
-                    isValid: false,
-                    message: "Name should be at least 2 characters long",
-                });
-            } else {
-                setNameValidation({
-                    isValid: true,
-                    message: "",
-                });
-            }
-        } else {
-            setNameValidation({
-                isValid: true,
-                message: "",
-            });
-        }
-    }, [registerData.name]);
-
-    useEffect(() => {
-        if (registerData.password) {
-            const validation = validatePassword(registerData.password);
-            setPasswordValidation(validation);
-        } else {
-            setPasswordValidation({
-                isValid: false,
-                validations: {
-                    length: false,
-                    uppercase: false,
-                    lowercase: false,
-                    number: false,
-                    special: false,
-                },
-                strength: 0,
-            });
-        }
-    }, [registerData.password]);
-
-    const closeTermsModal = () => {
-        setShowTermsModal(false);
-    };
-
-    const closePrivacyModal = () => {
-        setShowPrivacyModal(false);
-    };
-
-    const register_submit = async (e) => {
+    // ✅ Register submit
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (
-            !registerData.name ||
-            !registerData.email ||
-            !registerData.password ||
-            !registerData.password_confirmation
-        ) {
-            showAlert(
-                "warning",
-                "Missing Information",
-                "Please fill in all required fields",
-            );
+        if (!name || !email || !pass || !passConfirm) {
+            showToast("Please fill in all required fields", "warning", 4000);
             return;
         }
 
-        const nameRegex = /^[a-zA-Z\s]*$/;
-        if (!nameRegex.test(registerData.name)) {
-            showAlert(
-                "warning",
-                "Invalid Name",
+        if (!/^[a-zA-Z\s]*$/.test(name)) {
+            showToast(
                 "Name should only contain letters and spaces.",
+                "warning",
+                4000,
             );
             return;
         }
 
-        if (registerData.name.trim().length < 2) {
-            showAlert(
-                "warning",
-                "Invalid Name",
+        if (name.trim().length < 2) {
+            showToast(
                 "Name should be at least 2 characters long.",
-            );
-            return;
-        }
-
-        if (registerData.name.trim() === "") {
-            showAlert("warning", "Invalid Name", "Please enter a valid name.");
-            return;
-        }
-
-        if (!passwordValidation.isValid) {
-            showAlert(
                 "warning",
-                "Password Requirements Not Met",
-                "Please create a password that meets all the requirements.",
+                4000,
             );
             return;
         }
 
-        if (registerData.password !== registerData.password_confirmation) {
-            showAlert("error", "Password Mismatch", "Passwords do not match.");
+        if (!passValid.ok) {
+            showToast(
+                "Please create a password that meets all requirements.",
+                "warning",
+                5000,
+            );
+            setShowReq(true);
             return;
         }
 
-        const loadingAlert = showLoadingAlert(
-            "Creating Account",
-            "Please wait while we create your account...",
-        );
+        if (pass !== passConfirm) {
+            showToast("Passwords do not match.", "error", 4000);
+            return;
+        }
 
-        postRegister(route("register"), {
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: (page) => {
-                loadingAlert.close();
+        try {
+            setLoading(true);
+            showToast("Creating your account...", "info", 1500);
 
-                if (page.props.flash?.successMessage) {
-                    setVerifyData("user_email", registerData.email);
-                    setShowEmailVerificationModal(true);
-                    setRegisterData({
-                        ...registerData,
-                        password: "",
-                        password_confirmation: "",
-                        name: "",
-                    });
-                }
-            },
-            onError: (errors) => {
-                loadingAlert.close();
+            const res = await axios.post(route("register"), {
+                name,
+                email,
+                password: pass,
+                password_confirmation: passConfirm,
+            });
 
-                let errorMessage =
-                    "Failed to create account. Please try again.";
-
-                if (errors.email) {
-                    errorMessage = errors.email;
-                } else if (errors.password) {
-                    errorMessage = errors.password;
-                } else if (errors.name) {
-                    errorMessage = errors.name;
-                }
-
-                showAlert("error", "Registration Failed", errorMessage);
-            },
-        });
+            if (res.status === 200 || res.status === 201) {
+                setVerifyEmail(email);
+                setShowVerifyModal(true);
+                showToast(
+                    "Account created! Please verify your email.",
+                    "success",
+                    5000,
+                );
+                setName("");
+                setEmail("");
+                setPass("");
+                setPassConfirm("");
+            }
+        } catch (err) {
+            const msg =
+                err.response?.data?.message || "Failed to create account.";
+            showToast(msg, "error", 5000);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const resend_emailVerification = async (e) => {
+    // ✅ Resend email
+    const resendVerify = async (e) => {
         e.preventDefault();
 
-        const loadingAlert = showLoadingAlert(
-            "Sending Verification Email",
-            "Please wait...",
-        );
+        showToast("Sending verification email...", "info", 1500);
 
-        postResendEmail(route("custom.verification.send"), {
-            preserveState: true,
-            preserveScroll: true,
-            onSuccess: () => {
-                loadingAlert.close();
-                setShowEmailVerificationModal(false);
-                showAlert(
+        try {
+            const res = await axios.post(route("custom.verification.send"), {
+                user_email: verifyEmail,
+            });
+
+            if (res.status === 200) {
+                setShowVerifyModal(false);
+                showToast(
+                    "A new verification link has been sent.",
                     "success",
-                    "Email Sent!",
-                    "A new verification link has been sent to your email address.",
+                    4000,
                 );
-            },
-            onError: (errors) => {
-                loadingAlert.close();
-                showAlert(
-                    "error",
-                    "Failed to Send",
-                    "Failed to send verification email. Please try again.",
-                );
-            },
-        });
-    };
-
-    const handleCloseVerificationModal = async () => {
-        const result = await showConfirmationAlert(
-            "Close Verification?",
-            "Are you sure you want to close this window? You can always resend the verification email later.",
-            "Yes, Close",
-            "Stay",
-        );
-
-        if (result.isConfirmed) {
-            setShowEmailVerificationModal(false);
+            }
+        } catch (err) {
+            showToast(
+                "Failed to send verification email. Please try again.",
+                "error",
+                5000,
+            );
         }
     };
 
-    const { text: strengthText, color: strengthColor } =
-        getPasswordStrengthText(passwordValidation.strength);
+    const closeVerifyModal = () => {
+        showToast("You can resend the verification later.", "info", 3000);
+        setShowVerifyModal(false);
+    };
+
+    const { text: strengthText, color: strengthColor } = getStrengthText(
+        passValid.strength,
+    );
 
     const handleSocialLogin = (provider) => {
-        showAlert(
-            "info",
-            `${provider} Login`,
-            `${provider} login coming soon!`,
-        );
+        showToast(`${provider} login coming soon!`, "info", 3000);
     };
 
     // Animation variants
     const fadeInLeft = {
         hidden: { opacity: 0, x: -40 },
-        visible: {
-            opacity: 1,
-            x: 0,
-            transition: { duration: 0.6, ease: "easeOut" },
-        },
+        visible: { opacity: 1, x: 0, transition: { duration: 0.6 } },
     };
 
     const fadeInRight = {
         hidden: { opacity: 0, x: 40 },
-        visible: {
-            opacity: 1,
-            x: 0,
-            transition: { duration: 0.6, ease: "easeOut" },
-        },
+        visible: { opacity: 1, x: 0, transition: { duration: 0.6 } },
     };
 
     const fadeInUp = {
         hidden: { opacity: 0, y: 20 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: { duration: 0.5, ease: "easeOut" },
-        },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
     };
 
     const staggerContainer = {
@@ -417,7 +249,6 @@ export default function Register() {
         },
     };
 
-    // Expanded benefits data
     const benefits = [
         {
             icon: FaHeart,
@@ -451,36 +282,97 @@ export default function Register() {
         },
     ];
 
-    // Success stories
-    const successStories = [
+    const stories = [
         { name: "Sarah", savings: "50kg CO₂ saved", icon: FaLeaf },
         { name: "Michael", savings: "30 items rescued", icon: FaHandHolding },
         { name: "Emma", savings: "₹12,000 saved", icon: FaShoppingBag },
     ];
 
+    // ✅ Flash messages
+    useEffect(() => {
+        if (flash?.errorMessage) {
+            showToast(flash.errorMessage, "error", 5000);
+        }
+
+        if (flash?.successMessage) {
+            setVerifyEmail(email);
+            setShowVerifyModal(true);
+            showToast(
+                "Account created! Please verify your email.",
+                "success",
+                5000,
+            );
+            setName("");
+            setEmail("");
+            setPass("");
+            setPassConfirm("");
+        }
+    }, [flash]);
+
+    // ✅ Name validation
+    useEffect(() => {
+        if (name) {
+            const ok = /^[a-zA-Z\s]*$/.test(name);
+            if (!ok) {
+                setNameValid({
+                    ok: false,
+                    msg: "Name should only contain letters and spaces",
+                });
+            } else if (name.trim().length < 2) {
+                setNameValid({
+                    ok: false,
+                    msg: "Name should be at least 2 characters long",
+                });
+            } else {
+                setNameValid({ ok: true, msg: "" });
+            }
+        } else {
+            setNameValid({ ok: true, msg: "" });
+        }
+    }, [name]);
+
+    // ✅ Password validation
+    useEffect(() => {
+        if (pass) {
+            setPassValid(validatePass(pass));
+        } else {
+            setPassValid({
+                ok: false,
+                checks: {
+                    length: false,
+                    uppercase: false,
+                    lowercase: false,
+                    number: false,
+                    special: false,
+                },
+                strength: 0,
+            });
+        }
+    }, [pass]);
+
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
             <Navbar />
 
-            {/* Main Content */}
             <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-12">
                 <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-                    {/* ✅ Left Side - Enhanced with more content */}
+                    {/* Left Side */}
                     <motion.div
                         variants={fadeInLeft}
                         initial="hidden"
                         animate="visible"
                         className="flex flex-col justify-between h-full"
                     >
-                        {/* Top section */}
                         <div>
-                            {/* Logo */}
                             <motion.div
                                 whileHover={{ scale: 1.02 }}
                                 className="flex items-center gap-3 mb-5"
                             >
                                 <div className="p-2.5 bg-emerald-100 rounded-2xl">
-                                    <FaLeaf className="w-7 h-7 text-emerald-600" />
+                                    <Icon
+                                        icon={FaLeaf}
+                                        className="w-7 h-7 text-emerald-600"
+                                    />
                                 </div>
                                 <div>
                                     <h1 className="text-xl font-bold text-gray-900">
@@ -492,7 +384,6 @@ export default function Register() {
                                 </div>
                             </motion.div>
 
-                            {/* Main headline */}
                             <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.15] mb-3">
                                 Join the{" "}
                                 <span className="text-emerald-600">
@@ -505,7 +396,6 @@ export default function Register() {
                                 fashion journey today.
                             </p>
 
-                            {/* ✅ Stats - 4 columns with icons */}
                             <div className="grid grid-cols-4 gap-3 mb-5">
                                 {[
                                     {
@@ -545,13 +435,12 @@ export default function Register() {
                                 ))}
                             </div>
 
-                            {/* ✅ Success Stories - New */}
                             <div className="bg-emerald-50/50 rounded-xl p-4 mb-4 border border-emerald-100">
                                 <p className="text-xs font-semibold text-emerald-700 uppercase tracking-wider mb-2">
                                     🌟 Real Impact Stories
                                 </p>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {successStories.map((story, idx) => (
+                                    {stories.map((story, idx) => (
                                         <motion.div
                                             key={idx}
                                             whileHover={{ scale: 1.02 }}
@@ -569,7 +458,6 @@ export default function Register() {
                                 </div>
                             </div>
 
-                            {/* ✅ Benefits grid - 3 columns for better fit */}
                             <motion.div
                                 variants={staggerContainer}
                                 initial="hidden"
@@ -594,7 +482,6 @@ export default function Register() {
                             </motion.div>
                         </div>
 
-                        {/* Bottom section - Trust badges */}
                         <div className="flex items-center gap-4 pt-4 mt-4 border-t border-gray-200">
                             <div className="flex items-center gap-1.5">
                                 <span className="text-sm">♻️</span>
@@ -626,7 +513,7 @@ export default function Register() {
                         </div>
                     </motion.div>
 
-                    {/* ✅ Right Side - Register Card (unchanged) */}
+                    {/* Right Side - Register Card */}
                     <motion.div
                         variants={fadeInRight}
                         initial="hidden"
@@ -643,13 +530,15 @@ export default function Register() {
                                 </p>
                             </div>
 
-                            {/* Social Register Buttons */}
                             <div className="grid grid-cols-2 gap-3 mb-5">
                                 <button
                                     onClick={() => handleSocialLogin("Google")}
                                     className="flex items-center justify-center gap-2 py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
                                 >
-                                    <FaGoogle className="w-4 h-4 text-red-500" />
+                                    <Icon
+                                        icon={FaGoogle}
+                                        className="w-4 h-4 text-red-500"
+                                    />{" "}
                                     Google
                                 </button>
                                 <button
@@ -658,7 +547,10 @@ export default function Register() {
                                     }
                                     className="flex items-center justify-center gap-2 py-2.5 px-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
                                 >
-                                    <FaFacebook className="w-4 h-4 text-blue-600" />
+                                    <Icon
+                                        icon={FaFacebook}
+                                        className="w-4 h-4 text-blue-600"
+                                    />{" "}
                                     Facebook
                                 </button>
                             </div>
@@ -674,52 +566,37 @@ export default function Register() {
                                 </div>
                             </div>
 
-                            {/* Register Form */}
-                            <form
-                                onSubmit={register_submit}
-                                className="space-y-4"
-                            >
-                                {/* Full Name */}
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                {/* Name */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                                         Full Name
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FaUser className="h-4 w-4 text-gray-400" />
+                                            <Icon
+                                                icon={FaUser}
+                                                className="h-4 w-4 text-gray-400"
+                                            />
                                         </div>
                                         <TextInput
-                                            id="name"
-                                            name="name"
                                             type="text"
                                             placeholder="Enter your full name"
-                                            autoComplete="off"
-                                            value={registerData.name}
+                                            value={name}
                                             onChange={(e) =>
-                                                setRegisterData(
-                                                    "name",
-                                                    e.target.value,
-                                                )
+                                                setName(e.target.value)
                                             }
-                                            className={`pl-9 w-full border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5 ${
-                                                registerData.name &&
-                                                !nameValidation.isValid
-                                                    ? "border-red-300 focus:border-red-500 focus:ring-red-500"
-                                                    : ""
-                                            }`}
+                                            className={`pl-9 w-full text-black border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5 ${name && !nameValid.ok ? "border-red-300 focus:border-red-300 focus:ring-red-300" : ""}`}
                                             required
                                         />
                                     </div>
-                                    {registerData.name &&
-                                        !nameValidation.isValid && (
-                                            <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
-                                                <FaTimes className="w-3 h-3" />
-                                                {nameValidation.message}
-                                            </p>
-                                        )}
-                                    {registerErrors.name && (
-                                        <p className="text-red-600 text-xs mt-1">
-                                            {registerErrors.name}
+                                    {name && !nameValid.ok && (
+                                        <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
+                                            <Icon
+                                                icon={FaTimes}
+                                                className="w-3 h-3"
+                                            />{" "}
+                                            {nameValid.msg}
                                         </p>
                                     )}
                                 </div>
@@ -731,30 +608,22 @@ export default function Register() {
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FaEnvelope className="h-4 w-4 text-gray-400" />
+                                            <Icon
+                                                icon={FaEnvelope}
+                                                className="h-4 w-4 text-gray-400"
+                                            />
                                         </div>
                                         <TextInput
-                                            id="email"
-                                            name="email"
                                             type="email"
                                             placeholder="you@example.com"
-                                            autoComplete="off"
-                                            value={registerData.email}
+                                            value={email}
                                             onChange={(e) =>
-                                                setRegisterData(
-                                                    "email",
-                                                    e.target.value,
-                                                )
+                                                setEmail(e.target.value)
                                             }
-                                            className="pl-9 w-full border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
+                                            className="pl-9 w-full text-black border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
                                             required
                                         />
                                     </div>
-                                    {registerErrors.email && (
-                                        <p className="text-red-600 text-xs mt-1">
-                                            {registerErrors.email}
-                                        </p>
-                                    )}
                                 </div>
 
                                 {/* Password */}
@@ -765,62 +634,57 @@ export default function Register() {
                                         </label>
                                         <button
                                             type="button"
-                                            onClick={() =>
-                                                setShowPasswordRequirements(
-                                                    true,
-                                                )
-                                            }
+                                            onClick={() => setShowReq(true)}
                                             className="text-emerald-600 hover:text-emerald-700 text-xs font-medium flex items-center gap-1 transition-colors"
                                         >
-                                            <FaInfoCircle className="w-3 h-3" />
+                                            <Icon
+                                                icon={FaInfoCircle}
+                                                className="w-3 h-3"
+                                            />{" "}
                                             Requirements
                                         </button>
                                     </div>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FaLock className="h-4 w-4 text-gray-400" />
+                                            <Icon
+                                                icon={FaLock}
+                                                className="h-4 w-4 text-gray-400"
+                                            />
                                         </div>
                                         <TextInput
-                                            id="password"
                                             type={
-                                                showPassword
-                                                    ? "text"
-                                                    : "password"
+                                                showPass ? "text" : "password"
                                             }
-                                            name="password"
                                             placeholder="Create a password"
-                                            value={registerData.password}
+                                            value={pass}
                                             onChange={(e) =>
-                                                setRegisterData(
-                                                    "password",
-                                                    e.target.value,
-                                                )
+                                                setPass(e.target.value)
                                             }
-                                            className="pl-9 pr-9 w-full border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
+                                            className="pl-9 pr-9 w-full text-black border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
                                             required
                                         />
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                setShowPassword(!showPassword)
+                                                setShowPass(!showPass)
                                             }
                                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                                         >
-                                            {showPassword ? (
-                                                <FaEyeSlash className="h-4 w-4" />
+                                            {showPass ? (
+                                                <Icon
+                                                    icon={FaEyeSlash}
+                                                    className="h-4 w-4"
+                                                />
                                             ) : (
-                                                <FaEye className="h-4 w-4" />
+                                                <Icon
+                                                    icon={FaEye}
+                                                    className="h-4 w-4"
+                                                />
                                             )}
                                         </button>
                                     </div>
-                                    {registerErrors.password && (
-                                        <p className="text-red-600 text-xs mt-1">
-                                            {registerErrors.password}
-                                        </p>
-                                    )}
 
-                                    {/* Password strength indicator */}
-                                    {registerData.password && (
+                                    {pass && (
                                         <div className="mt-2">
                                             <div className="flex justify-between items-center mb-1">
                                                 <span className="text-xs text-gray-500">
@@ -834,22 +698,11 @@ export default function Register() {
                                             </div>
                                             <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                                                 <div
-                                                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                                                        passwordValidation.strength <=
-                                                        2
-                                                            ? "bg-red-500"
-                                                            : passwordValidation.strength <=
-                                                                3
-                                                              ? "bg-yellow-500"
-                                                              : passwordValidation.strength <=
-                                                                  4
-                                                                ? "bg-blue-500"
-                                                                : "bg-green-500"
-                                                    }`}
+                                                    className={`h-1.5 rounded-full transition-all duration-300 ${passValid.strength <= 2 ? "bg-red-500" : passValid.strength <= 3 ? "bg-yellow-500" : passValid.strength <= 4 ? "bg-blue-500" : "bg-green-500"}`}
                                                     style={{
-                                                        width: `${(passwordValidation.strength / 5) * 100}%`,
+                                                        width: `${(passValid.strength / 5) * 100}%`,
                                                     }}
-                                                ></div>
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -862,53 +715,54 @@ export default function Register() {
                                     </label>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FaLock className="h-4 w-4 text-gray-400" />
+                                            <Icon
+                                                icon={FaLock}
+                                                className="h-4 w-4 text-gray-400"
+                                            />
                                         </div>
                                         <TextInput
-                                            id="password_confirmation"
                                             type={
-                                                showConfirmPassword
+                                                showConfirm
                                                     ? "text"
                                                     : "password"
                                             }
-                                            name="password_confirmation"
                                             placeholder="Confirm your password"
-                                            value={
-                                                registerData.password_confirmation
-                                            }
+                                            value={passConfirm}
                                             onChange={(e) =>
-                                                setRegisterData(
-                                                    "password_confirmation",
-                                                    e.target.value,
-                                                )
+                                                setPassConfirm(e.target.value)
                                             }
-                                            className="pl-9 pr-9 w-full border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
+                                            className="pl-9 pr-9 w-full text-black border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5"
                                             required
                                         />
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                setShowConfirmPassword(
-                                                    !showConfirmPassword,
-                                                )
+                                                setShowConfirm(!showConfirm)
                                             }
                                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
                                         >
-                                            {showConfirmPassword ? (
-                                                <FaEyeSlash className="h-4 w-4" />
+                                            {showConfirm ? (
+                                                <Icon
+                                                    icon={FaEyeSlash}
+                                                    className="h-4 w-4"
+                                                />
                                             ) : (
-                                                <FaEye className="h-4 w-4" />
+                                                <Icon
+                                                    icon={FaEye}
+                                                    className="h-4 w-4"
+                                                />
                                             )}
                                         </button>
                                     </div>
-                                    {registerData.password_confirmation &&
-                                        registerData.password !==
-                                            registerData.password_confirmation && (
-                                            <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
-                                                <FaTimes className="w-3 h-3" />
-                                                Passwords do not match
-                                            </p>
-                                        )}
+                                    {passConfirm && pass !== passConfirm && (
+                                        <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
+                                            <Icon
+                                                icon={FaTimes}
+                                                className="w-3 h-3"
+                                            />{" "}
+                                            Passwords do not match
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Terms */}
@@ -928,7 +782,7 @@ export default function Register() {
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                setShowTermsModal(true)
+                                                setModalType("terms")
                                             }
                                             className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                                         >
@@ -937,9 +791,7 @@ export default function Register() {
                                         and{" "}
                                         <button
                                             type="button"
-                                            onClick={() =>
-                                                setShowPrivacyModal(true)
-                                            }
+                                            onClick={() => setModalType("privacy")}
                                             className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                                         >
                                             Privacy Policy
@@ -948,44 +800,14 @@ export default function Register() {
                                 </div>
 
                                 {/* Submit Button */}
-                                <motion.button
+                                <Button
+                                    buttonText="Create Account"
+                                    isLoading={loading}
+                                    fullWidth={true}
+                                    loadingText="Creating"
+                                    variant="primary"
                                     type="submit"
-                                    disabled={processingRegister}
-                                    whileHover={{ scale: 1.01 }}
-                                    whileTap={{ scale: 0.99 }}
-                                    className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center gap-2"
-                                >
-                                    {processingRegister ? (
-                                        <>
-                                            <svg
-                                                className="animate-spin h-5 w-5 text-white"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <circle
-                                                    className="opacity-25"
-                                                    cx="12"
-                                                    cy="12"
-                                                    r="10"
-                                                    stroke="currentColor"
-                                                    strokeWidth="4"
-                                                ></circle>
-                                                <path
-                                                    className="opacity-75"
-                                                    fill="currentColor"
-                                                    d="M4 12a8 8 0 018-8v8H4z"
-                                                ></path>
-                                            </svg>
-                                            Creating account...
-                                        </>
-                                    ) : (
-                                        <>
-                                            Create Account
-                                            <FaArrowRight className="w-4 h-4" />
-                                        </>
-                                    )}
-                                </motion.button>
+                                />
                             </form>
 
                             <div className="mt-6 text-center">
@@ -1005,34 +827,30 @@ export default function Register() {
             </div>
 
             {/* Modals */}
-            <TermsPrivacyModal
-                isOpen={showTermsModal}
-                onClose={closeTermsModal}
-                modalType="terms"
-            />
+            {config && (
+                <Modal
+                    isOpen={true}
+                    onClose={() => setModalType(null)}
+                    title={config.title}
+                    description={config.description}
+                />
+            )}
 
-            <TermsPrivacyModal
-                isOpen={showPrivacyModal}
-                onClose={closePrivacyModal}
-                modalType="privacy"
-            />
-
-            {showPasswordRequirements && (
+            {showReq && (
                 <PasswordRequirementsModal
-                    passwordValidation={passwordValidation}
-                    registerData={registerData}
-                    setShowPasswordRequirements={setShowPasswordRequirements}
+                    passwordValidation={passValid}
+                    setShowPasswordRequirements={setShowReq}
                     strengthColor={strengthColor}
                     strengthText={strengthText}
                 />
             )}
 
-            {showEmailVerificationModal && (
+            {showVerifyModal && (
                 <EmailVerificationModal
-                    handleCloseVerificationModal={handleCloseVerificationModal}
-                    processingResendEmail={processingResendEmail}
-                    resend_emailVerification={resend_emailVerification}
-                    verifyData={verifyData}
+                    handleCloseVerificationModal={closeVerifyModal}
+                    processingResendEmail={false}
+                    resend_emailVerification={resendVerify}
+                    verifyData={{ user_email: verifyEmail }}
                 />
             )}
 
