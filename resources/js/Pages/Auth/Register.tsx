@@ -497,7 +497,7 @@ export default function Register() {
 
                                     {pass && (
                                         <div className="mt-2">
-                                            <div className="flex justify-between items-center mb-1">
+                                            <div className="flex justify-start items-center mb-1 gap-0.5">
                                                 <span className="text-xs text-gray-500">
                                                     Password strength:
                                                 </span>
