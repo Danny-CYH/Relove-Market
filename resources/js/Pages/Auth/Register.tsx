@@ -58,7 +58,7 @@ export default function Register() {
     // hooks
     const { showToast } = useToast();
     const { loading, showVerifyModal, verifyEmail, register } = useRegister();
-    const { resendVerification, closeVerifyModal } = useResendVefication();
+    const { resendEmail, closeVerifyModal } = useResendVefication();
 
     // Modal type
     const [modalType, setModalType] = useState(null);
@@ -87,7 +87,7 @@ export default function Register() {
 
         if (!nameValid.status) {
             showToast(nameValid.msg, "error", 4000);
-            return
+            return;
         }
 
         if (!passValid.status) {
@@ -102,7 +102,7 @@ export default function Register() {
 
         if (pass !== passConfirm) {
             showToast("Passwords not match.", "error", 4000);
-            return
+            return;
         }
 
         await register({
@@ -661,10 +661,10 @@ export default function Register() {
 
             {showVerifyModal && (
                 <EmailVerificationModal
-                    handleCloseVerificationModal={closeVerifyModal}
-                    processingResendEmail={false}
-                    resend_emailVerification={resendVerification}
-                    verifyData={{ user_email: verifyEmail }}
+                    isLoading={loading}
+                    onClose={closeVerifyModal}
+                    email={verifyEmail}
+                    resendEmail={resendEmail}
                 />
             )}
 
