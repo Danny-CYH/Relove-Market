@@ -1,19 +1,30 @@
+import { Link } from "@inertiajs/react";
+
+import { useState } from "react";
+import { motion } from "framer-motion";
+
 import Footer from "@/Components/Ui/Footer";
 import Navbar from "@/Components/Ui/Navbar";
+import TextInput from "@/Components/Ui/TextInput";
+import { Icon } from "@/Components/Ui/Icon";
 
 import { PasswordRequirementsModal } from "@/Components/Features/Register/PasswordRequirementsModal";
 import { EmailVerificationModal } from "@/Components/Features/Register/EmailVerificationModal";
 
 import { modalConfig } from "@/Constants/modalContent";
 
-import TextInput from "@/Components/Ui/TextInput";
-import { Icon } from "@/Components/Ui/Icon";
+import { validatePassStrength } from "@/Features/Auth/Utils/passwordValidation";
 
-import { Link, usePage } from "@inertiajs/react";
-import axios from "axios";
+import { useFormValidation } from "@/Features/Auth/Hooks/useFormValidation";
+import { useRegister } from "@/Features/Auth/Hooks/useRegister";
+import { useResendVefication } from "@/Features/Auth/Hooks/useResendVerification";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import {
+    fadeInLeft,
+    fadeInRight,
+    fadeInUp,
+    staggerContainer,
+} from "@/Animations/animations";
 
 import {
     FaEnvelope,
@@ -43,33 +54,11 @@ import { useToast } from "@/Components/Ui/Toast";
 import Button from "@/Components/Ui/Button";
 import { Modal } from "@/Components/Ui/Modal";
 
-// Password validation functions
-const validatePass = (pass) => {
-    const validations = {
-        length: pass.length >= 8,
-        uppercase: /[A-Z]/.test(pass),
-        lowercase: /[a-z]/.test(pass),
-        number: /[0-9]/.test(pass),
-        special: /[!@#$%^&*(),.?":{}|<>]/.test(pass),
-    };
-
-    const isValid = Object.values(validations).every(Boolean);
-    const strength = Object.values(validations).filter(Boolean).length;
-
-    return { isValid, validations, strength };
-};
-
-const getStrengthText = (strength) => {
-    if (strength === 0) return { text: "Very Weak", color: "text-red-600" };
-    if (strength <= 2) return { text: "Weak", color: "text-red-500" };
-    if (strength <= 3) return { text: "Fair", color: "text-yellow-500" };
-    if (strength <= 4) return { text: "Good", color: "text-blue-500" };
-    return { text: "Strong", color: "text-green-600" };
-};
-
 export default function Register() {
+    // hooks
     const { showToast } = useToast();
-    const { flash } = usePage().props;
+    const { loading, showVerifyModal, verifyEmail, register } = useRegister();
+    const { resendVerification, closeVerifyModal } = useResendVefication();
 
     // Modal type
     const [modalType, setModalType] = useState(null);
@@ -85,58 +74,23 @@ export default function Register() {
     const [showPass, setShowPass] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const [showReq, setShowReq] = useState(false);
-    const [loading, setLoading] = useState(false);
 
-    // ✅ Modal states
-    const [showVerifyModal, setShowVerifyModal] = useState(false);
-    const [verifyEmail, setVerifyEmail] = useState("");
-
-    // ✅ Validation states
-    const [nameValid, setNameValid] = useState({
-        ok: true,
-        msg: "",
-    });
-
-    const [passValid, setPassValid] = useState({
-        ok: false,
-        checks: {
-            length: false,
-            uppercase: false,
-            lowercase: false,
-            number: false,
-            special: false,
-        },
-        strength: 0,
-    });
+    // validation form
+    const { nameValid, passValid } = useFormValidation(name, pass);
+    const { strengthText, strengthColor } = validatePassStrength(
+        passValid.strength,
+    );
 
     // ✅ Register submit
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (!name || !email || !pass || !passConfirm) {
-            showToast("Please fill in all required fields", "warning", 4000);
-            return;
+        if (!nameValid.status) {
+            showToast(nameValid.msg, "error", 4000);
+            return
         }
 
-        if (!/^[a-zA-Z\s]*$/.test(name)) {
-            showToast(
-                "Name should only contain letters and spaces.",
-                "warning",
-                4000,
-            );
-            return;
-        }
-
-        if (name.trim().length < 2) {
-            showToast(
-                "Name should be at least 2 characters long.",
-                "warning",
-                4000,
-            );
-            return;
-        }
-
-        if (!passValid.ok) {
+        if (!passValid.status) {
             showToast(
                 "Please create a password that meets all requirements.",
                 "warning",
@@ -147,106 +101,25 @@ export default function Register() {
         }
 
         if (pass !== passConfirm) {
-            showToast("Passwords do not match.", "error", 4000);
-            return;
+            showToast("Passwords not match.", "error", 4000);
+            return
         }
 
-        try {
-            setLoading(true);
-            showToast("Creating your account...", "info", 1500);
+        await register({
+            name,
+            email,
+            password: pass,
+            password_confirmation: passConfirm,
+        });
 
-            const res = await axios.post(route("register"), {
-                name,
-                email,
-                password: pass,
-                password_confirmation: passConfirm,
-            });
-
-            if (res.status === 200 || res.status === 201) {
-                setVerifyEmail(email);
-                setShowVerifyModal(true);
-                showToast(
-                    "Account created! Please verify your email.",
-                    "success",
-                    5000,
-                );
-                setName("");
-                setEmail("");
-                setPass("");
-                setPassConfirm("");
-            }
-        } catch (err) {
-            const msg =
-                err.response?.data?.message || "Failed to create account.";
-            showToast(msg, "error", 5000);
-        } finally {
-            setLoading(false);
-        }
+        setName("");
+        setEmail("");
+        setPass("");
+        setPassConfirm("");
     };
-
-    // ✅ Resend email
-    const resendVerify = async (e) => {
-        e.preventDefault();
-
-        showToast("Sending verification email...", "info", 1500);
-
-        try {
-            const res = await axios.post(route("custom.verification.send"), {
-                user_email: verifyEmail,
-            });
-
-            if (res.status === 200) {
-                setShowVerifyModal(false);
-                showToast(
-                    "A new verification link has been sent.",
-                    "success",
-                    4000,
-                );
-            }
-        } catch (err) {
-            showToast(
-                "Failed to send verification email. Please try again.",
-                "error",
-                5000,
-            );
-        }
-    };
-
-    const closeVerifyModal = () => {
-        showToast("You can resend the verification later.", "info", 3000);
-        setShowVerifyModal(false);
-    };
-
-    const { text: strengthText, color: strengthColor } = getStrengthText(
-        passValid.strength,
-    );
 
     const handleSocialLogin = (provider) => {
         showToast(`${provider} login coming soon!`, "info", 3000);
-    };
-
-    // Animation variants
-    const fadeInLeft = {
-        hidden: { opacity: 0, x: -40 },
-        visible: { opacity: 1, x: 0, transition: { duration: 0.6 } },
-    };
-
-    const fadeInRight = {
-        hidden: { opacity: 0, x: 40 },
-        visible: { opacity: 1, x: 0, transition: { duration: 0.6 } },
-    };
-
-    const fadeInUp = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-    };
-
-    const staggerContainer = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1, delayChildren: 0.2 },
-        },
     };
 
     const benefits = [
@@ -287,68 +160,6 @@ export default function Register() {
         { name: "Michael", savings: "30 items rescued", icon: FaHandHolding },
         { name: "Emma", savings: "₹12,000 saved", icon: FaShoppingBag },
     ];
-
-    // ✅ Flash messages
-    useEffect(() => {
-        if (flash?.errorMessage) {
-            showToast(flash.errorMessage, "error", 5000);
-        }
-
-        if (flash?.successMessage) {
-            setVerifyEmail(email);
-            setShowVerifyModal(true);
-            showToast(
-                "Account created! Please verify your email.",
-                "success",
-                5000,
-            );
-            setName("");
-            setEmail("");
-            setPass("");
-            setPassConfirm("");
-        }
-    }, [flash]);
-
-    // ✅ Name validation
-    useEffect(() => {
-        if (name) {
-            const ok = /^[a-zA-Z\s]*$/.test(name);
-            if (!ok) {
-                setNameValid({
-                    ok: false,
-                    msg: "Name should only contain letters and spaces",
-                });
-            } else if (name.trim().length < 2) {
-                setNameValid({
-                    ok: false,
-                    msg: "Name should be at least 2 characters long",
-                });
-            } else {
-                setNameValid({ ok: true, msg: "" });
-            }
-        } else {
-            setNameValid({ ok: true, msg: "" });
-        }
-    }, [name]);
-
-    // ✅ Password validation
-    useEffect(() => {
-        if (pass) {
-            setPassValid(validatePass(pass));
-        } else {
-            setPassValid({
-                ok: false,
-                checks: {
-                    length: false,
-                    uppercase: false,
-                    lowercase: false,
-                    number: false,
-                    special: false,
-                },
-                strength: 0,
-            });
-        }
-    }, [pass]);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
@@ -586,11 +397,11 @@ export default function Register() {
                                             onChange={(e) =>
                                                 setName(e.target.value)
                                             }
-                                            className={`pl-9 w-full text-black border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5 ${name && !nameValid.ok ? "border-red-300 focus:border-red-300 focus:ring-red-300" : ""}`}
+                                            className={`pl-9 w-full text-black border-gray-200 focus:border-emerald-400 focus:ring-emerald-400 rounded-xl py-2.5 ${name && !nameValid.status ? "border-red-300 focus:border-red-300 focus:ring-red-300" : ""}`}
                                             required
                                         />
                                     </div>
-                                    {name && !nameValid.ok && (
+                                    {name && !nameValid.status && (
                                         <p className="text-red-600 text-xs mt-1 flex items-center gap-1">
                                             <Icon
                                                 icon={FaTimes}
@@ -791,7 +602,9 @@ export default function Register() {
                                         and{" "}
                                         <button
                                             type="button"
-                                            onClick={() => setModalType("privacy")}
+                                            onClick={() =>
+                                                setModalType("privacy")
+                                            }
                                             className="text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                                         >
                                             Privacy Policy
@@ -838,6 +651,7 @@ export default function Register() {
 
             {showReq && (
                 <PasswordRequirementsModal
+                    password={pass}
                     passwordValidation={passValid}
                     setShowPasswordRequirements={setShowReq}
                     strengthColor={strengthColor}
@@ -849,7 +663,7 @@ export default function Register() {
                 <EmailVerificationModal
                     handleCloseVerificationModal={closeVerifyModal}
                     processingResendEmail={false}
-                    resend_emailVerification={resendVerify}
+                    resend_emailVerification={resendVerification}
                     verifyData={{ user_email: verifyEmail }}
                 />
             )}
