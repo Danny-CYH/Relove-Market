@@ -19,6 +19,10 @@ import { useFormValidation } from "@/Features/Auth/Hooks/useFormValidation";
 import { useRegister } from "@/Features/Auth/Hooks/useRegister";
 import { useResendVefication } from "@/Features/Auth/Hooks/useResendVerification";
 
+import { useToast } from "@/Components/Ui/Toast";
+import Button from "@/Components/Ui/Button";
+import { Modal } from "@/Components/Ui/Modal";
+
 import {
     fadeInLeft,
     fadeInRight,
@@ -50,9 +54,15 @@ import {
     FaClock,
 } from "react-icons/fa";
 
-import { useToast } from "@/Components/Ui/Toast";
-import Button from "@/Components/Ui/Button";
-import { Modal } from "@/Components/Ui/Modal";
+/* 
+Note for me in the future works
+
+Fix: Resend Email is not working (419 page expired)
+Fix: Simplify the UI dummy data (benefit, stories, etc)
+
+Done: Refactoring functions by changing it into hooks, utils and helpers
+Done: Flow and validations are works as expected
+*/
 
 export default function Register() {
     // hooks
