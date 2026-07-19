@@ -30,8 +30,11 @@ import { Icon } from "@/Components/Ui/Icon";
 import { useToast } from "@/Components/Ui/Toast";
 import Button from "@/Components/Ui/Button";
 
+import { useLogin } from "@/Features/Auth/Hooks/useLogin";
+import { useResetPassword } from "@/Features/Auth/Hooks/useResetPassword";
+import { useResetLink } from "@/Features/Auth/Hooks/useResetLink";
+
 export default function Login() {
-    const { showToast } = useToast();
     const { props } = usePage();
 
     // ✅ 从 props 获取 token 和 email（从 cookie 解密后传入）
@@ -57,116 +60,45 @@ export default function Login() {
 
     const [isLoading, setIsLoading] = useState(false);
 
-    const loginAccount_submit = async (e) => {
+    // hooks
+    const { showToast } = useToast();
+    const { login } = useLogin({ setIsLoading });
+    const { resetPass } = useResetPassword({ setIsLoading, setShowResetModal });
+    const { resetLink } = useResetLink({
+        setIsLoading,
+        setShowForgetModal,
+        setResetEmail,
+    });
+
+    const loginAccount = async (e) => {
         e.preventDefault();
 
-        if (!email || !password) {
-            showToast("Please fill in all fields", "error", 5000);
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-
-            const response = await axios.post(route("login"), {
-                email: email,
-                password: password,
-            });
-
-            if (response.status == 200) {
-                setTimeout(() => {
-                    window.location.href = "/relove-market";
-                }, 1000);
-            }
-        } catch (error) {
-            showToast(error.response.data.message, "error", 5000);
-        } finally {
-            setIsLoading(false);
-        }
+        await login({ email, password });
     };
 
     const resetLink_submit = async (e) => {
         e.preventDefault();
 
-        try {
-            setIsLoading(true);
-            const response = await axios.post(route("password.email"), {
-                email: resetEmail,
-            });
-
-            if (response.status == 200) {
-                setShowForgetModal(false);
-                setResetEmail("");
-                showToast(response.data.message, "success", 5000);
-            } else {
-                showToast(response.data.message, "error");
-            }
-        } catch (error) {
-            console.log(error.response);
-        } finally {
-            setIsLoading(false);
-        }
+        await resetLink({ email: resetEmail });
     };
 
-    // ✅ 修改：使用 resetEmail 和 resetToken 提交
-    const updatePassword_submit = async (e) => {
+    // function for updating new password
+    const resetPassword = async (e) => {
         e.preventDefault();
 
-        // ✅ 使用 resetEmail 而不是 email
-        if (!resetEmail || !resetToken) {
-            showToast("Invalid reset link. Please request a new one.", "error");
-            return;
-        }
-
-        if (!password || !passwordConfirmation) {
-            showToast("Please fill in all password fields", "warning");
-            return;
-        }
-
-        if (password !== passwordConfirmation) {
-            showToast("Passwords do not match. Please try again.", "error");
-            return;
-        }
-
-        try {
-            setIsLoading(true);
-
-            // ✅ 使用 resetEmail 和 resetToken
-            const response = await axios.post(route("password.store"), {
-                token: resetToken,
-                email: resetEmail,
-                password: password,
-                password_confirmation: passwordConfirmation,
-            });
-
-            if (response.status == 200) {
-                showToast(
-                    "Password updated successfully! You can now login with your new password.",
-                    "success",
-                    4000,
-                );
-                setShowResetModal(false);
-                setPassword("");
-                setPasswordConfirmation("");
-                // ✅ 把重置的 email 填入登录表单
-                setEmail(resetEmail);
-            }
-        } catch (error) {
-            showToast(
-                error.response?.data?.message || "Failed to update password",
-                "error",
-                5000,
-            );
-        } finally {
-            setIsLoading(false);
-        }
+        await resetPass({
+            token: resetToken,
+            email: resetEmail,
+            password: password,
+            password_confirmation: passwordConfirmation,
+        });
     };
 
     const handleCloseForgetModal = () => {
         setShowForgetModal(false);
     };
 
-    const handleCloseResetModal = () => {
+    const onClose = () => {
         setShowResetModal(false);
     };
 
@@ -394,10 +326,7 @@ export default function Login() {
                             </div>
 
                             {/* Login Form */}
-                            <form
-                                onSubmit={loginAccount_submit}
-                                className="space-y-4"
-                            >
+                            <form onSubmit={loginAccount} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                                         Email Address
@@ -532,14 +461,13 @@ export default function Login() {
 
             {showResetModal && (
                 <ResetPasswordModal
-                    email={resetEmail} // ✅ 使用 resetEmail 而不是 email
                     password={password}
                     passwordConfirmation={passwordConfirmation}
                     setPassword={setPassword}
                     setPasswordConfirmation={setPasswordConfirmation}
-                    handleCloseResetModal={handleCloseResetModal}
-                    updatePassword_submit={updatePassword_submit}
+                    resetPassword={resetPassword}
                     isLoading={isLoading}
+                    onClose={onClose}
                 />
             )}
 
