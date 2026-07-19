@@ -2,4 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* resources/css/app.css */
 
+/* ✅ 修复 autofill 灰色背景 - 默认状态 */
+input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    -webkit-text-fill-color: #111827 !important;
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+input:-webkit-autofill:hover {
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    border-color: #d1d5db !important;
+}
+
+/* ✅ 重点：autofill 的 focus 状态 - 显示绿色边框和 ring */
+input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+    -webkit-text-fill-color: #111827 !important;
+    background-color: #ffffff !important;
+    border-color: #059669 !important; /* emerald-600 边框 */
+    outline: 2px solid #059669 !important; /* emerald-600 outline */
+    outline-offset: 0px !important;
+    /* 模拟 ring-2 */
+    box-shadow:
+        0 0 0 2px #059669,
+        0 0 0 1000px #ffffff inset !important;
+}
+
+/* ✅ 或者使用 emerald-400 更亮一点 */
+input:-webkit-autofill:focus {
+    border-color: #34d399 !important; /* emerald-400 更亮 */
+    box-shadow:
+        0 0 0 2px #34d399,
+        0 0 0 1000px #ffffff inset !important;
+}
+
+/* ✅ 如果有 error 状态 */
+input.border-red-300:-webkit-autofill:focus {
+    border-color: #ef4444 !important;
+    box-shadow:
+        0 0 0 2px #ef4444,
+        0 0 0 1000px #ffffff inset !important;
+}

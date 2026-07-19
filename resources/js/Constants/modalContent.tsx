@@ -8,7 +8,10 @@ import {
     XCircle,
     AlertTriangle,
     Info,
+
 } from "lucide-react";
+
+import { FaShieldAlt } from "react-icons/fa";
 
 // ============================================================
 // 工具组件：减少重复 JSX
@@ -300,6 +303,55 @@ export const modalConfig = {
         ),
         note: "We're here to help if you have any questions about returns.",
         noteIcon: <Clock />,
+        primaryLabel: "Close",
+    },
+
+    privacy: {
+        icon: <Shield />,
+        title: "Privacy Policy",
+        description: (
+            <>
+                <p className="mb-4 text-slate-700 text-sm sm:text-base">
+                    Your privacy is important to us. This Privacy Policy
+                    explains how we collect, use, and protect your personal
+                    information.
+                </p>
+                <div className="space-y-3">
+                    <div>
+                        <h4 className="font-medium text-gray-900 text-sm sm:text-base">
+                            Information We Collect
+                        </h4>
+                        <p className="text-gray-600 text-sm sm:text-base">
+                            We collect information you provide directly to us,
+                            such as when you create an account, use our
+                            services, or contact us for support.
+                        </p>
+                    </div>
+                    <div>
+                        <h4 className="font-medium text-gray-900 text-sm sm:text-base">
+                            How We Use Information
+                        </h4>
+                        <p className="text-gray-600 text-sm sm:text-base">
+                            We use the information we collect to provide,
+                            maintain, and improve our services, and to develop
+                            new ones.
+                        </p>
+                    </div>
+                    <div>
+                        <h4 className="font-medium text-gray-900 text-sm sm:text-base">
+                            Data Security
+                        </h4>
+                        <p className="text-gray-600 text-sm sm:text-base">
+                            We implement appropriate technical and
+                            organizational measures to protect your personal
+                            information against unauthorized access.
+                        </p>
+                    </div>
+                </div>
+            </>
+        ),
+        note: "We're committed to protecting your privacy. Contact us if you have any questions.",
+        noteIcon: <Shield />,
         primaryLabel: "Close",
     },
 };

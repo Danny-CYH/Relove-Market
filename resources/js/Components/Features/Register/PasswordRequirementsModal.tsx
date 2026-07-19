@@ -1,11 +1,13 @@
-import { FaLock, FaTimes, FaCheckCircle, FaShieldAlt } from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+
+import { Icon } from "@/Components/Ui/Icon";
+
 import { PasswordRequirement } from "./PasswordRequirement";
 
 export function PasswordRequirementsModal({
     setShowPasswordRequirements,
     passwordValidation,
-    registerData,
     password,
     strengthText,
     strengthColor,
@@ -24,9 +26,8 @@ export function PasswordRequirementsModal({
         return "🟢";
     };
 
-    const completedCount = Object.values(passwordValidation.validations).filter(
-        Boolean,
-    ).length;
+    const checks = passwordValidation.checks;
+    const completedCount = Object.values(checks).filter(Boolean);
     const totalCount = 5;
 
     return (
@@ -61,16 +62,13 @@ export function PasswordRequirementsModal({
                             onClick={() => setShowPasswordRequirements(false)}
                             className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors z-10"
                         >
-                            <FaTimes className="w-5 h-5" />
+                            <Icon icon={FaTimes} className="w-5 h-5" />
                         </button>
 
                         {/* ✅ 内容 */}
                         <div className="p-6 pt-8 sm:p-8 sm:pt-10">
                             {/* ✅ 图标 + 标题 */}
                             <div className="flex items-start gap-4 mb-6">
-                                <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-200">
-                                    <FaShieldAlt className="w-7 h-7 text-white" />
-                                </div>
                                 <div>
                                     <h3 className="text-xl font-bold text-gray-900">
                                         Password Requirements
@@ -89,7 +87,7 @@ export function PasswordRequirementsModal({
                                         Security Score
                                     </span>
                                     <span className="text-xs font-semibold text-gray-700">
-                                        {completedCount}/{totalCount} met
+                                        {completedCount.length}/{totalCount} met
                                     </span>
                                 </div>
                                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -97,7 +95,7 @@ export function PasswordRequirementsModal({
                                         className={`h-full rounded-full ${getStrengthColorClass()}`}
                                         initial={{ width: 0 }}
                                         animate={{
-                                            width: `${(completedCount / totalCount) * 100}%`,
+                                            width: `${(completedCount.length / totalCount) * 100}%`,
                                         }}
                                         transition={{
                                             duration: 0.6,
@@ -110,27 +108,23 @@ export function PasswordRequirementsModal({
                             {/* ✅ 需求列表 */}
                             <div className="space-y-2.5 mb-6">
                                 <PasswordRequirement
-                                    met={passwordValidation.validations.length}
+                                    met={checks.length}
                                     text="At least 8 characters long"
                                 />
                                 <PasswordRequirement
-                                    met={
-                                        passwordValidation.validations.uppercase
-                                    }
+                                    met={checks.uppercase}
                                     text="One uppercase letter (A-Z)"
                                 />
                                 <PasswordRequirement
-                                    met={
-                                        passwordValidation.validations.lowercase
-                                    }
+                                    met={checks.lowercase}
                                     text="One lowercase letter (a-z)"
                                 />
                                 <PasswordRequirement
-                                    met={passwordValidation.validations.number}
+                                    met={checks.number}
                                     text="One number (0-9)"
                                 />
                                 <PasswordRequirement
-                                    met={passwordValidation.validations.special}
+                                    met={checks.special}
                                     text="One special character (!@#$%^&*)"
                                 />
                             </div>
@@ -176,23 +170,6 @@ export function PasswordRequirementsModal({
                                     </div>
                                 </motion.div>
                             )}
-
-                            {/* ✅ 按钮 */}
-                            <div className="mt-6">
-                                <motion.button
-                                    whileHover={{ scale: 1.01 }}
-                                    whileTap={{ scale: 0.99 }}
-                                    onClick={() =>
-                                        setShowPasswordRequirements(false)
-                                    }
-                                    className="w-full bg-emerald-600 text-white py-3 px-4 rounded-xl font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-200 shadow-lg shadow-emerald-200/50"
-                                >
-                                    <span className="flex items-center justify-center gap-2">
-                                        <FaCheckCircle className="w-4 h-4" />
-                                        Got it, thanks!
-                                    </span>
-                                </motion.button>
-                            </div>
                         </div>
                     </motion.div>
                 </div>
