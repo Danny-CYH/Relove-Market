@@ -1,17 +1,17 @@
-import { FaEnvelope } from "react-icons/fa";
+import Button from "@/Components/Ui/Button";
 
 export function EmailVerificationModal({
-    handleCloseVerificationModal,
-    resend_emailVerification,
-    processingResendEmail,
-    verifyData,
+    isLoading,
+    onClose,
+    email,
+    resendEmail,
 }) {
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="flex items-center justify-center min-h-full p-4 text-center">
                 <div
                     className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                    onClick={handleCloseVerificationModal}
+                    onClick={onClose}
                 ></div>
 
                 <div className="relative bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all sm:max-w-md sm:w-full sm:p-6">
@@ -19,7 +19,7 @@ export function EmailVerificationModal({
                         <button
                             type="button"
                             className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none"
-                            onClick={handleCloseVerificationModal}
+                            onClick={onClose}
                         >
                             <span className="sr-only">Close</span>
                             <svg
@@ -39,9 +39,6 @@ export function EmailVerificationModal({
                     </div>
 
                     <div className="sm:flex sm:items-start">
-                        <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                            <FaEnvelope className="h-6 w-6 text-blue-600" />
-                        </div>
                         <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
                             <h3 className="text-lg leading-6 font-medium text-gray-900">
                                 Verify Your Email
@@ -55,32 +52,23 @@ export function EmailVerificationModal({
                                     will gladly send you another.
                                 </p>
                                 <p className="text-sm text-gray-500 mt-2 font-medium">
-                                    Email sent to: {verifyData.user_email}
+                                    Email sent to: {email}
                                 </p>
                             </div>
                         </div>
                     </div>
 
-                    <form
-                        onSubmit={resend_emailVerification}
-                        method="POST"
-                        className="mt-5"
-                    >
-                        <input
-                            type="hidden"
-                            name="user_email"
-                            value={verifyData.user_email}
-                        />
+                    <form onSubmit={resendEmail} method="POST" className="mt-5">
+                        <input type="hidden" name="user_email" value={email} />
                         <div className="mt-5 sm:mt-6">
-                            <button
+                            <Button
                                 type="submit"
-                                disabled={processingResendEmail}
-                                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                {processingResendEmail
-                                    ? "Sending..."
-                                    : "Resend Verification Email"}
-                            </button>
+                                isLoading={isLoading}
+                                loadingText="Sending..."
+                                buttonText="Resend Email"
+                                variant="primary"
+                                fullWidth={true}
+                            />
                         </div>
                     </form>
                 </div>
