@@ -1,5 +1,4 @@
 import { Link, usePage } from "@inertiajs/react";
-import axios from "axios";
 import { useState, useEffect } from "react";
 import {
     FaEye,
@@ -33,6 +32,7 @@ import Button from "@/Components/Ui/Button";
 import { useLogin } from "@/Features/Auth/Hooks/useLogin";
 import { useResetPassword } from "@/Features/Auth/Hooks/useResetPassword";
 import { useResetLink } from "@/Features/Auth/Hooks/useResetLink";
+import { useFormValidation } from "@/Features/Auth/Hooks/useFormValidation";
 
 export default function Login() {
     const { props } = usePage();
@@ -60,15 +60,14 @@ export default function Login() {
 
     const [isLoading, setIsLoading] = useState(false);
 
+    const [showReq, setShowReq] = useState(false);
+
     // hooks
     const { showToast } = useToast();
-    const { login } = useLogin({ setIsLoading });
-    const { resetPass } = useResetPassword({ setIsLoading, setShowResetModal });
-    const { resetLink } = useResetLink({
-        setIsLoading,
-        setShowForgetModal,
-        setResetEmail,
-    });
+    const { login, isLoading: isLogin } = useLogin();
+    const { passValid } = useFormValidation(undefined, password);
+    const { resetPass, isLoading: isResetting } = useResetPassword();
+    const { resetLink } = useResetLink();
 
     const loginAccount = async (e) => {
         e.preventDefault();
@@ -80,11 +79,29 @@ export default function Login() {
         e.preventDefault();
 
         await resetLink({ email: resetEmail });
+
+        setShowForgetModal(false);
+        setResetEmail("");
     };
 
-    // function for updating new password
+    // function for reseting new password
     const resetPassword = async (e) => {
         e.preventDefault();
+
+        if (!passValid.status) {
+            showToast(
+                "Please create a password that meets all requirements.",
+                "warning",
+                5000,
+            );
+            setShowReq(true);
+            return;
+        }
+
+        if (password !== passwordConfirmation) {
+            showToast("Passwords do not match. Please try again.", "error");
+            return;
+        }
 
         await resetPass({
             token: resetToken,
@@ -92,6 +109,11 @@ export default function Login() {
             password: password,
             password_confirmation: passwordConfirmation,
         });
+
+        setShowResetModal(false);
+        setTimeout(() => {
+            window.location.href = "/relove-market";
+        }, 5000);
     };
 
     const handleCloseForgetModal = () => {
@@ -427,7 +449,7 @@ export default function Login() {
                                     type="submit"
                                     buttonText="Sign In"
                                     fullWidth={true}
-                                    isLoading={isLoading}
+                                    isLoading={isLogin}
                                     loadingText="Signing In"
                                 />
                             </form>
@@ -466,7 +488,9 @@ export default function Login() {
                     setPassword={setPassword}
                     setPasswordConfirmation={setPasswordConfirmation}
                     resetPassword={resetPassword}
-                    isLoading={isLoading}
+                    isLoading={isResetting}
+                    showReq={showReq}
+                    setShowReq={setShowReq}
                     onClose={onClose}
                 />
             )}
