@@ -12,11 +12,6 @@ export const useLogin = () => {
     const login = async (data) => {
         const { email, password } = data;
 
-        if (!email || !password) {
-            showToast("Please fill in all fields", "error", 5000);
-            return;
-        }
-
         try {
             setIsLoading(true);
 
