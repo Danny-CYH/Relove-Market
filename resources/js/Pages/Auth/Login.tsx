@@ -93,6 +93,16 @@ export default function Login() {
     const resetPassword = async (e) => {
         e.preventDefault();
 
+        // ✅ 使用 resetEmail 而不是 email
+        if (!resetEmail || !resetToken) {
+            showToast(
+                "Invalid reset link. Please request a new one.",
+                "error",
+                5000,
+            );
+            return;
+        }
+
         if (!passValid.status) {
             showToast(
                 "Please create a password that meets all requirements.",
@@ -117,7 +127,7 @@ export default function Login() {
 
         setShowResetModal(false);
         setTimeout(() => {
-            window.location.href = "/relove-market";
+            window.location.href = "/login";
         }, 5000);
     };
 
