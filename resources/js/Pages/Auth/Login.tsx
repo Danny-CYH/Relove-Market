@@ -34,6 +34,16 @@ import { useResetPassword } from "@/Features/Auth/Hooks/useResetPassword";
 import { useResetLink } from "@/Features/Auth/Hooks/useResetLink";
 import { useFormValidation } from "@/Features/Auth/Hooks/useFormValidation";
 
+/**
+ * Note: Future works needed
+ *
+ * Fix: After resetting the password, the modal should not be close until redirect in 5 seconds
+ * Fix: Some of the variable name need to be rename
+ * Fix: Validation would need to be considered either in frontend or hooks or both of it
+ *
+ * Done: The flow of the resetting password is complete just have some minor improvement need to be considered
+ */
+
 export default function Login() {
     const { props } = usePage();
 
