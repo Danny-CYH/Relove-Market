@@ -58,8 +58,6 @@ export default function Login() {
     const [resetEmail, setResetEmail] = useState("");
     const [resetToken, setResetToken] = useState("");
 
-    // const [isLoading, setIsLoading] = useState(false);
-
     const [showReq, setShowReq] = useState(false);
 
     // hooks
