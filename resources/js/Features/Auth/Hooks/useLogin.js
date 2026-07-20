@@ -1,17 +1,16 @@
+import { useState } from "react";
+
 import { authService } from "../Services/authService";
 
 import { useToast } from "@/Components/Ui/Toast";
 
-export const useLogin = ({ setIsLoading }) => {
+export const useLogin = () => {
+    const [isLoading, setIsLoading] = useState(false);
+
     const { showToast } = useToast();
 
     const login = async (data) => {
         const { email, password } = data;
-
-        if (!email || !password) {
-            showToast("Please fill in all fields", "error", 5000);
-            return;
-        }
 
         try {
             setIsLoading(true);
@@ -24,7 +23,7 @@ export const useLogin = ({ setIsLoading }) => {
             if (response.status == 200) {
                 setTimeout(() => {
                     window.location.href = "/relove-market";
-                }, 1000);
+                }, 2000);
             }
         } catch (error) {
             setIsLoading(false);
@@ -32,5 +31,5 @@ export const useLogin = ({ setIsLoading }) => {
         }
     };
 
-    return { login };
+    return { login, isLoading };
 };
