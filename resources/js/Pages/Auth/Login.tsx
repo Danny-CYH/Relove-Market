@@ -72,6 +72,11 @@ export default function Login() {
     const loginAccount = async (e) => {
         e.preventDefault();
 
+        if (!email || !password) {
+            showToast("Please fill in all fields", "error", 5000);
+            return;
+        }
+
         await login({ email, password });
     };
 
