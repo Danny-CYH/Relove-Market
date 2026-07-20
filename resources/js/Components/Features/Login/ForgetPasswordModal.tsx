@@ -1,5 +1,6 @@
 import { FaLock, FaTimes } from "react-icons/fa";
 import { FiMail } from "react-icons/fi";
+
 import TextInput from "../../Ui/TextInput";
 import { Button } from "@/Components/Ui/Button";
 import { Icon } from "@/Components/Ui/Icon";
@@ -62,10 +63,8 @@ export function ForgetPasswordModal({
                                 </div>
                                 <TextInput
                                     type="email"
-                                    name="email"
                                     placeholder="you@example.com"
                                     value={resetEmail}
-                                    autoComplete="off"
                                     onChange={(e) =>
                                         setResetEmail(e.target.value)
                                     }
