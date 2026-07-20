@@ -19,11 +19,12 @@ export function ResetPasswordModal({
     setPasswordConfirmation,
     resetPassword,
     isLoading,
+    showReq,
+    setShowReq,
     onClose,
 }) {
     const [showPass, setShowPass] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
-    const [showReq, setShowReq] = useState(false);
 
     // hooks
     const { passValid } = useFormValidation(undefined, password);
