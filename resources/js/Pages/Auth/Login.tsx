@@ -58,7 +58,7 @@ export default function Login() {
     const [resetEmail, setResetEmail] = useState("");
     const [resetToken, setResetToken] = useState("");
 
-    const [isLoading, setIsLoading] = useState(false);
+    // const [isLoading, setIsLoading] = useState(false);
 
     const [showReq, setShowReq] = useState(false);
 
@@ -67,7 +67,7 @@ export default function Login() {
     const { login, isLoading: isLogin } = useLogin();
     const { passValid } = useFormValidation(undefined, password);
     const { resetPass, isLoading: isResetting } = useResetPassword();
-    const { resetLink } = useResetLink();
+    const { resetLink, isLoading: isForgetting } = useResetLink();
 
     const loginAccount = async (e) => {
         e.preventDefault();
@@ -482,7 +482,7 @@ export default function Login() {
                     setResetEmail={setResetEmail}
                     resetLink_submit={resetLink_submit}
                     handleCloseForgetModal={handleCloseForgetModal}
-                    isLoading={isLoading}
+                    isLoading={isForgetting}
                 />
             )}
 
