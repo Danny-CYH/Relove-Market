@@ -12,16 +12,6 @@ export const useResetPassword = () => {
     const resetPass = async (data) => {
         const { token, email, password, password_confirmation } = data;
 
-        // ✅ 使用 resetEmail 而不是 email
-        if (!email || !token) {
-            showToast(
-                "Invalid reset link. Please request a new one.",
-                "error",
-                5000,
-            );
-            return;
-        }
-
         try {
             setIsLoading(true);
 
