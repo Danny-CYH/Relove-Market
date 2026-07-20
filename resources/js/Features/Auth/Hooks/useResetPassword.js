@@ -1,7 +1,11 @@
+import { useState } from "react";
+
 import { useToast } from "@/Components/Ui/Toast";
 import { authService } from "../Services/authService";
 
-export const useResetPassword = ({ setIsLoading, setShowResetModal }) => {
+export const useResetPassword = () => {
+    const [isLoading, setIsLoading] = useState(false);
+
     // hooks
     const { showToast } = useToast();
 
@@ -15,16 +19,6 @@ export const useResetPassword = ({ setIsLoading, setShowResetModal }) => {
                 "error",
                 5000,
             );
-            return;
-        }
-
-        if (!password || !password_confirmation) {
-            showToast("Please fill in all password fields", "warning", 5000);
-            return;
-        }
-
-        if (password !== password_confirmation) {
-            showToast("Passwords do not match. Please try again.", "error");
             return;
         }
 
@@ -45,11 +39,6 @@ export const useResetPassword = ({ setIsLoading, setShowResetModal }) => {
                     "success",
                     5000,
                 );
-                setShowResetModal(false);
-
-                setTimeout(() => {
-                    window.location.href = "/login";
-                }, 5000);
             }
         } catch (error) {
             showToast(error.response?.data?.message, "error", 5000);
@@ -58,5 +47,5 @@ export const useResetPassword = ({ setIsLoading, setShowResetModal }) => {
         }
     };
 
-    return { resetPass };
+    return { resetPass, isLoading };
 };
