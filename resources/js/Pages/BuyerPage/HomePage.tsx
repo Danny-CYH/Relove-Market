@@ -53,6 +53,7 @@ import { Modal } from "@/Components/Ui/Modal";
 import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
 import { SearchablePickerModal } from "@/Components/Ui/SearchablePickerModal";
 import { useFeaturedProducts } from "@/Components/HelperFunction/useFeaturedProducts";
+import { Icon } from "@/Components/Ui/Icon";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const categoryIcons = {
@@ -256,10 +257,15 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     disabled={cameraSearchLoading}
                                     isLoading={cameraSearchLoading}
                                     loadingText="Searching..."
-                                    leftIcon={<FaCamera />}
-                                    iconSize="text-lg"
-                                    className="flex items-center justify-center gap-2"
                                     buttonText="Visual Search"
+                                    iconPosition="left"
+                                    leftIcon={
+                                        <Icon
+                                            icon={FaCamera}
+                                            className="w-5 h-5"
+                                        />
+                                    }
+                                    iconSize="text-md"
                                 />
 
                                 <input
@@ -508,7 +514,9 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center">
                             <Link
-                                href={route("relove-market.seller.registration")}
+                                href={route(
+                                    "relove-market.seller.registration",
+                                )}
                                 className="bg-white text-green-700 px-8 py-4 rounded-full font-semibold hover:bg-gray-100 transition shadow-md hover:shadow-lg"
                             >
                                 Become a Seller Today
