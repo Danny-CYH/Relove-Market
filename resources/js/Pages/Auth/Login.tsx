@@ -1,4 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
+import { route } from 'ziggy-js';
 import { useState, useEffect } from "react";
 import {
     FaEye,
@@ -8,14 +9,6 @@ import {
     FaLeaf,
     FaGoogle,
     FaFacebook,
-    FaHeart,
-    FaStar,
-    FaShieldAlt,
-    FaRecycle,
-    FaTree,
-    FaUsers,
-    FaShoppingBag,
-    FaGlobe,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 
@@ -33,6 +26,9 @@ import { useLogin } from "@/Features/Auth/Hooks/useLogin";
 import { useResetPassword } from "@/Features/Auth/Hooks/useResetPassword";
 import { useResetLink } from "@/Features/Auth/Hooks/useResetLink";
 import { useFormValidation } from "@/Features/Auth/Hooks/useFormValidation";
+
+import { StatData } from "@/MockData/StatData";
+import { featureData } from "@/MockData/FeatureData";
 
 /**
  * Note: Future works needed
@@ -216,28 +212,7 @@ export default function Login() {
 
                         {/* Stats */}
                         <div className="grid grid-cols-4 gap-4 mb-6">
-                            {[
-                                {
-                                    number: "15K+",
-                                    label: "Members",
-                                    icon: FaUsers,
-                                },
-                                {
-                                    number: "98%",
-                                    label: "Satisfied",
-                                    icon: FaStar,
-                                },
-                                {
-                                    number: "5K+",
-                                    label: "Items Sold",
-                                    icon: FaShoppingBag,
-                                },
-                                {
-                                    number: "50K+",
-                                    label: "Trees Saved",
-                                    icon: FaTree,
-                                },
-                            ].map((stat, idx) => (
+                            {StatData.map((stat, idx) => (
                                 <motion.div
                                     key={idx}
                                     whileHover={{ y: -2 }}
@@ -256,28 +231,7 @@ export default function Login() {
 
                         {/* Features */}
                         <div className="grid grid-cols-2 gap-3 mb-6">
-                            {[
-                                {
-                                    icon: FaHeart,
-                                    text: "Pre-loved fashion",
-                                    color: "text-rose-400",
-                                },
-                                {
-                                    icon: FaShieldAlt,
-                                    text: "Secure shopping",
-                                    color: "text-emerald-400",
-                                },
-                                {
-                                    icon: FaRecycle,
-                                    text: "Zero waste",
-                                    color: "text-teal-400",
-                                },
-                                {
-                                    icon: FaGlobe,
-                                    text: "Global community",
-                                    color: "text-blue-400",
-                                },
-                            ].map((item, idx) => (
+                            {featureData.map((item, idx) => (
                                 <motion.div
                                     key={idx}
                                     whileHover={{ x: 4 }}
