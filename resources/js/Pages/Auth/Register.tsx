@@ -1,6 +1,7 @@
 import { Link } from "@inertiajs/react";
 
 import { useState } from "react";
+import { route } from "ziggy-js";
 import { motion } from "framer-motion";
 
 import Footer from "@/Components/Ui/Footer";
@@ -23,6 +24,10 @@ import { useToast } from "@/Components/Ui/Toast";
 import Button from "@/Components/Ui/Button";
 import { Modal } from "@/Components/Ui/Modal";
 
+import { benefits } from "@/MockData/BenefitData";
+import { StatData } from "@/MockData/StatData";
+import { storiesData } from "@/MockData/StoriesData";
+
 import {
     fadeInLeft,
     fadeInRight,
@@ -41,24 +46,13 @@ import {
     FaLeaf,
     FaGoogle,
     FaFacebook,
-    FaHeart,
-    FaStar,
-    FaShieldAlt,
-    FaRecycle,
-    FaUsers,
-    FaShoppingBag,
-    FaTree,
-    FaAward,
-    FaGlobe,
-    FaHandHolding,
-    FaClock,
 } from "react-icons/fa";
 
 /* 
 Note for me in the future works
 
 Fix: Resend Email is not working (419 page expired)
-Fix: Simplify the UI dummy data (benefit, stories, etc)
+Fix: Terms and condition popup modal need to rename the variable and flow
 
 Done: Refactoring functions by changing it into hooks, utils and helpers
 Done: Flow and validations are works as expected
@@ -72,7 +66,7 @@ export default function Register() {
 
     // Modal type
     const [modalType, setModalType] = useState(null);
-    const config = modalType ? modalConfig[modalType] : null;
+    const config = modalType ? modalConfig[modalType] : null; // Fix this method
 
     // ✅ Form fields
     const [name, setName] = useState("");
@@ -92,28 +86,8 @@ export default function Register() {
     );
 
     // ✅ Register submit
-    const handleSubmit = async (e) => {
+    const registerAccount = async (e) => {
         e.preventDefault();
-
-        if (!nameValid.status) {
-            showToast(nameValid.msg, "error", 4000);
-            return;
-        }
-
-        if (!passValid.status) {
-            showToast(
-                "Please create a password that meets all requirements.",
-                "warning",
-                5000,
-            );
-            setShowReq(true);
-            return;
-        }
-
-        if (pass !== passConfirm) {
-            showToast("Passwords not match.", "error", 4000);
-            return;
-        }
 
         await register({
             name,
@@ -121,60 +95,15 @@ export default function Register() {
             password: pass,
             password_confirmation: passConfirm,
         });
-
-        setName("");
-        setEmail("");
-        setPass("");
-        setPassConfirm("");
     };
 
     const handleSocialLogin = (provider) => {
         showToast(`${provider} login coming soon!`, "info", 3000);
     };
 
-    const benefits = [
-        {
-            icon: FaHeart,
-            text: "Discover unique pre-loved fashion",
-            color: "text-rose-400",
-        },
-        {
-            icon: FaShieldAlt,
-            text: "100% secure & insured shopping",
-            color: "text-emerald-400",
-        },
-        {
-            icon: FaRecycle,
-            text: "Reduce waste & carbon footprint",
-            color: "text-teal-400",
-        },
-        {
-            icon: FaAward,
-            text: "Earn rewards for sustainable choices",
-            color: "text-amber-400",
-        },
-        {
-            icon: FaGlobe,
-            text: "Join a global eco-conscious community",
-            color: "text-blue-400",
-        },
-        {
-            icon: FaClock,
-            text: "24/7 customer support & assistance",
-            color: "text-indigo-400",
-        },
-    ];
-
-    const stories = [
-        { name: "Sarah", savings: "50kg CO₂ saved", icon: FaLeaf },
-        { name: "Michael", savings: "30 items rescued", icon: FaHandHolding },
-        { name: "Emma", savings: "₹12,000 saved", icon: FaShoppingBag },
-    ];
-
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
             <Navbar />
-
             <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-12">
                 <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
                     {/* Left Side */}
@@ -200,7 +129,7 @@ export default function Register() {
                                         Relove Market
                                     </h1>
                                     <p className="text-xs text-gray-500">
-                                        Sustainable Fashion Marketplace
+                                        Sustainable Second Hand Marketplace
                                     </p>
                                 </div>
                             </motion.div>
@@ -218,28 +147,7 @@ export default function Register() {
                             </p>
 
                             <div className="grid grid-cols-4 gap-3 mb-5">
-                                {[
-                                    {
-                                        number: "15K+",
-                                        label: "Members",
-                                        icon: FaUsers,
-                                    },
-                                    {
-                                        number: "98%",
-                                        label: "Satisfied",
-                                        icon: FaStar,
-                                    },
-                                    {
-                                        number: "5K+",
-                                        label: "Items Sold",
-                                        icon: FaShoppingBag,
-                                    },
-                                    {
-                                        number: "50K+",
-                                        label: "Trees Saved",
-                                        icon: FaTree,
-                                    },
-                                ].map((stat, idx) => (
+                                {StatData.map((stat, idx) => (
                                     <motion.div
                                         key={idx}
                                         whileHover={{ y: -2 }}
@@ -261,13 +169,17 @@ export default function Register() {
                                     🌟 Real Impact Stories
                                 </p>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {stories.map((story, idx) => (
+                                    {storiesData.map((story, idx) => (
                                         <motion.div
                                             key={idx}
                                             whileHover={{ scale: 1.02 }}
                                             className="text-center bg-white rounded-lg p-2 shadow-sm"
                                         >
-                                            <story.icon className="w-4 h-4 text-emerald-500 mx-auto mb-0.5" />
+                                            {/* <story.icon className="w-4 h-4 text-emerald-500 mx-auto mb-0.5" /> */}
+                                            <Icon
+                                                icon={story.icon}
+                                                className="w-4 h-4 text-emerald-500 mx-auto mb-0.5"
+                                            />
                                             <p className="text-xs font-medium text-gray-800">
                                                 {story.name}
                                             </p>
@@ -292,7 +204,8 @@ export default function Register() {
                                         whileHover={{ x: 4 }}
                                         className="flex items-center gap-1.5 text-gray-700 bg-white/50 rounded-lg px-2.5 py-1.5 border border-gray-100"
                                     >
-                                        <item.icon
+                                        <Icon
+                                            icon={item.icon}
                                             className={`w-3.5 h-3.5 ${item.color}`}
                                         />
                                         <span className="text-[11px] leading-tight">
@@ -387,7 +300,10 @@ export default function Register() {
                                 </div>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-4">
+                            <form
+                                onSubmit={registerAccount}
+                                className="space-y-4"
+                            >
                                 {/* Name */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -648,8 +564,8 @@ export default function Register() {
                     </motion.div>
                 </div>
             </div>
-
             {/* Modals */}
+            // Fix: Rename the variable name to be more meaningful
             {config && (
                 <Modal
                     isOpen={true}
@@ -658,7 +574,6 @@ export default function Register() {
                     description={config.description}
                 />
             )}
-
             {showReq && (
                 <PasswordRequirementsModal
                     password={pass}
@@ -668,7 +583,6 @@ export default function Register() {
                     strengthText={strengthText}
                 />
             )}
-
             {showVerifyModal && (
                 <EmailVerificationModal
                     isLoading={loading}
@@ -677,7 +591,6 @@ export default function Register() {
                     resendEmail={resendEmail}
                 />
             )}
-
             <Footer />
         </div>
     );
