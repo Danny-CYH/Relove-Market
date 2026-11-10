@@ -6,7 +6,7 @@ export const useRegister = () => {
     const { showToast } = useToast();
 
     const [loading, setLoading] = useState(false);
-    const [showVerifyModal, setShowVerifyModal] = useState(false);
+    const [verifyEmailModal, setVerifyEmailModal] = useState(false);
     const [verifyEmail, setVerifyEmail] = useState("");
 
     const register = async (data) => {
@@ -24,7 +24,7 @@ export const useRegister = () => {
 
             if (res.status === 200) {
                 setVerifyEmail(email);
-                setShowVerifyModal(true);
+                setVerifyEmailModal(true);
 
                 showToast("Account created successfully", "success", 5000);
             }
@@ -38,7 +38,7 @@ export const useRegister = () => {
 
     return {
         loading,
-        showVerifyModal,
+        verifyEmailModal,
         verifyEmail,
         setVerifyEmail,
         register,
