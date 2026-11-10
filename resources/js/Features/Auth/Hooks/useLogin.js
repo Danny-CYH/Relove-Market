@@ -4,6 +4,8 @@ import { authService } from "../Services/authService";
 
 import { useToast } from "@/Components/Ui/Toast";
 
+import { router } from "@inertiajs/react";
+
 export const useLogin = () => {
     const [isLoading, setIsLoading] = useState(false);
 
@@ -26,13 +28,12 @@ export const useLogin = () => {
             });
 
             if (response.status == 200) {
-                setTimeout(() => {
-                    window.location.href = "/relove-market";
-                }, 2000);
+                router.visit("/relove-market");
             }
         } catch (error) {
-            setIsLoading(false);
             showToast(error.response.data.message, "error", 5000);
+        } finally {
+            setIsLoading(false);
         }
     };
 
