@@ -51,7 +51,7 @@ export default function Login() {
     } = props;
 
     const [resetModal, setResetModal] = useState(false);
-    const [forgetModal, setForgetModal] = useState(false);
+    const [forgotModal, setForgotModal] = useState(false);
     const [isPwdVisible, setIsPwdVisible] = useState(false);
 
     // ✅ 登录表单的 email
@@ -85,7 +85,7 @@ export default function Login() {
 
         await resetLink({ email: resetEmail });
 
-        setForgetModal(false);
+        setForgotModal(false);
         setResetEmail("");
     };
 
@@ -104,8 +104,8 @@ export default function Login() {
         setResetModal(false);
     };
 
-    const handleCloseForgetModal = () => {
-        setForgetModal(false);
+    const handleCloseForgotModal = () => {
+        setForgotModal(false);
     };
 
     const onClose = () => {
@@ -381,7 +381,7 @@ export default function Login() {
 
                                     <button
                                         type="button"
-                                        onClick={() => setForgetModal(true)}
+                                        onClick={() => setForgotModal(true)}
                                         className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                                     >
                                         Forgot password?
@@ -415,12 +415,12 @@ export default function Login() {
             </div>
 
             {/* ✅ forgot password Modals */}
-            {forgetModal && (
+            {forgotModal && (
                 <ForgetPasswordModal
                     resetEmail={resetEmail}
                     setResetEmail={setResetEmail}
                     resetLink_submit={resetLink_submit}
-                    handleCloseForgetModal={handleCloseForgetModal}
+                    handleCloseForgetModal={handleCloseForgotModal}
                     isLoading={isForgetting}
                 />
             )}
