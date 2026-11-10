@@ -93,42 +93,15 @@ export default function Login() {
     const resetPassword = async (e) => {
         e.preventDefault();
 
-        // ✅ 使用 resetEmail 而不是 email
-        if (!resetEmail || !resetToken) {
-            showToast(
-                "Invalid reset link. Please request a new one.",
-                "error",
-                5000,
-            );
-            return;
-        }
-
-        if (!passValid.status) {
-            showToast(
-                "Please create a password that meets all requirements.",
-                "warning",
-                5000,
-            );
-            setShowReq(true);
-            return;
-        }
-
-        if (password !== passwordConfirmation) {
-            showToast("Passwords do not match. Please try again.", "error");
-            return;
-        }
-
         await resetPass({
             token: resetToken,
             email: resetEmail,
             password: password,
             password_confirmation: passwordConfirmation,
+            passValid: passValid,
         });
 
         setShowResetModal(false);
-        setTimeout(() => {
-            window.location.href = "/login";
-        }, 5000);
     };
 
     const handleCloseForgetModal = () => {
@@ -442,7 +415,7 @@ export default function Login() {
             </div>
 
             {/* ✅ forgot password Modals */}
-            {forgetModal && 
+            {forgetModal && (
                 <ForgetPasswordModal
                     resetEmail={resetEmail}
                     setResetEmail={setResetEmail}
@@ -450,7 +423,7 @@ export default function Login() {
                     handleCloseForgetModal={handleCloseForgetModal}
                     isLoading={isForgetting}
                 />
-            }
+            )}
 
             {showResetModal && (
                 <ResetPasswordModal
