@@ -23,6 +23,10 @@ import { useToast } from "@/Components/Ui/Toast";
 import Button from "@/Components/Ui/Button";
 import { Modal } from "@/Components/Ui/Modal";
 
+import { benefits } from "@/MockData/BenefitData";
+import { StatData } from "@/MockData/StatData";
+import { storiesData } from "@/MockData/StoriesData";
+
 import {
     fadeInLeft,
     fadeInRight,
@@ -41,17 +45,6 @@ import {
     FaLeaf,
     FaGoogle,
     FaFacebook,
-    FaHeart,
-    FaStar,
-    FaShieldAlt,
-    FaRecycle,
-    FaUsers,
-    FaShoppingBag,
-    FaTree,
-    FaAward,
-    FaGlobe,
-    FaHandHolding,
-    FaClock,
 } from "react-icons/fa";
 
 /* 
@@ -92,28 +85,8 @@ export default function Register() {
     );
 
     // ✅ Register submit
-    const handleSubmit = async (e) => {
+    const registerAccount = async (e) => {
         e.preventDefault();
-
-        if (!nameValid.status) {
-            showToast(nameValid.msg, "error", 4000);
-            return;
-        }
-
-        if (!passValid.status) {
-            showToast(
-                "Please create a password that meets all requirements.",
-                "warning",
-                5000,
-            );
-            setShowReq(true);
-            return;
-        }
-
-        if (pass !== passConfirm) {
-            showToast("Passwords not match.", "error", 4000);
-            return;
-        }
 
         await register({
             name,
@@ -122,54 +95,15 @@ export default function Register() {
             password_confirmation: passConfirm,
         });
 
-        setName("");
-        setEmail("");
-        setPass("");
-        setPassConfirm("");
+        // setName("");
+        // setEmail("");
+        // setPass("");
+        // setPassConfirm("");
     };
 
     const handleSocialLogin = (provider) => {
         showToast(`${provider} login coming soon!`, "info", 3000);
     };
-
-    const benefits = [
-        {
-            icon: FaHeart,
-            text: "Discover unique pre-loved fashion",
-            color: "text-rose-400",
-        },
-        {
-            icon: FaShieldAlt,
-            text: "100% secure & insured shopping",
-            color: "text-emerald-400",
-        },
-        {
-            icon: FaRecycle,
-            text: "Reduce waste & carbon footprint",
-            color: "text-teal-400",
-        },
-        {
-            icon: FaAward,
-            text: "Earn rewards for sustainable choices",
-            color: "text-amber-400",
-        },
-        {
-            icon: FaGlobe,
-            text: "Join a global eco-conscious community",
-            color: "text-blue-400",
-        },
-        {
-            icon: FaClock,
-            text: "24/7 customer support & assistance",
-            color: "text-indigo-400",
-        },
-    ];
-
-    const stories = [
-        { name: "Sarah", savings: "50kg CO₂ saved", icon: FaLeaf },
-        { name: "Michael", savings: "30 items rescued", icon: FaHandHolding },
-        { name: "Emma", savings: "₹12,000 saved", icon: FaShoppingBag },
-    ];
 
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
@@ -200,7 +134,7 @@ export default function Register() {
                                         Relove Market
                                     </h1>
                                     <p className="text-xs text-gray-500">
-                                        Sustainable Fashion Marketplace
+                                        Sustainable Second Hand Marketplace
                                     </p>
                                 </div>
                             </motion.div>
@@ -218,28 +152,7 @@ export default function Register() {
                             </p>
 
                             <div className="grid grid-cols-4 gap-3 mb-5">
-                                {[
-                                    {
-                                        number: "15K+",
-                                        label: "Members",
-                                        icon: FaUsers,
-                                    },
-                                    {
-                                        number: "98%",
-                                        label: "Satisfied",
-                                        icon: FaStar,
-                                    },
-                                    {
-                                        number: "5K+",
-                                        label: "Items Sold",
-                                        icon: FaShoppingBag,
-                                    },
-                                    {
-                                        number: "50K+",
-                                        label: "Trees Saved",
-                                        icon: FaTree,
-                                    },
-                                ].map((stat, idx) => (
+                                {StatData.map((stat, idx) => (
                                     <motion.div
                                         key={idx}
                                         whileHover={{ y: -2 }}
@@ -261,7 +174,7 @@ export default function Register() {
                                     🌟 Real Impact Stories
                                 </p>
                                 <div className="grid grid-cols-3 gap-3">
-                                    {stories.map((story, idx) => (
+                                    {storiesData.map((story, idx) => (
                                         <motion.div
                                             key={idx}
                                             whileHover={{ scale: 1.02 }}
@@ -387,7 +300,10 @@ export default function Register() {
                                 </div>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-4">
+                            <form
+                                onSubmit={registerAccount}
+                                className="space-y-4"
+                            >
                                 {/* Name */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
