@@ -1,4 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
+import { route } from "ziggy-js";
 import { useState, useEffect } from "react";
 import {
     FaEye,
@@ -8,14 +9,6 @@ import {
     FaLeaf,
     FaGoogle,
     FaFacebook,
-    FaHeart,
-    FaStar,
-    FaShieldAlt,
-    FaRecycle,
-    FaTree,
-    FaUsers,
-    FaShoppingBag,
-    FaGlobe,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 
@@ -34,6 +27,9 @@ import { useResetPassword } from "@/Features/Auth/Hooks/useResetPassword";
 import { useResetLink } from "@/Features/Auth/Hooks/useResetLink";
 import { useFormValidation } from "@/Features/Auth/Hooks/useFormValidation";
 
+import { StatData } from "@/MockData/StatData";
+import { featureData } from "@/MockData/FeatureData";
+
 /**
  * Note: Future works needed
  *
@@ -51,12 +47,12 @@ export default function Login() {
     const {
         token: urlToken,
         email: urlEmail,
-        showResetModal: showResetFromProps,
+        resetModal: urlResetModal,
     } = props;
 
-    const [showResetModal, setShowResetModal] = useState(false);
-    const [showForgetModal, setShowForgetModal] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
+    const [resetModal, setResetModal] = useState(false);
+    const [forgotModal, setForgotModal] = useState(false);
+    const [isPwdVisible, setIsPwdVisible] = useState(false);
 
     // ✅ 登录表单的 email
     const [email, setEmail] = useState("");
@@ -77,13 +73,9 @@ export default function Login() {
     const { resetPass, isLoading: isResetting } = useResetPassword();
     const { resetLink, isLoading: isForgetting } = useResetLink();
 
+    // function for login account
     const loginAccount = async (e) => {
         e.preventDefault();
-
-        if (!email || !password) {
-            showToast("Please fill in all fields", "error", 5000);
-            return;
-        }
 
         await login({ email, password });
     };
@@ -93,7 +85,7 @@ export default function Login() {
 
         await resetLink({ email: resetEmail });
 
-        setShowForgetModal(false);
+        setForgotModal(false);
         setResetEmail("");
     };
 
@@ -101,52 +93,18 @@ export default function Login() {
     const resetPassword = async (e) => {
         e.preventDefault();
 
-        // ✅ 使用 resetEmail 而不是 email
-        if (!resetEmail || !resetToken) {
-            showToast(
-                "Invalid reset link. Please request a new one.",
-                "error",
-                5000,
-            );
-            return;
-        }
-
-        if (!passValid.status) {
-            showToast(
-                "Please create a password that meets all requirements.",
-                "warning",
-                5000,
-            );
-            setShowReq(true);
-            return;
-        }
-
-        if (password !== passwordConfirmation) {
-            showToast("Passwords do not match. Please try again.", "error");
-            return;
-        }
-
         await resetPass({
             token: resetToken,
             email: resetEmail,
             password: password,
             password_confirmation: passwordConfirmation,
+            passValid: passValid,
         });
 
-        setShowResetModal(false);
-        setTimeout(() => {
-            window.location.href = "/login";
-        }, 5000);
+        setResetModal(false);
     };
 
-    const handleCloseForgetModal = () => {
-        setShowForgetModal(false);
-    };
-
-    const onClose = () => {
-        setShowResetModal(false);
-    };
-
+    // function for login using google and facebook (demo)
     const handleSocialLogin = (provider) => {
         showToast(`${provider} login coming soon!`, "info");
     };
@@ -156,14 +114,14 @@ export default function Login() {
         if (urlToken && urlEmail) {
             setResetToken(urlToken);
             setResetEmail(urlEmail);
-            setShowResetModal(true);
+            setResetModal(true);
         }
 
         // ✅ 如果 props 有 showResetModal 标志
-        if (showResetFromProps) {
-            setShowResetModal(true);
+        if (urlResetModal) {
+            setResetModal(true);
         }
-    }, [urlToken, urlEmail, showResetFromProps]);
+    }, [urlToken, urlEmail, urlResetModal]);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
@@ -216,28 +174,7 @@ export default function Login() {
 
                         {/* Stats */}
                         <div className="grid grid-cols-4 gap-4 mb-6">
-                            {[
-                                {
-                                    number: "15K+",
-                                    label: "Members",
-                                    icon: FaUsers,
-                                },
-                                {
-                                    number: "98%",
-                                    label: "Satisfied",
-                                    icon: FaStar,
-                                },
-                                {
-                                    number: "5K+",
-                                    label: "Items Sold",
-                                    icon: FaShoppingBag,
-                                },
-                                {
-                                    number: "50K+",
-                                    label: "Trees Saved",
-                                    icon: FaTree,
-                                },
-                            ].map((stat, idx) => (
+                            {StatData.map((stat, idx) => (
                                 <motion.div
                                     key={idx}
                                     whileHover={{ y: -2 }}
@@ -256,28 +193,7 @@ export default function Login() {
 
                         {/* Features */}
                         <div className="grid grid-cols-2 gap-3 mb-6">
-                            {[
-                                {
-                                    icon: FaHeart,
-                                    text: "Pre-loved fashion",
-                                    color: "text-rose-400",
-                                },
-                                {
-                                    icon: FaShieldAlt,
-                                    text: "Secure shopping",
-                                    color: "text-emerald-400",
-                                },
-                                {
-                                    icon: FaRecycle,
-                                    text: "Zero waste",
-                                    color: "text-teal-400",
-                                },
-                                {
-                                    icon: FaGlobe,
-                                    text: "Global community",
-                                    color: "text-blue-400",
-                                },
-                            ].map((item, idx) => (
+                            {featureData.map((item, idx) => (
                                 <motion.div
                                     key={idx}
                                     whileHover={{ x: 4 }}
@@ -391,7 +307,6 @@ export default function Login() {
                                                 setEmail(e.target.value)
                                             }
                                             className="pl-9 pr-9 text-black"
-                                            required
                                         />
                                     </div>
                                 </div>
@@ -409,7 +324,7 @@ export default function Login() {
                                         </div>
                                         <TextInput
                                             type={
-                                                showPassword
+                                                isPwdVisible
                                                     ? "text"
                                                     : "password"
                                             }
@@ -419,16 +334,15 @@ export default function Login() {
                                                 setPassword(e.target.value)
                                             }
                                             className="pl-9 pr-9 text-black"
-                                            required
                                         />
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                setShowPassword(!showPassword)
+                                                setIsPwdVisible(!isPwdVisible)
                                             }
                                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                                         >
-                                            {showPassword ? (
+                                            {isPwdVisible ? (
                                                 <Icon
                                                     icon={FaEyeSlash}
                                                     className="h-4 w-4"
@@ -460,7 +374,7 @@ export default function Login() {
 
                                     <button
                                         type="button"
-                                        onClick={() => setShowForgetModal(true)}
+                                        onClick={() => setForgotModal(true)}
                                         className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                                     >
                                         Forgot password?
@@ -493,18 +407,18 @@ export default function Login() {
                 </div>
             </div>
 
-            {/* ✅ Modals */}
-            {showForgetModal && (
+            {/* ✅ forgot password Modals */}
+            {forgotModal && (
                 <ForgetPasswordModal
                     resetEmail={resetEmail}
                     setResetEmail={setResetEmail}
                     resetLink_submit={resetLink_submit}
-                    handleCloseForgetModal={handleCloseForgetModal}
+                    handleCloseForgetModal={() => setForgotModal(false)}
                     isLoading={isForgetting}
                 />
             )}
 
-            {showResetModal && (
+            {resetModal && (
                 <ResetPasswordModal
                     password={password}
                     passwordConfirmation={passwordConfirmation}
@@ -514,7 +428,7 @@ export default function Login() {
                     isLoading={isResetting}
                     showReq={showReq}
                     setShowReq={setShowReq}
-                    onClose={onClose}
+                    onClose={() => setResetModal(false)}
                 />
             )}
 
