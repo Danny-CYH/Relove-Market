@@ -51,7 +51,7 @@ export default function Login() {
     } = props;
 
     const [showResetModal, setShowResetModal] = useState(false);
-    const [showForgetModal, setShowForgetModal] = useState(false);
+    const [forgetModal, setForgetModal] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
     // ✅ 登录表单的 email
@@ -73,6 +73,7 @@ export default function Login() {
     const { resetPass, isLoading: isResetting } = useResetPassword();
     const { resetLink, isLoading: isForgetting } = useResetLink();
 
+    // function for login account
     const loginAccount = async (e) => {
         e.preventDefault();
 
@@ -84,7 +85,7 @@ export default function Login() {
 
         await resetLink({ email: resetEmail });
 
-        setShowForgetModal(false);
+        setForgetModal(false);
         setResetEmail("");
     };
 
@@ -131,7 +132,7 @@ export default function Login() {
     };
 
     const handleCloseForgetModal = () => {
-        setShowForgetModal(false);
+        setForgetModal(false);
     };
 
     const onClose = () => {
@@ -407,7 +408,7 @@ export default function Login() {
 
                                     <button
                                         type="button"
-                                        onClick={() => setShowForgetModal(true)}
+                                        onClick={() => setForgetModal(true)}
                                         className="text-sm text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
                                     >
                                         Forgot password?
@@ -440,8 +441,8 @@ export default function Login() {
                 </div>
             </div>
 
-            {/* ✅ Modals */}
-            {showForgetModal && (
+            {/* ✅ forgot password Modals */}
+            {forgetModal && 
                 <ForgetPasswordModal
                     resetEmail={resetEmail}
                     setResetEmail={setResetEmail}
@@ -449,7 +450,7 @@ export default function Login() {
                     handleCloseForgetModal={handleCloseForgetModal}
                     isLoading={isForgetting}
                 />
-            )}
+            }
 
             {showResetModal && (
                 <ResetPasswordModal
