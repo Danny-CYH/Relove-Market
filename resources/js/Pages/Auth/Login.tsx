@@ -1,5 +1,5 @@
 import { Link, usePage } from "@inertiajs/react";
-import { route } from 'ziggy-js';
+import { route } from "ziggy-js";
 import { useState, useEffect } from "react";
 import {
     FaEye,
@@ -75,11 +75,6 @@ export default function Login() {
 
     const loginAccount = async (e) => {
         e.preventDefault();
-
-        if (!email || !password) {
-            showToast("Please fill in all fields", "error", 5000);
-            return;
-        }
 
         await login({ email, password });
     };
@@ -345,7 +340,6 @@ export default function Login() {
                                                 setEmail(e.target.value)
                                             }
                                             className="pl-9 pr-9 text-black"
-                                            required
                                         />
                                     </div>
                                 </div>
@@ -373,7 +367,6 @@ export default function Login() {
                                                 setPassword(e.target.value)
                                             }
                                             className="pl-9 pr-9 text-black"
-                                            required
                                         />
                                         <button
                                             type="button"
