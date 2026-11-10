@@ -47,12 +47,12 @@ export default function Login() {
     const {
         token: urlToken,
         email: urlEmail,
-        showResetModal: showResetFromProps,
+        resetModal: urlResetModal,
     } = props;
 
-    const [showResetModal, setShowResetModal] = useState(false);
+    const [resetModal, setResetModal] = useState(false);
     const [forgetModal, setForgetModal] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
+    const [isPwdVisible, setIsPwdVisible] = useState(false);
 
     // ✅ 登录表单的 email
     const [email, setEmail] = useState("");
@@ -101,7 +101,7 @@ export default function Login() {
             passValid: passValid,
         });
 
-        setShowResetModal(false);
+        setResetModal(false);
     };
 
     const handleCloseForgetModal = () => {
@@ -109,7 +109,7 @@ export default function Login() {
     };
 
     const onClose = () => {
-        setShowResetModal(false);
+        setResetModal(false);
     };
 
     const handleSocialLogin = (provider) => {
@@ -121,14 +121,14 @@ export default function Login() {
         if (urlToken && urlEmail) {
             setResetToken(urlToken);
             setResetEmail(urlEmail);
-            setShowResetModal(true);
+            setResetModal(true);
         }
 
         // ✅ 如果 props 有 showResetModal 标志
-        if (showResetFromProps) {
-            setShowResetModal(true);
+        if (urlResetModal) {
+            setResetModal(true);
         }
-    }, [urlToken, urlEmail, showResetFromProps]);
+    }, [urlToken, urlEmail, urlResetModal]);
 
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
@@ -331,7 +331,7 @@ export default function Login() {
                                         </div>
                                         <TextInput
                                             type={
-                                                showPassword
+                                                isPwdVisible
                                                     ? "text"
                                                     : "password"
                                             }
@@ -345,11 +345,11 @@ export default function Login() {
                                         <button
                                             type="button"
                                             onClick={() =>
-                                                setShowPassword(!showPassword)
+                                                setIsPwdVisible(!isPwdVisible)
                                             }
                                             className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                                         >
-                                            {showPassword ? (
+                                            {isPwdVisible ? (
                                                 <Icon
                                                     icon={FaEyeSlash}
                                                     className="h-4 w-4"
@@ -425,7 +425,7 @@ export default function Login() {
                 />
             )}
 
-            {showResetModal && (
+            {resetModal && (
                 <ResetPasswordModal
                     password={password}
                     passwordConfirmation={passwordConfirmation}
