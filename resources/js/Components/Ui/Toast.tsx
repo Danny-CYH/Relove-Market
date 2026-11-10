@@ -8,67 +8,11 @@ import {
     useMemo,
 } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-    FaCheck,
-    FaExclamation,
-    FaInfo,
-    FaExclamationTriangle,
-    FaTimes,
-} from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
 
 import { Icon } from "./Icon";
 
-// Type of toast available
-const toast_type = {
-    info: {
-        icon: FaInfo,
-        borderColor: "border-blue-100",
-        pillBg: "bg-blue-50/60",
-        pillBorder: "border-blue-100/80",
-        iconCircleBg: "bg-blue-400",
-        iconColor: "text-blue-500",
-        textColor: "text-slate-700",
-        progressTrackBg: "#f0f7ff",
-        progressFill: "#60a5fa",
-        role: "status",
-    },
-    success: {
-        icon: FaCheck,
-        borderColor: "border-emerald-100",
-        pillBg: "bg-emerald-50/60",
-        pillBorder: "border-emerald-100/80",
-        iconCircleBg: "bg-emerald-400",
-        iconColor: "text-green-500",
-        textColor: "text-slate-700",
-        progressTrackBg: "#f0fdf4",
-        progressFill: "#34d399",
-        role: "status",
-    },
-    error: {
-        icon: FaExclamation,
-        borderColor: "border-rose-100",
-        pillBg: "bg-rose-50/60",
-        pillBorder: "border-rose-100/80",
-        iconCircleBg: "bg-rose-400",
-        iconColor: "text-red-500",
-        textColor: "text-slate-700",
-        progressTrackBg: "#fff1f2",
-        progressFill: "#fb7185",
-        role: "alert",
-    },
-    warning: {
-        icon: FaExclamationTriangle,
-        borderColor: "border-amber-100",
-        pillBg: "bg-amber-50/60",
-        pillBorder: "border-amber-100/80",
-        iconCircleBg: "bg-amber-400",
-        iconColor: "text-yellow-500",
-        textColor: "text-slate-700",
-        progressTrackBg: "#fffbeb",
-        progressFill: "#fbbf24",
-        role: "alert",
-    },
-};
+import { getToastConfig } from "./Toast/toastConfig";
 
 // 🌟 全局 Keyframes 样式注入组件
 const ProgressKeyframes = () => (
@@ -95,8 +39,6 @@ const usePauseableTimer = ({ duration, isPaused, isPinned, onExpire }) => {
     }, [onExpire]);
 
     useEffect(() => {
-        if (!duration || duration <= 0 || isPinned) return;
-
         if (isPaused) {
             if (timerRef.current) {
                 clearTimeout(timerRef.current);
@@ -122,11 +64,9 @@ const usePauseableTimer = ({ duration, isPaused, isPinned, onExpire }) => {
     }, [duration, isPaused, isPinned]);
 };
 
-/**
- * ✅ 2. 单个 Toast 项组件
- */
+// Main Toast component rendering 
 export const Toast = ({ message, type, duration, onClose }) => {
-    const config = toast_type[type];
+    const config = getToastConfig(type);
     const ToastIcon = config.icon;
 
     const [isHovered, setIsHovered] = useState(false);
