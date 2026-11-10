@@ -1,6 +1,7 @@
 import { Link } from "@inertiajs/react";
 
 import { useState } from "react";
+import { route } from "ziggy-js";
 import { motion } from "framer-motion";
 
 import Footer from "@/Components/Ui/Footer";
@@ -51,7 +52,7 @@ import {
 Note for me in the future works
 
 Fix: Resend Email is not working (419 page expired)
-Fix: Simplify the UI dummy data (benefit, stories, etc)
+Fix: Terms and condition popup modal need to rename the variable and flow
 
 Done: Refactoring functions by changing it into hooks, utils and helpers
 Done: Flow and validations are works as expected
@@ -65,7 +66,7 @@ export default function Register() {
 
     // Modal type
     const [modalType, setModalType] = useState(null);
-    const config = modalType ? modalConfig[modalType] : null;
+    const config = modalType ? modalConfig[modalType] : null; // Fix this method
 
     // ✅ Form fields
     const [name, setName] = useState("");
@@ -94,11 +95,6 @@ export default function Register() {
             password: pass,
             password_confirmation: passConfirm,
         });
-
-        // setName("");
-        // setEmail("");
-        // setPass("");
-        // setPassConfirm("");
     };
 
     const handleSocialLogin = (provider) => {
@@ -108,7 +104,6 @@ export default function Register() {
     return (
         <div className="min-h-screen flex flex-col bg-[#f6f8f7]">
             <Navbar />
-
             <div className="flex-1 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 mt-12">
                 <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
                     {/* Left Side */}
@@ -180,7 +175,11 @@ export default function Register() {
                                             whileHover={{ scale: 1.02 }}
                                             className="text-center bg-white rounded-lg p-2 shadow-sm"
                                         >
-                                            <story.icon className="w-4 h-4 text-emerald-500 mx-auto mb-0.5" />
+                                            {/* <story.icon className="w-4 h-4 text-emerald-500 mx-auto mb-0.5" /> */}
+                                            <Icon
+                                                icon={story.icon}
+                                                className="w-4 h-4 text-emerald-500 mx-auto mb-0.5"
+                                            />
                                             <p className="text-xs font-medium text-gray-800">
                                                 {story.name}
                                             </p>
@@ -205,7 +204,8 @@ export default function Register() {
                                         whileHover={{ x: 4 }}
                                         className="flex items-center gap-1.5 text-gray-700 bg-white/50 rounded-lg px-2.5 py-1.5 border border-gray-100"
                                     >
-                                        <item.icon
+                                        <Icon
+                                            icon={item.icon}
                                             className={`w-3.5 h-3.5 ${item.color}`}
                                         />
                                         <span className="text-[11px] leading-tight">
@@ -564,8 +564,8 @@ export default function Register() {
                     </motion.div>
                 </div>
             </div>
-
             {/* Modals */}
+            // Fix: Rename the variable name to be more meaningful
             {config && (
                 <Modal
                     isOpen={true}
@@ -574,7 +574,6 @@ export default function Register() {
                     description={config.description}
                 />
             )}
-
             {showReq && (
                 <PasswordRequirementsModal
                     password={pass}
@@ -584,7 +583,6 @@ export default function Register() {
                     strengthText={strengthText}
                 />
             )}
-
             {showVerifyModal && (
                 <EmailVerificationModal
                     isLoading={loading}
@@ -593,7 +591,6 @@ export default function Register() {
                     resendEmail={resendEmail}
                 />
             )}
-
             <Footer />
         </div>
     );
