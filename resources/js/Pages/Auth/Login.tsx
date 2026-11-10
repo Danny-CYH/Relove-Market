@@ -108,7 +108,7 @@ export default function Login() {
         setForgotModal(false);
     };
 
-    const onClose = () => {
+    const handleCloseResetModal = () => {
         setResetModal(false);
     };
 
@@ -435,7 +435,7 @@ export default function Login() {
                     isLoading={isResetting}
                     showReq={showReq}
                     setShowReq={setShowReq}
-                    onClose={onClose}
+                    onClose={handleCloseResetModal}
                 />
             )}
 
