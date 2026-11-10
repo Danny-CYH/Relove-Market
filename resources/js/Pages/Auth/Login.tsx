@@ -104,14 +104,7 @@ export default function Login() {
         setResetModal(false);
     };
 
-    const handleCloseForgotModal = () => {
-        setForgotModal(false);
-    };
-
-    const handleCloseResetModal = () => {
-        setResetModal(false);
-    };
-
+    // function for login using google and facebook (demo)
     const handleSocialLogin = (provider) => {
         showToast(`${provider} login coming soon!`, "info");
     };
@@ -420,7 +413,7 @@ export default function Login() {
                     resetEmail={resetEmail}
                     setResetEmail={setResetEmail}
                     resetLink_submit={resetLink_submit}
-                    handleCloseForgetModal={handleCloseForgotModal}
+                    handleCloseForgetModal={() => setForgotModal(false)}
                     isLoading={isForgetting}
                 />
             )}
@@ -435,7 +428,7 @@ export default function Login() {
                     isLoading={isResetting}
                     showReq={showReq}
                     setShowReq={setShowReq}
-                    onClose={handleCloseResetModal}
+                    onClose={() => setResetModal(false)}
                 />
             )}
 
