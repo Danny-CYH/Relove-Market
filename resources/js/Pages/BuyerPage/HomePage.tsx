@@ -50,18 +50,18 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const [flashSaleProducts, setFlashSaleProducts] = useState([]);
 
-    const [loadingFlashSale, setLoadingFlashSale] = useState(true);
+    const [isFlashSaleLoading, setIsFlashSaleLoading] = useState(true);
 
-    // Add these new states for camera search
-    const [cameraSearchOpen, setCameraSearchOpen] = useState(false);
-    const [cameraSearchResults, setCameraSearchResults] = useState([]);
-    const [cameraSearchLoading, setCameraSearchLoading] = useState(false);
+    // Image search states
+    const [isImageOpen, setIsImageOpen] = useState(false);
+    const [imageResults, setImageResults] = useState([]);
+    const [isImageLoading, setIsImageLoading] = useState(false);
     const [searchImage, setSearchImage] = useState(null);
 
-    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-
-    const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState([]);
+    // Text search states
+    const [isTextSearchOpen, setIsTextSearchOpen] = useState(false);
+    const [textQuery, setTextQuery] = useState("");
+    const [textResults, setTextResults] = useState([]);
 
     const fileInputRef = useRef(null);
 
@@ -70,14 +70,14 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const { flash } = usePage().props;
 
     // Get the flash sale products data
-    const get_flashSaleProducts = async () => {
+    const getFlashSaleProducts = async () => {
         return await GetFlashSaleProducts(
-            setLoadingFlashSale,
+            setIsFlashSaleLoading,
             setFlashSaleProducts,
         );
     };
 
-    // Updated camera search handler
+    // Updated image search handler
     const handleImageChange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -86,8 +86,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         setSearchImage(file);
 
         // Show loading modal
-        setCameraSearchLoading(true);
-        setCameraSearchOpen(true);
+        setIsImageLoading(true);
+        setIsImageOpen(true);
 
         const formData = new FormData();
         formData.append("image", file);
@@ -101,12 +101,12 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 },
             );
 
-            setCameraSearchResults(response.data || []);
+            setImageResults(response.data || []);
         } catch (error) {
-            console.error("Camera search failed:", error);
-            setCameraSearchResults([]);
+            console.error("Image search failed:", error);
+            setImageResults([]);
         } finally {
-            setCameraSearchLoading(false);
+            setIsImageLoading(false);
         }
     };
 
@@ -114,10 +114,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         fileInputRef.current.click();
     };
 
-    const closeCameraSearch = () => {
-        setCameraSearchOpen(false);
-        setCameraSearchResults([]);
-        setCameraSearchLoading(false);
+    const closeImageSearch = () => {
+        setIsImageOpen(false);
+        setImageResults([]);
+        setIsImageLoading(false);
         setSearchImage(null);
 
         // Reset file input
@@ -135,7 +135,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     // call the api functions
     useEffect(() => {
-        get_flashSaleProducts();
+        getFlashSaleProducts();
     }, []);
 
     return (
@@ -155,12 +155,12 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 primaryOnClick={() => setIsSuccessRegisterOpen(false)}
             />
 
-            {/* Special Modal for showing the camera search result */}
+            {/* Special Modal for showing the image search result */}
             <CameraSearchModal
-                isOpen={cameraSearchOpen}
-                onClose={closeCameraSearch}
-                searchResults={cameraSearchResults}
-                isLoading={cameraSearchLoading}
+                isOpen={isImageOpen}
+                onClose={closeImageSearch}
+                searchResults={imageResults}
+                isLoading={isImageLoading}
                 searchImage={searchImage}
                 save_wishlist={SaveWishlist}
             />
@@ -192,7 +192,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     <div
                                         className="flex items-center w-full px-6 py-4 rounded-full border border-gray-300 bg-white cursor-pointer hover:border-green-400 hover:shadow-md transition-all"
                                         onClick={() =>
-                                            setIsSearchModalOpen(true)
+                                            setIsTextSearchOpen(true)
                                         }
                                     >
                                         <Icon
@@ -206,17 +206,17 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                                     {/* Modal for displaying search results */}
                                     <SearchablePickerModal
-                                        isOpen={isSearchModalOpen}
+                                        isOpen={isTextSearchOpen}
                                         onClose={() => {
-                                            setIsSearchModalOpen(false);
-                                            setSearchQuery("");
-                                            setSearchResults([]);
+                                            setIsTextSearchOpen(false);
+                                            setTextQuery("");
+                                            setTextResults([]);
                                         }}
                                         items={list_shoppingItem}
                                         onSelect={(product) => {
-                                            setIsSearchModalOpen(false);
-                                            setSearchQuery("");
-                                            setSearchResults([]);
+                                            setIsTextSearchOpen(false);
+                                            setTextQuery("");
+                                            setTextResults([]);
                                             window.location.href = route(
                                                 "relove-market.product-details",
                                                 product.product_id,
@@ -232,8 +232,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     variant="successSoft"
                                     size="visual"
                                     onClick={handleCameraClick}
-                                    disabled={cameraSearchLoading}
-                                    isLoading={cameraSearchLoading}
+                                    disabled={isImageLoading}
+                                    isLoading={isImageLoading}
                                     loadingText="Searching..."
                                     buttonText="Visual Search"
                                     iconPosition="left"
@@ -363,7 +363,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 {/* Product Carousel */}
                 <section className="py-12 bg-gray-50 px-4">
                     <div className="max-w-7xl mx-auto">
-                        {loadingFlashSale ? (
+                        {isFlashSaleLoading ? (
                             <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100">
                                 <div className="animate-pulse">
                                     <div className="h-6 bg-gray-200 rounded w-48 mx-auto mb-4"></div>
