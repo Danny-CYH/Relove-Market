@@ -5,7 +5,7 @@ export const useVisionSearch = () => {
     const [visionResults, setVisionResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const fetchVisionSearch = async () => {
+    const fetchVisionSearch = async (FormData) => {
         try {
             const response = await homeServices.visionSearch(FormData);
 
