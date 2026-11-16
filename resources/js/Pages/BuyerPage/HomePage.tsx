@@ -5,31 +5,14 @@ import {
     FaShoppingBag,
     FaArrowRight,
     FaLeaf,
-    FaShieldAlt,
-    FaTags,
     FaStar,
     FaExclamationTriangle,
     FaSearch,
 } from "react-icons/fa";
 
-import {
-    Shirt,
-    Laptop,
-    Baby,
-    Book,
-    Dumbbell,
-    Heart,
-    Palette,
-    Car,
-    Recycle,
-    Sofa,
-    Boxes,
-    Gem,
-    CheckCircle,
-    Clock,
-} from "lucide-react";
+import { CheckCircle, Clock } from "lucide-react";
 
-import axios from "axios";
+import { route } from "ziggy-js";
 
 import { useState, useEffect, useRef } from "react";
 
@@ -40,7 +23,6 @@ import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchM
 
 // Component and functions for the flash sale products carousel
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
-import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSaleProduct";
 
 // Additional UI components
 import Carousel from "../../Components/Ui/Carousel";
@@ -48,102 +30,72 @@ import Navbar from "@/Components/Ui/Navbar";
 import Footer from "@/Components/Ui/Footer";
 import { Button } from "@/Components/Ui/Button";
 import { Modal } from "@/Components/Ui/Modal";
+import { Icon } from "@/Components/Ui/Icon";
 
 // Helper Functions
 import { SaveWishlist } from "@/Components/HelperFunction/SaveWishlist";
 import { SearchablePickerModal } from "@/Components/Ui/SearchablePickerModal";
 import { useFeaturedProducts } from "@/Components/HelperFunction/useFeaturedProducts";
-import { Icon } from "@/Components/Ui/Icon";
+
+// Mock Data
+import { categoryIcons } from "@/MockData/CategoryIconData";
+import { platformFeatureData } from "@/MockData/PlatformFeatureData";
+import { testimonialData } from "@/MockData/TestimonialData";
+
+// Hooks
+import { useFlashSale } from "@/Features/Home/Hooks/useFlashSale";
+import { useImgSearch } from "@/Features/Home/Hooks/useImgSearch";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
-    const categoryIcons = {
-        "Clothing & Accessories": <Shirt className="w-6 h-6 text-green-600" />,
-        "Electronics & Gadgets": <Laptop className="w-6 h-6 text-blue-600" />,
-        "Home & Furniture": <Sofa className="w-6 h-6 text-yellow-600" />,
-        "Baby & Kids": <Baby className="w-6 h-6 text-pink-600" />,
-        "Books & Stationery": <Book className="w-6 h-6 text-purple-600" />,
-        "Sports & Outdoors": <Dumbbell className="w-6 h-6 text-orange-600" />,
-        "Beauty & Self-Care": <Heart className="w-6 h-6 text-rose-500" />,
-        "Art & Collectibles": <Palette className="w-6 h-6 text-indigo-600" />,
-        "Jewelry & Watches": <Gem className="w-6 h-6 text-teal-600" />,
-        "Vehicles & Bikes": <Car className="w-6 h-6 text-gray-600" />,
-        "Eco-Friendly Items": <Recycle className="w-6 h-6 text-green-500" />,
-    };
-
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [isSuccessRegisterOpen, setIsSuccessRegisterOpen] = useState(false);
 
-    const [flashSaleProducts, setFlashSaleProducts] = useState([]);
+    // Image search states
+    const [imgModal, setImgModal] = useState(false);
+    const setImgResults = useState([]);
+    const [imgSearch, setImgSearch] = useState(null);
 
-    const [loadingFlashSale, setLoadingFlashSale] = useState(true);
+    // Text search states
+    const [txtSearchModal, setTxtSearchModal] = useState(false);
+    const setTxtSearch = useState("");
+    const setTxtResults = useState([]);
 
-    // Add these new states for camera search
-    const [cameraSearchOpen, setCameraSearchOpen] = useState(false);
-    const [cameraSearchResults, setCameraSearchResults] = useState([]);
-    const [cameraSearchLoading, setCameraSearchLoading] = useState(false);
-    const [searchImage, setSearchImage] = useState(null);
-
-    const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-
-    const [searchQuery, setSearchQuery] = useState("");
-    const [searchResults, setSearchResults] = useState([]);
-
+    // state for image input
     const fileInputRef = useRef(null);
 
+    // Hooks
     const { carouselProducts, loadingFeatured } = useFeaturedProducts();
+    const {
+        fetchFlashSale,
+        flashSale,
+        isLoading: isFlashSaleLoading,
+    } = useFlashSale();
+    const {
+        fetchImgSearch,
+        isLoading: isImgSearchLoading,
+        imgResults,
+    } = useImgSearch();
 
     const { flash } = usePage().props;
 
-    // Get the flash sale products data
-    const get_flashSaleProducts = async () => {
-        return await GetFlashSaleProducts(
-            setLoadingFlashSale,
-            setFlashSaleProducts,
-        );
-    };
-
-    // Updated camera search handler
-    const handleImageChange = async (e) => {
+    // Updated image search handler
+    const searchByImg = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         // Set the search image for preview
-        setSearchImage(file);
+        setImgSearch(file);
+        setImgModal(true);
 
-        // Show loading modal
-        setCameraSearchLoading(true);
-        setCameraSearchOpen(true);
-
-        const formData = new FormData();
-        formData.append("image", file);
-
-        try {
-            const response = await axios.post(
-                route("camera-search"),
-                formData,
-                {
-                    headers: { "Content-Type": "multipart/form-data" },
-                },
-            );
-
-            setCameraSearchResults(response.data || []);
-        } catch (error) {
-            console.error("Camera search failed:", error);
-            setCameraSearchResults([]);
-        } finally {
-            setCameraSearchLoading(false);
-        }
+        await fetchImgSearch(file);
     };
 
-    const handleCameraClick = () => {
-        fileInputRef.current.click();
-    };
-
-    const closeCameraSearch = () => {
-        setCameraSearchOpen(false);
-        setCameraSearchResults([]);
-        setCameraSearchLoading(false);
-        setSearchImage(null);
+    // function for closing image modal
+    const closeImgModal = () => {
+        setImgModal(false);
+        setImgResults([]);
+        setImgSearch(null);
+        isImgSearchLoading(false);
 
         // Reset file input
         if (fileInputRef.current) {
@@ -160,7 +112,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     // call the api functions
     useEffect(() => {
-        get_flashSaleProducts();
+        fetchFlashSale();
     }, []);
 
     return (
@@ -180,13 +132,13 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 primaryOnClick={() => setIsSuccessRegisterOpen(false)}
             />
 
-            {/* Special Modal for showing the camera search result */}
+            {/* Special Modal for showing the image search result */}
             <CameraSearchModal
-                isOpen={cameraSearchOpen}
-                onClose={closeCameraSearch}
-                searchResults={cameraSearchResults}
-                isLoading={cameraSearchLoading}
-                searchImage={searchImage}
+                isOpen={imgModal}
+                onClose={closeImgModal}
+                searchResults={imgResults}
+                isLoading={isImgSearchLoading}
+                searchImage={imgSearch}
                 save_wishlist={SaveWishlist}
             />
 
@@ -196,8 +148,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                     <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-12 items-center">
                         <div className="space-y-6">
                             <div className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 rounded-full bg-green-100 text-green-800 text-sm font-medium">
-                                <FaLeaf className="mr-2" /> Sustainable Shopping
-                                Platform
+                                <Icon icon={FaLeaf} className="mr-2" />
+                                Sustainable Shopping Platform
                             </div>
                             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-tight">
                                 Give Items a{" "}
@@ -217,10 +169,13 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     <div
                                         className="flex items-center w-full px-6 py-4 rounded-full border border-gray-300 bg-white cursor-pointer hover:border-green-400 hover:shadow-md transition-all"
                                         onClick={() =>
-                                            setIsSearchModalOpen(true)
+                                            setTxtSearchModal(true)
                                         }
                                     >
-                                        <FaSearch className="text-gray-400 mr-3" />
+                                        <Icon
+                                            icon={FaSearch}
+                                            className="text-gray-400 mr-3"
+                                        />
                                         <span className="text-gray-400 flex-1">
                                             Search for any product...
                                         </span>
@@ -228,17 +183,17 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                                     {/* Modal for displaying search results */}
                                     <SearchablePickerModal
-                                        isOpen={isSearchModalOpen}
+                                        isOpen={txtSearchModal}
                                         onClose={() => {
-                                            setIsSearchModalOpen(false);
-                                            setSearchQuery("");
-                                            setSearchResults([]);
+                                            setTxtSearchModal(false);
+                                            setTxtSearch("");
+                                            setTxtResults([]);
                                         }}
                                         items={list_shoppingItem}
                                         onSelect={(product) => {
-                                            setIsSearchModalOpen(false);
-                                            setSearchQuery("");
-                                            setSearchResults([]);
+                                            setTxtSearchModal(false);
+                                            setTxtSearch("");
+                                            setTxtResults([]);
                                             window.location.href = route(
                                                 "relove-market.product-details",
                                                 product.product_id,
@@ -253,11 +208,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 <Button
                                     variant="successSoft"
                                     size="visual"
-                                    onClick={handleCameraClick}
-                                    disabled={cameraSearchLoading}
-                                    isLoading={cameraSearchLoading}
+                                    onClick={() => fileInputRef.current.click()}
+                                    disabled={isImgSearchLoading}
+                                    isLoading={isImgSearchLoading}
                                     loadingText="Searching..."
-                                    buttonText="Visual Search"
+                                    buttonText="Image Search"
                                     iconPosition="left"
                                     leftIcon={
                                         <Icon
@@ -272,7 +227,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     type="file"
                                     accept="image/*"
                                     ref={fileInputRef}
-                                    onChange={handleImageChange}
+                                    onChange={searchByImg}
                                     className="hidden"
                                 />
                             </div>
@@ -315,7 +270,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                             </div>
                             <div className="absolute -top-10 -right-2 md:-top-6 md:-right-6 bg-green-600 text-white rounded-xl shadow-lg p-4 w-48">
                                 <div className="flex items-center">
-                                    <FaRecycle className="text-xl mr-2" />
+                                    <Icon
+                                        icon={FaRecycle}
+                                        className="text-xl mr-2"
+                                    />
                                     <span className="font-bold">1.2K+</span>
                                 </div>
                                 <p className="mt-1 text-xs">
@@ -338,12 +296,15 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 className="text-green-600 hover:text-green-700 flex items-center text-sm font-medium mt-3 md:mt-0"
                             >
                                 View all categories{" "}
-                                <FaArrowRight className="ml-1 text-xs" />
+                                <Icon
+                                    icon={FaArrowRight}
+                                    className="ml-1 text-xs"
+                                />
                             </Link>
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                            {list_categoryItem.map((category) => (
+                            {list_categoryItem.map((category, idx) => (
                                 <Link
                                     key={category.category_id}
                                     href={route("relove-market.shopping", {
@@ -362,11 +323,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     }
                                 >
                                     <span className="mb-2">
-                                        {categoryIcons[
-                                            category.category_name
-                                        ] || (
-                                            <Boxes className="w-6 h-6 text-gray-400" />
-                                        )}
+                                        <Icon
+                                            icon={categoryIcons[idx]["icon"]}
+                                            className={`w-6 h-6 ${categoryIcons[idx]["color"]}`}
+                                        />
                                     </span>
                                     <span className="text-sm font-medium text-gray-700 text-center">
                                         {category.category_name}
@@ -380,7 +340,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 {/* Product Carousel */}
                 <section className="py-12 bg-gray-50 px-4">
                     <div className="max-w-7xl mx-auto">
-                        {loadingFlashSale ? (
+                        {isFlashSaleLoading ? (
                             <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100">
                                 <div className="animate-pulse">
                                     <div className="h-6 bg-gray-200 rounded w-48 mx-auto mb-4"></div>
@@ -388,15 +348,15 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     <div className="h-64 bg-gray-200 rounded"></div>
                                 </div>
                             </div>
-                        ) : flashSaleProducts &&
-                          flashSaleProducts.length > 0 ? (
-                            <Carousel_ProductData
-                                productData={flashSaleProducts}
-                            />
+                        ) : flashSale && flashSale.length > 0 ? (
+                            <Carousel_ProductData productData={flashSale} />
                         ) : (
                             <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100">
                                 <div className="flex justify-center mb-4">
-                                    <FaExclamationTriangle className="text-4xl text-yellow-500" />
+                                    <Icon
+                                        icon={FaExclamationTriangle}
+                                        className="text-4xl text-yellow-500"
+                                    />
                                 </div>
                                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                                     No Flash Sale Products Available
@@ -410,7 +370,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
                                 >
                                     Browse All Products
-                                    <FaArrowRight className="ml-2 text-sm" />
+                                    <Icon
+                                        icon={FaArrowRight}
+                                        className="ml-2 text-sm"
+                                    />
                                 </Link>
                             </div>
                         )}
@@ -440,45 +403,22 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                             </p>
                         </div>
                         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-                            {[
-                                {
-                                    icon: <FaRecycle className="text-3xl" />,
-                                    title: "Eco-Friendly",
-                                    text: "Reduce waste and extend product life by giving items a second home.",
-                                    color: "text-green-600",
-                                },
-                                {
-                                    icon: <FaShieldAlt className="text-3xl" />,
-                                    title: "Trusted Sellers",
-                                    text: "All sellers are verified to ensure safe and reliable transactions.",
-                                    color: "text-blue-600",
-                                },
-                                {
-                                    icon: <FaTags className="text-3xl" />,
-                                    title: "Affordable Finds",
-                                    text: "Discover unique items at fair prices without breaking the bank.",
-                                    color: "text-purple-600",
-                                },
-                                {
-                                    icon: <FaCamera className="text-3xl" />,
-                                    title: "Smart Search",
-                                    text: "Search items in seconds using our AI-powered visual search recognition.",
-                                    color: "text-orange-600",
-                                },
-                            ].map((feature, idx) => (
+                            {platformFeatureData.map((feature, idx) => (
                                 <div
                                     key={idx}
                                     className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
                                 >
                                     <div
-                                        className={`flex justify-center items-center w-14 h-14 rounded-xl bg-opacity-10 ${
+                                        className={`flex justify-center items-center w-14 h-14 rounded-xl bg-opacity-10 mb-4 ${
                                             feature.color
-                                        } ${feature.color.replace(
-                                            "text",
-                                            "bg",
-                                        )} mb-4`}
+                                        }`}
                                     >
-                                        {feature.icon}
+                                        {
+                                            <Icon
+                                                icon={feature.icon}
+                                                className="text-3xl"
+                                            />
+                                        }
                                     </div>
                                     <h4 className="font-semibold text-lg text-gray-900 mb-2">
                                         {feature.title}
@@ -567,7 +507,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 text-green-600 mb-4">
                                     <span className="text-xl font-bold">1</span>
                                 </div>
-                                <FaRecycle className="text-4xl text-green-600 mb-4 mx-auto" />
+                                <Icon
+                                    icon={FaRecycle}
+                                    className="text-4xl text-green-600 mb-4 mx-auto"
+                                />
                                 <h4 className="font-semibold text-gray-900 text-lg mb-2">
                                     List Your Items
                                 </h4>
@@ -580,7 +523,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 text-blue-600 mb-4">
                                     <span className="text-xl font-bold">2</span>
                                 </div>
-                                <FaStore className="text-4xl text-blue-600 mb-4 mx-auto" />
+                                <Icon
+                                    icon={FaStore}
+                                    className="text-4xl text-blue-600 mb-4 mx-auto"
+                                />
                                 <h4 className="font-semibold text-gray-900 text-lg mb-2">
                                     Manage Your Store
                                 </h4>
@@ -593,7 +539,10 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-100 text-purple-600 mb-4">
                                     <span className="text-xl font-bold">3</span>
                                 </div>
-                                <FaShoppingBag className="text-4xl text-purple-600 mb-4 mx-auto" />
+                                <Icon
+                                    icon={FaShoppingBag}
+                                    className="text-4xl text-purple-600 mb-4 mx-auto"
+                                />
                                 <h4 className="font-semibold text-gray-900 text-lg mb-2">
                                     Earn & Shop
                                 </h4>
@@ -613,26 +562,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                             What Our Community Says
                         </h2>
                         <div className="grid md:grid-cols-3 gap-8">
-                            {[
-                                {
-                                    name: "Emma R.",
-                                    role: "Seller & Buyer",
-                                    text: "I've made over RM2,000 selling clothes I no longer wear. The process is so simple and the community is wonderful!",
-                                    avatar: "/image/user1.jpg",
-                                },
-                                {
-                                    name: "Alex T.",
-                                    role: "Electronics Seller",
-                                    text: "As a tech enthusiast, I love finding old gadgets new homes. This platform makes it easy to connect with buyers.",
-                                    avatar: "/image/user2.jpg",
-                                },
-                                {
-                                    name: "Sarah L.",
-                                    role: "Home Decor Buyer",
-                                    text: "I've furnished my entire apartment with unique finds from Relove. Sustainable, affordable, and stylish!",
-                                    avatar: "/image/user3.jpg",
-                                },
-                            ].map((testimonial, idx) => (
+                            {testimonialData.map((testimonial, idx) => (
                                 <div
                                     key={idx}
                                     className="bg-white p-6 rounded-xl shadow-sm border border-gray-100"
