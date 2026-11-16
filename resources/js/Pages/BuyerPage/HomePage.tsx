@@ -56,10 +56,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [imgSearch, setImgSearch] = useState(null);
 
     // Text search states
-    const [isTextSearchOpen, setIsTextSearchOpen] = useState(false);
-    const [textQuery, setTextQuery] = useState("");
-    const [textResults, setTextResults] = useState([]);
+    const [txtSearchModal, setTxtSearchModal] = useState(false);
+    const setTxtSearch = useState("");
+    const setTxtResults = useState([]);
 
+    // state for image input
     const fileInputRef = useRef(null);
 
     // Hooks
@@ -89,6 +90,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         await fetchImgSearch(file);
     };
 
+    // function for closing image modal
     const closeImgModal = () => {
         setImgModal(false);
         setImgResults([]);
@@ -167,7 +169,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     <div
                                         className="flex items-center w-full px-6 py-4 rounded-full border border-gray-300 bg-white cursor-pointer hover:border-green-400 hover:shadow-md transition-all"
                                         onClick={() =>
-                                            setIsTextSearchOpen(true)
+                                            setTxtSearchModal(true)
                                         }
                                     >
                                         <Icon
@@ -181,17 +183,17 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
                                     {/* Modal for displaying search results */}
                                     <SearchablePickerModal
-                                        isOpen={isTextSearchOpen}
+                                        isOpen={txtSearchModal}
                                         onClose={() => {
-                                            setIsTextSearchOpen(false);
-                                            setTextQuery("");
-                                            setTextResults([]);
+                                            setTxtSearchModal(false);
+                                            setTxtSearch("");
+                                            setTxtResults([]);
                                         }}
                                         items={list_shoppingItem}
                                         onSelect={(product) => {
-                                            setIsTextSearchOpen(false);
-                                            setTextQuery("");
-                                            setTextResults([]);
+                                            setTxtSearchModal(false);
+                                            setTxtSearch("");
+                                            setTxtResults([]);
                                             window.location.href = route(
                                                 "relove-market.product-details",
                                                 product.product_id,
