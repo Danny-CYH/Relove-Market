@@ -12,7 +12,6 @@ import {
 
 import { CheckCircle, Clock } from "lucide-react";
 
-import axios from "axios";
 import { route } from "ziggy-js";
 
 import { useState, useEffect, useRef } from "react";
@@ -24,7 +23,6 @@ import { CameraSearchModal } from "@/Components/BuyerPage/HomePage/CameraSearchM
 
 // Component and functions for the flash sale products carousel
 import { Carousel_ProductData } from "@/Components/BuyerPage/HomePage/Carousel_ProductData";
-import { GetFlashSaleProducts } from "@/Components/HelperFunction/GetFlashSaleProduct";
 
 // Additional UI components
 import Carousel from "../../Components/Ui/Carousel";
@@ -43,21 +41,19 @@ import { useFeaturedProducts } from "@/Components/HelperFunction/useFeaturedProd
 import { categoryIcons } from "@/MockData/CategoryIconData";
 import { platformFeatureData } from "@/MockData/PlatformFeatureData";
 import { testimonialData } from "@/MockData/TestimonialData";
+
+// Hooks
 import { useFlashSale } from "@/Features/Home/Hooks/useFlashSale";
+import { useImgSearch } from "@/Features/Home/Hooks/useImgSearch";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [isSuccessRegisterOpen, setIsSuccessRegisterOpen] = useState(false);
 
-    // Flash sales state
-    // const [flashSale, setFlashSale] = useState([]);
-    // const [isFlashSaleLoading, setIsFlashSaleLoading] = useState(true);
-
     // Image search states
-    const [isImageOpen, setIsImageOpen] = useState(false);
-    const [imageResults, setImageResults] = useState([]);
-    const [isImageLoading, setIsImageLoading] = useState(false);
-    const [searchImage, setSearchImage] = useState(null);
+    const [imgModal, setImgModal] = useState(false);
+    const setImageResults = useState([]);
+    const [imgSearch, setImgSearch] = useState(null);
 
     // Text search states
     const [isTextSearchOpen, setIsTextSearchOpen] = useState(false);
@@ -68,57 +64,36 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     // Hooks
     const { carouselProducts, loadingFeatured } = useFeaturedProducts();
-    const { fetchFlashSale, flashSale, isLoading: isFlashSaleLoading } = useFlashSale();
+    const {
+        fetchFlashSale,
+        flashSale,
+        isLoading: isFlashSaleLoading,
+    } = useFlashSale();
+    const {
+        fetchImgSearch,
+        isLoading: imgSearchLoading,
+        imgResults,
+    } = useImgSearch();
 
     const { flash } = usePage().props;
 
-    // Get the flash sale products data
-    // const getFlashSaleProducts = async () => {
-    //     return await GetFlashSaleProducts(setIsFlashSaleLoading, setFlashSale);
-    // };
-
     // Updated image search handler
-    const handleImageChange = async (e) => {
+    const searchByImg = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         // Set the search image for preview
-        setSearchImage(file);
+        setImgSearch(file);
+        setImgModal(true);
 
-        // Show loading modal
-        setIsImageLoading(true);
-        setIsImageOpen(true);
-
-        const formData = new FormData();
-        formData.append("image", file);
-
-        try {
-            const response = await axios.post(
-                route("camera-search"),
-                formData,
-                {
-                    headers: { "Content-Type": "multipart/form-data" },
-                },
-            );
-
-            setImageResults(response.data || []);
-        } catch (error) {
-            console.error("Image search failed:", error);
-            setImageResults([]);
-        } finally {
-            setIsImageLoading(false);
-        }
-    };
-
-    const handleCameraClick = () => {
-        fileInputRef.current.click();
+        await fetchImgSearch(file);
     };
 
     const closeImageSearch = () => {
-        setIsImageOpen(false);
+        setImgModal(false);
         setImageResults([]);
-        setIsImageLoading(false);
-        setSearchImage(null);
+        imgSearchLoading(false);
+        setImgSearch(null);
 
         // Reset file input
         if (fileInputRef.current) {
@@ -157,11 +132,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
             {/* Special Modal for showing the image search result */}
             <CameraSearchModal
-                isOpen={isImageOpen}
+                isOpen={imgModal}
                 onClose={closeImageSearch}
-                searchResults={imageResults}
-                isLoading={isImageLoading}
-                searchImage={searchImage}
+                searchResults={imgResults}
+                isLoading={imgSearchLoading}
+                searchImage={imgSearch}
                 save_wishlist={SaveWishlist}
             />
 
@@ -231,11 +206,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 <Button
                                     variant="successSoft"
                                     size="visual"
-                                    onClick={handleCameraClick}
-                                    disabled={isImageLoading}
-                                    isLoading={isImageLoading}
+                                    onClick={() => fileInputRef.current.click()}
+                                    disabled={imgSearchLoading}
+                                    isLoading={imgSearchLoading}
                                     loadingText="Searching..."
-                                    buttonText="Visual Search"
+                                    buttonText="Image Search"
                                     iconPosition="left"
                                     leftIcon={
                                         <Icon
@@ -250,7 +225,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     type="file"
                                     accept="image/*"
                                     ref={fileInputRef}
-                                    onChange={handleImageChange}
+                                    onChange={searchByImg}
                                     className="hidden"
                                 />
                             </div>
