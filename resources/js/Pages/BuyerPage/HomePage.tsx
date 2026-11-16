@@ -43,14 +43,15 @@ import { useFeaturedProducts } from "@/Components/HelperFunction/useFeaturedProd
 import { categoryIcons } from "@/MockData/CategoryIconData";
 import { platformFeatureData } from "@/MockData/PlatformFeatureData";
 import { testimonialData } from "@/MockData/TestimonialData";
+import { useFlashSale } from "@/Features/Home/Hooks/useFlashSale";
 
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [isSuccessRegisterOpen, setIsSuccessRegisterOpen] = useState(false);
 
-    const [flashSaleProducts, setFlashSaleProducts] = useState([]);
-
-    const [isFlashSaleLoading, setIsFlashSaleLoading] = useState(true);
+    // Flash sales state
+    // const [flashSale, setFlashSale] = useState([]);
+    // const [isFlashSaleLoading, setIsFlashSaleLoading] = useState(true);
 
     // Image search states
     const [isImageOpen, setIsImageOpen] = useState(false);
@@ -65,17 +66,16 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     const fileInputRef = useRef(null);
 
+    // Hooks
     const { carouselProducts, loadingFeatured } = useFeaturedProducts();
+    const { fetchFlashSale, flashSale, isLoading: isFlashSaleLoading } = useFlashSale();
 
     const { flash } = usePage().props;
 
     // Get the flash sale products data
-    const getFlashSaleProducts = async () => {
-        return await GetFlashSaleProducts(
-            setIsFlashSaleLoading,
-            setFlashSaleProducts,
-        );
-    };
+    // const getFlashSaleProducts = async () => {
+    //     return await GetFlashSaleProducts(setIsFlashSaleLoading, setFlashSale);
+    // };
 
     // Updated image search handler
     const handleImageChange = async (e) => {
@@ -135,7 +135,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     // call the api functions
     useEffect(() => {
-        getFlashSaleProducts();
+        fetchFlashSale();
     }, []);
 
     return (
@@ -371,11 +371,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     <div className="h-64 bg-gray-200 rounded"></div>
                                 </div>
                             </div>
-                        ) : flashSaleProducts &&
-                          flashSaleProducts.length > 0 ? (
-                            <Carousel_ProductData
-                                productData={flashSaleProducts}
-                            />
+                        ) : flashSale && flashSale.length > 0 ? (
+                            <Carousel_ProductData productData={flashSale} />
                         ) : (
                             <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-gray-100">
                                 <div className="flex justify-center mb-4">
