@@ -10,7 +10,7 @@ export const useImgSearch = () => {
         formData.append("image", file);
 
         try {
-            const response = await homeServices.imageSearch(FormData);
+            const response = await homeServices.imgSearch(FormData);
 
             setImgResults(response.data || []);
         } catch (error) {
