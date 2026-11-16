@@ -2,7 +2,7 @@ import axios from "axios";
 import { route } from "ziggy-js";
 
 export const homeServices = {
-    visionSearch: (formData) => {
+    imgSearch: (formData) => {
         return axios.post(route("camera-search"), formData);
     },
 
