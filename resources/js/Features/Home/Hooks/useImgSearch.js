@@ -1,25 +1,25 @@
 import { homeServices } from "../Services/homeServices";
 import { useState } from "react";
 
-export const useImageSearch = () => {
-    const [imageResults, setImageResults] = useState([]);
+export const useImgSearch = () => {
+    const [imgResults, setImgResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
-    const fetchImageSearch = async (file) => {
+    const fetchImgSearch = async (file) => {
         const formData = new FormData();
         formData.append("image", file);
 
         try {
             const response = await homeServices.imageSearch(FormData);
 
-            setImageResults(response.data || []);
+            setImgResults(response.data || []);
         } catch (error) {
             console.error("Image search failed:", error);
-            setImageResults([]);
+            setImgResults([]);
         } finally {
             setIsLoading(false);
         }
     };
 
-    return { fetchImageSearch, imageResults, isLoading };
+    return { fetchImgSearch, imgResults, isLoading };
 };
