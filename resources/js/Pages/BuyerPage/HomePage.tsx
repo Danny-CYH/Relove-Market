@@ -72,7 +72,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     } = useFlashSale();
     const {
         fetchImgSearch,
-        isLoading: imgSearchLoading,
+        isLoading: isImgSearchLoading,
         imgResults,
     } = useImgSearch();
 
@@ -95,7 +95,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         setImgModal(false);
         setImgResults([]);
         setImgSearch(null);
-        imgSearchLoading(false);
+        isImgSearchLoading(false);
 
         // Reset file input
         if (fileInputRef.current) {
@@ -137,7 +137,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                 isOpen={imgModal}
                 onClose={closeImgModal}
                 searchResults={imgResults}
-                isLoading={imgSearchLoading}
+                isLoading={isImgSearchLoading}
                 searchImage={imgSearch}
                 save_wishlist={SaveWishlist}
             />
@@ -209,8 +209,8 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                     variant="successSoft"
                                     size="visual"
                                     onClick={() => fileInputRef.current.click()}
-                                    disabled={imgSearchLoading}
-                                    isLoading={imgSearchLoading}
+                                    disabled={isImgSearchLoading}
+                                    isLoading={isImgSearchLoading}
                                     loadingText="Searching..."
                                     buttonText="Image Search"
                                     iconPosition="left"
