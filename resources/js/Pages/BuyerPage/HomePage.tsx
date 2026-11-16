@@ -52,7 +52,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
 
     // Image search states
     const [imgModal, setImgModal] = useState(false);
-    const setImageResults = useState([]);
+    const setImgResults = useState([]);
     const [imgSearch, setImgSearch] = useState(null);
 
     // Text search states
@@ -89,11 +89,11 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
         await fetchImgSearch(file);
     };
 
-    const closeImageSearch = () => {
+    const closeImgModal = () => {
         setImgModal(false);
-        setImageResults([]);
-        imgSearchLoading(false);
+        setImgResults([]);
         setImgSearch(null);
+        imgSearchLoading(false);
 
         // Reset file input
         if (fileInputRef.current) {
@@ -133,7 +133,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
             {/* Special Modal for showing the image search result */}
             <CameraSearchModal
                 isOpen={imgModal}
-                onClose={closeImageSearch}
+                onClose={closeImgModal}
                 searchResults={imgResults}
                 isLoading={imgSearchLoading}
                 searchImage={imgSearch}
