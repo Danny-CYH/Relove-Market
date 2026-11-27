@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import {
     Camera,
-    User,
     Shield,
+    User,
     ShoppingBag,
     LogOut,
     CheckCircle,
@@ -15,107 +15,24 @@ import axios from "axios";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 
+import { route } from "ziggy-js";
+
 import { usePage, Link } from "@inertiajs/react";
 
 import Navbar from "@/Components/Ui/Navbar";
 import Footer from "@/Components/Ui/Footer";
 
+import {
+    confirmationModal,
+    errorModal,
+    loadingModal,
+    successModal,
+} from "@/Components/HelperFunction/AlertMessage";
+
 import { OrdersTab } from "@/Components/BuyerPage/ProfilePage/OrdersTab";
 import { SecurityTab } from "@/Components/BuyerPage/ProfilePage/SecurityTab";
 import { ProfileTab } from "@/Components/BuyerPage/ProfilePage/ProfileTab";
 import { ReceiptModal } from "@/Components/BuyerPage/ProfilePage/ReceiptModal";
-
-// SweetAlert configuration
-const showAlert = (icon, title, text, confirmButtonText = "OK") => {
-    return Swal.fire({
-        icon,
-        title,
-        text,
-        confirmButtonText,
-        confirmButtonColor: "#3085d6",
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
-
-const showConfirmationAlert = (
-    title,
-    text,
-    confirmButtonText = "Yes",
-    cancelButtonText = "Cancel"
-) => {
-    return Swal.fire({
-        title,
-        text,
-        icon: "question",
-        showCancelButton: true,
-        confirmButtonColor: "#3085d6",
-        cancelButtonColor: "#d33",
-        confirmButtonText,
-        cancelButtonText,
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-            cancelButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
-
-const showLoadingAlert = (title, text = "") => {
-    return Swal.fire({
-        title,
-        text,
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-            Swal.showLoading();
-        },
-    });
-};
-
-const showSuccessAlert = (title, text, confirmButtonText = "OK") => {
-    return Swal.fire({
-        title,
-        text,
-        icon: "success",
-        confirmButtonText,
-        confirmButtonColor: "#3085d6",
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
-
-const showErrorAlert = (title, text, confirmButtonText = "OK") => {
-    return Swal.fire({
-        title,
-        text,
-        icon: "error",
-        confirmButtonText,
-        confirmButtonColor: "#d33",
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
-
-const showWarningAlert = (title, text, confirmButtonText = "OK") => {
-    return Swal.fire({
-        title,
-        text,
-        icon: "warning",
-        confirmButtonText,
-        confirmButtonColor: "#f59e0b",
-        customClass: {
-            popup: "rounded-2xl",
-            confirmButton: "px-4 py-2 rounded-lg font-medium",
-        },
-    });
-};
 
 export default function ProfilePage({
     active_tab,
@@ -266,13 +183,13 @@ export default function ProfilePage({
             const recentOrder = orderHistory.find(
                 (order) =>
                     order.order_id == recentOrderId ||
-                    order.order_number == recentOrderId
+                    order.order_number == recentOrderId,
             );
 
             if (recentOrder) {
                 // You can implement scrolling to the order or highlighting it
                 const orderElement = document.getElementById(
-                    `order-${recentOrder.order_id}`
+                    `order-${recentOrder.order_id}`,
                 );
                 if (orderElement) {
                     orderElement.scrollIntoView({
@@ -282,7 +199,7 @@ export default function ProfilePage({
                     orderElement.classList.add(
                         "bg-green-50",
                         "border",
-                        "border-green-200"
+                        "border-green-200",
                     );
 
                     // Remove highlight after 3 seconds
@@ -290,7 +207,7 @@ export default function ProfilePage({
                         orderElement.classList.remove(
                             "bg-green-50",
                             "border",
-                            "border-green-200"
+                            "border-green-200",
                         );
                     }, 3000);
                 }
@@ -315,9 +232,9 @@ export default function ProfilePage({
             setOrderHistory(response.data || []);
         } catch (error) {
             console.error("Error fetching order history:", error);
-            showErrorAlert(
+            errorModal(
                 "Error",
-                "Failed to load order history. Please try again."
+                "Failed to load order history. Please try again.",
             );
         } finally {
             setLoading(false);
@@ -327,11 +244,11 @@ export default function ProfilePage({
     // NEW: Order Confirmation Function (SweetAlert Version)
     const confirmOrderDelivery = async (orderId) => {
         // SweetAlert Confirmation Popup
-        const result = await showConfirmationAlert(
+        const result = await confirmationModal(
             "Confirm Delivery?",
             "Have you received your order in good condition? The order will be considered as completed by the seller.",
             "Yes, I have received it",
-            "Cancel"
+            "Cancel",
         );
 
         // If user cancels, stop the function
@@ -343,7 +260,7 @@ export default function ProfilePage({
             setConfirmingOrderId(orderId);
 
             const response = await axios.post(
-                route("confirm-delivery", orderId)
+                route("confirm-delivery", orderId),
             );
 
             if (response.data.success) {
@@ -361,25 +278,25 @@ export default function ProfilePage({
                                   completed_at:
                                       response.data.order?.completed_at,
                               }
-                            : order
-                    )
+                            : order,
+                    ),
                 );
 
                 // SweetAlert Success Popup
-                await showSuccessAlert(
+                await successModal(
                     "Delivery Confirmed!",
-                    "Payment has been released to the seller."
+                    "Payment has been released to the seller.",
                 );
             }
         } catch (error) {
             console.error("Error confirming delivery:", error);
 
             // SweetAlert Error Popup
-            showErrorAlert(
+            errorModal(
                 "Error",
                 error.response?.data?.message
                     ? error.response.data.message
-                    : "Failed to confirm delivery. Please try again."
+                    : "Failed to confirm delivery. Please try again.",
             );
         } finally {
             setConfirmingOrderId(null);
@@ -392,18 +309,18 @@ export default function ProfilePage({
         if (file) {
             // Validate file type
             if (!file.type.startsWith("image/")) {
-                showErrorAlert(
+                errorModal(
                     "Invalid File",
-                    "Please select a valid image file (JPEG, PNG, etc.)"
+                    "Please select a valid image file (JPEG, PNG, etc.)",
                 );
                 return;
             }
 
             // Validate file size (max 5MB)
             if (file.size > 5 * 1024 * 1024) {
-                showErrorAlert(
+                errorModal(
                     "File Too Large",
-                    "Image size should be less than 5MB"
+                    "Image size should be less than 5MB",
                 );
                 return;
             }
@@ -422,9 +339,9 @@ export default function ProfilePage({
             };
             reader.onerror = () => {
                 console.error("Error reading file");
-                showErrorAlert(
+                errorModal(
                     "Error",
-                    "Error reading image file. Please try another image."
+                    "Error reading image file. Please try another image.",
                 );
             };
             reader.readAsDataURL(file);
@@ -437,9 +354,9 @@ export default function ProfilePage({
             setLoading(true);
 
             // Show loading alert
-            const loadingAlert = showLoadingAlert(
+            const loadingAlert = loadingModal(
                 "Updating Profile",
-                "Please wait while we save your changes..."
+                "Please wait while we save your changes...",
             );
 
             // Create FormData for all fields
@@ -455,7 +372,7 @@ export default function ProfilePage({
             if (formData.profileImageFile) {
                 formDataToSend.append(
                     "profile_image",
-                    formData.profileImageFile
+                    formData.profileImageFile,
                 );
                 console.log("📤 Uploading new profile image file");
             } else {
@@ -469,7 +386,7 @@ export default function ProfilePage({
                     headers: {
                         "Content-Type": "multipart/form-data",
                     },
-                }
+                },
             );
 
             // Close loading alert
@@ -488,16 +405,16 @@ export default function ProfilePage({
                     finalImageUrl = updatedUser.profile_image_url;
                     console.log(
                         "🖼️ Using profile_image_url from server:",
-                        finalImageUrl
+                        finalImageUrl,
                     );
                 } else if (updatedUser.profile_image) {
                     // Convert path to full URL
                     finalImageUrl = getProfileImageUrl(
-                        updatedUser.profile_image
+                        updatedUser.profile_image,
                     );
                     console.log(
                         "🖼️ Converted profile_image to URL:",
-                        finalImageUrl
+                        finalImageUrl,
                     );
                 }
 
@@ -524,9 +441,9 @@ export default function ProfilePage({
                 }));
 
                 // Show success message
-                showSuccessAlert(
+                successModal(
                     "Success!",
-                    "Your profile has been updated successfully."
+                    "Your profile has been updated successfully.",
                 );
             }
         } catch (error) {
@@ -537,15 +454,15 @@ export default function ProfilePage({
 
             if (error.response?.data) {
                 console.error("Server response:", error.response.data);
-                showErrorAlert(
+                errorModal(
                     "Update Failed",
                     error.response.data.message ||
-                        "Failed to update profile. Please try again."
+                        "Failed to update profile. Please try again.",
                 );
             } else {
-                showErrorAlert(
+                errorModal(
                     "Update Failed",
-                    "Error updating profile. Please check your connection and try again."
+                    "Error updating profile. Please check your connection and try again.",
                 );
             }
         } finally {
@@ -566,11 +483,11 @@ export default function ProfilePage({
             formData.profileImageFile;
 
         if (hasChanges) {
-            showConfirmationAlert(
+            confirmationModal(
                 "Discard Changes?",
                 "You have unsaved changes. Are you sure you want to discard them?",
                 "Yes, Discard",
-                "Continue Editing"
+                "Continue Editing",
             ).then((result) => {
                 if (result.isConfirmed) {
                     resetForm();
@@ -680,7 +597,7 @@ export default function ProfilePage({
                 <div class="order-info">
                     <p><strong>Order Number:</strong> ${order.order_number}</p>
                     <p><strong>Order Date:</strong> ${new Date(
-                        order.date
+                        order.date,
                     ).toLocaleDateString()}</p>
                     <p><strong>Status:</strong> ${order.status}</p>
                 </div>
@@ -704,7 +621,7 @@ export default function ProfilePage({
                                 <td>RM ${item.price}</td>
                                 <td>RM ${item.price * item.quantity}</td>
                             </tr>
-                        `
+                        `,
                             )
                             .join("")}
                     </tbody>
@@ -767,7 +684,7 @@ export default function ProfilePage({
                                             onError={(e) => {
                                                 console.error(
                                                     "❌ Error loading image:",
-                                                    e.target.src
+                                                    e.target.src,
                                                 );
                                                 e.target.src =
                                                     "/image/user.png";
@@ -797,7 +714,7 @@ export default function ProfilePage({
                                 <p className="text-gray-600 text-sm mt-1">
                                     Member since{" "}
                                     {dayjs(auth.user.created_at).format(
-                                        "MMMM YYYY"
+                                        "MMMM YYYY",
                                     )}
                                 </p>
                                 <div className="flex items-center mt-2 text-sm text-gray-500">
@@ -860,7 +777,7 @@ export default function ProfilePage({
                                     </button>
                                 ))}
 
-                                <Link href={route("logout")} method="POST">
+                                <Link href={route("logout")} method="post">
                                     <button className="flex items-center px-4 py-3.5 rounded-xl text-left text-red-600 hover:bg-red-50 transition-all mt-4 group">
                                         <LogOut
                                             size={20}
