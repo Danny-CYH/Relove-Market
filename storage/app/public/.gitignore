@@ -1,2 +1,6 @@
 *
 !.gitignore
+!/product-images/
+!/product-images/*.jpg
+!/product-images/*.webp
+!/product-images/SOURCES.txt
