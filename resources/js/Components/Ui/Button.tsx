@@ -100,6 +100,7 @@ export function Button(props: ButtonProps) {
         <button
             type={props.type}
             disabled={isDisabled}
+            onClick={props.onClick}
             className={joinClasses(
                 baseClasses,
                 variantClasses[props.variant] || variantClasses.primary,
