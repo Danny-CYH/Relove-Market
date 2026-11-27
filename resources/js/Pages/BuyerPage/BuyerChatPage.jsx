@@ -14,8 +14,8 @@ import {
     ChevronLeft,
 } from "lucide-react";
 
-import { Footer } from "@/Components/Ui/Footer";
-import { Navbar } from "@/Components/Ui/Navbar";
+import Footer from "@/Components/Ui/Footer";
+import Navbar from "@/Components/Ui/Navbar";
 
 import { usePage } from "@inertiajs/react";
 
