@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { route } from "ziggy-js";
 import {
     FaRecycle,
     FaLeaf,
@@ -14,12 +15,26 @@ import { motion, useInView, AnimatePresence } from "framer-motion";
 
 import { Link, usePage } from "@inertiajs/react";
 
+import {
+    fadeInLeft,
+    fadeInUp,
+    fadeInRight,
+    scaleIn,
+    staggerContainer,
+    staggerItem,
+} from "@/Animations/animations";
+
 import Footer from "@/Components/Ui/Footer";
 import Navbar from "@/Components/Ui/Navbar";
 
+import { frequentQuestions } from "@/MockData/frequentQuestions";
+import { teamMembers } from "@/MockData/TeamMembers";
+
 export default function AboutUs() {
     // authenticate user
-    const { auth } = usePage().props;
+    const { auth } = usePage<{
+        auth: { user: { role_name: string } | null };
+    }>().props;
 
     /*************************************
      * Variable Declaration
@@ -73,115 +88,12 @@ export default function AboutUs() {
         return () => observer.disconnect();
     }, []);
 
-    const faqItems = [
-        {
-            question: "How do I create an account?",
-            answer: "Click the 'Sign Up' button in the top right corner and follow the simple registration process. You can sign up with your email or social media accounts for convenience.",
-        },
-        {
-            question: "I forgot my password. What should I do?",
-            answer: "Click on 'Forgot Password' on the login page and follow the instructions sent to your email. You'll be able to reset your password securely and quickly.",
-        },
-        {
-            question: "How do I list an item for sale?",
-            answer: "Once logged in, click 'Sell Item' in the navigation. Upload photos, add a description, set your price, and categorize your item. Our AI will help suggest the best category and price range!",
-        },
-        {
-            question: "What items can I sell on Relove?",
-            answer: "You can sell any preloved items in good condition, including clothing, electronics, home goods, books, and more. We prohibit certain items for safety reasons - see our guidelines for details.",
-        },
-        {
-            question: "How does Relove ensure transaction safety?",
-            answer: "We use secure payment processing, buyer protection programs, and verify all users. Our rating system helps build trust within our community, and our support team is always available to help resolve issues.",
-        },
-    ];
-
-    const teamMembers = [
-        {
-            name: "Michael Torres",
-            role: "Product Manager",
-            image: "/image/collaborator1.jpg",
-            bio: "Passionate about sustainable fashion and reducing waste.",
-        },
-        {
-            name: "Sarah Chen",
-            role: "Head of Technology",
-            image: "/image/collaborator2.jpg",
-            bio: "Believes technology can drive positive environmental change.",
-        },
-        {
-            name: "Priya Patel",
-            role: "Community Manager",
-            image: "/image/collaborator3.jpg",
-            bio: "Loves connecting people through shared sustainable values.",
-        },
-        {
-            name: "David Kim",
-            role: "Product Designer",
-            image: "/image/collaborator4.jpg",
-            bio: "Creates experiences that make sustainable choices easy and enjoyable.",
-        },
-    ];
-
     const stats = [
         { value: 50000, label: "Active Users", suffix: "+" },
         { value: 200000, label: "Items Listed", suffix: "+" },
         { value: 85, label: "Satisfaction Rate", suffix: "%" },
         { value: 120, label: "Tons of Waste Reduced", suffix: "+" },
     ];
-
-    // Animation variants
-    const fadeInUp = {
-        hidden: { opacity: 0, y: 30 },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: { duration: 0.6, ease: "easeOut" },
-        },
-    };
-
-    const fadeInLeft = {
-        hidden: { opacity: 0, x: -50 },
-        visible: {
-            opacity: 1,
-            x: 0,
-            transition: { duration: 0.7, ease: "easeOut" },
-        },
-    };
-
-    const fadeInRight = {
-        hidden: { opacity: 0, x: 50 },
-        visible: {
-            opacity: 1,
-            x: 0,
-            transition: { duration: 0.7, ease: "easeOut" },
-        },
-    };
-
-    const scaleIn = {
-        hidden: { opacity: 0, scale: 0.8 },
-        visible: {
-            opacity: 1,
-            scale: 1,
-            transition: { duration: 0.5, ease: "easeOut" },
-        },
-    };
-
-    const staggerContainer = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.15,
-                delayChildren: 0.2,
-            },
-        },
-    };
-
-    const staggerItem = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-    };
 
     return (
         <div className="flex flex-col min-h-screen bg-white overflow-x-hidden">
@@ -240,13 +152,11 @@ export default function AboutUs() {
                                     transition={{
                                         duration: 0.5,
                                         delay: 0.6 + index * 0.1,
-                                    }}
-                                    className="min-w-full bg-white rounded-xl p-6 shadow-sm text-center md:min-w-[180px]"
-                                    whileHover={{ scale: 1.05, y: -5 }}
-                                    transition={{
                                         type: "spring",
                                         stiffness: 300,
                                     }}
+                                    className="min-w-full bg-white rounded-xl p-6 shadow-sm text-center md:min-w-[180px]"
+                                    whileHover={{ scale: 1.05, y: -5 }}
                                 >
                                     <div className="text-3xl font-bold text-green-600 mb-2">
                                         {isVisible ? (
@@ -643,7 +553,7 @@ export default function AboutUs() {
                         animate={isFaqInView ? "visible" : "hidden"}
                         className="space-y-4"
                     >
-                        {faqItems.map((faq, index) => (
+                        {frequentQuestions.map((faq, index) => (
                             <motion.div
                                 key={index}
                                 variants={staggerItem}
