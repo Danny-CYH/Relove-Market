@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { route } from "ziggy-js";
 import {
     FaRecycle,
     FaLeaf,
@@ -17,9 +18,11 @@ import { Link, usePage } from "@inertiajs/react";
 import Footer from "@/Components/Ui/Footer";
 import Navbar from "@/Components/Ui/Navbar";
 
+import { User } from "@/eloquent-types/models";
+
 export default function AboutUs() {
     // authenticate user
-    const { auth } = usePage().props;
+    const { auth } = usePage<{ auth: User }>().props;
 
     /*************************************
      * Variable Declaration
@@ -749,8 +752,8 @@ export default function AboutUs() {
                         transition={{ delay: 0.4 }}
                         className="flex flex-col sm:flex-row gap-4 justify-center"
                     >
-                        {auth.user ? (
-                            auth.user.role_name === "Seller" ? (
+                        {auth ? (
+                            auth.role.role_name === "Seller" ? (
                                 <Link href={route("seller-dashboard")}>
                                     <motion.button
                                         whileHover={{ scale: 1.05 }}
@@ -760,7 +763,7 @@ export default function AboutUs() {
                                         Go to Seller Dashboard
                                     </motion.button>
                                 </Link>
-                            ) : auth.user.role_name === "Buyer" ? (
+                            ) : auth.role.role_name === "Buyer" ? (
                                 <Link href={route("homepage")}>
                                     <motion.button
                                         whileHover={{ scale: 1.05 }}
