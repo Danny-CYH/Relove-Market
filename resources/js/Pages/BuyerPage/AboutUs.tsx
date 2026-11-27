@@ -240,13 +240,11 @@ export default function AboutUs() {
                                     transition={{
                                         duration: 0.5,
                                         delay: 0.6 + index * 0.1,
-                                    }}
-                                    className="min-w-full bg-white rounded-xl p-6 shadow-sm text-center md:min-w-[180px]"
-                                    whileHover={{ scale: 1.05, y: -5 }}
-                                    transition={{
                                         type: "spring",
                                         stiffness: 300,
                                     }}
+                                    className="min-w-full bg-white rounded-xl p-6 shadow-sm text-center md:min-w-[180px]"
+                                    whileHover={{ scale: 1.05, y: -5 }}
                                 >
                                     <div className="text-3xl font-bold text-green-600 mb-2">
                                         {isVisible ? (
