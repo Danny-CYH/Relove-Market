@@ -38,7 +38,7 @@ import { SearchablePickerModal } from "@/Components/Ui/SearchablePickerModal";
 import { useFeaturedProducts } from "@/Components/HelperFunction/useFeaturedProducts";
 
 // Mock Data
-import { categoryIcons } from "@/MockData/CategoryIconData";
+import { categoryIcons } from "@/MockData/CategoryIcons";
 import { platformFeatureData } from "@/MockData/PlatformFeatureData";
 import { testimonialData } from "@/MockData/TestimonialData";
 
@@ -46,19 +46,26 @@ import { testimonialData } from "@/MockData/TestimonialData";
 import { useFlashSale } from "@/Features/Home/Hooks/useFlashSale";
 import { useImgSearch } from "@/Features/Home/Hooks/useImgSearch";
 
+type message = {
+    successMessage: string;
+    error: string;
+};
+
 export default function HomePage({ list_shoppingItem, list_categoryItem }) {
+    const { flash } = usePage<{ flash: message }>().props;
+
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [isSuccessRegisterOpen, setIsSuccessRegisterOpen] = useState(false);
 
     // Image search states
     const [imgModal, setImgModal] = useState(false);
-    const setImgResults = useState([]);
+    const [, setImgResults] = useState([]);
     const [imgSearch, setImgSearch] = useState(null);
 
     // Text search states
     const [txtSearchModal, setTxtSearchModal] = useState(false);
-    const setTxtSearch = useState("");
-    const setTxtResults = useState([]);
+    const [, setTxtSearch] = useState("");
+    const [, setTxtResults] = useState([]);
 
     // state for image input
     const fileInputRef = useRef(null);
@@ -72,11 +79,9 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
     } = useFlashSale();
     const {
         fetchImgSearch,
-        isLoading: isImgSearchLoading,
         imgResults,
+        isLoading: isImgSearchLoading,
     } = useImgSearch();
-
-    const { flash } = usePage().props;
 
     // Updated image search handler
     const searchByImg = async (e) => {
@@ -168,9 +173,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                 <div className="relative flex-grow max-w-xl">
                                     <div
                                         className="flex items-center w-full px-6 py-4 rounded-full border border-gray-300 bg-white cursor-pointer hover:border-green-400 hover:shadow-md transition-all"
-                                        onClick={() =>
-                                            setTxtSearchModal(true)
-                                        }
+                                        onClick={() => setTxtSearchModal(true)}
                                     >
                                         <Icon
                                             icon={FaSearch}
@@ -304,35 +307,44 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                            {list_categoryItem.map((category, idx) => (
-                                <Link
-                                    key={category.category_id}
-                                    href={route("relove-market.shopping", {
-                                        categories: [category.category_name],
-                                    })}
-                                    className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all cursor-pointer ${
-                                        selectedCategory ===
-                                        category.category_name
-                                            ? "border-green-500 bg-green-50 shadow-md"
-                                            : "border-gray-200 bg-white hover:shadow-sm hover:border-green-300"
-                                    }`}
-                                    onClick={() =>
-                                        setSelectedCategory(
-                                            category.category_name,
-                                        )
-                                    }
-                                >
-                                    <span className="mb-2">
-                                        <Icon
-                                            icon={categoryIcons[idx]["icon"]}
-                                            className={`w-6 h-6 ${categoryIcons[idx]["color"]}`}
-                                        />
-                                    </span>
-                                    <span className="text-sm font-medium text-gray-700 text-center">
-                                        {category.category_name}
-                                    </span>
-                                </Link>
-                            ))}
+                            {list_categoryItem.map((category) => {
+                                const categoryName =
+                                    categoryIcons[category.category_name];
+                                const CategoryIcon = categoryName?.icon;
+
+                                return (
+                                    <Link
+                                        key={category.category_id}
+                                        href={route("relove-market.shopping", {
+                                            categories: [
+                                                category.category_name,
+                                            ],
+                                        })}
+                                        className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                                            selectedCategory ===
+                                            category.category_name
+                                                ? "border-green-500 bg-green-50 shadow-md"
+                                                : "border-gray-200 bg-white hover:shadow-sm hover:border-green-300"
+                                        }`}
+                                        onClick={() =>
+                                            setSelectedCategory(
+                                                category.category_name,
+                                            )
+                                        }
+                                    >
+                                        <span className="mb-2">
+                                            {CategoryIcon && (
+                                                <CategoryIcon
+                                                    className={`w-6 h-6 ${categoryName.color}`}
+                                                />
+                                            )}
+                                        </span>
+                                        <span className="text-sm font-medium text-gray-700 text-center">
+                                            {category.category_name}
+                                        </span>
+                                    </Link>
+                                );
+                            })}
                         </div>
                     </div>
                 </section>
@@ -413,12 +425,7 @@ export default function HomePage({ list_shoppingItem, list_categoryItem }) {
                                             feature.color
                                         }`}
                                     >
-                                        {
-                                            <Icon
-                                                icon={feature.icon}
-                                                className="text-3xl"
-                                            />
-                                        }
+                                        <feature.icon className="text-3xl" />
                                     </div>
                                     <h4 className="font-semibold text-lg text-gray-900 mb-2">
                                         {feature.title}
