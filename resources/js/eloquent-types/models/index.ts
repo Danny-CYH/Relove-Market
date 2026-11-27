@@ -18,7 +18,7 @@ export type { SellerBase, Seller, CreateSellerPayload, UpdateSellerPayload } fro
 export type { SellerEarningBase, SellerEarning, CreateSellerEarningPayload, UpdateSellerEarningPayload } from './seller-earning';
 export type { SellerRegistrationBase, SellerRegistration, CreateSellerRegistrationPayload, UpdateSellerRegistrationPayload } from './seller-registration';
 export type { SellerStoreBase, SellerStore, CreateSellerStorePayload, UpdateSellerStorePayload } from './seller-store';
-export type { UserBase, User, CreateUserPayload, UpdateUserPayload } from './user';
+export type { User, CreateUserPayload, UpdateUserPayload } from './user';
 export type { WishlistBase, Wishlist, CreateWishlistPayload, UpdateWishlistPayload } from './wishlist';
 export type { DatabaseNotificationBase, DatabaseNotification, CreateDatabaseNotificationPayload, UpdateDatabaseNotificationPayload } from './database-notification';
 export type { Nullable, ModelId, Paginated, ApiError } from './model-helpers';
