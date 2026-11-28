@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
     Camera,
     Shield,
@@ -6,55 +6,35 @@ import {
     ShoppingBag,
     LogOut,
     CheckCircle,
-    Package,
-    Truck,
-    CheckCircle2,
 } from "lucide-react";
 
-import axios from "axios";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 
 import { route } from "ziggy-js";
 
-import { usePage, Link } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 
 import Navbar from "@/Components/Ui/Navbar";
 import Footer from "@/Components/Ui/Footer";
-
-import {
-    confirmationModal,
-    errorModal,
-    loadingModal,
-    successModal,
-} from "@/Components/HelperFunction/AlertMessage";
 
 import { OrdersTab } from "@/Components/BuyerPage/ProfilePage/OrdersTab";
 import { SecurityTab } from "@/Components/BuyerPage/ProfilePage/SecurityTab";
 import { ProfileTab } from "@/Components/BuyerPage/ProfilePage/ProfileTab";
 import { ReceiptModal } from "@/Components/BuyerPage/ProfilePage/ReceiptModal";
 
+import { useOrder } from "@/Features/Profile/Hooks/useOrder";
+import { useProfile } from "@/Features/Profile/Hooks/useProfile";
+
 export default function ProfilePage({
-    active_tab,
     show_order_success,
     order_id,
     payment_success,
 }) {
-    const [activeTab, setActiveTab] = useState(active_tab || "profile");
     const [isEditing, setIsEditing] = useState(false);
     const [showChangePassword, setShowChangePassword] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    const [loading, setLoading] = useState(false);
-
-    const fileInputRef = useRef(null);
-
-    const { auth } = usePage().props;
-
-    // Enhanced user data
-    const [userData, setUserData] = useState(auth.user);
-
-    const [formData, setFormData] = useState({ ...userData });
     const [passwordData, setPasswordData] = useState({
         currentPassword: "",
         newPassword: "",
@@ -66,80 +46,40 @@ export default function ProfilePage({
 
     // Order history state with pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(5);
+    const itemsPerPage = 5;
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
 
-    const [orderHistory, setOrderHistory] = useState([]);
-    const [confirmingOrderId, setConfirmingOrderId] = useState(null);
+    const recentOrderId = order_id ?? null;
 
-    const [showOrderSuccessModal, setShowOrderSuccessModal] = useState(false);
-    const [recentOrderId, setRecentOrderId] = useState(null);
-
-    const totalPages = Math.ceil(orderHistory.length / itemsPerPage);
     const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-    // FIXED: Enhanced helper function to get proper image URL
-    const getProfileImageUrl = (imagePath) => {
-        // If no image path, return default image
-        if (!imagePath) {
-            return "/image/user.png";
-        }
-
-        // If it's already a full URL or data URL, return as is
-        if (imagePath.startsWith("http") || imagePath.startsWith("data:")) {
-            return imagePath;
-        }
-
-        // If it's a storage path (like 'profile_images/123/filename.jpg'), prepend storage URL
-        if (imagePath.startsWith("profile_images/")) {
-            const fullUrl = `${import.meta.env.VITE_BASE_URL}${imagePath}`;
-
-            return fullUrl;
-        }
-
-        // If it's a relative path starting with /, prepend base URL
-        if (imagePath.startsWith("/")) {
-            const fullUrl = import.meta.env.VITE_BASE_URL + imagePath;
-
-            return fullUrl;
-        }
-
-        // For any other case, try with storage prefix
-        const fullUrl = `${import.meta.env.VITE_BASE_URL}${imagePath}`;
-
-        return fullUrl;
-    };
-
-    const checkForOrderSuccessRedirect = () => {
-        // Check URL parameters first
-        const urlParams = new URLSearchParams(window.location.search);
-        const showOrderSuccess = urlParams.get("show_order_success");
-        const orderId = urlParams.get("order_id");
-        const paymentSuccess = urlParams.get("payment_success");
-        const activeTabParam = urlParams.get("active_tab");
-
-        // Check if any success condition is met
-        if (showOrderSuccess === "true" || paymentSuccess === "true") {
-            // Set active tab to orders
-            setActiveTab("orders");
-
-            // Store the order ID and show modal
-            setRecentOrderId(orderId);
-            setShowOrderSuccessModal(true);
-
-            // Clean up the URL - remove the parameters
-            const cleanUrl = window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
-            console.log("🧹 URL cleaned:", cleanUrl);
-        }
-
-        if (show_order_success || payment_success) {
-            setActiveTab("orders");
-            setRecentOrderId(order_id || null);
-            setShowOrderSuccessModal(true);
-        }
-    };
+    // Hooks orders
+    const {
+        fetchPastOrder,
+        orderReceiveConfirmation,
+        recentOrder,
+        orderPlaced,
+        pastOrder,
+        orderSuccessModal,
+        isLoading: isOrdersLoading,
+        activeTab,
+        setActiveTab,
+        latestOrderId,
+    } = useOrder();
+    // Hooks profile
+    const {
+        imgUpdate,
+        imgPreviewUrl,
+        infoUpdate,
+        discardUpdate,
+        imgPreview,
+        formData,
+        setFormData,
+        userData,
+        fileInputRef,
+        isLoading: isProfileLoading,
+    } = useProfile();
 
     // NEW: Function to show the order success modal
     const showOrderSuccessAlert = () => {
@@ -171,343 +111,9 @@ export default function ProfilePage({
             },
         }).then(() => {
             // When user clicks OK
-            highlightRecentOrder();
-            setShowOrderSuccessModal(false);
+            recentOrder(order_id);
+            orderSuccessModal;
         });
-    };
-
-    // NEW: Function to highlight the recent order in the list
-    const highlightRecentOrder = () => {
-        if (recentOrderId) {
-            // Find the recent order in the order history
-            const recentOrder = orderHistory.find(
-                (order) =>
-                    order.order_id == recentOrderId ||
-                    order.order_number == recentOrderId,
-            );
-
-            if (recentOrder) {
-                // You can implement scrolling to the order or highlighting it
-                const orderElement = document.getElementById(
-                    `order-${recentOrder.order_id}`,
-                );
-                if (orderElement) {
-                    orderElement.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                    });
-                    orderElement.classList.add(
-                        "bg-green-50",
-                        "border",
-                        "border-green-200",
-                    );
-
-                    // Remove highlight after 3 seconds
-                    setTimeout(() => {
-                        orderElement.classList.remove(
-                            "bg-green-50",
-                            "border",
-                            "border-green-200",
-                        );
-                    }, 3000);
-                }
-            } else {
-                console.log("❌ Recent order not found in order history");
-            }
-        }
-    };
-
-    // Fetch order history from API
-    const fetchOrderHistory = async () => {
-        try {
-            setLoading(true);
-            const response = await axios.get(route("order-history"), {
-                headers: {
-                    "X-CSRF-TOKEN": document
-                        .querySelector('meta[name="csrf-token"]')
-                        .getAttribute("content"),
-                },
-            });
-
-            setOrderHistory(response.data || []);
-        } catch (error) {
-            console.error("Error fetching order history:", error);
-            errorModal(
-                "Error",
-                "Failed to load order history. Please try again.",
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // NEW: Order Confirmation Function (SweetAlert Version)
-    const confirmOrderDelivery = async (orderId) => {
-        // SweetAlert Confirmation Popup
-        const result = await confirmationModal(
-            "Confirm Delivery?",
-            "Have you received your order in good condition? The order will be considered as completed by the seller.",
-            "Yes, I have received it",
-            "Cancel",
-        );
-
-        // If user cancels, stop the function
-        if (!result.isConfirmed) {
-            return;
-        }
-
-        try {
-            setConfirmingOrderId(orderId);
-
-            const response = await axios.post(
-                route("confirm-delivery", orderId),
-            );
-
-            if (response.data.success) {
-                // Update the order in local state
-                setOrderHistory((prevOrders) =>
-                    prevOrders.map((order) =>
-                        order.order_id === orderId
-                            ? {
-                                  ...order,
-                                  order_status: "Completed",
-                                  commission_amount:
-                                      response.data.order?.commission_amount,
-                                  seller_amount:
-                                      response.data.order?.seller_amount,
-                                  completed_at:
-                                      response.data.order?.completed_at,
-                              }
-                            : order,
-                    ),
-                );
-
-                // SweetAlert Success Popup
-                await successModal(
-                    "Delivery Confirmed!",
-                    "Payment has been released to the seller.",
-                );
-            }
-        } catch (error) {
-            console.error("Error confirming delivery:", error);
-
-            // SweetAlert Error Popup
-            errorModal(
-                "Error",
-                error.response?.data?.message
-                    ? error.response.data.message
-                    : "Failed to confirm delivery. Please try again.",
-            );
-        } finally {
-            setConfirmingOrderId(null);
-        }
-    };
-
-    // FIXED: Handle image upload with proper preview
-    const handleImageUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            // Validate file type
-            if (!file.type.startsWith("image/")) {
-                errorModal(
-                    "Invalid File",
-                    "Please select a valid image file (JPEG, PNG, etc.)",
-                );
-                return;
-            }
-
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                errorModal(
-                    "File Too Large",
-                    "Image size should be less than 5MB",
-                );
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                // Set preview immediately with data URL
-                setImagePreview(e.target.result);
-
-                // Update form data with file for upload
-                setFormData((prev) => ({
-                    ...prev,
-                    profileImageFile: file, // Store file for upload
-                    profile_image: e.target.result, // Store preview URL for immediate display
-                }));
-            };
-            reader.onerror = () => {
-                console.error("Error reading file");
-                errorModal(
-                    "Error",
-                    "Error reading image file. Please try another image.",
-                );
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    // FIXED: Handle save with proper image handling
-    const handleSave = async () => {
-        try {
-            setLoading(true);
-
-            // Show loading alert
-            const loadingAlert = loadingModal(
-                "Updating Profile",
-                "Please wait while we save your changes...",
-            );
-
-            // Create FormData for all fields
-            const formDataToSend = new FormData();
-            formDataToSend.append("name", formData.name || "");
-            formDataToSend.append("email", formData.email || "");
-            formDataToSend.append("phone", formData.phone || "");
-            formDataToSend.append("address", formData.address || "");
-            formDataToSend.append("city", formData.city || "");
-            formDataToSend.append("zip_code", formData.zip_code || "");
-
-            // Append the actual file if it exists
-            if (formData.profileImageFile) {
-                formDataToSend.append(
-                    "profile_image",
-                    formData.profileImageFile,
-                );
-                console.log("📤 Uploading new profile image file");
-            } else {
-                console.log("ℹ️ No new file selected, keeping existing image");
-            }
-
-            const response = await axios.post(
-                route("update-profile"),
-                formDataToSend,
-                {
-                    headers: {
-                        "Content-Type": "multipart/form-data",
-                    },
-                },
-            );
-
-            // Close loading alert
-            loadingAlert.close();
-
-            if (response.data.success) {
-                const updatedUser = response.data.user;
-                console.log("✅ Profile update response:", updatedUser);
-
-                // FIXED: Handle the server response properly
-                // The server returns both profile_image (path) and profile_image_url (full URL)
-                let finalImageUrl = null;
-
-                if (updatedUser.profile_image_url) {
-                    // Use the full URL provided by server
-                    finalImageUrl = updatedUser.profile_image_url;
-                    console.log(
-                        "🖼️ Using profile_image_url from server:",
-                        finalImageUrl,
-                    );
-                } else if (updatedUser.profile_image) {
-                    // Convert path to full URL
-                    finalImageUrl = getProfileImageUrl(
-                        updatedUser.profile_image,
-                    );
-                    console.log(
-                        "🖼️ Converted profile_image to URL:",
-                        finalImageUrl,
-                    );
-                }
-
-                // Update all states with the new data
-                setUserData(updatedUser);
-                setFormData(updatedUser);
-
-                // Set the image preview to the final URL
-                if (finalImageUrl) {
-                    setImagePreview(finalImageUrl);
-                    console.log("🖼️ Image preview updated to:", finalImageUrl);
-                } else {
-                    // If no image, set to default
-                    setImagePreview("/image/user.png");
-                    console.log("🖼️ No image, using default");
-                }
-
-                setIsEditing(false);
-
-                // Clear the file object since it's been uploaded
-                setFormData((prev) => ({
-                    ...prev,
-                    profileImageFile: null,
-                }));
-
-                // Show success message
-                successModal(
-                    "Success!",
-                    "Your profile has been updated successfully.",
-                );
-            }
-        } catch (error) {
-            console.error("❌ Error updating profile:", error);
-
-            // Close any existing loading alerts
-            Swal.close();
-
-            if (error.response?.data) {
-                console.error("Server response:", error.response.data);
-                errorModal(
-                    "Update Failed",
-                    error.response.data.message ||
-                        "Failed to update profile. Please try again.",
-                );
-            } else {
-                errorModal(
-                    "Update Failed",
-                    "Error updating profile. Please check your connection and try again.",
-                );
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // FIXED: Handle cancel with proper image reset
-    const handleCancel = () => {
-        // Show confirmation if there are unsaved changes
-        const hasChanges =
-            formData.name !== userData.name ||
-            formData.email !== userData.email ||
-            formData.phone !== userData.phone ||
-            formData.address !== userData.address ||
-            formData.city !== userData.city ||
-            formData.zip_code !== userData.zip_code ||
-            formData.profileImageFile;
-
-        if (hasChanges) {
-            confirmationModal(
-                "Discard Changes?",
-                "You have unsaved changes. Are you sure you want to discard them?",
-                "Yes, Discard",
-                "Continue Editing",
-            ).then((result) => {
-                if (result.isConfirmed) {
-                    resetForm();
-                }
-            });
-        } else {
-            resetForm();
-        }
-    };
-
-    const resetForm = () => {
-        setFormData({ ...userData });
-        // Reset to the current user's profile image
-        setImagePreview(getProfileImageUrl(userData.profile_image));
-        setIsEditing(false);
-
-        // Clear any selected file
-        if (fileInputRef.current) {
-            fileInputRef.current.value = "";
-        }
     };
 
     const handleInputChange = (e) => {
@@ -524,34 +130,6 @@ export default function ProfilePage({
 
     const triggerFileInput = () => {
         fileInputRef.current.click();
-    };
-
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "delivered":
-                return "bg-green-100 text-green-800";
-            case "shipped":
-                return "bg-blue-100 text-blue-800";
-            case "processing":
-                return "bg-yellow-100 text-yellow-800";
-            case "cancelled":
-                return "bg-red-100 text-red-800";
-            default:
-                return "bg-gray-100 text-gray-800";
-        }
-    };
-
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case "delivered":
-                return <CheckCircle2 size={16} />;
-            case "shipped":
-                return <Truck size={16} />;
-            case "processing":
-                return <Package size={16} />;
-            default:
-                return <Package size={16} />;
-        }
     };
 
     // View receipt function
@@ -641,14 +219,14 @@ export default function ProfilePage({
 
     // Fetch data on component mount
     useEffect(() => {
-        fetchOrderHistory();
-        checkForOrderSuccessRedirect();
+        fetchPastOrder();
+        orderPlaced(show_order_success, payment_success);
     }, []);
 
     // FIXED: Set initial image preview when component mounts
     useEffect(() => {
         if (userData.profile_image) {
-            const initialImageUrl = getProfileImageUrl(userData.profile_image);
+            const initialImageUrl = imgPreviewUrl(userData.profile_image);
             setImagePreview(initialImageUrl);
         } else {
             setImagePreview("/image/user.png");
@@ -656,10 +234,10 @@ export default function ProfilePage({
     }, [userData.profile_image]);
 
     useEffect(() => {
-        if (showOrderSuccessModal) {
+        if (orderSuccessModal) {
             showOrderSuccessAlert();
         }
-    }, [showOrderSuccessModal, recentOrderId]);
+    }, [orderSuccessModal, recentOrderId]);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -676,6 +254,7 @@ export default function ProfilePage({
                                         {/* FIXED: Simplified image source logic */}
                                         <img
                                             src={
+                                                imgPreview ||
                                                 imagePreview ||
                                                 "/image/user.png"
                                             }
@@ -684,10 +263,9 @@ export default function ProfilePage({
                                             onError={(e) => {
                                                 console.error(
                                                     "❌ Error loading image:",
-                                                    e.target.src,
+                                                    e.currentTarget.src,
                                                 );
-                                                e.target.src =
-                                                    "/image/user.png";
+                                                    e.currentTarget.src = "/image/user.png";
                                             }}
                                         />
                                     </div>
@@ -703,17 +281,17 @@ export default function ProfilePage({
                                         type="file"
                                         name="profile_image"
                                         ref={fileInputRef}
-                                        onChange={handleImageUpload}
+                                        onChange={imgUpdate}
                                         accept="image/*"
                                         className="hidden"
                                     />
                                 </div>
                                 <h2 className="text-xl font-bold text-gray-900 text-center">
-                                    {formData.name}
+                                    {userData.name}
                                 </h2>
                                 <p className="text-gray-600 text-sm mt-1">
                                     Member since{" "}
-                                    {dayjs(auth.user.created_at).format(
+                                    {dayjs(userData.created_at).format(
                                         "MMMM YYYY",
                                     )}
                                 </p>
@@ -738,7 +316,7 @@ export default function ProfilePage({
                                         id: "orders",
                                         icon: ShoppingBag,
                                         label: "Order History",
-                                        badge: orderHistory.length,
+                                        badge: pastOrder.length,
                                     },
                                     {
                                         id: "security",
@@ -798,28 +376,24 @@ export default function ProfilePage({
                                 formData={formData}
                                 isEditing={isEditing}
                                 setIsEditing={setIsEditing}
-                                loading={loading}
-                                handleCancel={handleCancel}
+                                loading={isProfileLoading}
+                                handleCancel={discardUpdate}
                                 handleInputChange={handleInputChange}
-                                handleSave={handleSave}
+                                handleSave={infoUpdate}
                             />
                         )}
 
                         {/* Orders Tab */}
                         {activeTab === "orders" && (
                             <OrdersTab
-                                orderHistory={orderHistory}
-                                getStatusColor={getStatusColor}
-                                getStatusIcon={getStatusIcon}
+                                orderHistory={pastOrder}
                                 currentPage={currentPage}
                                 itemsPerPage={itemsPerPage}
-                                totalPages={totalPages}
                                 paginate={paginate}
                                 viewReceipt={viewReceipt}
-                                printReceipt={printReceipt}
-                                loading={loading}
-                                confirmOrderDelivery={confirmOrderDelivery}
-                                confirmingOrderId={confirmingOrderId}
+                                loading={isOrdersLoading}
+                                confirmOrderDelivery={orderReceiveConfirmation}
+                                confirmingOrderId={latestOrderId}
                                 recentOrderId={recentOrderId}
                             />
                         )}
@@ -842,7 +416,8 @@ export default function ProfilePage({
                                 order={selectedOrder}
                                 isOpen={showReceiptModal}
                                 onClose={() => setShowReceiptModal(false)}
-                                onPrint={printReceipt}
+                                confirmOrderDelivery={orderReceiveConfirmation}
+                                confirmingOrderId={latestOrderId}
                             />
                         )}
                     </div>
