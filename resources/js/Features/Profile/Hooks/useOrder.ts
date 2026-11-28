@@ -12,10 +12,12 @@ import { OrderServices } from "../Services/OrderServices";
 export const useOrder = () => {
     const [isLoading, setIsLoading] = useState(false);
 
-    const [activeTab, setActiveTab] = useState("");
+    const [activeTab, setActiveTab] = useState("profile");
 
     const [pastOrder, setPastOrder] = useState([]);
     const [, setOrderId] = useState("");
+    const [latestOrderId, setLatestOrderId] = useState(null);
+
     const [orderSuccessModal, setOrderSuccessModal] = useState(false);
 
     // get order history func
@@ -48,11 +50,12 @@ export const useOrder = () => {
 
         // If user cancels, stop the function
         if (!result.isConfirmed) {
-            return;
+            return false;
         }
 
         try {
             setOrderId(orderId);
+            setLatestOrderId(orderId);
 
             const response =
                 await OrderServices.orderReceiveConfirmation(orderId);
@@ -82,6 +85,12 @@ export const useOrder = () => {
                     "Payment has been released to the seller.",
                 );
             }
+
+            errorModal(
+                "Error",
+                response.data.message || "Failed to confirm delivery.",
+            );
+            return false;
         } catch (error) {
             console.error("Error confirming delivery:", error);
 
@@ -92,8 +101,10 @@ export const useOrder = () => {
                     ? error.response.data.message
                     : "Failed to confirm delivery. Please try again.",
             );
+            return false;
         } finally {
             setOrderId(null);
+            setLatestOrderId(null);
         }
     };
 
@@ -130,19 +141,17 @@ export const useOrder = () => {
                         );
                     }, 3000);
                 }
-            } else {
-                console.log("❌ Recent order not found in order history");
             }
         }
     };
 
+    // Func for determine the success order modal should be show up or not
     const orderPlaced = (show_order_success, payment_success) => {
         // Check URL parameters first
         const urlParams = new URLSearchParams(window.location.search);
         const showOrderSuccess = urlParams.get("show_order_success");
         const orderId = urlParams.get("order_id");
         const paymentSuccess = urlParams.get("payment_success");
-        const activeTabParam = urlParams.get("active_tab");
 
         // Check if any success condition is met
         if (showOrderSuccess === "true" || paymentSuccess === "true") {
@@ -174,6 +183,8 @@ export const useOrder = () => {
         pastOrder,
         orderSuccessModal,
         activeTab,
+        setActiveTab,
+        latestOrderId,
         isLoading,
     };
 };
