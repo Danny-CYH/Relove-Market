@@ -2,10 +2,6 @@
 
 import type { Nullable } from "./model-helpers";
 import type { Role } from "./role";
-import type { Seller } from "./seller";
-import type { Order } from "./order";
-import type { Product } from "./product";
-import type { DatabaseNotification } from "./database-notification";
 
 export interface User {
     email_verified_at?: Nullable<string>;
@@ -21,21 +17,7 @@ export interface User {
     city?: Nullable<string>;
     zip_code?: Nullable<string>;
     profile_image?: Nullable<string>;
+    profileImageFile: File | null;
     created_at: string;
     updated_at: string;
 }
-
-// export interface User extends UserBase {
-//     seller?: Seller;
-//     order?: Order;
-//     product?: Product;
-//     notifications?: DatabaseNotification[];
-//     readNotifications?: DatabaseNotification[];
-//     unreadNotifications?: DatabaseNotification[];
-// }
-
-export type CreateUserPayload = Omit<
-    User,
-    "id" | "created_at" | "updated_at"
->;
-export type UpdateUserPayload = Partial<CreateUserPayload>;
