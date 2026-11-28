@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { usePage } from "@inertiajs/react";
 
@@ -20,7 +20,7 @@ export const useProfile = () => {
     const { auth } = usePage<{ auth: { user: User } }>().props;
 
     // Enhanced user data
-    const [userData, setUserData] = useState(auth.user);
+    const [userData, setUserData] = useState<User>(auth.user);
     const BASE_URL = (
         import.meta as ImportMeta & {
             env: { VITE_BASE_URL: string };
@@ -31,33 +31,24 @@ export const useProfile = () => {
     const [isEditing, setIsEditing] = useState(false);
 
     const [imgPreview, setImgPreview] = useState(null);
-    const [formData, setFormData] = useState([]);
+    const [formData, setFormData] = useState<User>({
+        ...auth.user,
+        profileImageFile: null,
+    });
+
+    const fileInputRef = useRef(null);
 
     // FIXED: Enhanced helper function to get proper image URL
     // get profile image preview url func
     const imgPreviewUrl = (imagePath) => {
         // If no image path, return default image
         if (!imagePath) {
-            return "image/user.png";
+            return "/image/user.png";
         }
 
         // If it's already a full URL or data URL, return as is
-        if (imagePath.startsWith("http") || imagePath.startsWith("data:")) {
+        if (imagePath.startsWith("http")) {
             return imagePath;
-        }
-
-        // If it's a storage path (like 'profile_images/123/filename.jpg'), prepend storage URL
-        if (imagePath.startsWith("profile_images/")) {
-            const fullUrl = `${BASE_URL}${imagePath}`;
-
-            return fullUrl;
-        }
-
-        // If it's a relative path starting with /, prepend base URL
-        if (imagePath.startsWith("/")) {
-            const fullUrl = BASE_URL + imagePath;
-
-            return fullUrl;
         }
 
         // For any other case, try with storage prefix
@@ -67,68 +58,78 @@ export const useProfile = () => {
     };
 
     // Update profile image func
-    const imgUpdate = (file) => {
+    const imgUpdate = (event) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+            return;
+        }
+
         const reader = new FileReader();
-        if (file) {
-            // Validate file type
-            if (!file.type.startsWith("image/")) {
-                errorModal(
-                    "Invalid File",
-                    "Please select a valid image file (JPEG, PNG, etc.)",
-                );
-                return;
-            }
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+            errorModal(
+                "Invalid File",
+                "Please select a valid image file (JPEG, PNG, etc.)",
+            );
+            return;
+        }
 
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                errorModal(
-                    "File Too Large",
-                    "Image size should be less than 5MB",
-                );
-                return;
-            }
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            errorModal("File Too Large", "Image size should be less than 5MB");
+            return;
+        }
 
-            reader.onload = (e) => {
-                // Set preview immediately with data URL
-                setImgPreview(e.target.result);
-
-                // Update form data with file for upload
-                setFormData((prev) => ({
-                    ...prev,
-                    profileImageFile: file, // Store file for upload
-                    profile_image: e.target.result, // Store preview URL for immediate display
-                }));
-            };
-            reader.onerror = () => {
-                console.error("Error reading file");
+        reader.onload = () => {
+            const preview = reader.result;
+            if (typeof preview !== "string") {
                 errorModal(
                     "Error",
-                    "Error reading image file. Please try another image.",
+                    "Unable to preview the selected image. Please try another file.",
                 );
-            };
-            reader.readAsDataURL(file);
-        }
+                return;
+            }
+
+            // Set preview immediately with data URL
+            setImgPreview(preview);
+
+            // Update form data with file for upload
+            setFormData((prev) => ({
+                ...prev,
+                profileImageFile: file,
+                profile_image: preview,
+            }));
+        };
+        reader.onerror = () => {
+            console.error("Error reading file");
+            errorModal(
+                "Error",
+                "Error reading image file. Please try another image.",
+            );
+        };
+        reader.readAsDataURL(file);
     };
 
     // FIXED: Handle save with proper image handling
-    const infoUpdate = async (formData) => {
+    const infoUpdate = async () => {
         try {
             setIsLoading(true);
 
             // Show loading alert
-            const loadingAlert = loadingModal(
+            loadingModal(
                 "Updating Profile",
                 "Please wait while we save your changes...",
             );
 
             // Create FormData for all fields
             const formDataToSend = new FormData();
-            formDataToSend.append("name", formData.name || "");
-            formDataToSend.append("email", formData.email || "");
-            formDataToSend.append("phone", formData.phone || "");
-            formDataToSend.append("address", formData.address || "");
-            formDataToSend.append("city", formData.city || "");
-            formDataToSend.append("zip_code", formData.zip_code || "");
+            formDataToSend.append("name", formData.name);
+            formDataToSend.append("email", formData.email);
+            formDataToSend.append("phone", formData.phone);
+            formDataToSend.append("address", formData.address);
+            formDataToSend.append("city", formData.city);
+            formDataToSend.append("zip_code", formData.zip_code);
+            formDataToSend.append("_method", "PATCH");
 
             // Append the actual file if it exists
             if (formData.profileImageFile) {
@@ -136,20 +137,16 @@ export const useProfile = () => {
                     "profile_image",
                     formData.profileImageFile,
                 );
-                console.log("📤 Uploading new profile image file");
-            } else {
-                console.log("ℹ️ No new file selected, keeping existing image");
             }
 
+            // Call update profile API services
             const response =
                 await ProfileServices.updateProfile(formDataToSend);
 
-            // Close loading alert
-            loadingAlert.close();
+            Swal.close();
 
             if (response.data.success) {
                 const updatedUser = response.data.user;
-                console.log("✅ Profile update response:", updatedUser);
 
                 // FIXED: Handle the server response properly
                 // The server returns both profile_image (path) and profile_image_url (full URL)
@@ -165,14 +162,17 @@ export const useProfile = () => {
 
                 // Update all states with the new data
                 setUserData(updatedUser);
-                setFormData(updatedUser);
+                setFormData({
+                    ...updatedUser,
+                    profileImageFile: null,
+                });
 
                 // Set the image preview to the final URL
                 if (finalImageUrl) {
                     setImgPreview(finalImageUrl);
                 } else {
                     // If no image, set to default
-                    setImgPreview("image/user.png");
+                    setImgPreview("/image/user.png");
                 }
 
                 setIsEditing(false);
@@ -214,7 +214,7 @@ export const useProfile = () => {
     };
 
     // FIXED: Handle cancel with proper image reset
-    const discardUpdate = (formData) => {
+    const discardUpdate = () => {
         // Show confirmation if there are unsaved changes
         const hasChanges =
             formData.name !== userData.name ||
@@ -243,7 +243,10 @@ export const useProfile = () => {
 
     // Reset form after update func
     const resetForm = () => {
-        setFormData({ ...userData });
+        setFormData({
+            ...userData,
+            profileImageFile: null,
+        });
         // Reset to the current user's profile image
         setImgPreview(imgPreviewUrl(userData.profile_image));
         setIsEditing(false);
@@ -261,6 +264,9 @@ export const useProfile = () => {
         discardUpdate,
         imgPreview,
         formData,
+        setFormData,
+        userData,
+        fileInputRef,
         isLoading,
         isEditing,
     };
