@@ -7,8 +7,6 @@ use App\Http\Controllers\Controller;
 
 use App\Models\Order;
 use App\Models\SellerEarning;
-use App\Models\User;
-
 use Exception;
 
 use Illuminate\Http\Request;
@@ -18,6 +16,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ProfileManagementController extends Controller
@@ -116,6 +115,15 @@ class ProfileManagementController extends Controller
     public function updateProfile(Request $request)
     {
         try {
+            $user = Auth::user();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
             Log::info('🎯 Profile update request received', [
                 'all_data' => $request->all(),
                 'files' => $request->file() ? array_keys($request->file()) : 'no files',
@@ -125,7 +133,12 @@ class ProfileManagementController extends Controller
             // ✅ Validate input
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
-                'email' => 'required|email|max:255',
+                'email' => [
+                    'required',
+                    'email',
+                    'max:255',
+                    Rule::unique('users', 'email')->ignore($user->getKey(), $user->getKeyName()),
+                ],
                 'phone' => 'nullable|string|max:20',
                 'address' => 'nullable|string|max:255',
                 'city' => 'nullable|string|max:255',
@@ -144,17 +157,6 @@ class ProfileManagementController extends Controller
 
             $validated = $validator->validated();
             Log::info('✅ Validation passed', $validated);
-
-            // ✅ Find user by email
-            $user = User::where('email', $validated['email'])->first();
-
-            if (!$user) {
-                Log::error('❌ User not found with email: ' . $validated['email']);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found with this email.',
-                ], 404);
-            }
 
             Log::info('✅ User found', ['user_id' => $user->user_id, 'email' => $user->email]);
 
@@ -215,7 +217,7 @@ class ProfileManagementController extends Controller
 
             // Prepare user data for response
             $userData = [
-                'id' => $user->id,
+                'user_id' => $user->user_id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'phone' => $user->phone,
@@ -223,6 +225,8 @@ class ProfileManagementController extends Controller
                 'city' => $user->city,
                 'zip_code' => $user->zip_code,
                 'profile_image' => $user->profile_image,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
             ];
 
             // Add full URL if profile image exists
