@@ -26,7 +26,7 @@ class CommerceSeeder extends Seeder
             $suffix = sprintf('%02d', $i);
             $orders[] = [
                 'order_id' => MockDataIds::order($i),
-                'payment_intent_id' => "pi_mock_{$suffix}",
+                'payment_intent_id' => "pi_{$suffix}",
                 'amount' => number_format(15 + ($i * 4.25) + 5, 2, '.', ''),
                 'currency' => 'myr',
                 'user_id' => MockDataIds::buyerFor($i),
@@ -45,15 +45,20 @@ class CommerceSeeder extends Seeder
 
     private function seedOrderItemsAndEarnings($now): void
     {
+        $colors = ['Black', 'Blue', 'Cream', 'Green', 'Brown'];
+        $sizes = ['S', 'M', 'L', 'One Size'];
+
         for ($i = 1; $i <= MockDataIds::COUNT; $i++) {
             $orderId = MockDataIds::order($i);
             $productId = MockDataIds::product($i);
             $sellerId = MockDataIds::seller($i);
             $price = 15 + ($i * 4.25);
             $suffix = sprintf('%02d', $i);
+            $color = $colors[($i - 1) % count($colors)];
+            $size = $sizes[($i - 1) % count($sizes)];
             $variant = json_encode([
                 'variant_id' => MockDataIds::variant($i),
-                'variant_key' => 'mock-variant',
+                'variant_key' => strtolower(str_replace(' ', '-', "{$color}-{$size}")),
             ], JSON_THROW_ON_ERROR);
 
             $this->insertIfMissing(

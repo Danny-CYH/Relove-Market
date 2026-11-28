@@ -110,7 +110,7 @@ class AccountSeeder extends Seeder
         for ($i = 1; $i <= MockDataIds::COUNT; $i++) {
             $suffix = sprintf('%02d', $i);
             $registrations[] = [
-                'registration_id' => "MOCK-REG-{$suffix}",
+                'registration_id' => "REG-{$suffix}",
                 'name' => "Demo Applicant {$suffix}",
                 'email' => "demo.registration{$suffix}@example.test",
                 'phone_number' => sprintf('000000%04d', 200 + $i),

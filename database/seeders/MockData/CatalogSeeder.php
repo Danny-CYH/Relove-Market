@@ -130,14 +130,14 @@ class CatalogSeeder extends Seeder
                 ]
             );
             $features[] = [
-                'feature_id' => "MOCK-FEATURE-{$suffix}",
+                'feature_id' => "FEATURE-{$suffix}",
                 'product_id' => $productId,
                 'feature_text' => 'Gently used and carefully checked',
                 'created_at' => $now,
                 'updated_at' => $now,
             ];
             $includedItems[] = [
-                'item_id' => "MOCK-ITEM-{$suffix}",
+                'item_id' => "ITEM-{$suffix}",
                 'product_id' => $productId,
                 'item_name' => 'Main item and standard accessories',
                 'created_at' => $now,
