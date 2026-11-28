@@ -3,6 +3,6 @@ import { route } from "ziggy-js";
 
 export const ProfileServices = {
     updateProfile: (formData) => {
-        return axios.post(route("profile.info", formData));
+        return axios.post(route("profile.info"), formData);
     },
 };
