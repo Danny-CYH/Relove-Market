@@ -14,3 +14,66 @@ export function AlertMessage(icon, title, text, confirmButtonText = "OK") {
         },
     });
 }
+
+export const confirmationModal = (
+    title,
+    text,
+    confirmButtonText = "Yes",
+    cancelButtonText = "Cancel",
+) => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText,
+        cancelButtonText,
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+            cancelButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+export const loadingModal = (title, text = "") => {
+    return Swal.fire({
+        title,
+        text,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        },
+    });
+};
+
+export const successModal = (title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "success",
+        confirmButtonText,
+        confirmButtonColor: "#3085d6",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
+
+export const errorModal = (title, text, confirmButtonText = "OK") => {
+    return Swal.fire({
+        title,
+        text,
+        icon: "error",
+        confirmButtonText,
+        confirmButtonColor: "#d33",
+        customClass: {
+            popup: "rounded-2xl",
+            confirmButton: "px-4 py-2 rounded-lg font-medium",
+        },
+    });
+};
